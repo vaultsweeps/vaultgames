@@ -1,6 +1,6 @@
 // games.ts
 import { Router as GRouter } from 'express'
-import { getGames, getGame, downloadGame } from './controllers'
+import { getGames, getGame, downloadGame } from '../controllers/controllers'
 import { authenticate } from '../middleware/auth'
 
 const gamesRouter = GRouter()
@@ -11,7 +11,7 @@ export { gamesRouter }
 
 // bonuses.ts
 import { Router as BRouter } from 'express'
-import { getBonuses, claimBonus } from './controllers'
+import { getBonuses, claimBonus } from '../controllers/controllers'
 
 const bonusesRouter = BRouter()
 bonusesRouter.get('/', authenticate, getBonuses)
@@ -20,7 +20,7 @@ export { bonusesRouter }
 
 // support.ts
 import { Router as SRouter } from 'express'
-import { getTickets, createTicket, getTicket, replyToTicket } from './controllers'
+import { getTickets, createTicket, getTicket, replyToTicket } from '../controllers/controllers'
 
 const supportRouter = SRouter()
 supportRouter.use(authenticate)
@@ -32,7 +32,7 @@ export { supportRouter }
 
 // notifications.ts
 import { Router as NRouter } from 'express'
-import { getNotifications, markNotificationRead, markAllRead, getUnreadCount } from './controllers'
+import { getNotifications, markNotificationRead, markAllRead, getUnreadCount } from '../controllers/controllers'
 
 const notificationsRouter = NRouter()
 notificationsRouter.use(authenticate)
@@ -44,7 +44,7 @@ export { notificationsRouter }
 
 // profile.ts
 import { Router as PRouter } from 'express'
-import { updateProfile, changePassword } from './controllers'
+import { updateProfile, changePassword } from '../controllers/controllers'
 
 const profileRouter = PRouter()
 profileRouter.use(authenticate)
@@ -54,13 +54,15 @@ export { profileRouter }
 
 // public.ts
 import { Router as PubRouter } from 'express'
-import { getPublicBanners, getPublicFeaturedGames, getPublicBonuses, getPublicFAQs, getPublicStats, sendContactForm } from './controllers'
+import { getPublicBanners, getPublicFeaturedGames, getPublicBonuses, getPublicFAQs, getPublicStats, sendContactForm, getPublicGameDetails, getPublicSettings } from '../controllers/controllers'
 
 const publicRouter = PubRouter()
 publicRouter.get('/banners', getPublicBanners)
 publicRouter.get('/games/featured', getPublicFeaturedGames)
+publicRouter.get('/games/:id', getPublicGameDetails)
 publicRouter.get('/bonuses', getPublicBonuses)
 publicRouter.get('/faqs', getPublicFAQs)
 publicRouter.get('/stats', getPublicStats)
 publicRouter.post('/contact', sendContactForm)
+publicRouter.get('/settings', getPublicSettings)
 export { publicRouter }
