@@ -154,7 +154,9 @@ export const adminApi = {
 
   // Banners
   getBanners: (params?: object) => apiClient.get('/admin/banners', { params }),
-  createBanner: (data: FormData) => apiClient.post('/admin/banners', data, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  createBanner: (data: object | FormData) => apiClient.post('/admin/banners', data, {
+    headers: data instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : { 'Content-Type': 'application/json' }
+  }),
   updateBanner: (id: string, data: object) => apiClient.put(`/admin/banners/${id}`, data),
   deleteBanner: (id: string) => apiClient.delete(`/admin/banners/${id}`),
 
