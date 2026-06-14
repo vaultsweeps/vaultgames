@@ -16,7 +16,7 @@ type User = {
   isBanned: boolean
   createdAt: string
   lastLogin?: string
-  deposits?: number
+  deposits?: { amount: number }[]
   totalDeposited?: number
 }
 
@@ -127,7 +127,7 @@ export default function AdminUsersPage() {
                     </span>
                   </td>
                   <td className="text-slate-300">{user.deposits?.length ?? 0}</td>
-                  <td className="text-white font-medium">${user.deposits?.reduce((s: number, d: any) => s + d.amount, 0).toFixed(0) ?? 0}</td>
+                  <td className="text-white font-medium">${(user.deposits?.reduce((s: number, d: { amount: number }) => s + d.amount, 0) ?? 0).toFixed(0)}</td>
                   <td className="text-xs text-slate-500">{user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : 'Never'}</td>
                   <td className="text-xs text-slate-600">{new Date(user.createdAt).toLocaleDateString()}</td>
                   <td>
