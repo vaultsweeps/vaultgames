@@ -16,7 +16,8 @@ type User = {
   isBanned: boolean
   createdAt: string
   lastLogin?: string
-  deposits?: { amount: number }[]
+  deposits?: number
+  totalDeposited?: number
 }
 
 export default function AdminUsersPage() {
@@ -173,9 +174,9 @@ export default function AdminUsersPage() {
               {[
                 ['Status', selectedUser.isBanned ? 'Banned' : selectedUser.isActive ? 'Active' : 'Suspended'],
                 ['Verified', selectedUser.isVerified ? 'Yes' : 'No'],
-                ['Total Deposits', selectedUser.deposits.toString()],
-                ['Total Deposited', `$${selectedUser.totalDeposited}`],
-                ['Last Login', selectedUser.lastLogin],
+                ['Total Deposits', selectedUser.deposits?.toString() ?? '0'],
+                ['Total Deposited', `$${selectedUser.totalDeposited ?? 0}`],
+                ['Last Login', selectedUser.lastLogin ?? 'Never'],
                 ['Joined', selectedUser.createdAt],
               ].map(([k, v]) => (
                 <div key={k} className="glass rounded-lg px-3 py-2">
