@@ -106,10 +106,10 @@ ${message}
     return this.sendTextMessage(text);
   }
 
-  static async sendWithdrawalRequestNotification(username: string, amount: number, method: string, accountInfo: string) {
+  static async sendWithdrawalRequestNotification(username: string, email: string, amount: number, method: string, accountInfo: string) {
     const text = `
 💸 *New Withdrawal Request* 💸
-*User:* ${username}
+*User:* ${username} (${email})
 *Amount:* $${amount.toFixed(2)}
 *Method:* ${method}
 
@@ -119,10 +119,10 @@ ${accountInfo}
     return this.sendTextMessage(text);
   }
 
-  static async sendDepositNotification(username: string, amount: number, method: string, txRef: string) {
+  static async sendDepositNotification(username: string, email: string, amount: number, method: string, txRef: string) {
     const text = `
 💰 *New Deposit Created* 💰
-*User:* ${username}
+*User:* ${username} (${email})
 *Amount:* $${amount.toFixed(2)}
 *Method:* ${method}
 *Ref:* ${txRef}

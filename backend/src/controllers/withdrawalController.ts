@@ -78,7 +78,11 @@ export const createWithdrawal = asyncHandler(async (req: AuthRequest, res: Respo
     type: 'info', link: '/dashboard/cashouts'
   })
 
-  TelegramService.sendWithdrawalRequestNotification(req.user!.email || 'User', amount, paymentMethod.name, accountInfo).catch(console.error)
+  const user = await prisma.user.findUnique({ where: { id: req.user!.id } })
+  const username = user?.username || 'Unknown'
+  const email = user?.email || req.user!.email || 'Unknown'
+  
+  TelegramService.sendWithdrawalRequestNotification(username, email, amount, paymentMethod.name, accountInfo).catch(console.error)
 
   res.status(201).json({ success: true, message: 'Withdrawal request submitted', data: withdrawal })
 })
