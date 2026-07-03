@@ -32,6 +32,7 @@
     "express-validator": "^7.2.0",
     "helmet": "^8.0.0",
     "hpp": "^0.2.3",
+    "https-proxy-agent": "^9.1.0",
     "imap-simple": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
     "mailparser": "^3.9.12",
