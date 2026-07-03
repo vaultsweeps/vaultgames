@@ -224,7 +224,7 @@ export const getPublicFeaturedGames = asyncHandler(async (_req: any, res: Respon
   const games = await getCached('public:featured-games', async () => {
     return await prisma.game.findMany({
       where: { isActive: true, isFeatured: true },
-      take: 6, orderBy: { downloadCount: 'desc' },
+      take: 12, orderBy: { downloadCount: 'desc' },
       select: { id: true, name: true, category: true, version: true, downloadCount: true, thumbnailUrl: true, description: true, rating: true, isFeatured: true }
     })
   }, 60); // 60 seconds TTL
