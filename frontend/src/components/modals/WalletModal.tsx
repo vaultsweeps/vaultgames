@@ -109,8 +109,8 @@ export default function WalletModal({ isOpen, onClose, balance }: WalletModalPro
   // Single source-of-truth for body scroll lock
   useEffect(() => {
     const anyOpen = isOpen || cashoutMethod !== null || depositMethod !== null
-    document.body.style.overflow = anyOpen ? 'hidden' : 'unset'
-    return () => { document.body.style.overflow = 'unset' }
+    document.body.style.overflow = anyOpen ? 'hidden' : ''
+    return () => { document.body.style.overflow = '' }
   }, [isOpen, cashoutMethod, depositMethod])
 
   // Fetch history when History tab is opened

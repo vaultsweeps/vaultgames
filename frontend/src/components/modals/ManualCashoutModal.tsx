@@ -249,9 +249,17 @@ export default function ManualCashoutModal({ isOpen, onClose, method, balance }:
       document.body.style.overflow = 'hidden'
       publicApi.getSettings().then(res => setSettings(res.data.data)).catch(() => {})
     } else {
-      document.body.style.overflow = 'unset'
+      document.body.style.overflow = ''
+      // Reset state when modal closes so it starts fresh next time
+      setTimeout(() => {
+        setShowSuccess(false)
+        setWithdrawalId(null)
+        setAmount('0.00')
+        setTag('')
+        setQrFile(null)
+      }, 300)
     }
-    return () => { document.body.style.overflow = 'unset' }
+    return () => { document.body.style.overflow = '' }
   }, [isOpen])
 
 
@@ -315,8 +323,8 @@ export default function ManualCashoutModal({ isOpen, onClose, method, balance }:
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/95"
-      >
+        className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+        onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
         <motion.div
           key="cashout-modal"
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
