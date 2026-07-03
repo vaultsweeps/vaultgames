@@ -54,12 +54,10 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
     select: { id: true, username: true, email: true, role: true, isVerified: true, createdAt: true }
   })
 
-  // Send verification email
-  try {
-    await sendVerificationEmail(email, username, verifyToken)
-  } catch (e) {
+  // Send verification email asynchronously so it doesn't block registration
+  sendVerificationEmail(email, username, verifyToken).catch((e) => {
     console.error('Email send error:', e)
-  }
+  })
 
   // Auto-create provider account (async)
   try {
@@ -126,21 +124,21 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
   const isMatch = await bcrypt.compare(password, user.password)
   if (!isMatch) throw new AppError('Invalid email or password', 401)
 
-  // Update last login
-  await prisma.user.update({
+  // Update last login (async)
+  prisma.user.update({
     where: { id: user.id },
     data: { lastLogin: new Date() }
-  })
+  }).catch(e => console.error('Last login update error:', e))
 
-  // Log activity
-  await prisma.activityLog.create({
+  // Log activity (async)
+  prisma.activityLog.create({
     data: {
       userId: user.id,
       action: 'login',
       ip: req.ip,
       userAgent: req.headers['user-agent'],
     }
-  })
+  }).catch(e => console.error('Activity log error:', e))
 
   const token = generateToken({ id: user.id, role: user.role, email: user.email })
 
