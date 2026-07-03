@@ -81,15 +81,29 @@ export const getProviderAccount = asyncHandler(async (req: AuthRequest, res: Res
   const userId = req.user!.id
   const gameId = req.query.gameId as string | undefined
 
-  // Resolve provider for this game
-  const providerId = gameId
-    ? await ProviderFactory.getProviderIdForGame(gameId)
-    : null
+  // If a gameId is given, resolve the provider ONLY for that specific game.
+  // If the game has no provider assigned, return maintenance status — do NOT fall back.
+  if (gameId) {
+    const providerId = await ProviderFactory.getProviderIdForGame(gameId)
+    if (!providerId) {
+      // Game exists but has no provider — show maintenance
+      return res.json({ success: true, data: { accountName: null, balance: 0, hasAccount: false, isMaintenance: true } })
+    }
+    const providerUser = await prisma.providerUser.findFirst({ where: { userId, providerId }, include: { provider: true } })
+    if (!providerUser) {
+      return res.json({ success: true, data: { accountName: null, balance: 0, hasAccount: false } })
+    }
+    // Get live balance
+    const providerService = await ProviderFactory.getProviderById(providerUser.providerId)
+    let balance = 0
+    if (providerService) {
+      try { balance = await providerService.getPlayerBalance(providerUser.providerUserId) } catch { balance = 0 }
+    }
+    return res.json({ success: true, data: { accountName: providerUser.accountName, balance, hasAccount: true, providerName: providerUser.provider?.name || '' } })
+  }
 
-  const providerUser = providerId
-    ? await prisma.providerUser.findFirst({ where: { userId, providerId }, include: { provider: true } })
-    : await prisma.providerUser.findFirst({ where: { userId }, include: { provider: true } })
-
+  // No gameId — return any provider account the user has (generic dashboard use)
+  const providerUser = await prisma.providerUser.findFirst({ where: { userId }, include: { provider: true } })
   if (!providerUser) {
     return res.json({ success: true, data: { accountName: null, balance: 0, hasAccount: false } })
   }

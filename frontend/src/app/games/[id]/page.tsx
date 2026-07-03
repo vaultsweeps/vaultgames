@@ -73,8 +73,13 @@ export default function GameDetailsPage() {
         
         setGame(gameRes.data.data)
         if (accRes.data?.data) {
-          setAccount(accRes.data.data)
-          setLastUpdate(new Date())
+          // If backend signals this game has no provider, show maintenance modal immediately
+          if (accRes.data.data.isMaintenance) {
+            setMaintenanceModalOpen(true)
+          } else {
+            setAccount(accRes.data.data)
+            setLastUpdate(new Date())
+          }
         }
         if (txRes.data?.data) {
           setTransactions(txRes.data.data)
@@ -92,6 +97,7 @@ export default function GameDetailsPage() {
     
     if (id) fetchData()
   }, [id, router])
+
 
   const handleDownload = async () => {
     const token = Cookies.get('vaultsweeps_token')
