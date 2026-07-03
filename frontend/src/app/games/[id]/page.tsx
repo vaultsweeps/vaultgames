@@ -10,6 +10,7 @@ import Navbar from '@/components/layout/Navbar'
 import Footer from '@/components/layout/Footer'
 import GameTransferModal from '@/components/modals/GameTransferModal'
 import ChooseGameModal from '@/components/modals/ChooseGameModal'
+import Loader from '@/components/ui/Loader'
 import { publicApi, gamesApi, providerApi, authApi } from '@/lib/api'
 import Cookies from 'js-cookie'
 import { useAuthStore } from '@/store/authStore'
@@ -210,8 +211,8 @@ export default function GameDetailsPage() {
   if (loading) return (
     <div className="min-h-screen bg-dark-900 flex flex-col">
       <Navbar />
-      <div className="flex-1 flex items-center justify-center">
-        <div className="text-slate-500 animate-pulse">Loading game data...</div>
+      <div className="pt-32 pb-20 flex-grow flex items-center justify-center">
+        <Loader />
       </div>
     </div>
   )

@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { Plus, Edit2, Trash2, Star, Download, Gamepad2, Eye, EyeOff, RefreshCw } from 'lucide-react'
 import { adminApi } from '@/lib/api'
+import Loader from '@/components/ui/Loader'
 
 const EMPTY_GAME = { name: '', category: 'Action', version: '1.0.0', description: '', requirements: '', instructions: '', downloadUrl: '', isActive: true, isFeatured: false, rating: 4.5 }
 const CATEGORIES = ['Action', 'Strategy', 'Racing', 'Stealth', 'Fighting', 'Puzzle', 'RPG', 'Sports', 'Simulation']
@@ -122,7 +123,7 @@ export default function AdminGamesPage() {
             <thead><tr><th>Game</th><th>Category</th><th>Version</th><th>Downloads</th><th>Rating</th><th>Status</th><th>Actions</th></tr></thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={7} className="text-center py-10 text-slate-500">Loading games...</td></tr>
+                <tr><td colSpan={7} className="text-center py-10"><Loader /></td></tr>
               ) : games.length === 0 ? (
                 <tr><td colSpan={7} className="text-center py-10 text-slate-500">No games yet. Add your first game!</td></tr>
               ) : games.map((game) => (
