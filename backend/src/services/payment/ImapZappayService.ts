@@ -147,21 +147,25 @@ export class ImapZappayService {
   }
 
   static async failExpiredDeposits() {
-    // Fail deposits older than 2 hours that are still pending
-    const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
-    const expired = await prisma.deposit.findMany({
-      where: {
-        status: 'pending',
-        paymentMethod: { code: 'zappay' },
-        createdAt: { lt: twoHoursAgo }
-      }
-    });
-
-    for (const d of expired) {
-      await prisma.deposit.update({
-        where: { id: d.id },
-        data: { status: 'failed', notes: d.notes + '\nFailed automatically: no payment received' }
+    try {
+      // Fail deposits older than 2 hours that are still pending
+      const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
+      const expired = await prisma.deposit.findMany({
+        where: {
+          status: 'pending',
+          paymentMethod: { code: 'zappay' },
+          createdAt: { lt: twoHoursAgo }
+        }
       });
+
+      for (const d of expired) {
+        await prisma.deposit.update({
+          where: { id: d.id },
+          data: { status: 'failed', notes: d.notes + '\nFailed automatically: no payment received' }
+        });
+      }
+    } catch (err) {
+      console.error('[ImapZappayService] failExpiredDeposits error (DB may be unavailable):', err);
     }
   }
 
@@ -169,12 +173,16 @@ export class ImapZappayService {
     console.log('[ImapZappayService] Starting IMAP cron jobs');
     // Run every 2 minutes
     cron.schedule('*/2 * * * *', () => {
-      this.parseEmailsAndVerifyDeposits();
+      this.parseEmailsAndVerifyDeposits().catch(err =>
+        console.error('[ImapZappayService] parseEmailsAndVerifyDeposits cron error:', err)
+      );
     });
 
     // Run every 10 minutes for expired deposits
     cron.schedule('*/10 * * * *', () => {
-      this.failExpiredDeposits();
+      this.failExpiredDeposits().catch(err =>
+        console.error('[ImapZappayService] failExpiredDeposits cron error:', err)
+      );
     });
   }
 }
