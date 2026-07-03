@@ -20,7 +20,7 @@ const schema = z.object({
 
 type RegisterForm = z.infer<typeof schema>
 
-const PERKS = ['Welcome Bonus up to 500%', 'Access 500+ Games', 'Instant Withdrawals', '24/7 Support']
+const PERKS = ['Welcome Bonus up to 100%', 'Access 500+ Games', 'Instant Withdrawals', '24/7 Support']
 
 // Username criteria list shown under the field
 const CRITERIA = [
@@ -237,8 +237,8 @@ export default function RegisterPage() {
               <div>
                 <label className="block text-xs font-mono tracking-wider text-slate-400 uppercase mb-2">Email</label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                  <input {...register('email')} type="email" placeholder="you@email.com" className="input-neon pl-10" />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+                  <input {...register('email')} type="email" placeholder="you@email.com" className="input-neon" style={{ paddingLeft: '2.5rem' }} />
                 </div>
                 {errors.email && <p className="text-red-400 text-xs mt-1">{errors.email.message}</p>}
               </div>
@@ -246,8 +246,8 @@ export default function RegisterPage() {
               <div>
                 <label className="block text-xs font-mono tracking-wider text-slate-400 uppercase mb-2">Password</label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                  <input {...register('password')} type={showPassword ? 'text' : 'password'} placeholder="••••••••" className="input-neon pl-10 pr-10" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+                  <input {...register('password')} type={showPassword ? 'text' : 'password'} placeholder="••••••••" className="input-neon" style={{ paddingLeft: '2.5rem', paddingRight: '2.5rem' }} />
                   <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -258,8 +258,8 @@ export default function RegisterPage() {
               <div>
                 <label className="block text-xs font-mono tracking-wider text-slate-400 uppercase mb-2">Confirm Password</label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                  <input {...register('confirmPassword')} type="password" placeholder="••••••••" className="input-neon pl-10" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+                  <input {...register('confirmPassword')} type="password" placeholder="••••••••" className="input-neon" style={{ paddingLeft: '2.5rem' }} />
                 </div>
                 {errors.confirmPassword && <p className="text-red-400 text-xs mt-1">{errors.confirmPassword.message}</p>}
               </div>

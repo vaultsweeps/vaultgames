@@ -1,7 +1,9 @@
 import type { Metadata } from 'next'
+import { Suspense } from 'react'
 import { Toaster } from 'react-hot-toast'
 import '@/styles/globals.css'
 import { ThemeProvider } from '@/components/ThemeProvider'
+import NavigationLoader from '@/components/ui/NavigationLoader'
 
 export const metadata: Metadata = {
   title: 'Vault Sweeps — Premium Gaming Platform',
@@ -37,6 +39,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="bg-dark-900 text-slate-200 antialiased" suppressHydrationWarning>
         <ThemeProvider>
+          {/* Global navigation progress loader — shown on every route change */}
+          <Suspense fallback={null}>
+            <NavigationLoader />
+          </Suspense>
           <div className="scan-line" />
           {children}
           <Toaster
