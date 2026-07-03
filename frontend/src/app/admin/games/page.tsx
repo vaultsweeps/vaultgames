@@ -123,7 +123,7 @@ export default function AdminGamesPage() {
             <thead><tr><th>Game</th><th>Category</th><th>Version</th><th>Downloads</th><th>Rating</th><th>Status</th><th>Actions</th></tr></thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={7} className="text-center py-10"><Loader /></td></tr>
+                <tr><td colSpan={7} className="text-center py-10"><Loader fullScreen={false} /></td></tr>
               ) : games.length === 0 ? (
                 <tr><td colSpan={7} className="text-center py-10 text-slate-500">No games yet. Add your first game!</td></tr>
               ) : games.map((game) => (

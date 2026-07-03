@@ -50,7 +50,7 @@ export default function FeaturedGames() {
 
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
           {loading ? (
-            <div className="col-span-full py-16 flex justify-center"><Loader /></div>
+            <div className="col-span-full py-16 flex justify-center"><Loader fullScreen={false} /></div>
           ) : games.length === 0 ? (
             <div className="col-span-full text-center py-10 text-slate-500">No games found.</div>
           ) : games.map((game, i) => (

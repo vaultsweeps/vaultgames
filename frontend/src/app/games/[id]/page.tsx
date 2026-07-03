@@ -212,7 +212,7 @@ export default function GameDetailsPage() {
     <div className="min-h-screen bg-dark-900 flex flex-col">
       <Navbar />
       <div className="pt-32 pb-20 flex-grow flex items-center justify-center">
-        <Loader />
+        <Loader fullScreen={false} />
       </div>
     </div>
   )
