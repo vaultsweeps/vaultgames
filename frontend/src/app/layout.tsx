@@ -4,18 +4,25 @@ import '@/styles/globals.css'
 import { ThemeProvider } from '@/components/ThemeProvider'
 
 export const metadata: Metadata = {
-  title: 'NexusGaming — Premium Gaming Platform',
-  description: 'The ultimate gaming destination. Download games, claim bonuses, and join millions of players on NexusGaming.',
+  title: 'Vault Sweeps — Premium Gaming Platform',
+  description: 'The ultimate gaming destination. Download games, claim bonuses, and join millions of players on Vault Sweeps.',
   keywords: 'gaming platform, game downloads, esports, online gaming, bonuses',
   openGraph: {
-    title: 'NexusGaming',
+    title: 'Vault Sweeps',
     description: 'Premium Gaming Platform',
     type: 'website',
     locale: 'en_US',
   },
   twitter: { card: 'summary_large_image' },
   themeColor: '#00D4FF',
-  icons: { icon: '/favicon.ico' },
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: '32x32', type: 'image/x-icon' },
+      { url: '/favicon.png', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: { url: '/favicon.png', sizes: '180x180', type: 'image/png' },
+    shortcut: '/favicon.ico',
+  },
   robots: 'index, follow',
 }
 

@@ -50,11 +50,9 @@ export default function LoginPage() {
       >
         {/* Logo */}
         <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-2 mb-4">
-            <div className="w-10 h-10 bg-gradient-to-br from-neon-blue to-neon-purple rounded-xl flex items-center justify-center">
-              <Zap className="w-6 h-6 text-white" />
-            </div>
-            <span className="font-display font-bold text-xl gradient-text">NEXUSGAMING</span>
+          <Link href="/" className="inline-flex items-center gap-3 mb-4 group">
+            <img src="/images/vault-sweeps-logo.png" alt="Vault Sweeps" className="h-10 w-auto object-contain drop-shadow-md group-hover:scale-105 transition-transform" />
+            <span className="font-display font-bold text-xl gradient-text">VAULT SWEEPS</span>
           </Link>
           <h1 className="font-display font-bold text-3xl text-white mb-2">WELCOME BACK</h1>
           <p className="text-slate-400 text-sm">Sign in to your account to continue</p>
@@ -67,12 +65,13 @@ export default function LoginPage() {
             <div>
               <label className="block text-xs font-mono tracking-wider text-slate-400 uppercase mb-2">Email Address</label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
                 <input
                   {...register('email')}
                   type="email"
                   placeholder="your@email.com"
-                  className="input-neon pl-10"
+                  className="input-neon"
+                  style={{ paddingLeft: '2.5rem' }}
                 />
               </div>
               {errors.email && <p className="text-red-400 text-xs mt-1">{errors.email.message}</p>}
@@ -82,12 +81,13 @@ export default function LoginPage() {
             <div>
               <label className="block text-xs font-mono tracking-wider text-slate-400 uppercase mb-2">Password</label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
                 <input
                   {...register('password')}
                   type={showPassword ? 'text' : 'password'}
                   placeholder="••••••••"
-                  className="input-neon pl-10 pr-10"
+                  className="input-neon"
+                  style={{ paddingLeft: '2.5rem', paddingRight: '2.5rem' }}
                 />
                 <button type="button" onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">

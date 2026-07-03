@@ -16,7 +16,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Load initial theme from localStorage
-    const savedTheme = localStorage.getItem('nexus_theme') as Theme
+    const savedTheme = localStorage.getItem('vaultsweeps_theme') as Theme
     if (savedTheme === 'night' || savedTheme === 'dark') {
       setThemeState(savedTheme)
     }
@@ -24,7 +24,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   const setTheme = (newTheme: Theme) => {
     setThemeState(newTheme)
-    localStorage.setItem('nexus_theme', newTheme)
+    localStorage.setItem('vaultsweeps_theme', newTheme)
   }
 
   useEffect(() => {

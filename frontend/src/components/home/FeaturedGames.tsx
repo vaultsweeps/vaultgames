@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
-import { Download, Star, ChevronRight, Gamepad2 } from 'lucide-react'
+import { ChevronRight, Gamepad2 } from 'lucide-react'
 
 import { publicApi } from '@/lib/api'
 
@@ -38,23 +38,16 @@ export default function FeaturedGames() {
     fetchGames()
   }, [])
   return (
-    <section className="py-20">
+    <section className="py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-end justify-between mb-12">
-          <motion.div initial={{ opacity: 0, x: -30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}>
-            <p className="font-mono text-xs tracking-[0.3em] text-neon-blue uppercase mb-3">Featured</p>
-            <h2 className="font-display font-bold text-4xl sm:text-5xl text-white">
-              TOP <span className="gradient-text">GAMES</span>
-            </h2>
-          </motion.div>
-          <motion.div initial={{ opacity: 0, x: 30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}>
-            <Link href="/games" className="btn-neon text-xs flex items-center gap-2">
-              View All <ChevronRight className="w-3 h-3" />
-            </Link>
-          </motion.div>
+        <div className="flex items-center justify-start gap-3 mb-6">
+          <Gamepad2 className="w-8 h-8 text-cyan-400" />
+          <h2 className="font-display font-bold text-2xl sm:text-3xl text-white">
+            Our games
+          </h2>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
           {loading ? (
             <div className="col-span-full text-center py-10 text-slate-500">Loading games...</div>
           ) : games.length === 0 ? (
@@ -62,59 +55,43 @@ export default function FeaturedGames() {
           ) : games.map((game, i) => (
             <motion.div
               key={game.id}
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0, scale: 0.95 }}
+              whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true }}
-              transition={{ delay: i * 0.07 }}
-              whileHover={{ y: -5 }}
-              className="glass-card overflow-hidden group cursor-pointer"
+              transition={{ delay: Math.min(i * 0.05, 0.5) }}
+              whileHover={{ y: -5, scale: 1.02 }}
+              className="relative aspect-square rounded-[1.5rem] sm:rounded-[2rem] overflow-hidden group cursor-pointer shadow-lg bg-dark-800"
             >
+              <Link href={`/games/${game.id}`} className="absolute inset-0 z-20" aria-label={game.name}></Link>
+              
               {/* Game thumbnail */}
-              <div className={`h-48 bg-gradient-to-br ${COLORS[i % COLORS.length]} relative overflow-hidden`}>
-                <div className="absolute inset-0 cyber-grid opacity-20" />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  {game.thumbnailUrl ? (
-                    <img src={game.thumbnailUrl} alt={game.name} className="w-full h-full object-cover opacity-60 group-hover:opacity-80 transition-opacity" />
-                  ) : (
-                    <Gamepad2 className="w-16 h-16 text-white/20 group-hover:text-white/40 transition-all group-hover:scale-110 duration-300" />
-                  )}
-                </div>
-                {game.isFeatured && (
-                  <div className="absolute top-3 left-3 bg-neon-blue/20 border border-neon-blue/40 rounded-full px-2 py-0.5 text-xs font-mono text-neon-blue">
-                    FEATURED
+              <div className={`absolute inset-0 bg-gradient-to-br ${COLORS[i % COLORS.length]}`}>
+                {game.thumbnailUrl ? (
+                  <img src={game.thumbnailUrl} alt={game.name} className="w-full h-full object-cover opacity-90 group-hover:opacity-100 group-hover:scale-110 transition-all duration-500" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <Gamepad2 className="w-16 h-16 text-white/20 group-hover:text-white/40 transition-all duration-300" />
                   </div>
                 )}
-                <div className="absolute top-3 right-3 glass rounded-full px-2 py-0.5 text-xs text-slate-400 border border-white/10">
-                  {game.category}
-                </div>
               </div>
+              
+              {/* Inner gradient for text readability */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
 
-              {/* Game info */}
-              <div className="p-5">
-                <div className="flex items-start justify-between mb-2">
-                  <h3 className="font-display font-bold text-white text-sm group-hover:text-neon-blue transition-colors">{game.name}</h3>
-                  <div className="flex items-center gap-1 text-xs text-yellow-400 ml-2">
-                    <Star className="w-3 h-3 fill-current" />
-                    <span>{game.rating}</span>
-                  </div>
-                </div>
-                <p className="text-slate-500 text-xs leading-relaxed mb-4">{game.description}</p>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1 text-xs text-slate-500">
-                    <Download className="w-3 h-3" />
-                    {(game.downloadCount / 1000).toFixed(0)}K downloads
-                  </div>
-                  <span className="text-xs font-mono text-neon-blue/60">v{game.version}</span>
-                </div>
-              </div>
+              {/* Game info overlay */}
+              <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-5 flex items-end justify-between z-10">
+                <h3 className="font-display font-bold text-white text-lg sm:text-xl drop-shadow-md truncate">{game.name}</h3>
+                
 
-              <div className="px-5 pb-5">
-                <Link href={`/games/${game.id}`} className="btn-neon text-xs w-full text-center block py-2">
-                  View & Download
-                </Link>
               </div>
             </motion.div>
           ))}
+        </div>
+        
+        <div className="mt-8 flex justify-center">
+           <Link href="/games" className="glass px-8 py-3 rounded-full text-sm font-bold text-slate-300 hover:text-white hover:bg-white/10 transition-colors flex items-center gap-2">
+             View All Games <ChevronRight className="w-4 h-4" />
+           </Link>
         </div>
       </div>
     </section>

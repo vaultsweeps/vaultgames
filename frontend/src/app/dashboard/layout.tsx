@@ -5,8 +5,9 @@ import { usePathname, useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard, CreditCard, ArrowUpCircle, Gamepad2, Gift, HelpCircle, User,
-  Bell, LogOut, Menu, X, Zap, ChevronRight, Settings
+  Bell, LogOut, Menu, X, Zap, ChevronRight, Settings, Users2
 } from 'lucide-react'
+import { notificationsApi } from '@/lib/api'
 import { useAuthStore } from '@/store/authStore'
 
 const NAV_ITEMS = [
@@ -15,12 +16,14 @@ const NAV_ITEMS = [
   { href: '/dashboard/cashouts', icon: ArrowUpCircle, label: 'Cashouts' },
   { href: '/dashboard/games', icon: Gamepad2, label: 'Games' },
   { href: '/dashboard/bonuses', icon: Gift, label: 'Bonuses' },
+  { href: '/dashboard/invite', icon: Users2, label: 'Invite & Earn' },
   { href: '/dashboard/support', icon: HelpCircle, label: 'Support' },
   { href: '/dashboard/profile', icon: User, label: 'Profile' },
 ]
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
   const { user, isAuthenticated, logout, fetchMe } = useAuthStore()
   const pathname = usePathname()
   const router = useRouter()
@@ -30,6 +33,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       if (!isAuthenticated) router.push('/login')
     })
   }, [])
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      notificationsApi.getUnreadCount()
+        .then(res => setUnreadCount(res.data.data.count))
+        .catch(() => {})
+    }
+  }, [isAuthenticated, pathname])
 
   if (!isAuthenticated && !user) return (
     <div className="min-h-screen bg-dark-900 flex items-center justify-center">
@@ -42,10 +53,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Logo */}
       <div className="p-6 border-b border-white/5">
         <Link href="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-gradient-to-br from-neon-blue to-neon-purple rounded-lg flex items-center justify-center">
-            <Zap className="w-5 h-5 text-white" />
-          </div>
-          <span className="font-display font-bold text-sm gradient-text">NEXUSGAMING</span>
+          <img src="/images/vault-sweeps-logo.png" alt="Vault Sweeps" className="h-10 w-auto object-contain drop-shadow-md" />
+          <span className="font-display font-bold text-sm gradient-text">VAULT SWEEPS</span>
         </Link>
       </div>
 
@@ -145,7 +154,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <div className="flex items-center gap-3">
               <Link href="/dashboard/notifications" className="relative w-9 h-9 glass rounded-lg flex items-center justify-center text-slate-400 hover:text-white border border-white/10 transition-all">
                 <Bell className="w-4 h-4" />
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-neon-blue rounded-full text-xs text-white flex items-center justify-center font-mono">3</span>
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-neon-blue rounded-full text-xs text-white flex items-center justify-center font-mono">{unreadCount > 9 ? '9+' : unreadCount}</span>
+                )}
               </Link>
               <Link href="/" className="text-xs text-slate-500 hover:text-white transition-colors hidden sm:block">← Back to site</Link>
             </div>

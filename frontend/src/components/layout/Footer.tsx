@@ -19,10 +19,8 @@ export default function Footer() {
           {/* Brand */}
           <div>
             <Link href="/" className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 bg-gradient-to-br from-neon-blue to-neon-purple rounded-lg flex items-center justify-center">
-                <Zap className="w-5 h-5 text-white" />
-              </div>
-              <span className="font-display font-bold text-lg gradient-text">NEXUSGAMING</span>
+              <img src="/images/vault-sweeps-logo.png" alt="Vault Sweeps" className="h-10 w-auto object-contain drop-shadow-md" />
+              <span className="font-display font-bold text-lg gradient-text">VAULT SWEEPS</span>
             </Link>
             <p className="text-slate-500 text-sm leading-relaxed mb-5">
               {settings.site_description || 'The ultimate gaming destination. Join millions of players and experience the future of gaming.'}
@@ -47,7 +45,7 @@ export default function Footer() {
           <div>
             <h4 className="font-display text-xs tracking-widest text-neon-blue uppercase mb-4">Navigation</h4>
             <ul className="space-y-2">
-              {[['/', 'Home'], ['/games', 'Games'], ['/bonuses', 'Bonuses'], ['/cashout-rules', 'Cashout Rules'], ['/about', 'About Us']].map(([href, label]) => (
+              {[['/', 'Home'], ['/games', 'Games'], ['/bonuses', 'Bonuses'], ['/cashout-rules', 'Cashout Rules'], ['/about', 'About Us'], ['/contact', 'Contact Us']].map(([href, label]) => (
                 <li key={href}><Link href={href} className="text-sm text-slate-500 hover:text-white transition-colors">{label}</Link></li>
               ))}
             </ul>
@@ -87,7 +85,7 @@ export default function Footer() {
         </div>
 
         <div className="mt-12 pt-6 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-xs text-slate-600">© {year} NexusGaming. All rights reserved.</p>
+          <p className="text-xs text-slate-600">© {year} Vault Sweeps. All rights reserved.</p>
           <div className="flex gap-6">
             {[['#', 'Privacy Policy'], ['#', 'Terms of Service'], ['#', 'Cookie Policy']].map(([href, label]) => (
               <Link key={label} href={href} className="text-xs text-slate-600 hover:text-slate-400 transition-colors">{label}</Link>

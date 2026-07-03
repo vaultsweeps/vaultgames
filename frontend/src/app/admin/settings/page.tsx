@@ -13,12 +13,12 @@ const TABS = [
 ]
 
 const DEFAULTS = {
-  site_name: 'NexusGaming',
+  site_name: 'Vault Sweeps',
   site_tagline: 'The Ultimate Gaming Platform',
   site_description: 'Join millions of players on the most immersive gaming platform.',
   maintenance_mode: false,
-  telegram_url: 'https://t.me/nexusgaming',
-  facebook_url: 'https://m.me/nexusgaming',
+  telegram_url: 'https://t.me/vaultsweeps',
+  facebook_url: 'https://m.me/vaultsweeps',
   min_deposit: '10',
   max_deposit: '100000',
   min_withdrawal: '20',
@@ -120,7 +120,7 @@ export default function AdminSettingsPage() {
       {tab === 'general' && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass-card p-6 space-y-4">
           <h3 className="font-display font-bold text-white text-sm">GENERAL SETTINGS</h3>
-          <Field label="Site Name" k="site_name" placeholder="NexusGaming" />
+          <Field label="Site Name" k="site_name" placeholder="Vault Sweeps" />
           <Field label="Site Tagline" k="site_tagline" placeholder="The Ultimate Gaming Platform" />
           <Field label="Site Description" k="site_description" placeholder="Description..." />
           <div className="border-t border-white/5 pt-4">

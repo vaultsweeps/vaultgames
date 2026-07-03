@@ -1,295 +1,167 @@
 'use client'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronLeft, ChevronRight, Play } from 'lucide-react'
 import Link from 'next/link'
 import { publicApi } from '@/lib/api'
 
-const DEFAULT_SLIDES = [
+const DEFAULT_BANNERS = [
   {
     id: '1',
-    title: 'ENTER THE NEXUS',
-    subtitle: 'The Ultimate Gaming Universe',
-    description: 'Join millions of players in the most immersive gaming platform ever created. Download, play, and dominate.',
-    ctaText: 'PLAY NOW',
-    ctaLink: '/games',
-    ctaSecondary: 'View Bonuses',
-    ctaSecondaryLink: '/bonuses',
-    gradient: 'from-blue-900/80 via-dark-900/60 to-purple-900/80',
+    title: 'Welcome to Vault Sweeps',
+    subtitle: 'Get +100% up to 1 000 USD',
+    description: 'Collect your first deposit bonus right now',
+    ctaText: 'Claim now',
+    ctaLink: '/verify',
+    gradient: 'from-blue-900 via-indigo-800 to-[#2c162b]',
     accent: '#00D4FF',
-    badge: '🎮 500+ GAMES AVAILABLE',
+    imageUrl: '/images/slide1.png',
+    isTransparent: false
   },
   {
     id: '2',
-    title: 'CLAIM YOUR BONUS',
-    subtitle: 'Up to 500% Welcome Bonus',
-    description: 'New to NexusGaming? Start your journey with an incredible welcome package. Claim your bonus today.',
-    ctaText: 'CLAIM BONUS',
-    ctaLink: '/register',
-    ctaSecondary: 'Learn More',
-    ctaSecondaryLink: '/bonuses',
-    gradient: 'from-purple-900/80 via-dark-900/60 to-pink-900/80',
-    accent: '#7B2FFF',
-    badge: '🔥 LIMITED TIME OFFER',
+    title: 'CASH METHODS',
+    subtitle: 'Make deposits your way',
+    description: 'Make deposits through any cash deposit method that is convenient for you!',
+    ctaText: 'Make Deposit',
+    ctaLink: '/dashboard/deposits',
+    gradient: 'from-[#16a34a] via-[#22c55e] to-[#4ade80]',
+    accent: '#00FFC8',
+    imageUrl: '/images/slide2.png',
+    isTransparent: false
   },
   {
     id: '3',
-    title: 'INSTANT CASHOUT',
-    subtitle: 'Fast & Secure Withdrawals',
-    description: 'Experience lightning-fast withdrawals with our automated payment system. Your winnings, your way.',
-    ctaText: 'START EARNING',
-    ctaLink: '/register',
-    ctaSecondary: 'Cashout Rules',
-    ctaSecondaryLink: '/cashout-rules',
-    gradient: 'from-cyan-900/80 via-dark-900/60 to-blue-900/80',
-    accent: '#00FFC8',
-    badge: '⚡ INSTANT PROCESSING',
-  },
+    title: 'BONUS ZONE',
+    subtitle: 'Earn Diamonds, play games!',
+    description: 'Unlock real cash rewards instantly with our premium bonus system.',
+    ctaText: 'View more',
+    ctaLink: '/bonuses',
+    gradient: 'from-pink-700 via-rose-500 to-[#f78201]',
+    accent: '#FFD700',
+    imageUrl: '/images/slide3.png',
+    isTransparent: false
+  }
 ]
 
-const PARTICLES = Array.from({ length: 60 }, (_, i) => ({
-  id: i,
-  x: Math.random() * 100,
-  y: Math.random() * 100,
-  size: Math.random() * 3 + 1,
-  duration: Math.random() * 10 + 5,
-  delay: Math.random() * 5,
-}))
-
-interface Slide {
-  id: string
-  title: string
-  subtitle: string
-  description: string
-  ctaText: string
-  ctaLink: string
-  ctaSecondary?: string
-  ctaSecondaryLink?: string
-  gradient: string
-  accent: string
-  badge?: string
-  imageUrl?: string
-}
-
-interface HeroSliderProps {
-  slides?: Slide[]
-}
-
-export default function HeroSlider({ slides: propSlides }: HeroSliderProps) {
-  const [slides, setSlides] = useState<Slide[]>(DEFAULT_SLIDES)
+export default function HeroSlider() {
+  const [slides, setSlides] = useState(DEFAULT_BANNERS)
   const [current, setCurrent] = useState(0)
-  const [isPlaying, setIsPlaying] = useState(true)
-  const [mounted, setMounted] = useState(false)
-  const intervalRef = useRef<NodeJS.Timeout>()
 
-  // Fetch banners from API and map to slide format
+  // Auto-play timer
   useEffect(() => {
-    publicApi.getBanners()
-      .then(res => {
-        const banners = res.data.data
-        if (banners && banners.length > 0) {
-          const mapped: Slide[] = banners.map((b: any, idx: number) => ({
-            id: b.id,
-            title: b.title,
-            subtitle: b.subtitle || '',
-            description: b.subtitle || b.title,
-            ctaText: b.ctaText || 'EXPLORE NOW',
-            ctaLink: b.ctaLink || '/games',
-            gradient: DEFAULT_SLIDES[idx % DEFAULT_SLIDES.length].gradient,
-            accent: DEFAULT_SLIDES[idx % DEFAULT_SLIDES.length].accent,
-            imageUrl: b.imageUrl,
-          }))
-          setSlides(mapped)
-        }
-      })
-      .catch(() => { /* keep default slides */ })
-  }, [])
-
-  const next = () => setCurrent(c => (c + 1) % slides.length)
-  const prev = () => setCurrent(c => (c - 1 + slides.length) % slides.length)
-
-  useEffect(() => {
-    setMounted(true)
-    if (isPlaying) {
-      intervalRef.current = setInterval(next, 5000)
-    }
-    return () => clearInterval(intervalRef.current)
-  }, [isPlaying, slides.length])
+    const timer = setInterval(() => {
+      setCurrent(c => (c + 1) % slides.length)
+    }, 5000)
+    return () => clearInterval(timer)
+  }, [slides.length])
 
   const slide = slides[current]
 
   return (
-    <div className="relative h-screen min-h-[600px] overflow-hidden bg-dark-900">
-      {/* Animated grid background */}
-      <div className="absolute inset-0 cyber-grid opacity-30" />
-
-      {/* Particles */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {mounted && PARTICLES.map(p => (
+    <section className="pt-6 pb-4 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+      <div className="relative w-full h-[280px] sm:h-[320px] lg:h-[360px] rounded-[2rem] overflow-hidden shadow-[0_0_40px_rgba(123,47,255,0.15)] group bg-dark-800">
+        <AnimatePresence mode="wait">
           <motion.div
-            key={p.id}
-            className="absolute rounded-full bg-neon-blue/40"
-            style={{ left: `${p.x}%`, top: `${p.y}%`, width: p.size, height: p.size }}
-            animate={{ y: [0, -30, 0], opacity: [0.2, 0.8, 0.2], scale: [1, 1.5, 1] }}
-            transition={{ duration: p.duration, delay: p.delay, repeat: Infinity, ease: 'easeInOut' }}
-          />
-        ))}
-      </div>
-
-      {/* Slide content */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={slide.id}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.8 }}
-          className="absolute inset-0"
-        >
-          {/* Background Image */}
-          {slide.imageUrl && (
-            <div 
-              className="absolute inset-0 bg-cover bg-center mix-blend-overlay opacity-60" 
-              style={{ backgroundImage: `url(${slide.imageUrl})` }}
-            />
-          )}
-
-          {/* Gradient overlay */}
-          <div className={`absolute inset-0 bg-gradient-to-r ${slide.gradient} ${slide.imageUrl ? 'opacity-90' : ''}`} />
-
-          {/* Dynamic lighting orbs */}
-          <motion.div
-            className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full blur-3xl opacity-20"
-            style={{ backgroundColor: slide.accent }}
-            animate={{ scale: [1, 1.3, 1], opacity: [0.15, 0.3, 0.15] }}
-            transition={{ duration: 4, repeat: Infinity }}
-          />
-          <motion.div
-            className="absolute bottom-1/4 right-1/4 w-72 h-72 rounded-full blur-3xl opacity-15"
-            style={{ backgroundColor: slide.accent }}
-            animate={{ scale: [1.2, 1, 1.2], opacity: [0.2, 0.1, 0.2] }}
-            transition={{ duration: 5, repeat: Infinity }}
-          />
-
-          {/* Content */}
-          <div className="relative z-10 h-full flex items-center">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
-              <div className="max-w-3xl">
-                {/* Badge */}
-                {slide.badge && (
-                  <motion.div
-                    initial={{ opacity: 0, x: -30 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.1 }}
-                    className="inline-flex items-center gap-2 glass rounded-full px-4 py-1.5 mb-6 border"
-                    style={{ borderColor: `${slide.accent}40` }}
-                  >
-                    <span className="text-xs font-mono tracking-widest" style={{ color: slide.accent }}>
-                      {slide.badge}
-                    </span>
-                  </motion.div>
-                )}
-
-                {/* Subtitle */}
-                <motion.p
-                  initial={{ opacity: 0, y: 30 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
-                  className="font-mono text-sm tracking-[0.3em] uppercase mb-3"
-                  style={{ color: slide.accent }}
-                >
-                  {slide.subtitle}
-                </motion.p>
-
-                {/* Main title */}
-                <motion.h1
-                  initial={{ opacity: 0, y: 30 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 }}
-                  className="font-display font-black text-5xl sm:text-6xl lg:text-8xl text-white leading-none mb-6"
-                  style={{ textShadow: `0 0 60px ${slide.accent}40` }}
+            key={slide.id}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5 }}
+            className={`absolute inset-0 bg-gradient-to-r ${slide.gradient}`}
+          >
+            {/* subtle overlay */}
+            <div className="absolute inset-0 bg-black/10 mix-blend-overlay"></div>
+            
+            <div className="relative z-10 flex h-full items-center">
+              <div className="w-2/3 lg:w-1/2 p-6 sm:p-10 lg:p-12 text-left z-20">
+                <motion.h1 
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.1 }}
+                  className="text-3xl sm:text-5xl lg:text-6xl font-black text-white leading-tight mb-2 tracking-tight drop-shadow-md"
                 >
                   {slide.title}
                 </motion.h1>
-
-                {/* Description */}
-                <motion.p
-                  initial={{ opacity: 0, y: 30 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.4 }}
-                  className="text-slate-300 text-lg sm:text-xl max-w-xl mb-8 leading-relaxed"
+                <motion.p 
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.2 }}
+                  className="text-base sm:text-xl font-bold text-white mb-2 drop-shadow-md"
+                >
+                  {slide.subtitle}
+                </motion.p>
+                <motion.p 
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.3 }}
+                  className="text-xs sm:text-sm text-white/90 mb-6 max-w-xs sm:max-w-sm drop-shadow-md"
                 >
                   {slide.description}
                 </motion.p>
-
-                {/* CTAs */}
+                
                 <motion.div
-                  initial={{ opacity: 0, y: 30 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.5 }}
-                  className="flex flex-wrap gap-4"
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.4 }}
                 >
-                  <Link href={slide.ctaLink}
-                    className="btn-primary flex items-center gap-2 text-sm py-3 px-8"
-                    style={{ boxShadow: `0 0 30px ${slide.accent}40` }}
-                  >
-                    <Play className="w-4 h-4 fill-current" />
+                  <Link href={slide.ctaLink} className="inline-block bg-[#3eb8ff] hover:bg-[#2b90ce] text-white font-bold py-2.5 px-6 sm:py-3 sm:px-8 rounded-xl sm:rounded-2xl transition-transform hover:scale-105 active:scale-95 shadow-[0_4px_14px_0_rgba(62,184,255,0.39)] text-sm sm:text-base">
                     {slide.ctaText}
                   </Link>
-                  {slide.ctaSecondary && (
-                    <Link href={slide.ctaSecondaryLink || '#'} className="btn-neon text-sm py-3 px-8">
-                      {slide.ctaSecondary}
-                    </Link>
-                  )}
                 </motion.div>
               </div>
+
+              {/* 3D Girl Image (Right side) */}
+              <motion.div 
+                initial={{ x: 50, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                transition={{ duration: 0.8, type: "spring", bounce: 0.4 }}
+                className="absolute right-0 bottom-0 top-0 w-[55%] lg:w-[50%] z-10 flex items-end justify-end pointer-events-none"
+              >
+                <style jsx>{`
+                  @keyframes eyeBlink {
+                    0%, 90%, 100% { filter: brightness(1); transform: scaleY(1); }
+                    95% { filter: brightness(0.95); transform: scaleY(0.98); }
+                  }
+                  .animate-character {
+                    animation: eyeBlink 5s infinite ease-in-out;
+                  }
+                `}</style>
+                {/* Simulated realistic subtle floating animation for the character */}
+                <motion.img 
+                  animate={{ 
+                    y: [0, -5, 0],
+                  }}
+                  transition={{ 
+                    duration: 6, 
+                    repeat: Infinity, 
+                    ease: "easeInOut" 
+                  }}
+                  style={!slide.isTransparent ? {
+                    WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 20%)',
+                    maskImage: 'linear-gradient(to right, transparent 0%, black 20%)'
+                  } : {}}
+                  src={slide.imageUrl} 
+                  alt="Promo character"
+                  className={`h-full w-full object-[center_15%] animate-character ${slide.isTransparent ? 'object-contain drop-shadow-2xl translate-y-[2%]' : 'object-cover'}`} 
+                />
+              </motion.div>
             </div>
-          </div>
-        </motion.div>
-      </AnimatePresence>
+          </motion.div>
+        </AnimatePresence>
 
-      {/* Navigation arrows */}
-      <button
-        onClick={prev}
-        className="absolute left-4 top-1/2 -translate-y-1/2 z-20 w-12 h-12 glass rounded-full flex items-center justify-center text-white hover:border-neon-blue/40 border border-white/10 transition-all hover:scale-110 group"
-      >
-        <ChevronLeft className="w-5 h-5 group-hover:text-neon-blue transition-colors" />
-      </button>
-      <button
-        onClick={next}
-        className="absolute right-4 top-1/2 -translate-y-1/2 z-20 w-12 h-12 glass rounded-full flex items-center justify-center text-white hover:border-neon-blue/40 border border-white/10 transition-all hover:scale-110 group"
-      >
-        <ChevronRight className="w-5 h-5 group-hover:text-neon-blue transition-colors" />
-      </button>
-
-      {/* Slide indicators */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 flex items-center gap-3">
-        {slides.map((_, i) => (
-          <button
-            key={i}
-            onClick={() => setCurrent(i)}
-            className={`transition-all duration-300 rounded-full ${
-              i === current ? 'w-8 h-2 bg-neon-blue shadow-neon-blue' : 'w-2 h-2 bg-white/30 hover:bg-white/60'
-            }`}
-          />
-        ))}
+        {/* Slide indicators */}
+        <div className="absolute bottom-6 left-6 sm:left-10 lg:left-12 z-30 flex items-center gap-2">
+          {slides.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setCurrent(i)}
+              className={`transition-all duration-300 rounded-full h-1 ${
+                i === current ? 'w-8 bg-yellow-400' : 'w-4 bg-white/30 hover:bg-white/60'
+              }`}
+            />
+          ))}
+        </div>
       </div>
-
-      {/* Auto-play toggle */}
-      <button
-        onClick={() => setIsPlaying(!isPlaying)}
-        className="absolute bottom-8 right-6 z-20 w-8 h-8 glass rounded-full flex items-center justify-center text-slate-400 hover:text-white border border-white/10 transition-all text-xs"
-        title={isPlaying ? 'Pause' : 'Play'}
-      >
-        {isPlaying ? '⏸' : '▶'}
-      </button>
-
-      {/* Slide counter */}
-      <div className="absolute bottom-8 left-6 z-20 font-mono text-xs text-slate-500">
-        <span className="text-neon-blue">{String(current + 1).padStart(2, '0')}</span>
-        <span className="mx-1">/</span>
-        {String(slides.length).padStart(2, '0')}
-      </div>
-    </div>
+    </section>
   )
 }

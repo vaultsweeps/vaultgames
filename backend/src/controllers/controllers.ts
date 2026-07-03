@@ -1,24 +1,38 @@
 import { Response } from 'express'
-import { PrismaClient } from '@prisma/client'
 import { asyncHandler, AppError } from '../middleware/errorHandler'
 import { AuthRequest } from '../middleware/auth'
+import prisma from '../lib/prisma';
+import { TelegramService } from '../services/TelegramService';
 
-const prisma = new PrismaClient()
+import { getCached } from '../lib/redis';
 
 // ─── GAMES ────────────────────────────────────────────────────────────────────
 export const getGames = asyncHandler(async (req: AuthRequest, res: Response) => {
   const { category, search, featured, page = 1, limit = 20 } = req.query
   const skip = (Number(page) - 1) * Number(limit)
-  const where: any = { isActive: true }
-  if (category) where.category = category
-  if (featured === 'true') where.isFeatured = true
-  if (search) where.name = { contains: String(search), mode: 'insensitive' }
+  
+  // Create a unique cache key based on the query parameters
+  const cacheKey = `games:${category || 'all'}:${search || 'none'}:${featured || 'false'}:${page}:${limit}`;
 
-  const [games, total] = await Promise.all([
-    prisma.game.findMany({ where, skip, take: Number(limit), orderBy: { downloadCount: 'desc' } }),
-    prisma.game.count({ where })
-  ])
-  res.json({ success: true, data: games, pagination: { page: Number(page), limit: Number(limit), total, pages: Math.ceil(total / Number(limit)) } })
+  const result = await getCached(cacheKey, async () => {
+    const where: any = { isActive: true }
+    if (category) where.category = category
+    if (featured === 'true') where.isFeatured = true
+    if (search) where.name = { contains: String(search), mode: 'insensitive' }
+
+    const [games, total] = await Promise.all([
+      prisma.game.findMany({ where, skip, take: Number(limit), orderBy: { downloadCount: 'desc' } }),
+      prisma.game.count({ where })
+    ])
+    
+    return { games, total };
+  }, 60); // 60 seconds cache TTL
+
+  res.json({ 
+    success: true, 
+    data: result.games, 
+    pagination: { page: Number(page), limit: Number(limit), total: result.total, pages: Math.ceil(result.total / Number(limit)) } 
+  })
 })
 
 export const getGame = asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -46,7 +60,10 @@ export const downloadGame = asyncHandler(async (req: AuthRequest, res: Response)
 
 // ─── BONUSES ─────────────────────────────────────────────────────────────────
 export const getBonuses = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const bonuses = await prisma.bonus.findMany({ where: { isActive: true }, orderBy: { createdAt: 'desc' } })
+  const bonuses = await getCached('bonuses:active', async () => {
+    return await prisma.bonus.findMany({ where: { isActive: true }, orderBy: { createdAt: 'desc' } })
+  }, 300); // Cache for 5 minutes since bonuses don't change often
+  
   res.json({ success: true, data: bonuses })
 })
 
@@ -68,6 +85,14 @@ export const claimBonus = asyncHandler(async (req: AuthRequest, res: Response) =
   res.json({ success: true, message: 'Bonus claimed successfully!', data: claim })
 })
 
+// ─── BANNERS ───────────────────────────────────────────────────────────────────
+export const getBanners = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const banners = await getCached('banners:active', async () => {
+    return await prisma.banner.findMany({ where: { isActive: true }, orderBy: { order: 'asc' } })
+  }, 300);
+  res.json({ success: true, data: banners })
+})
+
 // ─── SUPPORT ─────────────────────────────────────────────────────────────────
 export const getTickets = asyncHandler(async (req: AuthRequest, res: Response) => {
   const tickets = await prisma.supportTicket.findMany({
@@ -83,6 +108,9 @@ export const createTicket = asyncHandler(async (req: AuthRequest, res: Response)
   const ticket = await prisma.supportTicket.create({
     data: { userId: req.user!.id, subject, message, category, priority }
   })
+  
+  TelegramService.sendSupportTicketNotification(req.user!.email || 'User', subject, message, priority).catch(console.error);
+
   res.status(201).json({ success: true, message: 'Ticket submitted. We\'ll respond within 24 hours.', data: ticket })
 })
 
@@ -135,6 +163,7 @@ export const getUnreadCount = asyncHandler(async (req: AuthRequest, res: Respons
 
 // ─── PROFILE ─────────────────────────────────────────────────────────────────
 import bcrypt from 'bcryptjs'
+import { ProviderFactory } from '../services/provider/ProviderFactory'
 
 export const updateProfile = asyncHandler(async (req: AuthRequest, res: Response) => {
   const { fullName, phone, country, telegramUsername } = req.body
@@ -157,29 +186,48 @@ export const changePassword = asyncHandler(async (req: AuthRequest, res: Respons
   const hashed = await bcrypt.hash(newPassword, 12)
   await prisma.user.update({ where: { id: user.id }, data: { password: hashed } })
 
+  // Sync password with provider
+  try {
+    const providerUser = await prisma.providerUser.findFirst({ where: { userId: user.id } })
+    if (providerUser) {
+      const providerService = await ProviderFactory.getProviderById(providerUser.providerId)
+      if (providerService) {
+        providerService.resetPlayerPassword(providerUser.providerUserId, newPassword).catch(err => {
+          console.error('Provider password sync failed for user', user.id, err)
+        })
+      }
+    }
+  } catch (e) {
+    console.error('Provider password sync error:', e)
+  }
+
   res.json({ success: true, message: 'Password changed successfully' })
 })
 
 // ─── PUBLIC ───────────────────────────────────────────────────────────────────
 export const getPublicBanners = asyncHandler(async (_req: any, res: Response) => {
-  const now = new Date()
-  const banners = await prisma.banner.findMany({
-    where: {
-      isActive: true,
-      OR: [{ startsAt: null }, { startsAt: { lte: now } }],
-      AND: [{ OR: [{ endsAt: null }, { endsAt: { gte: now } }] }]
-    },
-    orderBy: { order: 'asc' }
-  })
+  const banners = await getCached('public:banners', async () => {
+    const now = new Date()
+    return await prisma.banner.findMany({
+      where: {
+        isActive: true,
+        OR: [{ startsAt: null }, { startsAt: { lte: now } }],
+        AND: [{ OR: [{ endsAt: null }, { endsAt: { gte: now } }] }]
+      },
+      orderBy: { order: 'asc' }
+    })
+  }, 120); // 2 minutes TTL
   res.json({ success: true, data: banners })
 })
 
 export const getPublicFeaturedGames = asyncHandler(async (_req: any, res: Response) => {
-  const games = await prisma.game.findMany({
-    where: { isActive: true, isFeatured: true },
-    take: 6, orderBy: { downloadCount: 'desc' },
-    select: { id: true, name: true, category: true, version: true, downloadCount: true, thumbnailUrl: true, description: true, rating: true, isFeatured: true }
-  })
+  const games = await getCached('public:featured-games', async () => {
+    return await prisma.game.findMany({
+      where: { isActive: true, isFeatured: true },
+      take: 6, orderBy: { downloadCount: 'desc' },
+      select: { id: true, name: true, category: true, version: true, downloadCount: true, thumbnailUrl: true, description: true, rating: true, isFeatured: true }
+    })
+  }, 60); // 60 seconds TTL
   res.json({ success: true, data: games })
 })
 
@@ -193,25 +241,32 @@ export const getPublicGameDetails = asyncHandler(async (req: any, res: Response)
 })
 
 export const getPublicBonuses = asyncHandler(async (_req: any, res: Response) => {
-  const bonuses = await prisma.bonus.findMany({
-    where: { isActive: true, OR: [{ expiresAt: null }, { expiresAt: { gte: new Date() } }] },
-    orderBy: { createdAt: 'desc' }
-  })
+  const bonuses = await getCached('public:bonuses', async () => {
+    return await prisma.bonus.findMany({
+      where: { isActive: true, OR: [{ expiresAt: null }, { expiresAt: { gte: new Date() } }] },
+      orderBy: { createdAt: 'desc' }
+    })
+  }, 300); // 5 minutes TTL
   res.json({ success: true, data: bonuses })
 })
 
 export const getPublicFAQs = asyncHandler(async (_req: any, res: Response) => {
-  const faqs = await prisma.fAQ.findMany({ where: { isActive: true }, orderBy: [{ category: 'asc' }, { order: 'asc' }] })
+  const faqs = await getCached('public:faqs', async () => {
+    return await prisma.fAQ.findMany({ where: { isActive: true }, orderBy: [{ category: 'asc' }, { order: 'asc' }] })
+  }, 600); // 10 minutes TTL – FAQs change rarely
   res.json({ success: true, data: faqs })
 })
 
 export const getPublicStats = asyncHandler(async (_req: any, res: Response) => {
-  const [totalUsers, totalGames, totalDownloads] = await Promise.all([
-    prisma.user.count({ where: { role: 'user', isActive: true } }),
-    prisma.game.count({ where: { isActive: true } }),
-    prisma.game.aggregate({ _sum: { downloadCount: true } })
-  ])
-  res.json({ success: true, data: { totalUsers, totalGames, totalDownloads: totalDownloads._sum.downloadCount || 0 } })
+  const stats = await getCached('public:stats', async () => {
+    const [totalUsers, totalGames, totalDownloads] = await Promise.all([
+      prisma.user.count({ where: { role: 'user', isActive: true } }),
+      prisma.game.count({ where: { isActive: true } }),
+      prisma.game.aggregate({ _sum: { downloadCount: true } })
+    ])
+    return { totalUsers, totalGames, totalDownloads: totalDownloads._sum.downloadCount || 0 };
+  }, 30); // 30 seconds TTL - stats update frequently
+  res.json({ success: true, data: stats })
 })
 
 export const sendContactForm = asyncHandler(async (req: any, res: Response) => {
@@ -222,11 +277,13 @@ export const sendContactForm = asyncHandler(async (req: any, res: Response) => {
 })
 
 export const getPublicSettings = asyncHandler(async (_req: any, res: Response) => {
-  // Only expose safe public settings
-  const publicKeys = ['site_name', 'site_tagline', 'site_description', 'telegram_url', 'facebook_url', 'maintenance_mode']
-  const settings = await prisma.setting.findMany({
-    where: { key: { in: publicKeys } }
-  })
-  const obj = settings.reduce((acc: any, s) => { acc[s.key] = s.value; return acc }, {})
+  const obj = await getCached('public:settings', async () => {
+    // Only expose safe public settings
+    const publicKeys = ['site_name', 'site_tagline', 'site_description', 'telegram_url', 'facebook_url', 'maintenance_mode']
+    const settings = await prisma.setting.findMany({
+      where: { key: { in: publicKeys } }
+    })
+    return settings.reduce((acc: any, s) => { acc[s.key] = s.value; return acc }, {})
+  }, 300); // 5 minutes TTL – settings change rarely
   res.json({ success: true, data: obj })
 })

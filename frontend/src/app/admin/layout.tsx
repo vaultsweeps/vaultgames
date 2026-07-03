@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard, Users, CreditCard, ArrowUpCircle, Gamepad2, Gift,
   HelpCircle, Image, Settings, Bell, LogOut, Menu, X, Zap,
-  ChevronRight, BarChart3, Wallet, FileText
+  ChevronRight, BarChart3, Wallet, FileText, Server
 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 
@@ -15,11 +15,13 @@ const NAV_ITEMS = [
   { href: '/admin/users', icon: Users, label: 'Users' },
   { href: '/admin/deposits', icon: CreditCard, label: 'Deposits' },
   { href: '/admin/cashouts', icon: ArrowUpCircle, label: 'Cashouts' },
+  { href: '/admin/withdrawals', icon: Wallet, label: 'Withdrawals' },
   { href: '/admin/games', icon: Gamepad2, label: 'Games' },
   { href: '/admin/bonuses', icon: Gift, label: 'Bonuses' },
   { href: '/admin/banners', icon: Image, label: 'Banners' },
   { href: '/admin/support', icon: HelpCircle, label: 'Support' },
   { href: '/admin/reports', icon: BarChart3, label: 'Reports' },
+  { href: '/admin/providers', icon: Server, label: 'Providers' },
   { href: '/admin/settings', icon: Settings, label: 'Settings' },
 ]
 
@@ -49,11 +51,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <div className="flex flex-col h-full">
       <div className="p-5 border-b border-white/5">
         <Link href="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-lg flex items-center justify-center">
-            <Zap className="w-5 h-5 text-white" />
-          </div>
+          <img src="/images/vault-sweeps-logo.png" alt="Vault Sweeps" className="h-10 w-auto object-contain drop-shadow-md" />
           <div>
-            <span className="font-display font-bold text-sm text-white">NEXUS</span>
+            <span className="font-display font-bold text-sm text-white">VAULT SWEEPS</span>
             <span className="text-xs text-yellow-400 font-mono ml-1">ADMIN</span>
           </div>
         </Link>

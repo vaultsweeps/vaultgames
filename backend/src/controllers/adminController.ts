@@ -1,10 +1,12 @@
 import { Response } from 'express'
-import { PrismaClient } from '@prisma/client'
+import prisma from '../lib/prisma'
 import { asyncHandler, AppError } from '../middleware/errorHandler'
 import { AuthRequest } from '../middleware/auth'
 import { createNotification } from '../services/notificationService'
-
-const prisma = new PrismaClient()
+import { logger } from '../utils/logger'
+import { supabase } from '../utils/supabase'
+import { WalletService } from '../services/WalletService'
+import { redis } from '../lib/redis'
 
 // GET /api/admin/stats
 export const getDashboardStats = asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -114,6 +116,74 @@ export const getUsers = asyncHandler(async (req: AuthRequest, res: Response) => 
     pagination: { page: Number(page), limit: Number(limit), total, pages: Math.ceil(total / Number(limit)) }
   })
 })
+
+// GET /api/admin/users/:id
+export const getUserDetails = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const id = req.params.id as string;
+
+  const user = await prisma.user.findUnique({
+    where: { id },
+    include: {
+      profile: true,
+      providerUsers: {
+        include: {
+          provider: true
+        }
+      },
+      deposits: {
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+        include: { paymentMethod: true }
+      },
+      withdrawals: {
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+        include: { paymentMethod: true }
+      },
+      bonusClaims: {
+        orderBy: { createdAt: 'desc' },
+        take: 5,
+        include: { bonus: true }
+      },
+      tickets: {
+        orderBy: { createdAt: 'desc' },
+        take: 5
+      }
+    }
+  });
+
+  if (!user) throw new AppError('User not found', 404);
+
+  // Aggregate stats
+  const totalDepositsData = await prisma.deposit.aggregate({
+    where: { userId: id, status: 'approved' },
+    _sum: { amount: true },
+    _count: true
+  });
+  
+  const totalWithdrawalsData = await prisma.withdrawal.aggregate({
+    where: { userId: id, status: { in: ['approved', 'paid'] } },
+    _sum: { amount: true },
+    _count: true
+  });
+
+  const walletBalance = await WalletService.getWalletBalance(id);
+
+  res.json({
+    success: true,
+    data: {
+      user,
+      walletBalance,
+      stats: {
+        totalDeposited: totalDepositsData._sum.amount || 0,
+        totalDepositsCount: totalDepositsData._count,
+        totalWithdrawn: totalWithdrawalsData._sum.amount || 0,
+        totalWithdrawalsCount: totalWithdrawalsData._count,
+        netProfit: (totalWithdrawalsData._sum.amount || 0) - (totalDepositsData._sum.amount || 0)
+      }
+    }
+  });
+});
 
 // PATCH /api/admin/users/:id/ban
 export const banUser = asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -353,16 +423,22 @@ export const getAdminBanners = asyncHandler(async (req: AuthRequest, res: Respon
 
 export const createBanner = asyncHandler(async (req: AuthRequest, res: Response) => {
   const banner = await prisma.banner.create({ data: req.body })
+  // Invalidate banner cache
+  redis?.del('public:banners').catch(() => {})
   res.status(201).json({ success: true, data: banner, message: 'Banner created' })
 })
 
 export const updateBanner = asyncHandler(async (req: AuthRequest, res: Response) => {
   const banner = await prisma.banner.update({ where: { id: req.params.id as string }, data: req.body })
+  // Invalidate banner cache
+  redis?.del('public:banners').catch(() => {})
   res.json({ success: true, data: banner })
 })
 
 export const deleteBanner = asyncHandler(async (req: AuthRequest, res: Response) => {
   await prisma.banner.delete({ where: { id: req.params.id as string } })
+  // Invalidate banner cache
+  redis?.del('public:banners').catch(() => {})
   res.json({ success: true, message: 'Banner deleted' })
 })
 
@@ -419,13 +495,37 @@ export const getSettings = asyncHandler(async (req: AuthRequest, res: Response) 
 
 export const updateSettings = asyncHandler(async (req: AuthRequest, res: Response) => {
   const updates = req.body
-  for (const [key, value] of Object.entries(updates)) {
-    await prisma.setting.upsert({
-      where: { key },
-      create: { key, value: String(value) },
-      update: { value: String(value) }
-    })
+  const entries = Object.entries(updates)
+  if (entries.length === 0) {
+    return res.json({ success: true, message: 'No settings to update' })
   }
+
+  const now = new Date()
+  const { v4: uuidv4 } = await import('uuid')
+
+  // Build a single bulk INSERT ... ON CONFLICT query
+  const valuePlaceholders = entries.map((_, i) => {
+    const base = i * 4
+    return `($${base + 1}::text, $${base + 2}::text, $${base + 3}::text, $${base + 4}::timestamptz)`
+  }).join(', ')
+
+  const flatValues = entries.flatMap(([key, value]) => [
+    uuidv4(),
+    key,
+    String(value),
+    now.toISOString()
+  ])
+
+  await prisma.$executeRawUnsafe(
+    `INSERT INTO "public"."Setting" ("id", "key", "value", "updatedAt")
+     VALUES ${valuePlaceholders}
+     ON CONFLICT ("key") DO UPDATE SET "value" = EXCLUDED."value", "updatedAt" = EXCLUDED."updatedAt"`,
+    ...flatValues
+  )
+
+  // Invalidate public settings cache
+  redis?.del('public:settings').catch(() => {})
+
   res.json({ success: true, message: 'Settings updated' })
 })
 
@@ -454,6 +554,9 @@ export const createBonus = asyncHandler(async (req: AuthRequest, res: Response) 
     }
   })
   res.status(201).json({ success: true, data: bonus, message: 'Bonus created' })
+  // Invalidate bonus caches
+  redis?.del('public:bonuses').catch(() => {})
+  redis?.del('bonuses:active').catch(() => {})
 })
 
 export const updateBonus = asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -478,4 +581,205 @@ export const updateBonus = asyncHandler(async (req: AuthRequest, res: Response) 
 export const deleteBonus = asyncHandler(async (req: AuthRequest, res: Response) => {
   await prisma.bonus.delete({ where: { id: req.params.id as string } })
   res.json({ success: true, message: 'Bonus deleted' })
+})
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ENHANCED WITHDRAWAL MANAGEMENT (Admin)
+// ═══════════════════════════════════════════════════════════════════════════
+
+// GET /api/admin/enhanced-withdrawals
+export const getAdminEnhancedWithdrawals = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { page = 1, limit = 20, status, paymentMethod, userId, search, dateFrom, dateTo } = req.query
+  const skip = (Number(page) - 1) * Number(limit)
+
+  const where: any = { requestId: { not: null } }
+  if (status && status !== 'all') where.status = status
+  if (paymentMethod) where.paymentMethodStr = paymentMethod
+  if (userId) where.userId = userId
+  if (dateFrom || dateTo) {
+    where.createdAt = {}
+    if (dateFrom) where.createdAt.gte = new Date(String(dateFrom))
+    if (dateTo) where.createdAt.lte = new Date(String(dateTo))
+  }
+  if (search) {
+    where.OR = [
+      { requestId: { contains: String(search), mode: 'insensitive' } },
+      { user: { username: { contains: String(search), mode: 'insensitive' } } },
+      { user: { email: { contains: String(search), mode: 'insensitive' } } },
+    ]
+  }
+
+  const [withdrawals, total] = await Promise.all([
+    prisma.withdrawal.findMany({
+      where,
+      skip,
+      take: Number(limit),
+      orderBy: { createdAt: 'desc' },
+      include: {
+        user: { select: { id: true, username: true, email: true } }
+      }
+    }),
+    prisma.withdrawal.count({ where })
+  ])
+
+  res.json({
+    success: true,
+    data: withdrawals,
+    pagination: { page: Number(page), limit: Number(limit), total, pages: Math.ceil(total / Number(limit)) }
+  })
+})
+
+// GET /api/admin/enhanced-withdrawals/export — CSV
+export const exportEnhancedWithdrawalsCSV = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { status, dateFrom, dateTo } = req.query
+  const where: any = { requestId: { not: null } }
+  if (status && status !== 'all') where.status = status
+  if (dateFrom || dateTo) {
+    where.createdAt = {}
+    if (dateFrom) where.createdAt.gte = new Date(String(dateFrom))
+    if (dateTo) where.createdAt.lte = new Date(String(dateTo))
+  }
+
+  const withdrawals = await prisma.withdrawal.findMany({
+    where,
+    orderBy: { createdAt: 'desc' },
+    include: { user: { select: { username: true, email: true } } }
+  })
+
+  const header = ['Request ID', 'User', 'Email', 'Amount', 'Payment Method', 'Account Details', 'Status', 'Rejection Reason', 'Approved By', 'Approved At', 'Rejected By', 'Rejected At', 'Created At']
+  const rows = withdrawals.map(w => [
+    w.requestId || '',
+    w.user?.username || '',
+    w.user?.email || '',
+    w.amount.toFixed(2),
+    w.paymentMethodStr || '',
+    (w.accountDetails || '').replace(/,/g, ';'),
+    w.status,
+    (w.rejectionReason || '').replace(/,/g, ';'),
+    w.approvedBy || '',
+    w.approvedAt ? w.approvedAt.toISOString() : '',
+    w.rejectedBy || '',
+    w.rejectedAt ? w.rejectedAt.toISOString() : '',
+    w.createdAt.toISOString()
+  ])
+
+  const csv = [header, ...rows].map(r => r.join(',')).join('\n')
+  res.setHeader('Content-Type', 'text/csv')
+  res.setHeader('Content-Disposition', `attachment; filename=withdrawals_${Date.now()}.csv`)
+  res.send(csv)
+})
+
+// PATCH /api/admin/enhanced-withdrawals/:requestId/approve
+export const adminApproveEnhancedWithdrawal = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const requestId = req.params.requestId as string
+  const adminUsername = (req as any).user?.email || 'admin'
+
+  // Atomic transaction: check lock then update
+  const updated = await prisma.$transaction(async (tx) => {
+    const withdrawal = await tx.withdrawal.findUnique({
+      where: { requestId },
+      select: { id: true, locked: true, status: true, userId: true, amount: true, paymentMethodStr: true, telegramMessageId: true, telegramChatId: true }
+    })
+
+    if (!withdrawal) throw new AppError('Withdrawal request not found', 404)
+    if (withdrawal.locked) throw new AppError(`Request ${requestId} has already been processed (status: ${withdrawal.status})`, 409)
+
+    return tx.withdrawal.update({
+      where: { id: withdrawal.id },
+      data: {
+        status: 'approved',
+        approvedBy: adminUsername,
+        approvedAt: new Date(),
+        locked: true
+      },
+      include: { user: { select: { id: true, username: true } } }
+    })
+  })
+
+  // Broadcast via Supabase Realtime
+  if (supabase) {
+    supabase.from('Withdrawal').update({ status: 'approved', approvedBy: adminUsername, approvedAt: new Date() }).eq('requestId', requestId)
+      .then(
+        () => logger.info(`Supabase realtime broadcast: approved ${requestId}`),
+        (e) => logger.error('Supabase broadcast error:', e)
+      )
+  }
+
+  // Notify user in-app
+  await createNotification(updated.userId, {
+    title: '✅ Withdrawal Approved!',
+    message: `Your withdrawal request ${requestId} for $${updated.amount.toFixed(2)} via ${updated.paymentMethodStr} has been approved.`,
+    type: 'success',
+    link: '/dashboard/withdrawals'
+  })
+
+  // Update Telegram message
+  const bot = await import('../services/TelegramSupportBot').then(m => m.TelegramSupportBot.getInstance())
+  bot.editWithdrawalMessage(updated, 'approved').catch(e => logger.error('Telegram edit failed:', e))
+
+  // Audit log
+  await prisma.transactionLog.create({
+    data: { type: 'withdrawal_approved', entityId: updated.id, userId: adminUsername, amount: updated.amount, status: 'approved', metadata: { requestId, adminUsername } }
+  }).catch(e => logger.error('TransactionLog error:', e))
+
+  logger.info(`Withdrawal ${requestId} approved by ${adminUsername}`)
+  res.json({ success: true, message: `Withdrawal ${requestId} approved`, data: updated })
+})
+
+// PATCH /api/admin/enhanced-withdrawals/:requestId/reject
+export const adminRejectEnhancedWithdrawal = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const requestId = req.params.requestId as string
+  const { reason } = req.body
+  const adminUsername = (req as any).user?.email || 'admin'
+
+  const updated = await prisma.$transaction(async (tx) => {
+    const withdrawal = await tx.withdrawal.findUnique({
+      where: { requestId },
+      select: { id: true, locked: true, status: true, userId: true, amount: true, paymentMethodStr: true, telegramMessageId: true, telegramChatId: true }
+    })
+
+    if (!withdrawal) throw new AppError('Withdrawal request not found', 404)
+    if (withdrawal.locked) throw new AppError(`Request ${requestId} has already been processed (status: ${withdrawal.status})`, 409)
+
+    return tx.withdrawal.update({
+      where: { id: withdrawal.id },
+      data: {
+        status: 'rejected',
+        rejectedBy: adminUsername,
+        rejectedAt: new Date(),
+        rejectionReason: reason || null,
+        locked: true
+      },
+      include: { user: { select: { id: true, username: true } } }
+    })
+  })
+
+  // Broadcast via Supabase Realtime
+  if (supabase) {
+    supabase.from('Withdrawal').update({ status: 'rejected', rejectedBy: adminUsername, rejectedAt: new Date(), rejectionReason: reason || null }).eq('requestId', requestId)
+      .then(
+        () => logger.info(`Supabase realtime broadcast: rejected ${requestId}`),
+        (e) => logger.error('Supabase broadcast error:', e)
+      )
+  }
+
+  // Notify user
+  await createNotification(updated.userId, {
+    title: '❌ Withdrawal Rejected',
+    message: `Your withdrawal request ${requestId} for $${updated.amount.toFixed(2)} was rejected.${reason ? ` Reason: ${reason}` : ''} Please contact support if you have questions.`,
+    type: 'error',
+    link: '/dashboard/withdrawals'
+  })
+
+  // Update Telegram message
+  const bot = await import('../services/TelegramSupportBot').then(m => m.TelegramSupportBot.getInstance())
+  bot.editWithdrawalMessage(updated, 'rejected', reason).catch(e => logger.error('Telegram edit failed:', e))
+
+  // Audit log
+  await prisma.transactionLog.create({
+    data: { type: 'withdrawal_rejected', entityId: updated.id, userId: adminUsername, amount: updated.amount, status: 'rejected', metadata: { requestId, adminUsername, reason } }
+  }).catch(e => logger.error('TransactionLog error:', e))
+
+  logger.info(`Withdrawal ${requestId} rejected by ${adminUsername}${reason ? ` (reason: ${reason})` : ''}`)
+  res.json({ success: true, message: `Withdrawal ${requestId} rejected`, data: updated })
 })

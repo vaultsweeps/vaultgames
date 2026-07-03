@@ -10,7 +10,7 @@ const transporter = nodemailer.createTransport({
   },
 })
 
-const FROM = `"NexusGaming" <${process.env.SMTP_USER || 'noreply@nexusgaming.com'}>`
+const FROM = `"Vault Sweeps" <${process.env.SMTP_USER || 'noreply@vaultsweeps.com'}>`
 const SITE_URL = process.env.FRONTEND_URL || 'http://localhost:3000'
 
 const baseTemplate = (content: string) => `
@@ -19,21 +19,21 @@ const baseTemplate = (content: string) => `
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NexusGaming</title>
+  <title>Vault Sweeps</title>
 </head>
 <body style="margin:0;padding:0;background:#030712;font-family:Inter,sans-serif;">
   <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
     <div style="text-align:center;margin-bottom:32px;">
       <div style="display:inline-block;background:linear-gradient(135deg,#00D4FF,#7B2FFF);padding:12px 24px;border-radius:12px;">
-        <span style="color:#fff;font-family:monospace;font-weight:900;font-size:20px;letter-spacing:4px;">⚡ NEXUSGAMING</span>
+        <span style="color:#fff;font-family:monospace;font-weight:900;font-size:20px;letter-spacing:4px;">⚡ VAULT SWEEPS</span>
       </div>
     </div>
     <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(0,212,255,0.15);border-radius:16px;padding:32px;">
       ${content}
     </div>
     <div style="text-align:center;margin-top:24px;color:#475569;font-size:12px;">
-      <p>© ${new Date().getFullYear()} NexusGaming. All rights reserved.</p>
-      <p>You received this email because you have an account at NexusGaming.</p>
+      <p>© ${new Date().getFullYear()} Vault Sweeps. All rights reserved.</p>
+      <p>You received this email because you have an account at Vault Sweeps.</p>
     </div>
   </div>
 </body>
@@ -46,7 +46,7 @@ export const sendVerificationEmail = async (email: string, username: string, tok
   await transporter.sendMail({
     from: FROM,
     to: email,
-    subject: '⚡ Verify Your NexusGaming Account',
+    subject: '⚡ Verify Your Vault Sweeps Account',
     html: baseTemplate(`
       <h2 style="color:#fff;font-family:monospace;font-size:24px;margin:0 0 8px;">VERIFY YOUR EMAIL</h2>
       <p style="color:#94a3b8;font-size:15px;margin:0 0 24px;">Hi ${username}! One last step to activate your account.</p>
@@ -62,7 +62,7 @@ export const sendPasswordResetEmail = async (email: string, username: string, to
   await transporter.sendMail({
     from: FROM,
     to: email,
-    subject: '🔐 Reset Your NexusGaming Password',
+    subject: '🔐 Reset Your Vault Sweeps Password',
     html: baseTemplate(`
       <h2 style="color:#fff;font-family:monospace;font-size:24px;margin:0 0 8px;">RESET PASSWORD</h2>
       <p style="color:#94a3b8;font-size:15px;margin:0 0 24px;">Hi ${username}, click below to reset your password.</p>
@@ -76,9 +76,9 @@ export const sendWelcomeEmail = async (email: string, username: string) => {
   await transporter.sendMail({
     from: FROM,
     to: email,
-    subject: '🎮 Welcome to NexusGaming!',
+    subject: '🎮 Welcome to Vault Sweeps!',
     html: baseTemplate(`
-      <h2 style="color:#00D4FF;font-family:monospace;font-size:28px;margin:0 0 8px;text-align:center;">WELCOME TO THE NEXUS!</h2>
+      <h2 style="color:#00D4FF;font-family:monospace;font-size:28px;margin:0 0 8px;text-align:center;">WELCOME TO THE VAULT SWEEPS!</h2>
       <p style="color:#94a3b8;font-size:15px;margin:0 0 24px;text-align:center;">Hey ${username}! Your account is verified and ready to go.</p>
       <div style="background:rgba(0,212,255,0.05);border:1px solid rgba(0,212,255,0.15);border-radius:12px;padding:20px;margin-bottom:24px;">
         <p style="color:#e2e8f0;font-size:14px;margin:0 0 12px;font-weight:600;">Get started:</p>
@@ -110,6 +110,29 @@ export const sendDepositNotification = async (email: string, username: string, a
         ? '<p style="color:#94a3b8;font-size:14px;">Your deposit has been approved and is ready to use.</p>'
         : '<p style="color:#94a3b8;font-size:14px;">Your deposit was rejected. Please contact support for assistance.</p>'
       }
+    `)
+  })
+}
+
+export const sendAdminZappayNotification = async (amount: number, accountName: string, paymentReference: string) => {
+  await transporter.sendMail({
+    from: FROM,
+    to: 'vegaswera527@gmail.com',
+    subject: "New Zappay Deposit - $" + amount,
+    html: baseTemplate(`
+      <h2 style="color:#00D4FF;font-family:monospace;font-size:24px;margin:0 0 8px;">NEW ZAPPAY DEPOSIT</h2>
+      <p style="color:#94a3b8;font-size:15px;margin:0 0 24px;">A user has submitted a new Zappay deposit request.</p>
+      <div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:16px;margin-bottom:24px;">
+        <p style="color:#64748b;font-size:12px;margin:0 0 4px;">AMOUNT</p>
+        <p style="color:#00D4FF;font-family:monospace;font-size:28px;font-weight:900;margin:0 0 12px;">$${amount}</p>
+        
+        <p style="color:#64748b;font-size:12px;margin:0 0 4px;">ZAPPAY PROFILE NAME</p>
+        <p style="color:#fff;font-size:16px;font-weight:600;margin:0 0 12px;">${accountName || 'Not provided'}</p>
+        
+        <p style="color:#64748b;font-size:12px;margin:0 0 4px;">REFERENCE</p>
+        <p style="color:#fff;font-size:14px;font-family:monospace;margin:0;">${paymentReference}</p>
+      </div>
+      <p style="color:#94a3b8;font-size:14px;">Please verify this payment in your Zappay account and approve or reject it from the admin panel.</p>
     `)
   })
 }

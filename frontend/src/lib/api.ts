@@ -12,7 +12,7 @@ const apiClient: AxiosInstance = axios.create({
 // Request interceptor - attach JWT token
 apiClient.interceptors.request.use(
   (config) => {
-    const token = Cookies.get('nexus_token')
+    const token = Cookies.get('vaultsweeps_token')
     if (token) config.headers.Authorization = `Bearer ${token}`
     return config
   },
@@ -24,7 +24,7 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      Cookies.remove('nexus_token')
+      Cookies.remove('vaultsweeps_token')
       if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
         window.location.href = '/login'
       }
@@ -41,10 +41,12 @@ export const authApi = {
   register: (data: object) => apiClient.post('/auth/register', data),
   logout: () => apiClient.post('/auth/logout'),
   verifyEmail: (token: string) => apiClient.post(`/auth/verify-email/${token}`),
+  resendVerification: () => apiClient.post('/auth/resend-verification'),
   forgotPassword: (email: string) => apiClient.post('/auth/forgot-password', { email }),
   resetPassword: (token: string, password: string) => apiClient.post(`/auth/reset-password/${token}`, { password }),
   getMe: () => apiClient.get('/auth/me'),
   refreshToken: () => apiClient.post('/auth/refresh'),
+  getBalance: () => apiClient.get('/auth/balance'),
 }
 
 // Deposit APIs
@@ -61,6 +63,9 @@ export const withdrawalApi = {
   create: (data: object) => apiClient.post('/withdrawals', data),
   getAll: (params?: object) => apiClient.get('/withdrawals', { params }),
   getOne: (id: string) => apiClient.get(`/withdrawals/${id}`),
+  manualCashout: (file: FormData) => apiClient.post('/withdrawals/manual', file, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
 }
 
 // Games APIs
@@ -103,6 +108,16 @@ export const profileApi = {
   }),
 }
 
+// Provider APIs
+export const providerApi = {
+  getAccount: (gameId?: string) => apiClient.get('/provider/account', { params: gameId ? { gameId } : {} }),
+  createAccount: (gameId?: string) => apiClient.post('/provider/create-account', {}, { params: gameId ? { gameId } : {} }),
+  resetPassword: (gameId?: string) => apiClient.post('/provider/reset-password', {}, { params: gameId ? { gameId } : {} }),
+  getTransactions: (gameId?: string) => apiClient.get('/provider/transactions', { params: gameId ? { gameId } : {} }),
+  transfer: (data: { gameId: string, amount: number, type: 'recharge' | 'withdraw' }) => apiClient.post('/provider/transfer', data),
+  getAllAccounts: () => apiClient.get('/provider/accounts'),
+}
+
 // Public APIs (no auth required)
 export const publicApi = {
   getBanners: () => apiClient.get('/public/banners'),
@@ -124,6 +139,7 @@ export const adminApi = {
 
   // Users
   getUsers: (params?: object) => apiClient.get('/admin/users', { params }),
+  getUserDetails: (id: string) => apiClient.get(`/admin/users/${id}`),
   updateUser: (id: string, data: object) => apiClient.put(`/admin/users/${id}`, data),
   suspendUser: (id: string) => apiClient.patch(`/admin/users/${id}/suspend`),
   banUser: (id: string) => apiClient.patch(`/admin/users/${id}/ban`),
@@ -174,7 +190,7 @@ export const adminApi = {
 
   // Settings & CMS
   getSettings: () => apiClient.get('/admin/settings'),
-  updateSettings: (data: object) => apiClient.put('/admin/settings', data),
+  updateSettings: (data: object) => apiClient.put('/admin/settings', data, { timeout: 60000 }),
   getFAQs: () => apiClient.get('/admin/faqs'),
   createFAQ: (data: object) => apiClient.post('/admin/faqs', data),
   updateFAQ: (id: string, data: object) => apiClient.put(`/admin/faqs/${id}`, data),
@@ -182,4 +198,36 @@ export const adminApi = {
 
   // Reports
   exportReport: (type: string, params?: object) => apiClient.get(`/admin/reports/${type}`, { params, responseType: 'blob' }),
+
+  // Providers
+  getProviders: () => apiClient.get('/admin/providers'),
+  createProvider: (data: object) => apiClient.post('/admin/providers', data),
+  updateProvider: (id: string, data: object) => apiClient.put(`/admin/providers/${id}`, data),
+  deleteProvider: (id: string) => apiClient.delete(`/admin/providers/${id}`),
+  testProviderConnection: (id: string) => apiClient.post(`/admin/providers/${id}/test`),
+  assignProviderGames: (id: string, gameIds: string[]) => apiClient.put(`/admin/providers/${id}/games`, { gameIds }),
+  getProviderLogs: (params?: object) => apiClient.get('/admin/provider-logs', { params }),
+  getProviderTransactions: (params?: object) => apiClient.get('/admin/provider-transactions', { params }),
+
+  // Enhanced Withdrawals (admin)
+  getEnhancedWithdrawals: (params?: object) => apiClient.get('/admin/enhanced-withdrawals', { params }),
+  approveEnhancedWithdrawal: (requestId: string, reason?: string) => apiClient.patch(`/admin/enhanced-withdrawals/${requestId}/approve`, { reason }),
+  rejectEnhancedWithdrawal: (requestId: string, reason?: string) => apiClient.patch(`/admin/enhanced-withdrawals/${requestId}/reject`, { reason }),
+  exportEnhancedWithdrawalsCSV: (params?: object) => apiClient.get('/admin/enhanced-withdrawals/export', { params, responseType: 'blob' }),
+}
+
+// ─── User Enhanced Withdrawal APIs ──────────────────────────────────────────
+export const enhancedWithdrawalApi = {
+  create: (data: { amount: number; paymentMethod: string; accountDetails: string }) =>
+    apiClient.post('/withdrawals/enhanced', data),
+  getAll: (params?: { page?: number; limit?: number; status?: string }) =>
+    apiClient.get('/withdrawals/enhanced', { params }),
+}
+
+// ─── Referral & Promo APIs ───────────────────────────────────────────────────
+export const referralApi = {
+  getMyInfo: () => apiClient.get('/referral/me'),
+  generateCode: () => apiClient.post('/referral/generate'),
+  setPromoCode: (promoCode: string) => apiClient.post('/referral/promo', { promoCode }),
+  validateCode: (code: string) => apiClient.get(`/referral/validate/${code}`),
 }

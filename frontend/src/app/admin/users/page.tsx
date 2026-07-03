@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { Search, Eye, Ban, UserCheck, RefreshCw } from 'lucide-react'
 import { adminApi } from '@/lib/api'
+import Link from 'next/link'
 
 
 type User = {
@@ -186,6 +187,9 @@ export default function AdminUsersPage() {
               ))}
             </div>
             <div className="flex flex-wrap gap-2">
+              <Link href={`/admin/users/${selectedUser.id}`} className="flex-1 py-2.5 bg-neon-blue/10 border border-neon-blue/20 rounded-xl text-neon-blue text-sm hover:bg-neon-blue/20 transition-all text-center">
+                Full Profile
+              </Link>
               {!selectedUser.isBanned ? (
                 <>
                   <button onClick={() => handleAction(selectedUser.id, selectedUser.isActive ? 'suspend' : 'activate')}

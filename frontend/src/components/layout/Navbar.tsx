@@ -3,17 +3,17 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Menu, X, Bell, ChevronDown, User, LogOut, Settings, LayoutDashboard, Gamepad2, Zap, Moon, Sun } from 'lucide-react'
+import { Menu, X, Bell, ChevronDown, User, LogOut, Settings, LayoutDashboard, Gamepad2, Zap, Moon, Sun, Wallet, Home, Trophy, Gift, Users, Crown } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useTheme } from '@/components/ThemeProvider'
+import WalletModal from '@/components/modals/WalletModal'
+import { authApi, notificationsApi } from '@/lib/api'
 
 const navLinks = [
   { href: '/', label: 'Home' },
   { href: '/games', label: 'Games' },
   { href: '/bonuses', label: 'Bonuses' },
   { href: '/cashout-rules', label: 'Cashout Rules' },
-  { href: '/about', label: 'About' },
-  { href: '/contact', label: 'Contact' },
 ]
 
 export default function Navbar() {
@@ -23,6 +23,24 @@ export default function Navbar() {
   const { user, isAuthenticated, logout } = useAuthStore()
   const { theme, setTheme } = useTheme()
   const pathname = usePathname()
+  
+  const [walletOpen, setWalletOpen] = useState(false)
+  const [walletBalance, setWalletBalance] = useState<number>(0)
+  const [unreadCount, setUnreadCount] = useState(0)
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      authApi.getBalance().then(res => {
+        if (res.data?.data?.balance !== undefined) {
+          setWalletBalance(res.data.data.balance)
+        }
+      }).catch(console.error)
+
+      notificationsApi.getUnreadCount()
+        .then(res => setUnreadCount(res.data.data.count))
+        .catch(console.error)
+    }
+  }, [isAuthenticated, walletOpen, pathname])
 
   useEffect(() => {
     const handler = () => setIsScrolled(window.scrollY > 20)
@@ -31,20 +49,15 @@ export default function Navbar() {
   }, [])
 
   return (
+    <>
     <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-      isScrolled ? 'glass border-b border-white/5 py-3' : 'bg-transparent py-5'
+      isScrolled ? 'bg-[#030712]/95 border-b border-white/5 py-3 shadow-lg shadow-black/30' : 'bg-transparent py-5'
     }`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="relative w-8 h-8">
-              <div className="absolute inset-0 bg-gradient-to-br from-neon-blue to-neon-purple rounded-lg animate-glow-pulse" />
-              <Zap className="relative z-10 w-8 h-8 text-white p-1.5" />
-            </div>
-            <span className="font-display font-bold text-lg tracking-wider gradient-text group-hover:opacity-80 transition-opacity">
-              NEXUS<span className="text-white">GAMING</span>
-            </span>
+          <Link href="/" className="flex items-center gap-3 group">
+            <img src="/images/vault-sweeps-logo.png" alt="Vault Sweeps" className="h-10 w-auto object-contain drop-shadow-md group-hover:scale-105 transition-transform" />
           </Link>
 
           {/* Desktop Nav */}
@@ -75,8 +88,23 @@ export default function Navbar() {
             </button>
             {isAuthenticated ? (
               <>
+                <button
+                  onClick={() => setWalletOpen(true)}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#2AC3FF]/10 text-[#2AC3FF] hover:bg-[#2AC3FF]/20 transition-colors border border-[#2AC3FF]/20"
+                >
+                  <Wallet className="w-4 h-4" />
+                  <span className="font-bold text-sm">${walletBalance.toFixed(2)}</span>
+                </button>
                 <Link href="/dashboard" className="btn-neon text-xs py-2 px-4 flex items-center gap-2">
                   <LayoutDashboard className="w-3.5 h-3.5" /> Dashboard
+                </Link>
+                <Link href="/dashboard/notifications" className="relative p-2 rounded-lg glass text-slate-400 hover:text-white transition-colors border border-white/10 hover:border-neon-blue/30">
+                  <Bell className="w-4 h-4" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-neon-blue rounded-full text-xs text-white flex items-center justify-center font-mono">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
                 </Link>
                 <div className="relative">
                   <button
@@ -128,17 +156,43 @@ export default function Navbar() {
             )}
           </div>
 
-          {/* Mobile menu button & Theme toggle */}
-          <div className="lg:hidden flex items-center gap-3">
-            <button 
+          {/* Mobile top-right icons: Theme + Wallet + Bell + Profile */}
+          <div className="lg:hidden flex items-center gap-2">
+            {/* Theme Toggle */}
+            <button
               onClick={() => setTheme(theme === 'dark' ? 'night' : 'dark')}
               className="p-2 text-slate-400 hover:text-neon-blue transition-colors"
             >
               {theme === 'dark' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
             </button>
-            <button className="p-2 text-slate-400 hover:text-white transition-colors" onClick={() => setMobileOpen(!mobileOpen)}>
-              {mobileOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </button>
+
+            {isAuthenticated && (
+              <>
+                {/* Wallet Balance */}
+                <button
+                  onClick={() => setWalletOpen(true)}
+                  className="flex items-center gap-1 bg-[#2AC3FF]/10 border border-[#2AC3FF]/20 text-[#2AC3FF] rounded-full px-2.5 py-1 text-xs font-bold"
+                >
+                  <Wallet className="w-3.5 h-3.5" />
+                  <span>${walletBalance.toFixed(2)}</span>
+                </button>
+
+                {/* Bell */}
+                <Link href="/dashboard/notifications" className="relative p-1.5 text-slate-400 hover:text-white transition-colors">
+                  <Bell className="w-5 h-5" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-neon-blue rounded-full text-[9px] text-white flex items-center justify-center font-mono">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
+                </Link>
+
+                {/* Profile Avatar */}
+                <Link href="/dashboard/profile" className="w-8 h-8 rounded-full bg-gradient-to-br from-neon-blue to-neon-purple flex items-center justify-center text-white font-bold text-xs border border-white/10 shrink-0">
+                  {user?.username?.charAt(0).toUpperCase() || <User className="w-4 h-4" />}
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -185,5 +239,48 @@ export default function Navbar() {
         )}
       </AnimatePresence>
     </nav>
+
+    {/* Mobile Bottom Navigation Bar */}
+    <div className="lg:hidden fixed bottom-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5 pointer-events-none w-max">
+      {/* Main Nav Pill */}
+      <div className="border border-white/10 rounded-full px-4 py-2.5 flex items-center gap-3 pointer-events-auto shadow-2xl shadow-black/60 bg-[#0F1219]/95 backdrop-blur-xl">
+        {/* Home */}
+        <Link href="/" className={`relative flex items-center justify-center w-9 h-9 rounded-full transition-all ${pathname === '/' ? 'bg-white/10 text-white' : 'text-slate-400 hover:text-white'}`}>
+          <Home className="w-5 h-5" />
+          {pathname === '/' && <div className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 w-4 h-0.5 bg-neon-purple rounded-full shadow-[0_0_8px_rgba(168,85,247,0.9)]" />}
+        </Link>
+
+        {/* Games (Site Logo) */}
+        <Link href="/games" className={`relative flex items-center justify-center transition-all ${pathname.includes('/games') ? 'opacity-100' : 'opacity-60 hover:opacity-90'}`}>
+          <div className="w-9 h-9 rounded-full border border-white/15 flex items-center justify-center bg-black/60 overflow-hidden">
+            <img src="/images/vault-sweeps-logo.png" alt="Games" className="w-full h-full object-contain p-1" />
+          </div>
+          {pathname.includes('/games') && <div className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 w-4 h-0.5 bg-neon-purple rounded-full shadow-[0_0_8px_rgba(168,85,247,0.9)]" />}
+        </Link>
+
+        {/* Gift/Bonuses */}
+        <Link href="/bonuses" className={`relative flex items-center justify-center w-9 h-9 rounded-full transition-all ${pathname.includes('/bonuses') ? 'bg-white/10 text-white' : 'text-slate-400 hover:text-white'}`}>
+          <Gift className="w-5 h-5" />
+          {pathname.includes('/bonuses') && <div className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 w-4 h-0.5 bg-neon-purple rounded-full shadow-[0_0_8px_rgba(168,85,247,0.9)]" />}
+        </Link>
+
+        {/* Crown/VIP */}
+        <Link href="/vip" className={`relative flex items-center justify-center w-9 h-9 rounded-full transition-all ${pathname.includes('/vip') ? 'text-yellow-400' : 'text-yellow-400/60 hover:text-yellow-400'}`}>
+          <Crown className="w-5 h-5" />
+          {pathname.includes('/vip') && <div className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 w-4 h-0.5 bg-yellow-400 rounded-full shadow-[0_0_8px_rgba(250,204,21,0.9)]" />}
+        </Link>
+      </div>
+
+      {/* Menu Toggle Button */}
+      <button
+        onClick={() => setMobileOpen(!mobileOpen)}
+        className="w-11 h-11 rounded-full bg-gradient-to-br from-[#8b5cf6] to-[#6366f1] flex items-center justify-center text-white shadow-xl shadow-indigo-500/30 pointer-events-auto border border-white/10 active:scale-95 transition-transform"
+      >
+        {mobileOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+      </button>
+    </div>
+
+    <WalletModal isOpen={walletOpen} onClose={() => setWalletOpen(false)} balance={walletBalance} />
+    </>
   )
 }

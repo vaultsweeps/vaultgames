@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { Gift, Shield, Zap, Headphones, ChevronDown, Send, MessageCircle, Star, ChevronRight, Check } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { publicApi } from '@/lib/api'
+import { useAuthStore } from '@/store/authStore'
 
 const FEATURES = [
   { icon: Shield, title: 'Enterprise Security', desc: 'Bank-grade encryption and multi-layer security protecting your account 24/7.', color: '#00D4FF' },
@@ -51,8 +52,11 @@ function FAQItem({ q, a }: { q: string; a: string }) {
 export default function HomePageClient() {
   const [bonuses, setBonuses] = useState<any[]>([])
   const [settings, setSettings] = useState<any>({})
+  const [mounted, setMounted] = useState(false)
+  const isAuthenticated = useAuthStore(state => state.isAuthenticated)
 
   useEffect(() => {
+    setMounted(true)
     publicApi.getBonuses()
       .then(res => setBonuses((res.data.data || []).slice(0, 4)))
       .catch(() => {})
@@ -70,7 +74,7 @@ export default function HomePageClient() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-16">
             <p className="font-mono text-xs tracking-[0.3em] text-neon-blue uppercase mb-3">Why Us</p>
-            <h2 className="font-display font-bold text-4xl sm:text-5xl text-white">WHY <span className="gradient-text">NEXUS</span></h2>
+            <h2 className="font-display font-bold text-4xl sm:text-5xl text-white">WHY <span className="gradient-text">VAULT SWEEPS</span></h2>
           </motion.div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {FEATURES.map((f, i) => (
@@ -169,10 +173,14 @@ export default function HomePageClient() {
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-neon-blue/5 rounded-full blur-3xl" />
             <div className="relative z-10">
               <p className="font-mono text-xs tracking-[0.3em] text-neon-blue uppercase mb-3">Ready to play?</p>
-              <h2 className="font-display font-black text-5xl text-white mb-4">JOIN <span className="gradient-text">NEXUS</span> TODAY</h2>
+              <h2 className="font-display font-black text-5xl text-white mb-4">JOIN <span className="gradient-text">VAULT SWEEPS</span> TODAY</h2>
               <p className="text-slate-400 text-lg mb-8 max-w-xl mx-auto">Start your gaming journey with the best bonuses, fastest withdrawals, and premium games.</p>
               <div className="flex flex-wrap justify-center gap-4">
-                <Link href="/register" className="btn-primary py-3 px-10 text-sm">Create Free Account</Link>
+                {mounted && isAuthenticated ? (
+                  <Link href="/dashboard" className="btn-primary py-3 px-10 text-sm">Go to Dashboard</Link>
+                ) : (
+                  <Link href="/register" className="btn-primary py-3 px-10 text-sm">Create Free Account</Link>
+                )}
                 <a href={settings.telegram_url || process.env.NEXT_PUBLIC_TELEGRAM_URL || '#'} target="_blank" rel="noopener noreferrer" className="btn-neon py-3 px-8 text-sm flex items-center gap-2"><Send className="w-4 h-4" /> Contact Us</a>
               </div>
             </div>

@@ -7,6 +7,8 @@ import rateLimit from 'express-rate-limit'
 import dotenv from 'dotenv'
 import path from 'path'
 
+dotenv.config()
+
 import { errorHandler } from './middleware/errorHandler'
 import { logger } from './utils/logger'
 
@@ -22,8 +24,8 @@ import profileRoutes from './routes/profile'
 import publicRoutes from './routes/public'
 import adminRoutes from './routes/admin'
 import webhookRoutes from './routes/webhooks'
-
-dotenv.config()
+import providerRoutes from './routes/provider'
+import referralRoutes from './routes/referral'
 
 const app = express()
 const PORT = process.env.PORT || 5000
@@ -39,6 +41,7 @@ const allowedOrigins = [
   (process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/$/, ''),
   'http://localhost:3000',
   'http://localhost:3001',
+  'https://vaultsweeps.vercel.app',
 ]
 
 app.use(cors({
@@ -46,10 +49,16 @@ app.use(cors({
     // Allow requests with no origin (mobile apps, curl, Postman)
     if (!origin) return callback(null, true)
     const cleanOrigin = origin.replace(/\/$/, '')
-    if (allowedOrigins.includes(cleanOrigin)) {
+    // Allow exact matches, Vercel preview deployments, and localhost
+    if (
+      allowedOrigins.includes(cleanOrigin) ||
+      cleanOrigin.endsWith('.vercel.app') ||
+      cleanOrigin.startsWith('http://localhost')
+    ) {
       callback(null, true)
     } else {
-      callback(null, true) // Allow all origins in dev; restrict in production if needed
+      logger.warn(`CORS blocked origin: ${cleanOrigin}`)
+      callback(null, process.env.NODE_ENV !== 'production') // Allow all in dev
     }
   },
   credentials: true,
@@ -57,10 +66,9 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
 }))
 
-// Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 200,
+  max: 5000,
   message: { success: false, message: 'Too many requests, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -109,6 +117,8 @@ app.use('/api/profile', profileRoutes)
 app.use('/api/public', publicRoutes)
 app.use('/api/admin', adminRoutes)
 app.use('/api/webhooks', webhookRoutes)
+app.use('/api/provider', providerRoutes)
+app.use('/api/referral', referralRoutes)
 
 // 404 handler
 app.use('*', (req, res) => {
@@ -118,10 +128,15 @@ app.use('*', (req, res) => {
 // Error handler
 app.use(errorHandler)
 
+import { TelegramSupportBot } from './services/TelegramSupportBot'
+import { ImapZappayService } from './services/payment/ImapZappayService'
+
 // Start server
 app.listen(PORT, () => {
-  logger.info(`🚀 NexusGaming API running on port ${PORT}`)
+  logger.info(`🚀 Vault Sweeps API running on port ${PORT}`)
   logger.info(`📱 Environment: ${process.env.NODE_ENV || 'development'}`)
+  TelegramSupportBot.getInstance().start()
+  ImapZappayService.startCron()
 })
 
 export default app

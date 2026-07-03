@@ -4,6 +4,9 @@ import { motion } from 'framer-motion'
 import { Gift, Check, Star, Zap } from 'lucide-react'
 import Link from 'next/link'
 import { publicApi } from '@/lib/api'
+import Navbar from '@/components/layout/Navbar'
+import Footer from '@/components/layout/Footer'
+import { useAuthStore } from '@/store/authStore'
 
 const COLORS = ['#00D4FF', '#7B2FFF', '#00FFC8', '#FF2D9B', '#FFD700', '#00FF88']
 
@@ -34,6 +37,7 @@ interface Bonus {
 export default function BonusesPage() {
   const [bonuses, setBonuses] = useState<Bonus[]>([])
   const [loading, setLoading] = useState(true)
+  const { isAuthenticated } = useAuthStore()
 
   useEffect(() => {
     publicApi.getBonuses()
@@ -44,17 +48,7 @@ export default function BonusesPage() {
 
   return (
     <div className="min-h-screen bg-dark-900">
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-dark-900/80 backdrop-blur-xl border-b border-white/5 px-6 py-4">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <Link href="/" className="font-display font-black text-2xl text-white">
-            NEXUS<span className="text-neon-blue">.</span>
-          </Link>
-          <div className="flex gap-3">
-            <Link href="/login" className="btn-neon text-xs py-2 px-4">Login</Link>
-            <Link href="/register" className="btn-primary text-xs py-2 px-4">Register</Link>
-          </div>
-        </div>
-      </nav>
+      <Navbar />
 
       <main className="pt-24 pb-20">
         <div className="max-w-6xl mx-auto px-4">
@@ -151,8 +145,11 @@ export default function BonusesPage() {
                         <div className="text-xs text-slate-600 mb-4 leading-relaxed border-t border-white/5 pt-3">{bonus.terms}</div>
                       )}
 
-                      <Link href="/register" className="btn-primary w-full text-center block py-2.5 text-xs">
-                        Claim Now
+                      <Link
+                        href={isAuthenticated ? '/dashboard/deposits' : '/register'}
+                        className="btn-primary w-full text-center block py-2.5 text-xs"
+                      >
+                        {isAuthenticated ? 'Deposit & Claim' : 'Claim Now'}
                       </Link>
                     </div>
                   </motion.div>
@@ -161,19 +158,19 @@ export default function BonusesPage() {
             </div>
           )}
 
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
-            className="glass-card p-8 text-center">
-            <Gift className="w-10 h-10 text-neon-blue mx-auto mb-3" />
-            <h2 className="font-display font-bold text-2xl text-white mb-2">More Bonuses Await</h2>
-            <p className="text-slate-400 mb-5">Create your free account to see all available bonuses and promotions.</p>
-            <Link href="/register" className="btn-primary inline-block py-3 px-10 text-sm">Join Free & Claim Bonus</Link>
-          </motion.div>
+          {!isAuthenticated && (
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+              className="glass-card p-8 text-center">
+              <Gift className="w-10 h-10 text-neon-blue mx-auto mb-3" />
+              <h2 className="font-display font-bold text-2xl text-white mb-2">More Bonuses Await</h2>
+              <p className="text-slate-400 mb-5">Create your free account to see all available bonuses and promotions.</p>
+              <Link href="/register" className="btn-primary inline-block py-3 px-10 text-sm">Join Free & Claim Bonus</Link>
+            </motion.div>
+          )}
         </div>
       </main>
 
-      <footer className="border-t border-white/5 py-8 text-center text-slate-600 text-xs">
-        © 2025 NexusGaming. All rights reserved.
-      </footer>
+      <Footer />
     </div>
   )
 }

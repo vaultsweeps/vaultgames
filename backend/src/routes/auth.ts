@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { body } from 'express-validator'
-import { register, login, getMe, verifyEmail, forgotPassword, resetPassword, logout } from '../controllers/authController'
+import { register, login, getMe, verifyEmail, forgotPassword, resetPassword, logout, getBalance, checkUsername } from '../controllers/authController'
 import { authenticate } from '../middleware/auth'
 import { validateRequest } from '../middleware/validate'
 
@@ -26,6 +26,8 @@ router.post('/login',
 )
 
 router.get('/me', authenticate, getMe)
+router.get('/balance', authenticate, getBalance)
+router.get('/check-username', checkUsername)
 router.post('/verify-email/:token', verifyEmail)
 router.post('/forgot-password', [body('email').isEmail()], validateRequest, forgotPassword)
 router.post('/reset-password/:token',
@@ -33,6 +35,9 @@ router.post('/reset-password/:token',
   validateRequest,
   resetPassword
 )
+import { resendVerification } from '../controllers/resendVerification'
+
+router.post('/resend-verification', authenticate, resendVerification)
 router.post('/logout', authenticate, logout)
 
 export default router

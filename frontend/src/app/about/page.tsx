@@ -1,6 +1,10 @@
+'use client'
+import { useState, useEffect } from 'react'
 import Navbar from '@/components/layout/Navbar'
 import Footer from '@/components/layout/Footer'
 import { Shield, Zap, Users, Globe, Award, TrendingUp } from 'lucide-react'
+import { useAuthStore } from '@/store/authStore'
+import Link from 'next/link'
 
 const TEAM_VALUES = [
   { icon: Shield, title: 'Security First', desc: 'Bank-grade encryption and multi-layer security protect every account and transaction.', color: '#00D4FF' },
@@ -12,7 +16,7 @@ const TEAM_VALUES = [
 ]
 
 const MILESTONES = [
-  { year: '2020', title: 'Founded', desc: 'NexusGaming launched with 50 games and a small but dedicated team.' },
+  { year: '2020', title: 'Founded', desc: 'Vault Sweeps launched with 50 games and a small but dedicated team.' },
   { year: '2021', title: '100K Users', desc: 'Reached 100,000 registered players and expanded our game library.' },
   { year: '2022', title: 'Crypto Payments', desc: 'Integrated cryptocurrency payments for faster, borderless transactions.' },
   { year: '2023', title: '500+ Games', desc: 'Grew library to 500+ games and launched our VIP program.' },
@@ -20,6 +24,13 @@ const MILESTONES = [
 ]
 
 export default function AboutPage() {
+  const [mounted, setMounted] = useState(false)
+  const isAuthenticated = useAuthStore(state => state.isAuthenticated)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   return (
     <div className="min-h-screen bg-dark-900">
       <Navbar />
@@ -29,7 +40,7 @@ export default function AboutPage() {
           <div className="text-center mb-16">
             <p className="font-mono text-xs tracking-[0.3em] text-neon-blue uppercase mb-3">Our Story</p>
             <h1 className="font-display font-bold text-5xl sm:text-6xl text-white mb-4">
-              ABOUT <span className="gradient-text">NEXUSGAMING</span>
+              ABOUT <span className="gradient-text">VAULT SWEEPS</span>
             </h1>
             <p className="text-slate-400 text-xl max-w-2xl mx-auto leading-relaxed">
               We're building the future of online gaming — a platform where players come first, security is non-negotiable, and every experience is extraordinary.
@@ -90,9 +101,13 @@ export default function AboutPage() {
           <div className="glass-card p-10 text-center relative overflow-hidden">
             <div className="absolute inset-0 cyber-grid opacity-10" />
             <div className="relative z-10">
-              <h2 className="font-display font-bold text-3xl text-white mb-3">JOIN THE <span className="gradient-text">NEXUS</span></h2>
+              <h2 className="font-display font-bold text-3xl text-white mb-3">JOIN THE <span className="gradient-text">VAULT SWEEPS</span></h2>
               <p className="text-slate-400 mb-6">Be part of the fastest-growing gaming community online.</p>
-              <a href="/register" className="btn-primary inline-block py-3 px-10 text-sm">Create Free Account</a>
+              {mounted && isAuthenticated ? (
+                <Link href="/dashboard" className="btn-primary inline-block py-3 px-10 text-sm">Go to Dashboard</Link>
+              ) : (
+                <Link href="/register" className="btn-primary inline-block py-3 px-10 text-sm">Create Free Account</Link>
+              )}
             </div>
           </div>
         </div>

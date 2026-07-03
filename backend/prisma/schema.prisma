@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 enum Role {
@@ -63,20 +64,22 @@ enum NotificationType {
 }
 
 model User {
-  id          String   @id @default(cuid())
-  username    String   @unique
-  email       String   @unique
-  password    String
-  role        Role     @default(user)
-  isVerified  Boolean  @default(false)
-  isActive    Boolean  @default(true)
-  isBanned    Boolean  @default(false)
-  verifyToken String?
-  resetToken  String?
-  resetExpiry DateTime?
-  lastLogin   DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String   @id @default(cuid())
+  username     String   @unique
+  email        String   @unique
+  password     String
+  role         Role     @default(user)
+  isVerified   Boolean  @default(false)
+  isActive     Boolean  @default(true)
+  isBanned     Boolean  @default(false)
+  verifyToken  String?
+  resetToken   String?
+  resetExpiry  DateTime?
+  lastLogin    DateTime?
+  referralCode String?  @unique
+  promoCode    String?  @unique
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   profile       UserProfile?
   deposits      Deposit[]
@@ -93,6 +96,11 @@ model User {
 
   @@index([email])
   @@index([username])
+  @@index([referralCode])
+
+  providerUsers ProviderUser[]
+  providerTransactions ProviderTransaction[]
+  conversations Conversation[]
 }
 
 model UserProfile {
@@ -120,6 +128,11 @@ model Deposit {
   webhookData      Json?
   approvedBy       String?
   approvedAt       DateTime?
+  rejectedBy       String?
+  rejectedAt       DateTime?
+  rejectionReason  String?
+  telegramMessageId String?
+  telegramChatId   String?
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
@@ -128,6 +141,8 @@ model Deposit {
 
   @@index([userId])
   @@index([status])
+
+  transaction DepositTransaction?
 }
 
 model Withdrawal {
@@ -141,6 +156,20 @@ model Withdrawal {
   adminNotes       String?
   processedBy      String?
   processedAt      DateTime?
+  
+  // Enhanced Withdrawal Management fields
+  requestId          String?   @unique
+  paymentMethodStr   String?
+  accountDetails     String?
+  approvedBy         String?
+  approvedAt         DateTime?
+  rejectedBy         String?
+  rejectedAt         DateTime?
+  rejectionReason    String?
+  locked             Boolean   @default(false)
+  telegramMessageId  String?
+  telegramChatId     String?
+
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
 
@@ -149,6 +178,8 @@ model Withdrawal {
 
   @@index([userId])
   @@index([status])
+  @@index([requestId])
+  @@index([createdAt])
 }
 
 model PaymentMethod {
@@ -186,10 +217,12 @@ model Game {
   requirements  String?
   instructions  String?
   rating        Float    @default(0)
+  providerId    String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   downloads GameDownload[]
+  provider  Provider? @relation(fields: [providerId], references: [id], onDelete: SetNull)
 
   @@index([category])
   @@index([isFeatured])
@@ -376,4 +409,134 @@ model AdminWallet {
   totalOut    Float    @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model Provider {
+  id              String   @id @default(cuid())
+  name            String
+  apiBaseUrl      String
+  agentId         String
+  secretKey       String
+  status          Boolean  @default(true)
+  logo            String?
+  requestTimeout  Int      @default(5000)
+  retryCount      Int      @default(3)
+  endpoints       Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  users           ProviderUser[]
+  logs            ProviderLog[]
+  transactions    ProviderTransaction[]
+  balanceHistory  ProviderBalanceHistory[]
+  games           Game[]
+}
+
+model ProviderUser {
+  id              String   @id @default(cuid())
+  userId          String
+  providerId      String
+  providerUserId  String
+  accountName     String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider        Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, providerUserId])
+  @@unique([userId, providerId])
+}
+
+model ProviderLog {
+  id              String   @id @default(cuid())
+  providerId      String?
+  userId          String?
+  endpoint        String
+  request         Json?
+  response        Json?
+  status          Int
+  errorMessage    String?
+  ipAddress       String?
+  createdAt       DateTime @default(now())
+
+  provider        Provider? @relation(fields: [providerId], references: [id], onDelete: SetNull)
+}
+
+model ProviderTransaction {
+  id              String   @id @default(cuid())
+  providerId      String
+  userId          String
+  type            String   // recharge, withdraw
+  amount          Float
+  orderId         String   @unique
+  providerOrderId String?
+  status          String   // pending, success, failed
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  provider        Provider @relation(fields: [providerId], references: [id])
+  user            User     @relation(fields: [userId], references: [id])
+}
+
+model PaymentWebhook {
+  id              String   @id @default(cuid())
+  provider        String
+  payload         Json
+  status          String   // processed, failed, ignored
+  error           String?
+  createdAt       DateTime @default(now())
+}
+
+model DepositTransaction {
+  id              String   @id @default(cuid())
+  depositId       String   @unique
+  providerId      String?
+  transactionRef  String   @unique
+  status          String
+  amount          Float
+  currency        String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  deposit         Deposit  @relation(fields: [depositId], references: [id], onDelete: Cascade)
+}
+
+model ProviderBalanceHistory {
+  id              String   @id @default(cuid())
+  providerId      String
+  balance         Float
+  recordedAt      DateTime @default(now())
+
+  provider        Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+}
+
+model Conversation {
+  id                 String    @id @default(cuid())
+  conversation_id    String    @unique
+  user_id            String?
+  telegram_user_id   String?
+  telegram_thread_id String?
+  source             String    // 'website' | 'telegram'
+  status             String    @default("open") // 'open' | 'waiting_for_agent' | 'waiting_for_user' | 'closed'
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @updatedAt
+
+  messages           Message[]
+  user               User?     @relation(fields: [user_id], references: [id])
+
+  @@index([conversation_id])
+  @@index([telegram_thread_id])
+}
+
+model Message {
+  id              String       @id @default(cuid())
+  conversation_id String
+  sender_type     String       // 'user' | 'agent'
+  message         String
+  created_at      DateTime     @default(now())
+
+  conversation    Conversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+
+  @@index([conversation_id])
 }

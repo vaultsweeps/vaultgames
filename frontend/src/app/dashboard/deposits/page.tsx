@@ -1,65 +1,92 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
-import { CreditCard, Plus, History, RefreshCw } from 'lucide-react'
+import { CreditCard, Plus, History, Loader2, ChevronRight } from 'lucide-react'
 import { depositApi } from '@/lib/api'
+import ZappayDepositModal from '@/components/modals/ZappayDepositModal'
 
-const PAYMENT_METHODS = [
-  { id: 'bitcoin', name: 'Bitcoin', type: 'crypto', icon: '₿', min: 10, max: 10000, color: '#F7931A', desc: 'BTC payments - fastest processing' },
-  { id: 'usdt', name: 'USDT (TRC20)', type: 'crypto', icon: '₮', min: 10, max: 50000, color: '#26A17B', desc: 'Tether stablecoin on TRON network' },
-  { id: 'eth', name: 'Ethereum', type: 'crypto', icon: 'Ξ', min: 20, max: 20000, color: '#627EEA', desc: 'ETH payment network' },
-  { id: 'bank', name: 'Bank Transfer', type: 'bank', icon: '🏦', min: 50, max: 100000, color: '#00D4FF', desc: 'Direct bank wire transfer' },
-  { id: 'card', name: 'Credit / Debit Card', type: 'card', icon: '💳', min: 20, max: 5000, color: '#7B2FFF', desc: 'Visa, Mastercard accepted' },
-  { id: 'wallet', name: 'E-Wallet', type: 'wallet', icon: '👛', min: 10, max: 2000, color: '#FF2D9B', desc: 'Skrill, Neteller, PayPal' },
-]
+// Method icon/color map
+const METHOD_META: Record<string, { icon: string; color: string; desc: string }> = {
+  cashapp: { icon: '💸', color: '#00D632', desc: 'Send via Cash App — fast & easy' },
+  chime:   { icon: '🏦', color: '#00CFAA', desc: 'Deposit via Chime bank' },
+  crypto:  { icon: '₿',  color: '#F7931A', desc: 'USDT (TRC20) or Bitcoin (BTC)' },
+  bitcoin: { icon: '₿',  color: '#F7931A', desc: 'Bitcoin payments' },
+  usdt:    { icon: '₮',  color: '#26A17B', desc: 'Tether stablecoin (TRC20)' },
+  bank:    { icon: '🏛️', color: '#00D4FF', desc: 'Bank wire transfer' },
+  default: { icon: '💳', color: '#7B2FFF', desc: 'Digital payment' },
+}
 
+function getMeta(code: string) {
+  return METHOD_META[code?.toLowerCase()] || METHOD_META.default
+}
 
 function StatusBadge({ status }: { status: string }) {
-  const map: Record<string, string> = { pending: 'badge-pending', approved: 'badge-approved', failed: 'badge-rejected', processing: 'badge-pending' }
-  return <span className={`${map[status] || 'badge-pending'} text-xs px-2 py-0.5 rounded-full font-mono`}>{status}</span>
+  const map: Record<string, string> = {
+    pending:    'badge-pending',
+    approved:   'badge-approved',
+    failed:     'badge-rejected',
+    processing: 'badge-pending',
+  }
+  return (
+    <span className={`${map[status] || 'badge-pending'} text-xs px-2 py-0.5 rounded-full font-mono`}>
+      {status}
+    </span>
+  )
 }
 
 export default function DepositsPage() {
   const [tab, setTab] = useState<'new' | 'history'>('new')
-  const [selectedMethod, setSelectedMethod] = useState<string>('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [methods, setMethods] = useState<any[]>([])
+  const [loadingMethods, setLoadingMethods] = useState(true)
+  const [selectedMethod, setSelectedMethod] = useState<any>(null)
   const [step, setStep] = useState(1)
   const [depositAmount, setDepositAmount] = useState('')
   const [depositHistory, setDepositHistory] = useState<any[]>([])
   const [historyLoading, setHistoryLoading] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showZappayModal, setShowZappayModal] = useState(false)
 
   const fetchHistory = async () => {
     setHistoryLoading(true)
     try {
       const res = await depositApi.getAll()
       setDepositHistory(res.data.data)
-    } catch { /* silently fail */ } finally {
+    } catch { } finally {
       setHistoryLoading(false)
     }
   }
 
-  useEffect(() => { fetchHistory() }, [])
-
-  const method = PAYMENT_METHODS.find(m => m.id === selectedMethod)
+  useEffect(() => {
+    fetchHistory()
+    depositApi.getPaymentMethods().then(res => {
+      setMethods(res.data.data || [])
+    }).catch(() => setMethods([])).finally(() => setLoadingMethods(false))
+  }, [])
 
   const handleSubmit = async () => {
     if (!selectedMethod || !depositAmount) return toast.error('Please complete all fields')
     const amount = parseFloat(depositAmount)
-    if (!method) return
-    if (amount < method.min) return toast.error(`Minimum deposit is $${method.min}`)
-    if (amount > method.max) return toast.error(`Maximum deposit is $${method.max}`)
+    if (isNaN(amount) || amount <= 0) return toast.error('Enter a valid amount')
+    if (amount < selectedMethod.minAmount) return toast.error(`Minimum deposit is $${selectedMethod.minAmount}`)
+    if (amount > selectedMethod.maxAmount) return toast.error(`Maximum deposit is $${selectedMethod.maxAmount}`)
     setIsSubmitting(true)
     try {
-      const paymentMethodObj = PAYMENT_METHODS.find(m => m.id === selectedMethod)
-      await depositApi.create({ amount: parseFloat(depositAmount), paymentMethodId: selectedMethod })
+      await depositApi.create({ amount, paymentMethodId: selectedMethod.id })
       setStep(3)
       await fetchHistory()
+      toast.success('Deposit request created!')
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Failed to submit deposit')
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  const resetForm = () => {
+    setStep(1)
+    setSelectedMethod(null)
+    setDepositAmount('')
   }
 
   return (
@@ -84,90 +111,133 @@ export default function DepositsPage() {
 
       {tab === 'new' && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+
+          {/* STEP 1 — Select Method */}
           {step === 1 && (
             <div>
-              <h3 className="font-display text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Select Payment Method</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {PAYMENT_METHODS.map(m => (
-                  <button key={m.id} onClick={() => { setSelectedMethod(m.id); setStep(2) }}
-                    className={`glass-card p-4 text-left transition-all hover:-translate-y-1 group`}
-                  >
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg" style={{ background: `${m.color}20`, border: `1px solid ${m.color}30` }}>
-                        {m.icon}
-                      </div>
-                      <div>
-                        <p className="text-white text-sm font-medium">{m.name}</p>
-                        <p className="text-xs text-slate-500 font-mono">{m.type.toUpperCase()}</p>
-                      </div>
-                    </div>
-                    <p className="text-xs text-slate-500">{m.desc}</p>
-                    <p className="text-xs text-slate-600 mt-2">Min: ${m.min} · Max: ${m.max.toLocaleString()}</p>
-                  </button>
-                ))}
-              </div>
+              <h3 className="font-display text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">
+                Select Payment Method
+              </h3>
+              {loadingMethods ? (
+                <div className="flex items-center gap-3 text-slate-500 py-8">
+                  <Loader2 className="w-5 h-5 animate-spin" /> Loading methods...
+                </div>
+              ) : methods.length === 0 ? (
+                <p className="text-slate-500 py-8">No deposit methods available. Please contact support.</p>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {methods.map(m => {
+                    const meta = getMeta(m.code)
+                    const isSoon = m.code !== 'zappay'
+                    return (
+                      <button key={m.id}
+                        onClick={() => { 
+                          if (isSoon) {
+                            toast.error('This method is coming soon!')
+                            return
+                          }
+                          if (m.code === 'zappay') {
+                            setShowZappayModal(true)
+                          } else {
+                            setSelectedMethod(m); 
+                            setStep(2) 
+                          }
+                        }}
+                        className={`glass-card p-5 text-left transition-all group flex flex-col gap-3 ${isSoon ? 'opacity-50 cursor-not-allowed hover:bg-white/5' : 'hover:-translate-y-1'}`}>
+                        <div className="flex justify-between items-start">
+                          <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl"
+                            style={{ background: `${meta.color}20`, border: `1px solid ${meta.color}40` }}>
+                            {meta.icon}
+                          </div>
+                          {isSoon && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-slate-400 border border-white/10">
+                              Soon
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-white font-semibold">{m.name}</p>
+                          <p className="text-xs text-slate-500 mt-0.5">{meta.desc}</p>
+                          {!isSoon && <p className="text-xs text-slate-600 mt-1">Min: ${m.minAmount} · Max: ${m.maxAmount.toLocaleString()}</p>}
+                        </div>
+                        {!isSoon && <ChevronRight className="w-4 h-4 text-slate-600 group-hover:text-neon-blue transition-colors self-end" />}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
             </div>
           )}
 
-          {step === 2 && method && (
-            <div className="glass-card p-6 max-w-md">
-              <button onClick={() => setStep(1)} className="text-xs text-slate-500 hover:text-white mb-4 transition-colors">← Back</button>
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg" style={{ background: `${method.color}20`, border: `1px solid ${method.color}30` }}>
-                  {method.icon}
+          {/* STEP 2 — Enter Amount */}
+          {step === 2 && selectedMethod && (() => {
+            const meta = getMeta(selectedMethod.code)
+            return (
+              <div className="glass-card p-6 max-w-md space-y-5">
+                <button onClick={() => setStep(1)} className="text-xs text-slate-500 hover:text-white transition-colors">← Back</button>
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl"
+                    style={{ background: `${meta.color}20`, border: `1px solid ${meta.color}40` }}>
+                    {meta.icon}
+                  </div>
+                  <div>
+                    <p className="text-white font-bold">{selectedMethod.name}</p>
+                    <p className="text-xs text-slate-500">Min: ${selectedMethod.minAmount} · Max: ${selectedMethod.maxAmount.toLocaleString()}</p>
+                  </div>
                 </div>
+                {selectedMethod.instructions && (
+                  <p className="text-xs text-slate-400 bg-white/5 rounded-xl p-3 border border-white/5">
+                    {selectedMethod.instructions}
+                  </p>
+                )}
                 <div>
-                  <p className="text-white font-medium">{method.name}</p>
-                  <p className="text-xs text-slate-500">Min: ${method.min} · Max: ${method.max.toLocaleString()}</p>
+                  <label className="block text-xs font-mono tracking-wider text-slate-400 uppercase mb-2">Deposit Amount (USD)</label>
+                  <input
+                    type="number" value={depositAmount}
+                    onChange={e => setDepositAmount(e.target.value)}
+                    placeholder={`Min $${selectedMethod.minAmount}`}
+                    className="input-neon text-xl font-display"
+                    min={selectedMethod.minAmount}
+                    max={selectedMethod.maxAmount}
+                  />
+                  <div className="flex gap-2 mt-3">
+                    {[50, 100, 250, 500].map(amt => (
+                      <button key={amt} onClick={() => setDepositAmount(String(amt))}
+                        className="px-3 py-1.5 text-xs glass rounded-lg text-slate-400 hover:text-neon-blue border border-white/10 hover:border-neon-blue/30 transition-all">
+                        ${amt}
+                      </button>
+                    ))}
+                  </div>
                 </div>
+                <button onClick={handleSubmit} disabled={isSubmitting}
+                  className="btn-primary w-full py-3 text-sm disabled:opacity-50 flex items-center justify-center gap-2">
+                  {isSubmitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Processing...</> : 'CONTINUE TO PAYMENT'}
+                </button>
               </div>
-              <div className="mb-6">
-                <label className="block text-xs font-mono tracking-wider text-slate-400 uppercase mb-2">Deposit Amount (USD)</label>
-                <input
-                  type="number"
-                  value={depositAmount}
-                  onChange={e => setDepositAmount(e.target.value)}
-                  placeholder={`Min $${method.min}`}
-                  className="input-neon text-xl font-display"
-                  min={method.min}
-                  max={method.max}
-                />
-                <div className="flex gap-2 mt-3">
-                  {[50, 100, 250, 500].map(amt => (
-                    <button key={amt} onClick={() => setDepositAmount(String(amt))}
-                      className="px-3 py-1.5 text-xs glass rounded-lg text-slate-400 hover:text-neon-blue border border-white/10 hover:border-neon-blue/30 transition-all">
-                      ${amt}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <button onClick={handleSubmit} disabled={isSubmitting} className="btn-primary w-full py-3 text-sm disabled:opacity-50">
-                {isSubmitting ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Processing...
-                  </span>
-                ) : 'CONTINUE TO PAYMENT'}
-              </button>
-            </div>
-          )}
+            )
+          })()}
 
-          {step === 3 && method && (
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="glass-card p-8 max-w-md text-center">
+          {/* STEP 3 — Success */}
+          {step === 3 && selectedMethod && (
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+              className="glass-card p-8 max-w-md text-center">
               <div className="w-16 h-16 bg-neon-blue/10 border border-neon-blue/20 rounded-full flex items-center justify-center mx-auto mb-4">
                 <CreditCard className="w-8 h-8 text-neon-blue" />
               </div>
               <h3 className="font-display font-bold text-xl text-white mb-2">PAYMENT REQUEST CREATED</h3>
-              <p className="text-slate-400 text-sm mb-6">Your deposit request for <span className="text-white font-medium">${depositAmount}</span> via {method.name} has been submitted.</p>
+              <p className="text-slate-400 text-sm mb-6">
+                Your deposit request for <span className="text-white font-medium">${depositAmount}</span> via {selectedMethod.name} has been submitted.
+              </p>
               <div className="glass rounded-xl p-4 text-left mb-6 space-y-2 text-sm">
-                <div className="flex justify-between"><span className="text-slate-500">Method</span><span className="text-white">{method.name}</span></div>
+                <div className="flex justify-between"><span className="text-slate-500">Method</span><span className="text-white">{selectedMethod.name}</span></div>
                 <div className="flex justify-between"><span className="text-slate-500">Amount</span><span className="text-neon-blue font-mono">${depositAmount}</span></div>
                 <div className="flex justify-between"><span className="text-slate-500">Status</span><span className="badge-pending text-xs px-2 py-0.5 rounded-full">PENDING</span></div>
-                <div className="flex justify-between"><span className="text-slate-500">Reference</span><span className="text-white font-mono text-xs">DEP-{Date.now().toString().slice(-6)}</span></div>
               </div>
-              <p className="text-xs text-slate-500 mb-4">Complete the payment using the instructions sent to your email. Your deposit will be approved once payment is confirmed.</p>
+              <p className="text-xs text-slate-500 mb-4">
+                Our team will review and approve your deposit within 1–24 hours.
+              </p>
               <div className="flex gap-3">
-                <button onClick={() => { setStep(1); setSelectedMethod(''); setDepositAmount('') }} className="btn-neon flex-1 text-sm py-2.5">New Deposit</button>
+                <button onClick={resetForm} className="btn-neon flex-1 text-sm py-2.5">New Deposit</button>
                 <button onClick={() => setTab('history')} className="glass flex-1 text-sm py-2.5 rounded-xl text-slate-400 hover:text-white border border-white/10 transition-all">View History</button>
               </div>
             </motion.div>
@@ -175,6 +245,7 @@ export default function DepositsPage() {
         </motion.div>
       )}
 
+      {/* History Tab */}
       {tab === 'history' && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
           <div className="glass-card overflow-hidden">
@@ -203,6 +274,14 @@ export default function DepositsPage() {
           </div>
         </motion.div>
       )}
+
+      <ZappayDepositModal 
+        isOpen={showZappayModal} 
+        onClose={() => {
+          setShowZappayModal(false)
+          fetchHistory()
+        }} 
+      />
     </div>
   )
 }

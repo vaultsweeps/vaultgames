@@ -2,7 +2,7 @@ import { Suspense } from 'react'
 import Navbar from '@/components/layout/Navbar'
 import Footer from '@/components/layout/Footer'
 import HeroSlider from '@/components/home/HeroSlider'
-import StatsSection from '@/components/home/StatsSection'
+import QuickLinks from '@/components/home/QuickLinks'
 import FeaturedGames from '@/components/home/FeaturedGames'
 import HomePageClient from '@/components/home/HomePageClient'
 
@@ -10,9 +10,9 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-dark-900">
       <Navbar />
-      <main>
+      <main className="pt-24 pb-12">
         <HeroSlider />
-        <StatsSection />
+        <QuickLinks />
         <FeaturedGames />
         <Suspense fallback={null}>
           <HomePageClient />

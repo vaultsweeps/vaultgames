@@ -1,17 +1,19 @@
 import { Request, Response } from 'express'
 import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
-import { PrismaClient } from '@prisma/client'
+import prisma from '../lib/prisma'
 import { asyncHandler, AppError } from '../middleware/errorHandler'
 import { generateToken } from '../middleware/auth'
 import { sendVerificationEmail, sendPasswordResetEmail, sendWelcomeEmail } from '../services/emailService'
 import { AuthRequest } from '../middleware/auth'
+import { ProviderFactory } from '../services/provider/ProviderFactory'
+import { WalletService } from '../services/WalletService'
 
-const prisma = new PrismaClient()
+
 
 // POST /api/auth/register
 export const register = asyncHandler(async (req: Request, res: Response) => {
-  const { username, email, password } = req.body
+  const { username, email, password, referralCode } = req.body
 
   // Check existing
   const existing = await prisma.user.findFirst({
@@ -25,12 +27,28 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
   const hashedPassword = await bcrypt.hash(password, 12)
   const verifyToken = crypto.randomBytes(32).toString('hex')
 
+  let referredById = null
+  if (referralCode) {
+    const referrer = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { referralCode: { equals: referralCode, mode: 'insensitive' } },
+          { promoCode: { equals: referralCode, mode: 'insensitive' } }
+        ]
+      }
+    })
+    if (referrer) {
+      referredById = referrer.id
+    }
+  }
+
   const user = await prisma.user.create({
     data: {
       username,
       email,
       password: hashedPassword,
       verifyToken,
+      referredById,
       profile: { create: {} }
     },
     select: { id: true, username: true, email: true, role: true, isVerified: true, createdAt: true }
@@ -41,6 +59,48 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
     await sendVerificationEmail(email, username, verifyToken)
   } catch (e) {
     console.error('Email send error:', e)
+  }
+
+  // Auto-create provider account (async)
+  try {
+    const providerService = await ProviderFactory.getActiveProvider()
+    if (providerService) {
+      let newProviderData = null;
+      let attempts = 0;
+      let currentUsername = username;
+
+      // Wrap in an IIFE to handle the async loop gracefully
+      (async () => {
+        while (!newProviderData && attempts < 5) {
+          attempts++;
+          try {
+            newProviderData = await providerService.createPlayer(currentUsername, password);
+          } catch (err: any) {
+            if (err?.message?.includes('Username Already Exists') || err?.message?.includes('Username already exists')) {
+              // Generate new username
+              const suffix = Math.floor(Math.random() * 9000) + 1000;
+              currentUsername = `${username.substring(0, 10)}_${suffix}`;
+            } else {
+              console.error('Provider player creation failed for user', user.id, err);
+              break; // Break on other errors
+            }
+          }
+        }
+
+        if (newProviderData) {
+          await prisma.providerUser.create({
+            data: {
+              userId: user.id,
+              providerId: providerService.getProviderId(),
+              providerUserId: newProviderData.userId,
+              accountName: newProviderData.accountName
+            }
+          });
+        }
+      })();
+    }
+  } catch (e) {
+    console.error('Provider fetch error:', e)
   }
 
   res.status(201).json({
@@ -173,6 +233,21 @@ export const resetPassword = asyncHandler(async (req: Request, res: Response) =>
     data: { password: hashedPassword, resetToken: null, resetExpiry: null }
   })
 
+  // Sync password with provider (async)
+  try {
+    const providerUser = await prisma.providerUser.findFirst({ where: { userId: user.id } })
+    if (providerUser) {
+      const providerService = await ProviderFactory.getProviderById(providerUser.providerId)
+      if (providerService) {
+        providerService.resetPlayerPassword(providerUser.providerUserId, password).catch(err => {
+          console.error('Provider password sync failed for user', user.id, err)
+        })
+      }
+    }
+  } catch (e) {
+    console.error('Provider password sync error:', e)
+  }
+
   res.json({ success: true, message: 'Password reset successfully. You can now login.' })
 })
 
@@ -185,3 +260,49 @@ export const logout = asyncHandler(async (req: AuthRequest, res: Response) => {
   }
   res.json({ success: true, message: 'Logged out successfully' })
 })
+
+// GET /api/auth/balance
+export const getBalance = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const balance = await WalletService.getWalletBalance(req.user!.id);
+  res.json({ success: true, data: { balance } });
+})
+
+// GET /api/auth/check-username?username=xxx  (public — no auth needed)
+export const checkUsername = asyncHandler(async (req: Request, res: Response) => {
+  const username = (req.query.username as string || '').trim()
+
+  // Format check first
+  if (!username || username.length < 3 || username.length > 20) {
+    return res.json({ available: false, reason: 'Username must be 3–20 characters.' })
+  }
+  if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+    return res.json({ available: false, reason: 'Only letters, numbers, and underscores allowed.' })
+  }
+
+  // Check our DB
+  const existing = await prisma.user.findFirst({ where: { username: { equals: username, mode: 'insensitive' } } })
+  if (existing) {
+    return res.json({ available: false, reason: 'Username already taken on this platform.' })
+  }
+
+  // Check game provider (async — best effort; if it fails we still allow registration)
+  try {
+    const providerService = await ProviderFactory.getActiveProvider()
+    if (providerService) {
+      await providerService.getPlayerIdByUsername(username)
+      // If no error was thrown, the username exists in the game
+      return res.json({ available: false, reason: 'Username already registered in the game. Please choose another.' })
+    }
+  } catch (err: any) {
+    // A "User not found" type error from the provider means the username IS free
+    const msg = (err?.message || '').toLowerCase()
+    const isFreeSignal = msg.includes('not found') || msg.includes('invalid') || msg.includes('user id') || msg.includes('8') // error code 8 = invalid user id
+    if (!isFreeSignal) {
+      // Provider call failed for unknown reason — allow the registration and let it fail at create time
+      console.warn('[checkUsername] Provider check failed non-fatally:', err?.message)
+    }
+  }
+
+  return res.json({ available: true })
+})
+

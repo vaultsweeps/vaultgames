@@ -1,14 +1,17 @@
 'use client'
 import { motion } from 'framer-motion'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { CreditCard, ArrowUpCircle, Gamepad2, Gift, HelpCircle, ChevronRight, Clock, CheckCircle, XCircle } from 'lucide-react'
+import { CreditCard, ArrowUpCircle, Gamepad2, Gift, HelpCircle, ChevronRight, Clock, CheckCircle, XCircle, Users2 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
+import { depositApi, withdrawalApi } from '@/lib/api'
 
 const QUICK_ACTIONS = [
   { href: '/dashboard/deposits', icon: CreditCard, label: 'Make Deposit', desc: 'Add funds to your account', color: '#00D4FF' },
   { href: '/dashboard/cashouts', icon: ArrowUpCircle, label: 'Request Cashout', desc: 'Withdraw your winnings', color: '#7B2FFF' },
   { href: '/dashboard/games', icon: Gamepad2, label: 'Browse Games', desc: 'Download & play games', color: '#00FFC8' },
   { href: '/dashboard/bonuses', icon: Gift, label: 'Claim Bonus', desc: 'Available promotions', color: '#FF2D9B' },
+  { href: '/dashboard/invite', icon: Users2, label: 'Invite & Earn', desc: 'Refer friends, earn 50%', color: '#FFD700' },
 ]
 
 const RECENT_TRANSACTIONS = [
@@ -28,6 +31,50 @@ function StatusBadge({ status }: { status: string }) {
 
 export default function DashboardPage() {
   const { user } = useAuthStore()
+  const [transactions, setTransactions] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchTransactions = async () => {
+      try {
+        const [depRes, withRes] = await Promise.all([
+          depositApi.getAll({ limit: 5 }),
+          withdrawalApi.getAll({ limit: 5 })
+        ])
+        
+        const deps = (depRes.data?.data || []).map((d: any) => ({
+          id: d.id,
+          type: 'deposit',
+          amount: d.amount,
+          status: d.status,
+          method: d.paymentMethod?.name || 'Unknown',
+          date: new Date(d.createdAt).toISOString().split('T')[0],
+          timestamp: new Date(d.createdAt).getTime()
+        }))
+        
+        const withs = (withRes.data?.data || []).map((w: any) => ({
+          id: w.id,
+          type: 'cashout',
+          amount: w.amount,
+          status: w.status,
+          method: w.paymentMethod?.name || 'Unknown',
+          date: new Date(w.createdAt).toISOString().split('T')[0],
+          timestamp: new Date(w.createdAt).getTime()
+        }))
+        
+        const combined = [...deps, ...withs]
+          .sort((a, b) => b.timestamp - a.timestamp)
+          .slice(0, 5)
+          
+        setTransactions(combined)
+      } catch (err) {
+        console.error('Failed to fetch transactions', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchTransactions()
+  }, [])
 
   return (
     <div className="space-y-8">
@@ -47,7 +94,7 @@ export default function DashboardPage() {
       {/* Quick Actions */}
       <div>
         <h3 className="font-display font-bold text-sm text-slate-400 uppercase tracking-wider mb-4">Quick Actions</h3>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
           {QUICK_ACTIONS.map((action, i) => (
             <motion.div key={i} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
               <Link href={action.href} className="block glass-card p-5 hover:border-neon-blue/30 transition-all group hover:-translate-y-1">
@@ -85,7 +132,11 @@ export default function DashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {RECENT_TRANSACTIONS.map(tx => (
+                {loading ? (
+                  <tr><td colSpan={5} className="text-center py-4 text-slate-500">Loading transactions...</td></tr>
+                ) : transactions.length === 0 ? (
+                  <tr><td colSpan={5} className="text-center py-4 text-slate-500">No recent transactions.</td></tr>
+                ) : transactions.map((tx: any) => (
                   <tr key={tx.id}>
                     <td>
                       <span className={`text-xs font-mono ${tx.type === 'deposit' ? 'text-green-400' : 'text-orange-400'}`}>

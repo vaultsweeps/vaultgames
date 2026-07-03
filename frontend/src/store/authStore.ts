@@ -26,7 +26,7 @@ export const useAuthStore = create<AuthStore>()(
         try {
           const response = await authApi.login({ email, password })
           const { user, token } = response.data.data
-          Cookies.set('nexus_token', token, { expires: 7, secure: true, sameSite: 'strict' })
+          Cookies.set('vaultsweeps_token', token, { expires: 7, secure: true, sameSite: 'strict' })
           set({ user, token, isAuthenticated: true, isLoading: false })
         } catch (error) {
           set({ isLoading: false })
@@ -47,19 +47,19 @@ export const useAuthStore = create<AuthStore>()(
       },
 
       logout: () => {
-        Cookies.remove('nexus_token')
+        Cookies.remove('vaultsweeps_token')
         set({ user: null, token: null, isAuthenticated: false })
         if (typeof window !== 'undefined') window.location.href = '/login'
       },
 
       fetchMe: async () => {
-        const token = Cookies.get('nexus_token')
+        const token = Cookies.get('vaultsweeps_token')
         if (!token) { set({ isAuthenticated: false }); return }
         try {
           const response = await authApi.getMe()
           set({ user: response.data.data, isAuthenticated: true, token })
         } catch {
-          Cookies.remove('nexus_token')
+          Cookies.remove('vaultsweeps_token')
           set({ user: null, token: null, isAuthenticated: false })
         }
       },
@@ -68,7 +68,7 @@ export const useAuthStore = create<AuthStore>()(
       setToken: (token: string) => set({ token }),
     }),
     {
-      name: 'nexus-auth',
+      name: 'vaultsweeps-auth',
       partialize: (state) => ({ token: state.token, user: state.user, isAuthenticated: state.isAuthenticated })
     }
   )

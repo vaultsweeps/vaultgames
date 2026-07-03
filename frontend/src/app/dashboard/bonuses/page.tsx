@@ -30,27 +30,8 @@ interface Bonus {
   expiresAt: string | null
 }
 
-interface ClaimedSet {
-  [id: string]: boolean
-}
-
-function BonusCard({ bonus, color, isClaimed, onClaim }: { bonus: Bonus; color: string; isClaimed: boolean; onClaim: (id: string) => void }) {
+function BonusCard({ bonus, color }: { bonus: Bonus; color: string }) {
   const [expanded, setExpanded] = useState(false)
-  const [claiming, setClaiming] = useState(false)
-
-  const handleClaim = async () => {
-    if (isClaimed) return
-    setClaiming(true)
-    try {
-      await bonusesApi.claim(bonus.id)
-      onClaim(bonus.id)
-      toast.success(`${bonus.title} claimed! Check your account.`)
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Failed to claim bonus')
-    } finally {
-      setClaiming(false)
-    }
-  }
 
   const badge = TYPE_BADGE[bonus.type] || bonus.type.toUpperCase()
   const isVip = bonus.type === 'vip'
@@ -135,17 +116,9 @@ function BonusCard({ bonus, color, isClaimed, onClaim }: { bonus: Bonus; color: 
           </>
         )}
 
-        <button onClick={handleClaim} disabled={isClaimed || claiming || isVip}
-          className={`w-full py-2.5 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 ${
-            isClaimed ? 'bg-green-500/10 text-green-400 border border-green-500/20 cursor-default'
-              : isVip ? 'glass text-slate-400 border border-white/10 cursor-not-allowed'
-              : 'btn-primary'
-          }`}>
-          {claiming ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-            : isClaimed ? <><Check className="w-4 h-4" /> Claimed</>
-            : isVip ? <><Zap className="w-4 h-4" /> Contact Support</>
-            : <><Gift className="w-4 h-4" /> Claim Bonus</>}
-        </button>
+        <div className="w-full py-2.5 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 bg-green-500/10 text-green-400 border border-green-500/20 cursor-default mt-4">
+          <Check className="w-4 h-4" /> System Auto-Applied
+        </div>
       </div>
     </motion.div>
   )
@@ -154,8 +127,6 @@ function BonusCard({ bonus, color, isClaimed, onClaim }: { bonus: Bonus; color: 
 export default function BonusesPage() {
   const [bonuses, setBonuses] = useState<Bonus[]>([])
   const [loading, setLoading] = useState(true)
-  const [claimed, setClaimed] = useState<ClaimedSet>({})
-
   const fetchBonuses = async () => {
     setLoading(true)
     try {
@@ -169,10 +140,6 @@ export default function BonusesPage() {
   }
 
   useEffect(() => { fetchBonuses() }, [])
-
-  const handleClaim = (id: string) => {
-    setClaimed(prev => ({ ...prev, [id]: true }))
-  }
 
   return (
     <div className="space-y-6">
@@ -204,13 +171,11 @@ export default function BonusesPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {bonuses.map((bonus, i) => (
-            <BonusCard
-              key={bonus.id}
-              bonus={bonus}
-              color={COLORS[i % COLORS.length]}
-              isClaimed={!!claimed[bonus.id]}
-              onClaim={handleClaim}
-            />
+              <BonusCard
+                key={bonus.id}
+                bonus={bonus}
+                color={COLORS[i % COLORS.length]}
+              />
           ))}
         </div>
       )}

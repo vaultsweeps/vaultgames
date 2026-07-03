@@ -1,0 +1,176 @@
+.container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  width: 100%;
+  background-color: var(--dark-900);
+}
+
+.pl {
+  aspect-ratio: 1;
+  display: grid;
+  gap: 1em;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  width: 8em;
+}
+
+.pl__dot {
+  position: relative;
+}
+
+.pl__dot,
+.pl__dot::before,
+.pl__dot::after {
+  animation-duration: 2s;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+.pl__dot::before,
+.pl__dot::after {
+  aspect-ratio: 1;
+  background-color: var(--dark-800);
+  border-radius: 50%;
+  content: "";
+  display: block;
+  position: absolute;
+  width: 100%;
+}
+
+.pl__dot::after {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0);
+}
+
+/* Colors matching our theme */
+.pl__dot__pink::before,
+.pl__dot__pink::after { background-color: var(--neon-pink); }
+
+.pl__dot__purple::before,
+.pl__dot__purple::after { background-color: var(--neon-purple); }
+
+.pl__dot__cyan::before,
+.pl__dot__cyan::after { background-color: var(--neon-cyan); }
+
+.pl__dot__blue::before,
+.pl__dot__blue::after { background-color: var(--neon-blue); }
+
+.pl__dot__lg::after { width: 500%; }
+.pl__dot__sm::after { width: 167%; }
+
+.pl__dot:nth-child(2),
+.pl__dot:nth-child(4),
+.pl__dot:nth-child(6),
+.pl__dot:nth-child(8) { animation-name: dotRotate; }
+
+.pl__dot:nth-child(2) { transform-origin: 50% 200%; }
+.pl__dot:nth-child(4) { transform-origin: 200% 50%; }
+.pl__dot:nth-child(6) { transform-origin: -100% 50%; }
+.pl__dot:nth-child(8) { transform-origin: 50% -100%; }
+
+.pl__dot:nth-child(1)::before { animation-name: dotScale1; }
+.pl__dot:nth-child(2)::before { animation-name: dotScale2; }
+.pl__dot:nth-child(3)::before { animation-name: dotScale3; }
+.pl__dot:nth-child(4)::before { animation-name: dotScale4; }
+.pl__dot:nth-child(5)::before { animation-name: dotScale5; }
+.pl__dot:nth-child(6)::before { animation-name: dotScale6; }
+.pl__dot:nth-child(7)::before { animation-name: dotScale7; }
+.pl__dot:nth-child(8)::before { animation-name: dotScale8; }
+.pl__dot:nth-child(9)::before { animation-name: dotScale9; }
+
+.pl__dot:nth-child(3)::after { animation-name: dotWave3; }
+.pl__dot:nth-child(5)::after { animation-name: dotWave5a, dotWave5b; }
+.pl__dot:nth-child(7)::after { animation-name: dotWave7; }
+.pl__dot:nth-child(9)::after { animation-name: dotWave9; }
+
+/* Animations */
+@keyframes dotRotate {
+  from, 22% { animation-timing-function: ease-out; transform: rotate(-45deg); }
+  37%, to { transform: rotate(0); }
+}
+
+@keyframes dotScale1 {
+  from, 36% { transform: translate(0, 0) scale(0); }
+  50%, 71% { transform: translate(0, 0) scale(1); }
+  87%, to { transform: translate(75%, 75%) scale(0); }
+}
+
+@keyframes dotScale2 {
+  from, 25% { animation-timing-function: ease-out; transform: translate(0, 0) scale(0); }
+  40%, 71% { transform: translate(0, 0) scale(1); }
+  87%, to { transform: translate(0, -100%) scale(0); }
+}
+
+@keyframes dotScale3 {
+  from, 27% { animation-timing-function: ease-in; transform: translate(0, 0) scale(0); }
+  45%, 71% { transform: translate(0, 0) scale(1); }
+  87%, to { transform: translate(-75%, 75%) scale(0); }
+}
+
+@keyframes dotScale4 {
+  from, 28% { animation-timing-function: ease-out; transform: translate(0, 0) scale(0); }
+  43%, 71% { transform: translate(0, 0) scale(1); }
+  87%, to { transform: translate(-100%, 0) scale(0); }
+}
+
+@keyframes dotScale5 {
+  from, 9%, to { transform: scale(0); }
+  26% { transform: scale(1.17); }
+  41%, 75% { transform: scale(1); }
+}
+
+@keyframes dotScale6 {
+  from, 22% { animation-timing-function: ease-out; transform: translate(0, 0) scale(0); }
+  37%, 71% { transform: translate(0, 0) scale(1); }
+  87%, to { transform: translate(100%, 0) scale(0); }
+}
+
+@keyframes dotScale7 {
+  from, 36% { animation-timing-function: ease-in; transform: translate(0, 0) scale(0); }
+  53%, 71% { transform: translate(0, 0) scale(1); }
+  87%, to { transform: translate(75%, -75%) scale(0); }
+}
+
+@keyframes dotScale8 {
+  from, 24% { animation-timing-function: ease-out; transform: translate(0, 0) scale(0); }
+  39%, 71% { transform: translate(0, 0) scale(1); }
+  87%, to { transform: translate(0, 100%) scale(0); }
+}
+
+@keyframes dotScale9 {
+  from, 32% { animation-timing-function: ease-in; transform: translate(0, 0) scale(0); }
+  49%, 71% { transform: translate(0, 0) scale(1); }
+  87%, to { transform: translate(-75%, -75%) scale(0); }
+}
+
+@keyframes dotWave3 {
+  from { visibility: hidden; }
+  45% { opacity: 1; transform: translate(-50%, -50%) scale(0.6); visibility: hidden; }
+  61%, to { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+}
+
+@keyframes dotWave5a {
+  from { transform: translate(-50%, -50%) scale(0.2); }
+  8% { transform: translate(-50%, -50%) scale(0.8); }
+  25%, to { transform: translate(-50%, -50%) scale(1); }
+}
+
+@keyframes dotWave5b {
+  from, 25%, to { opacity: 0; }
+  8% { opacity: 0.5; }
+}
+
+@keyframes dotWave7 {
+  from { visibility: hidden; }
+  53% { opacity: 1; transform: translate(-50%, -50%) scale(0.6); visibility: hidden; }
+  69%, to { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+}
+
+@keyframes dotWave9 {
+  from { visibility: hidden; }
+  49% { opacity: 1; transform: translate(-50%, -50%) scale(0.6); visibility: hidden; }
+  65%, to { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+}

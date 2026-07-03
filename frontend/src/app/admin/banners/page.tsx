@@ -195,7 +195,7 @@ export default function AdminBannersPage() {
             <h3 className="font-display font-bold text-xl text-white mb-5">{isNew ? 'CREATE BANNER' : 'EDIT BANNER'}</h3>
             <div className="space-y-4">
               {[
-                { key: 'title', label: 'Title', placeholder: 'ENTER THE NEXUS' },
+                { key: 'title', label: 'Title', placeholder: 'ENTER THE VAULT SWEEPS' },
                 { key: 'subtitle', label: 'Subtitle', placeholder: 'The Ultimate Gaming Universe' },
                 { key: 'imageUrl', label: 'Image URL', placeholder: 'https://...' },
                 { key: 'videoUrl', label: 'Video URL (optional)', placeholder: 'https://...' },

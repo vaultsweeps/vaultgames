@@ -1,11 +1,15 @@
 import { Response } from 'express'
-import { PrismaClient } from '@prisma/client'
+import prisma from '../lib/prisma'
 import { v4 as uuidv4 } from 'uuid'
 import { asyncHandler, AppError } from '../middleware/errorHandler'
 import { AuthRequest } from '../middleware/auth'
 import { createNotification } from '../services/notificationService'
+import { ZappayService } from '../services/payment/ZappayService'
+import { TelegramService } from '../services/TelegramService'
+import { TelegramSupportBot } from '../services/TelegramSupportBot'
+import { sendAdminZappayNotification } from '../services/emailService'
+import { ImapZappayService } from '../services/payment/ImapZappayService'
 
-const prisma = new PrismaClient()
 
 // GET /api/deposits - User's deposits
 export const getDeposits = asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -33,7 +37,7 @@ export const getDeposits = asyncHandler(async (req: AuthRequest, res: Response) 
 
 // POST /api/deposits - Create deposit
 export const createDeposit = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const { amount, paymentMethodId, currency = 'USD' } = req.body
+  const { amount, paymentMethodId, currency = 'USD', accountName } = req.body
 
   if (amount < 1) throw new AppError('Minimum deposit amount is $1', 400)
 
@@ -53,7 +57,8 @@ export const createDeposit = asyncHandler(async (req: AuthRequest, res: Response
       currency,
       paymentMethodId,
       paymentReference,
-      status: 'pending'
+      status: 'pending',
+      notes: accountName || ''
     },
     include: { paymentMethod: true }
   })
@@ -63,6 +68,22 @@ export const createDeposit = asyncHandler(async (req: AuthRequest, res: Response
     data: { type: 'deposit_created', entityId: deposit.id, userId: req.user!.id, amount, status: 'pending' }
   })
 
+  let paymentUrl: string | null = null;
+  
+  if (paymentMethod.code.toUpperCase() === 'ZAPPAY') {
+    // Generate Zappay URL
+    const returnUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/dashboard/deposits?status=pending`;
+    paymentUrl = ZappayService.createPaymentRequest(amount, paymentReference, returnUrl);
+
+    // Notify Admin via Email
+    sendAdminZappayNotification(amount, accountName, paymentReference).catch(console.error);
+
+    // Trigger instant IMAP check after a short delay
+    setTimeout(() => {
+      ImapZappayService.parseEmailsAndVerifyDeposits().catch(console.error);
+    }, 3000);
+  }
+
   // Notify user
   await createNotification(req.user!.id, {
     title: 'Deposit Submitted',
@@ -71,10 +92,22 @@ export const createDeposit = asyncHandler(async (req: AuthRequest, res: Response
     link: '/dashboard/deposits'
   })
 
+  // Notify Telegram with interactive Approve / Reject buttons
+  const user = await prisma.user.findUnique({
+    where: { id: req.user!.id },
+    select: { id: true, username: true, email: true }
+  })
+  try {
+    const bot = TelegramSupportBot.getInstance()
+    await bot.sendDepositNotification(deposit, user)
+  } catch (e: any) {
+    console.error('[Telegram Deposit Notification Error]', e?.message || e)
+  }
+
   res.status(201).json({
     success: true,
     message: 'Deposit request created successfully',
-    data: deposit
+    data: { ...deposit, paymentUrl }
   })
 })
 

@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form'
 import toast from 'react-hot-toast'
 import { HelpCircle, Plus, MessageCircle, Send, ChevronRight, Clock, CheckCircle } from 'lucide-react'
 import { supportApi, publicApi } from '@/lib/api'
+import LiveChat from './LiveChat'
 
 const CATEGORIES = ['General', 'Deposits', 'Cashouts', 'Games', 'Bonuses', 'Technical', 'Account', 'Other']
 const PRIORITIES = ['low', 'medium', 'high']
@@ -17,7 +18,7 @@ const PRIORITY_STYLES: Record<string, string> = {
 }
 
 export default function SupportPage() {
-  const [tab, setTab] = useState<'tickets' | 'new' | 'contact'>('tickets')
+  const [tab, setTab] = useState<'live_chat' | 'tickets' | 'new' | 'contact'>('live_chat')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [tickets, setTickets] = useState<any[]>([])
   const [ticketsLoading, setTicketsLoading] = useState(true)
@@ -63,8 +64,9 @@ export default function SupportPage() {
       </motion.div>
 
       {/* Tabs */}
-      <div className="flex gap-2 flex-wrap">
+      <div className="flex gap-2 flex-wrap mb-4">
         {[
+          { id: 'live_chat', label: 'Live Chat', icon: MessageCircle },
           { id: 'tickets', label: 'My Tickets' },
           { id: 'new', label: 'New Ticket', icon: Plus },
           { id: 'contact', label: 'Contact Us' },
@@ -75,6 +77,13 @@ export default function SupportPage() {
           </button>
         ))}
       </div>
+
+      {/* Live Chat */}
+      {tab === 'live_chat' && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+          <LiveChat />
+        </motion.div>
+      )}
 
       {/* Tickets list */}
       {tab === 'tickets' && (
@@ -164,7 +173,7 @@ export default function SupportPage() {
       {/* Contact */}
       {tab === 'contact' && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <a href={settings.telegram_url || process.env.NEXT_PUBLIC_TELEGRAM_URL || 'https://t.me/nexusgaming'} target="_blank" rel="noopener noreferrer"
+          <a href={settings.telegram_url || process.env.NEXT_PUBLIC_TELEGRAM_URL || 'https://t.me/vaultsweeps'} target="_blank" rel="noopener noreferrer"
             className="glass-card p-6 hover:border-blue-400/30 transition-all group">
             <div className="w-12 h-12 bg-blue-500/10 border border-blue-500/20 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
               <Send className="w-6 h-6 text-blue-400" />
@@ -174,7 +183,7 @@ export default function SupportPage() {
             <span className="text-xs text-blue-400 flex items-center gap-1">Open Telegram <ChevronRight className="w-3 h-3" /></span>
           </a>
 
-          <a href={settings.facebook_url || process.env.NEXT_PUBLIC_FACEBOOK_URL || 'https://m.me/nexusgaming'} target="_blank" rel="noopener noreferrer"
+          <a href={settings.facebook_url || process.env.NEXT_PUBLIC_FACEBOOK_URL || 'https://m.me/vaultsweeps'} target="_blank" rel="noopener noreferrer"
             className="glass-card p-6 hover:border-blue-600/30 transition-all group">
             <div className="w-12 h-12 bg-blue-600/10 border border-blue-600/20 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
               <MessageCircle className="w-6 h-6 text-blue-600" />

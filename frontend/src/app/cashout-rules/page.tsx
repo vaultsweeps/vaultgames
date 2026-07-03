@@ -104,7 +104,7 @@ export default function CashoutRulesPage() {
                   <li>• Withdrawal requests may be delayed during peak periods or for additional verification</li>
                   <li>• All withdrawals are processed in USD equivalent; crypto rates apply at time of processing</li>
                   <li>• Users must provide accurate and verified payment information</li>
-                  <li>• NexusGaming reserves the right to request identity verification at any time</li>
+                  <li>• Vault Sweeps reserves the right to request identity verification at any time</li>
                   <li>• Daily withdrawal limit: $10,000 for standard accounts; $100,000 for VIP accounts</li>
                 </ul>
               </div>
