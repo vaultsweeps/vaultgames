@@ -42,6 +42,8 @@ const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:3001',
   'https://vaultsweeps.vercel.app',
+  'https://vaultsweeps.com',
+  'https://www.vaultsweeps.com',
 ]
 
 app.use(cors({
