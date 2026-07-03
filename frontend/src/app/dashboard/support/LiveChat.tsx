@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Send, User as UserIcon, Bot } from 'lucide-react';
+import { Send, User as UserIcon, Bot, RefreshCw } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import axios from 'axios';
 import { useAuthStore } from '@/store/authStore';
@@ -121,6 +121,13 @@ export default function LiveChat() {
             </p>
           </div>
         </div>
+        <button
+          onClick={() => { if (conversation?.id) fetchMessages(conversation.id) }}
+          className="p-2 text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-colors"
+          title="Refresh Messages"
+        >
+          <RefreshCw className="w-4 h-4" />
+        </button>
       </div>
 
       {/* Messages */}
