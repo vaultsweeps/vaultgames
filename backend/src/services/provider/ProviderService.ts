@@ -1,6 +1,5 @@
 import axios from 'axios';
 import crypto from 'crypto';
-import { HttpsProxyAgent } from 'https-proxy-agent';
 import { ProviderAdapter } from './ProviderAdapter';
 import { ProviderLogService } from './ProviderLogService';
 import { AppError } from '../../middleware/errorHandler';
@@ -132,18 +131,9 @@ export class ProviderService implements ProviderAdapter {
       payload: requestData,
     };
 
-    const axiosOptions: any = {
+    const response = await axios.postForm(url, requestData, {
       timeout: this.provider.requestTimeout || 5000,
-    };
-
-    // Route requests through a Static IP Proxy (Fixie, QuotaGuard, etc.) if configured
-    const proxyUrl = process.env.FIXIE_URL || process.env.STATIC_PROXY_URL || process.env.QUOTAGUARDSTATIC_URL;
-    if (proxyUrl) {
-      axiosOptions.httpsAgent = new HttpsProxyAgent(proxyUrl);
-      axiosOptions.proxy = false; // Disable axios' default proxy behavior
-    }
-
-    const response = await axios.postForm(url, requestData, axiosOptions);
+    });
 
     const duration = Date.now() - startTime;
     const { code, msg, data, ...rest } = response.data;
