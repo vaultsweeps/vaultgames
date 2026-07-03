@@ -1,7 +1,12 @@
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
-import ws from 'ws';
 dotenv.config();
+
+// Polyfill WebSocket for Node.js < 22 (required by @supabase/realtime-js)
+if (!globalThis.WebSocket) {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  (globalThis as any).WebSocket = require('ws');
+}
 
 const supabaseUrl = process.env.SUPABASE_URL || '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY || '';
@@ -11,13 +16,9 @@ if (!supabaseUrl || !supabaseServiceKey) {
 }
 
 // Create a single supabase client for interacting with your database
-// Node.js 20 does not have native WebSocket support, so we provide the 'ws' package
 export const supabase = createClient(supabaseUrl || 'https://placeholder.supabase.co', supabaseServiceKey || 'placeholder', {
   auth: {
     autoRefreshToken: false,
     persistSession: false
-  },
-  realtime: {
-    transport: ws
   }
 });
