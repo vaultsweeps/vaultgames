@@ -106,12 +106,20 @@ export default function WalletModal({ isOpen, onClose, balance }: WalletModalPro
   const [history, setHistory] = useState<TxItem[]>([])
   const [historyLoading, setHistoryLoading] = useState(false)
 
-  // Single source-of-truth for body scroll lock
+  // Single source-of-truth for body scroll lock — this component owns it
   useEffect(() => {
     const anyOpen = isOpen || cashoutMethod !== null || depositMethod !== null
     document.body.style.overflow = anyOpen ? 'hidden' : ''
     return () => { document.body.style.overflow = '' }
   }, [isOpen, cashoutMethod, depositMethod])
+
+  // When wallet closes, also close any open sub-modals
+  useEffect(() => {
+    if (!isOpen) {
+      setCashoutMethod(null)
+      setDepositMethod(null)
+    }
+  }, [isOpen])
 
   // Fetch history when History tab is opened
   useEffect(() => {

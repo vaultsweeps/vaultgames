@@ -246,20 +246,19 @@ export default function ManualCashoutModal({ isOpen, onClose, method, balance }:
 
   useEffect(() => {
     if (isOpen) {
-      document.body.style.overflow = 'hidden'
       publicApi.getSettings().then(res => setSettings(res.data.data)).catch(() => {})
     } else {
-      document.body.style.overflow = ''
       // Reset state when modal closes so it starts fresh next time
-      setTimeout(() => {
+      const t = setTimeout(() => {
         setShowSuccess(false)
         setWithdrawalId(null)
         setAmount('0.00')
         setTag('')
         setQrFile(null)
       }, 300)
+      return () => clearTimeout(t)
     }
-    return () => { document.body.style.overflow = '' }
+    // Body overflow is managed by WalletModal (parent)
   }, [isOpen])
 
 

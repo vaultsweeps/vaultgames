@@ -18,16 +18,13 @@ export default function ZappayDepositModal({ isOpen, onClose }: ZappayDepositMod
 
   useEffect(() => {
     if (isOpen) {
-      document.body.style.overflow = 'hidden'
       depositApi.getPaymentMethods().then(res => setMethods(res.data.data)).catch(() => {})
       setStep(1)
       setStatus('idle')
       setAmount('0.00')
       setProfileName('')
-    } else {
-      document.body.style.overflow = 'unset'
     }
-    return () => { document.body.style.overflow = 'unset' }
+    // Body overflow is managed by WalletModal (parent)
   }, [isOpen])
 
 
