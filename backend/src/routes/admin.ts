@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { authenticate, requireAdmin } from '../middleware/auth'
 import {
-  getDashboardStats, getUsers, banUser, suspendUser,
+  getDashboardStats, getUsers, banUser, suspendUser, verifyUser,
   getAdminDeposits, approveDeposit, rejectDeposit,
   getAdminWithdrawals, approveWithdrawal, rejectWithdrawal, markWithdrawalPaid,
   getAdminGames, createGame, updateGame, deleteGame,
@@ -30,6 +30,7 @@ router.get('/users', getUsers)
 router.get('/users/:id', getUserDetails)
 router.patch('/users/:id/ban', banUser)
 router.patch('/users/:id/suspend', suspendUser)
+router.patch('/users/:id/verify', verifyUser)
 
 // Deposits
 router.get('/deposits', getAdminDeposits)

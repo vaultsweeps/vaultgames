@@ -783,3 +783,10 @@ export const adminRejectEnhancedWithdrawal = asyncHandler(async (req: AuthReques
   logger.info(`Withdrawal ${requestId} rejected by ${adminUsername}${reason ? ` (reason: ${reason})` : ''}`)
   res.json({ success: true, message: `Withdrawal ${requestId} rejected`, data: updated })
 })
+
+export const verifyUser = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { id } = req.params
+  await prisma.user.update({ where: { id }, data: { isVerified: true, verifyToken: null } })
+  res.json({ success: true, message: 'User verified successfully' })
+})
+

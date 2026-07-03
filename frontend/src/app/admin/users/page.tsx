@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import toast from 'react-hot-toast'
-import { Search, Eye, Ban, UserCheck, RefreshCw } from 'lucide-react'
+import { Search, Eye, Ban, UserCheck, RefreshCw, Check } from 'lucide-react'
 import { adminApi } from '@/lib/api'
 import Link from 'next/link'
 
@@ -49,6 +49,7 @@ export default function AdminUsersPage() {
     try {
       if (action === 'ban') await adminApi.banUser(userId)
       else if (action === 'suspend' || action === 'activate') await adminApi.suspendUser(userId)
+      else if (action === 'verify') await adminApi.verifyUser(userId)
       await fetchUsers()
       setSelectedUser(null)
       toast.success(`User ${action} successful!`)
@@ -137,6 +138,13 @@ export default function AdminUsersPage() {
                         className="w-7 h-7 glass rounded-lg flex items-center justify-center text-slate-400 hover:text-neon-blue border border-white/10 transition-all">
                         <Eye className="w-3.5 h-3.5" />
                       </button>
+                      {!user.isVerified && (
+                        <button onClick={() => handleAction(user.id, 'verify')}
+                          className="w-7 h-7 bg-blue-500/10 border border-blue-500/20 rounded-lg flex items-center justify-center text-blue-400 hover:bg-blue-500/20 transition-all"
+                          title="Manually Verify User">
+                          <Check className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                       {!user.isBanned ? (
                         <button onClick={() => handleAction(user.id, 'ban')}
                           className="w-7 h-7 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center justify-center text-red-400 hover:bg-red-500/20 transition-all">

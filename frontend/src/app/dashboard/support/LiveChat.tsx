@@ -122,7 +122,7 @@ export default function LiveChat() {
           </div>
         </div>
         <button
-          onClick={() => { if (conversation?.id) fetchMessages(conversation.id) }}
+          onClick={() => { fetchConversation() }}
           className="p-2 text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-colors"
           title="Refresh Messages"
         >

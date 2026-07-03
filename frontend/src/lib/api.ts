@@ -143,6 +143,7 @@ export const adminApi = {
   updateUser: (id: string, data: object) => apiClient.put(`/admin/users/${id}`, data),
   suspendUser: (id: string) => apiClient.patch(`/admin/users/${id}/suspend`),
   banUser: (id: string) => apiClient.patch(`/admin/users/${id}/ban`),
+  verifyUser: (id: string) => apiClient.patch(`/admin/users/${id}/verify`),
   deleteUser: (id: string) => apiClient.delete(`/admin/users/${id}`),
 
   // Deposits
