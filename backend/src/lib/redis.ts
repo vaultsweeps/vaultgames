@@ -19,44 +19,57 @@ if (redis) {
   logger.warn('Upstash Redis credentials missing. Caching will be disabled.');
 }
 
+// In-memory cache layer to make repeated queries instant (0ms latency)
+const memoryCache = new Map<string, { data: any; expiresAt: number }>();
+
 /**
  * Helper function to fetch data from cache, or retrieve it via the fallback function and cache it.
- * @param key The unique cache key
- * @param fallbackFn Function that returns the fresh data if cache miss
- * @param ttlSeconds Time-to-live in seconds (default 60s)
- * @returns The cached or fresh data
+ * Layer 1: Memory (Instant)
+ * Layer 2: Redis (Fast, across instances)
+ * Layer 3: Database (Slow, fallback)
  */
 export async function getCached<T>(
   key: string,
   fallbackFn: () => Promise<T>,
   ttlSeconds: number = 60
 ): Promise<T> {
-  // If Redis is not configured, just run the fallback function directly
-  if (!redis) {
-    return fallbackFn();
+  const now = Date.now();
+
+  // Layer 1: In-Memory Cache
+  const mem = memoryCache.get(key);
+  if (mem && mem.expiresAt > now) {
+    return mem.data as T;
   }
 
-  try {
-    const cachedData = await redis.get(key);
-    if (cachedData) {
-      // Upstash parses JSON automatically
-      return cachedData as T;
+  // Layer 2: Upstash Redis
+  if (redis) {
+    try {
+      const cachedData = await redis.get(key);
+      if (cachedData) {
+        // Hydrate memory cache so next request is 0ms
+        memoryCache.set(key, { data: cachedData, expiresAt: now + ttlSeconds * 1000 });
+        return cachedData as T;
+      }
+    } catch (error) {
+      logger.error(`Redis Get Error for key ${key}:`, error);
     }
-  } catch (error) {
-    logger.error(`Redis Get Error for key ${key}:`, error);
-    // If cache read fails, gracefully degrade to fetching from DB
   }
 
-  // Cache miss or error: Fetch fresh data
+  // Layer 3: Database Fallback
   const freshData = await fallbackFn();
 
-  try {
-    // Fire and forget caching (don't await to block the response)
-    redis.setex(key, ttlSeconds, JSON.stringify(freshData)).catch(err => {
-      logger.error(`Redis Set Error for key ${key}:`, err);
-    });
-  } catch (error) {
-    logger.error(`Redis Set Error for key ${key}:`, error);
+  // Store in Memory Cache
+  memoryCache.set(key, { data: freshData, expiresAt: Date.now() + ttlSeconds * 1000 });
+
+  // Store in Redis (Fire and Forget)
+  if (redis) {
+    try {
+      redis.setex(key, ttlSeconds, JSON.stringify(freshData)).catch(err => {
+        logger.error(`Redis Set Error for key ${key}:`, err);
+      });
+    } catch (error) {
+      logger.error(`Redis Set Error for key ${key}:`, error);
+    }
   }
 
   return freshData;
