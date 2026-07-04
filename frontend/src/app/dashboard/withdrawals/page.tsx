@@ -221,7 +221,14 @@ export default function WithdrawalsPage() {
                     </td>
                     <td className="px-5 py-4 text-sm text-slate-300">{w.paymentMethodStr}</td>
                     <td className="px-5 py-4 text-xs text-slate-500 max-w-[140px] truncate">{w.accountDetails}</td>
-                    <td className="px-5 py-4"><StatusBadge status={w.status} /></td>
+                    <td className="px-5 py-4">
+                      <StatusBadge status={w.status} />
+                      {w.status === 'pending' && (
+                        <p className="text-[10px] text-amber-500/70 mt-1 flex items-center gap-1">
+                          <Clock className="w-3 h-3" /> Processing ~10-15 mins
+                        </p>
+                      )}
+                    </td>
                     <td className="px-5 py-4">
                       {w.status === 'rejected' && w.rejectionReason && (
                         <div className="flex items-start gap-1.5 max-w-[160px]">
