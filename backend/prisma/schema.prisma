@@ -111,6 +111,7 @@ model UserProfile {
   country          String?
   avatar           String?
   telegramUsername String?
+  messengerUsername String?
   user             User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 

@@ -2,6 +2,7 @@ import imaps from 'imap-simple'
 import { simpleParser } from 'mailparser'
 import cron from 'node-cron'
 import prisma from '../../lib/prisma'
+import { DepositService } from '../DepositService'
 import { createNotification } from '../notificationService'
 import { sendDepositNotification } from '../emailService'
 import { TelegramService } from '../TelegramService'
@@ -103,18 +104,10 @@ export class ImapZappayService {
             // Mark email as seen
             await connection.addFlags(item.attributes.uid, ['\\Seen']);
 
-            // Update deposit
-            await prisma.deposit.update({
-              where: { id: match.id },
-              data: {
-                status: 'approved',
-                transactionId: txnId,
-                approvedAt: new Date(),
-                approvedBy: 'system'
-              }
-            });
-
-            // Log
+            // Approve deposit using central service to handle bonuses
+            await DepositService.approveDeposit(match.id, 'system', `Auto-approved via Zappay IMAP receipt (TXN: ${txnId})`);
+            
+            // Optionally log the extra metadata if needed
             await prisma.transactionLog.create({
               data: {
                 type: 'deposit_approved',
@@ -125,16 +118,6 @@ export class ImapZappayService {
                 metadata: { source: 'imap_auto_verify', txnId }
               }
             });
-
-            // Update user balance (handled in a separate transaction or directly here since it's an auto-approve)
-            // Wait, does depositController or WalletService handle balance? Let's assume we do it here.
-            // Actually, best to just increase user balance.
-            
-            // Let's check WalletService or similar, or just Prisma update.
-            // But we don't have user.balance in schema? Oh wait, balance is often calculated or stored. Let's look at prisma schema.
-            // Wait, user schema has no 'balance' field! Nexus Gaming computes balance or uses another table?
-            // Usually, there is a WalletService. Let's just update deposit and rely on WalletService if we need to.
-            // I'll call a quick check on WalletService methods below.
           }
         }
       }

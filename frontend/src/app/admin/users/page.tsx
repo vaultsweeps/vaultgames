@@ -19,6 +19,8 @@ type User = {
   lastLogin?: string
   deposits?: { amount: number }[]
   totalDeposited?: number
+  _count?: { deposits?: number }
+  profile?: { telegramUsername?: string; messengerUsername?: string; fullName?: string }
 }
 
 export default function AdminUsersPage() {
@@ -98,10 +100,10 @@ export default function AdminUsersPage() {
       <div className="glass-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="data-table">
-            <thead><tr><th>User</th><th>Status</th><th>Verified</th><th>Deposits</th><th>Total Deposited</th><th>Last Login</th><th>Joined</th><th>Actions</th></tr></thead>
+            <thead><tr><th>User</th><th>Status</th><th>Verified</th><th>Deposits</th><th>Telegram</th><th>Messenger</th><th>Last Login</th><th>Joined</th><th>Actions</th></tr></thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={8} className="text-center py-10 text-slate-500">Loading users...</td></tr>
+                <tr><td colSpan={9} className="text-center py-10 text-slate-500">Loading users...</td></tr>
               ) : filtered.map(user => (
                 <tr key={user.id}>
                   <td>
@@ -128,8 +130,17 @@ export default function AdminUsersPage() {
                       {user.isVerified ? '✓ Yes' : '✗ No'}
                     </span>
                   </td>
-                  <td className="text-slate-300">{user.deposits?.length ?? 0}</td>
-                  <td className="text-white font-medium">${(user.deposits?.reduce((s: number, d: { amount: number }) => s + d.amount, 0) ?? 0).toFixed(0)}</td>
+                  <td className="text-slate-300">{user._count?.deposits ?? 0}</td>
+                  <td className="text-xs">
+                    {user.profile?.telegramUsername
+                      ? <a href={`https://t.me/${user.profile.telegramUsername.replace('@','')}`} target="_blank" rel="noreferrer" className="text-neon-blue hover:underline">{user.profile.telegramUsername}</a>
+                      : <span className="text-slate-600">—</span>}
+                  </td>
+                  <td className="text-xs">
+                    {user.profile?.messengerUsername
+                      ? <a href={`https://m.me/${user.profile.messengerUsername}`} target="_blank" rel="noreferrer" className="text-neon-blue hover:underline">{user.profile.messengerUsername}</a>
+                      : <span className="text-slate-600">—</span>}
+                  </td>
                   <td className="text-xs text-slate-500">{user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : 'Never'}</td>
                   <td className="text-xs text-slate-600">{new Date(user.createdAt).toLocaleDateString()}</td>
                   <td>

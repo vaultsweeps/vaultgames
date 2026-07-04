@@ -8,7 +8,9 @@ export interface User {
   isActive: boolean
   isBanned: boolean
   createdAt: string
+  lastLogin?: string
   profile?: UserProfile
+  _count?: { deposits?: number; withdrawals?: number }
 }
 
 export interface UserProfile {
@@ -19,6 +21,7 @@ export interface UserProfile {
   country?: string
   avatar?: string
   telegramUsername?: string
+  messengerUsername?: string
 }
 
 export interface AuthState {

@@ -234,44 +234,7 @@ export const transferFunds = asyncHandler(async (req: AuthRequest, res: Response
 
   try {
     if (type === 'recharge') {
-      const user = await prisma.user.findUnique({ where: { id: userId } });
-      const firstRechargeCheck = await prisma.providerTransaction.findFirst({
-        where: { userId, type: 'recharge', status: 'success' }
-      });
-      const isFirstRecharge = !firstRechargeCheck;
-
-      if (isFirstRecharge && user?.isVerified) {
-        // 100% Signup Bonus
-        bonusAmount = amount;
-        let bonusDef = await prisma.bonus.findFirst({ where: { type: 'welcome' } });
-        if (bonusDef) {
-          await prisma.bonusClaim.create({ data: { userId, bonusId: bonusDef.id, amount: bonusAmount } });
-        }
-        
-        // Referral Bonus logic for the referrer
-        if (user?.referredById) {
-          const refBonus = Math.min(amount * 0.5, 10);
-          let refBonusDef = await prisma.bonus.findFirst({ where: { type: 'referral' } });
-          if (refBonusDef) {
-            await prisma.bonusClaim.create({ data: { userId: user.referredById, bonusId: refBonusDef.id, amount: refBonus } });
-            await createNotification(user.referredById, {
-              title: 'Referral Bonus Received!',
-              message: `You just received $${refBonus.toFixed(2)} because your referred friend ${user.username} made their first transfer.`,
-              type: 'success',
-              link: '/dashboard/bonuses'
-            });
-          }
-        }
-      } else {
-        // 30% Regular Bonus
-        bonusAmount = amount * 0.3;
-        let bonusDef = await prisma.bonus.findFirst({ where: { type: 'deposit' } });
-        if (bonusDef) {
-          await prisma.bonusClaim.create({ data: { userId, bonusId: bonusDef.id, amount: bonusAmount } });
-        }
-      }
-
-      finalProviderAmount = amount + bonusAmount;
+      finalProviderAmount = amount;
       await providerService.rechargePlayer(providerUser.providerUserId, finalProviderAmount, orderId);
     } else {
       await providerService.withdrawPlayer(providerUser.providerUserId, amount, orderId);

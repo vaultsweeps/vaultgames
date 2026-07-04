@@ -134,6 +134,35 @@ export default function UserDetailsPage() {
             </div>
           </div>
 
+          {/* Contact Info */}
+          <div className="glass-card p-5">
+            <h3 className="text-lg font-bold text-white mb-4">Contact Info</h3>
+            <div className="space-y-3">
+              <div className="flex justify-between border-b border-white/5 pb-2">
+                <span className="text-slate-400">Full Name</span>
+                <span className="text-white">{user.profile?.fullName || <span className="text-slate-600 italic">Not set</span>}</span>
+              </div>
+              <div className="flex justify-between border-b border-white/5 pb-2">
+                <span className="text-slate-400">Phone</span>
+                <span className="text-white">{user.profile?.phone || <span className="text-slate-600 italic">Not set</span>}</span>
+              </div>
+              <div className="flex justify-between border-b border-white/5 pb-2">
+                <span className="text-slate-400">Telegram</span>
+                {user.profile?.telegramUsername
+                  ? <a href={`https://t.me/${user.profile.telegramUsername.replace('@', '')}`} target="_blank" rel="noreferrer" className="text-neon-blue hover:underline">{user.profile.telegramUsername}</a>
+                  : <span className="text-slate-600 italic">Not set</span>
+                }
+              </div>
+              <div className="flex justify-between pb-2">
+                <span className="text-slate-400">Messenger</span>
+                {user.profile?.messengerUsername
+                  ? <a href={`https://m.me/${user.profile.messengerUsername}`} target="_blank" rel="noreferrer" className="text-neon-blue hover:underline">{user.profile.messengerUsername}</a>
+                  : <span className="text-slate-600 italic">Not set</span>
+                }
+              </div>
+            </div>
+          </div>
+
           {/* Connected Games */}
           <div className="glass-card p-5">
             <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><Gamepad2 size={18} /> Connected Games</h3>

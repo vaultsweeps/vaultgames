@@ -49,13 +49,13 @@ export const createWithdrawal = asyncHandler(async (req: AuthRequest, res: Respo
 
   if (amount < 1) throw new AppError('Minimum withdrawal is $1', 400)
 
-  // Referral bonuses are non-withdrawable — only the real cash balance can be cashed out
+  // Bonuses are non-withdrawable — only the real cash balance can be cashed out
   const withdrawableBalance = await WalletService.getWithdrawableBalance(req.user!.id)
   if (amount > withdrawableBalance) {
-    const referralBalance = await WalletService.getReferralBonusBalance(req.user!.id)
-    if (referralBalance > 0) {
+    const bonusBalance = await WalletService.getTotalBonusBalance(req.user!.id)
+    if (bonusBalance > 0) {
       throw new AppError(
-        `Insufficient cashable balance. Your balance includes $${referralBalance.toFixed(2)} in referral bonuses which can only be added to your game balance, not cashed out. Cashable balance: $${Math.max(0, withdrawableBalance).toFixed(2)}`,
+        `Insufficient cashable balance. Your balance includes $${bonusBalance.toFixed(2)} in bonuses which can only be added to your game balance, not cashed out. Cashable balance: $${Math.max(0, withdrawableBalance).toFixed(2)}`,
         400
       )
     }

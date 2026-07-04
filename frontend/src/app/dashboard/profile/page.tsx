@@ -1,33 +1,56 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useForm } from 'react-hook-form'
 import toast from 'react-hot-toast'
 import { User, Lock, Shield, Camera, Save } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
+import { profileApi } from '@/lib/api'
 
 export default function ProfilePage() {
   const { user } = useAuthStore()
   const [tab, setTab] = useState<'profile' | 'password' | 'security'>('profile')
   const [saving, setSaving] = useState(false)
 
-  const profileForm = useForm({ defaultValues: { fullName: '', phone: '', country: '', telegramUsername: '' } })
+  const profileForm = useForm({ defaultValues: { fullName: '', phone: '', country: '', telegramUsername: '', messengerUsername: '' } })
   const passwordForm = useForm()
+
+  useEffect(() => {
+    if (user?.profile) {
+      profileForm.reset({
+        fullName: user.profile.fullName || '',
+        phone: user.profile.phone || '',
+        country: user.profile.country || '',
+        telegramUsername: user.profile.telegramUsername || '',
+        messengerUsername: user.profile.messengerUsername || '',
+      })
+    }
+  }, [user, profileForm])
 
   const onSaveProfile = async (data: any) => {
     setSaving(true)
-    await new Promise(r => setTimeout(r, 1200))
-    setSaving(false)
-    toast.success('Profile updated successfully!')
+    try {
+      await profileApi.updateProfile(data)
+      toast.success('Profile updated successfully!')
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Failed to update profile')
+    } finally {
+      setSaving(false)
+    }
   }
 
   const onChangePassword = async (data: any) => {
     if (data.newPassword !== data.confirmPassword) return toast.error('Passwords do not match')
     setSaving(true)
-    await new Promise(r => setTimeout(r, 1200))
-    setSaving(false)
-    passwordForm.reset()
-    toast.success('Password changed successfully!')
+    try {
+      await profileApi.changePassword({ currentPassword: data.currentPassword, newPassword: data.newPassword })
+      passwordForm.reset()
+      toast.success('Password changed successfully!')
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Failed to change password')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -91,6 +114,10 @@ export default function ProfilePage() {
                 <div>
                   <label className="block text-xs font-mono tracking-wider text-slate-400 uppercase mb-2">Telegram Username</label>
                   <input {...profileForm.register('telegramUsername')} type="text" placeholder="@username" className="input-neon" />
+                </div>
+                <div>
+                  <label className="block text-xs font-mono tracking-wider text-slate-400 uppercase mb-2">Messenger Username</label>
+                  <input {...profileForm.register('messengerUsername')} type="text" placeholder="username" className="input-neon" />
                 </div>
               </div>
               <div>

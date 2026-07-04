@@ -2,15 +2,15 @@ import prisma from '../lib/prisma';
 
 export class WalletService {
   /**
-   * Returns the total referral bonus balance earned by the user.
+   * Returns the total bonus balance earned by the user (welcome, deposit, referral).
    * This amount is NOT withdrawable — it can only be used to recharge game balance.
    */
-  static async getReferralBonusBalance(userId: string): Promise<number> {
-    const referralBonuses = await prisma.bonusClaim.aggregate({
-      where: { userId, bonus: { type: 'referral' } },
+  static async getTotalBonusBalance(userId: string): Promise<number> {
+    const bonuses = await prisma.bonusClaim.aggregate({
+      where: { userId },
       _sum: { amount: true }
     });
-    return referralBonuses._sum.amount || 0;
+    return bonuses._sum.amount || 0;
   }
 
   /**
@@ -20,8 +20,9 @@ export class WalletService {
    *                + Total Cashouts from Games
    *                - Total Platform Withdrawals
    *                - Total Deposits to Games
+   *                - Total Bonuses
    *
-   * NOTE: Referral bonuses are intentionally excluded here — they can only
+   * NOTE: Bonuses are intentionally excluded here — they can only
    * be transferred to a game, never cashed out.
    */
   static async getWithdrawableBalance(userId: string): Promise<number> {
@@ -45,25 +46,30 @@ export class WalletService {
       _sum: { amount: true }
     });
 
+    const bonuses = await WalletService.getTotalBonusBalance(userId);
+
     const totalDeposited = deposits._sum.amount || 0;
     const totalWithdrawn = withdrawals._sum.amount || 0;
     const totalGameRecharges = gameRecharges._sum.amount || 0;
     const totalGameWithdrawals = gameWithdrawals._sum.amount || 0;
 
-    return totalDeposited + totalGameWithdrawals - totalWithdrawn - totalGameRecharges;
+    const withdrawable = totalDeposited + totalGameWithdrawals - totalWithdrawn - totalGameRecharges - bonuses;
+    
+    // Can never be negative
+    return Math.max(0, withdrawable);
   }
 
   /**
-   * Returns the full display balance (includes referral bonuses).
+   * Returns the full display balance (includes all bonuses).
    * This is shown to the user in the UI as their "main wallet balance".
    * Formula:
-   *   Display Balance = Withdrawable Balance + Referral Bonus Balance
+   *   Display Balance = Withdrawable Balance + Bonus Balance
    */
   static async getWalletBalance(userId: string): Promise<number> {
-    const [withdrawable, referral] = await Promise.all([
+    const [withdrawable, bonus] = await Promise.all([
       WalletService.getWithdrawableBalance(userId),
-      WalletService.getReferralBonusBalance(userId),
+      WalletService.getTotalBonusBalance(userId),
     ]);
-    return withdrawable + referral;
+    return withdrawable + bonus;
   }
 }
