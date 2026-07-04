@@ -332,7 +332,14 @@ Please process my withdrawal request.`}
                       <td className="font-mono text-xs text-slate-400">{tx.id.slice(0, 10)}</td>
                       <td>{tx.paymentMethod?.name || tx.adminNotes || 'Manual'}</td>
                       <td className="text-white font-medium">${tx.amount.toFixed(2)}</td>
-                      <td><StatusBadge status={tx.status} /></td>
+                      <td>
+                        <StatusBadge status={tx.status} />
+                        {tx.status === 'pending' && (
+                          <p className="text-[10px] text-amber-500/70 mt-1 flex items-center gap-1">
+                            Processing ~10-15 mins
+                          </p>
+                        )}
+                      </td>
                       <td className="text-xs text-slate-600">{new Date(tx.createdAt).toLocaleDateString()}</td>
                     </tr>
                   ))}
