@@ -1,103 +1,292 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
-import { ArrowUpCircle, Plus, History, Info, ChevronRight, Loader2 } from 'lucide-react'
-import { withdrawalApi, depositApi, publicApi } from '@/lib/api'
+import {
+  ArrowUpCircle, X, Paperclip, CheckCircle, Clock, Shield, Zap,
+  History, Plus, ChevronRight, AlertCircle
+} from 'lucide-react'
+import { withdrawalApi, depositApi, publicApi, authApi } from '@/lib/api'
 
-// Method icon/color map based on code
-const METHOD_META: Record<string, { icon: string; color: string }> = {
-  cashapp:  { icon: '💸', color: '#00D632' },
-  chime:    { icon: '🏦', color: '#00CFAA' },
-  crypto:   { icon: '₿',  color: '#F7931A' },
-  bitcoin:  { icon: '₿',  color: '#F7931A' },
-  usdt:     { icon: '₮',  color: '#26A17B' },
-  bank:     { icon: '🏛️', color: '#00D4FF' },
-  default:  { icon: '💰', color: '#7B2FFF' },
-}
+// ─── Timer constants ───────────────────────────────────────────────────────
+const TIMER_SECONDS = 10 * 60
 
-function getMeta(code: string) {
-  return METHOD_META[code?.toLowerCase()] || METHOD_META.default
-}
-
+// ─── Status badge ──────────────────────────────────────────────────────────
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
-    pending:  'badge-pending',
-    approved: 'badge-approved',
-    rejected: 'badge-rejected',
-    paid:     'badge-paid',
+    pending:  'bg-amber-500/15 text-amber-400 border border-amber-500/20',
+    approved: 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20',
+    rejected: 'bg-red-500/15 text-red-400 border border-red-500/20',
   }
   return (
-    <span className={`${map[status] || 'badge-pending'} text-xs px-2 py-0.5 rounded-full font-mono`}>
-      {status}
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${map[status] || map.pending}`}>
+      {status.charAt(0).toUpperCase() + status.slice(1)}
     </span>
   )
 }
 
+// ─── Countdown timer (shown after submission) ──────────────────────────────
+function WithdrawalCountdown({
+  amount, methodName, settings, onClose, withdrawalId, onViewHistory
+}: {
+  amount: string
+  methodName: string
+  settings: any
+  onClose: () => void
+  withdrawalId: string | null
+  onViewHistory: () => void
+}) {
+  const [secondsLeft, setSecondsLeft] = useState(TIMER_SECONDS)
+  const [status, setStatus] = useState<'pending' | 'approved' | 'rejected'>('pending')
+  const intervalRef = useRef<NodeJS.Timeout | null>(null)
+  const pollRef = useRef<NodeJS.Timeout | null>(null)
+  const expired = secondsLeft <= 0
+
+  useEffect(() => {
+    if (status !== 'pending') return
+    intervalRef.current = setInterval(() => setSecondsLeft(s => Math.max(0, s - 1)), 1000)
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
+  }, [status])
+
+  useEffect(() => {
+    if (!withdrawalId || status !== 'pending') return
+    pollRef.current = setInterval(async () => {
+      try {
+        const res = await withdrawalApi.getOne(withdrawalId)
+        const s = res.data.data.status
+        if (s === 'approved') { setStatus('approved'); if (pollRef.current) clearInterval(pollRef.current) }
+        else if (['rejected', 'canceled', 'failed'].includes(s)) { setStatus('rejected'); if (pollRef.current) clearInterval(pollRef.current) }
+      } catch {}
+    }, 5000)
+    return () => { if (pollRef.current) clearInterval(pollRef.current) }
+  }, [withdrawalId, status])
+
+  const minutes = Math.floor(secondsLeft / 60)
+  const seconds = secondsLeft % 60
+  const progress = secondsLeft / TIMER_SECONDS
+  const radius = 72
+  const circumference = 2 * Math.PI * radius
+  const strokeDashoffset = circumference * (1 - progress)
+  const ringColor = secondsLeft > 300 ? '#2AC3FF' : secondsLeft > 120 ? '#F59E0B' : '#EF4444'
+  const glowColor = secondsLeft > 300 ? '42, 195, 255' : secondsLeft > 120 ? '245, 158, 11' : '239, 68, 68'
+
+  const messages = [
+    { threshold: 480, text: '🚀 Payment is being processed...', sub: 'Our team has received your request' },
+    { threshold: 300, text: '⚡ Almost there!', sub: 'Your transfer is being finalized' },
+    { threshold: 120, text: '🔥 Just moments away!', sub: 'Payment is nearly complete' },
+    { threshold: 0, text: '✅ Checking final status...', sub: 'Awaiting confirmation' },
+  ]
+  const msg = status === 'approved'
+    ? { text: '🎉 Payment Approved!', sub: 'The funds have been sent to your account.' }
+    : status === 'rejected'
+      ? { text: '❌ Payment Rejected', sub: 'Please contact support for more details.' }
+      : messages.find(m => secondsLeft >= m.threshold) || messages[messages.length - 1]
+
+  if (status === 'approved') {
+    return (
+      <div className="flex flex-col items-center py-12 px-6">
+        <div className="w-20 h-20 bg-emerald-500/20 rounded-full flex items-center justify-center mb-6">
+          <CheckCircle className="w-10 h-10 text-emerald-400" />
+        </div>
+        <h2 className="text-white text-2xl font-bold mb-2">Payment Approved!</h2>
+        <p className="text-slate-400 text-center text-sm mb-8">Your cashout of ${amount} has been successfully processed and sent to your {methodName} account.</p>
+        <button onClick={onViewHistory} className="w-full max-w-xs bg-[#2AC3FF] hover:bg-[#1CA0D9] text-white font-bold py-3.5 rounded-2xl transition-all">View History</button>
+      </div>
+    )
+  }
+
+  if (status === 'rejected') {
+    return (
+      <div className="flex flex-col items-center py-12 px-6">
+        <div className="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mb-6">
+          <X className="w-10 h-10 text-red-400" />
+        </div>
+        <h2 className="text-white text-2xl font-bold mb-2">Payment Rejected</h2>
+        <p className="text-slate-400 text-center text-sm mb-8">Your cashout of ${amount} could not be processed. Please contact support.</p>
+        <div className="w-full max-w-xs space-y-3">
+          <a href={settings.telegram_url || '#'} target="_blank" rel="noreferrer"
+            className="w-full block bg-[#2AC3FF] hover:bg-[#1CA0D9] text-white font-bold py-3.5 rounded-2xl transition-all text-center">
+            Contact Support
+          </a>
+          <button onClick={onClose} className="w-full bg-white/5 hover:bg-white/10 text-white font-bold py-3.5 rounded-2xl transition-all border border-white/10">Close</button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col items-center py-8 px-6">
+      <div className="w-full flex justify-between items-center mb-6">
+        <div>
+          <h2 className="text-white text-xl font-bold">Withdrawal Submitted</h2>
+          <p className="text-slate-400 text-xs mt-0.5">${amount} via {methodName}</p>
+        </div>
+        <button onClick={onClose} className="p-2 text-slate-400 hover:text-white rounded-full transition-colors">
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+
+      {/* Ring Timer */}
+      <div className="relative flex items-center justify-center my-2" style={{ width: 180, height: 180 }}>
+        <div className="absolute inset-0 rounded-full" style={{ boxShadow: `0 0 40px rgba(${glowColor}, 0.3)`, transition: 'box-shadow 1s ease' }} />
+        <motion.div className="absolute inset-4 rounded-full"
+          style={{ background: `radial-gradient(circle, rgba(${glowColor}, 0.08) 0%, transparent 70%)` }}
+          animate={{ scale: [1, 1.06, 1] }} transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }} />
+        <svg className="absolute inset-0 -rotate-90" width="180" height="180">
+          <circle cx="90" cy="90" r={radius} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="8" />
+          <circle cx="90" cy="90" r={radius} fill="none" stroke={ringColor} strokeWidth="8" strokeLinecap="round"
+            strokeDasharray={circumference} strokeDashoffset={strokeDashoffset}
+            style={{ transition: 'stroke-dashoffset 1s linear, stroke 1s ease' }} />
+        </svg>
+        <div className="relative flex flex-col items-center">
+          {expired ? <CheckCircle className="w-12 h-12 text-emerald-400" /> : (
+            <>
+              <span className="text-white text-4xl font-bold font-mono tabular-nums leading-none">
+                {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
+              </span>
+              <span className="text-slate-400 text-xs mt-1">remaining</span>
+            </>
+          )}
+        </div>
+      </div>
+
+      <motion.div key={msg.text} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} className="text-center mt-4 mb-6">
+        <p className="text-white font-semibold text-base">{msg.text}</p>
+        <p className="text-slate-400 text-sm mt-1">{msg.sub}</p>
+      </motion.div>
+
+      <div className="w-full grid grid-cols-3 gap-2 mb-6">
+        {[
+          { icon: Shield, label: 'Secure', color: 'text-emerald-400' },
+          { icon: Zap, label: 'Fast Transfer', color: 'text-[#2AC3FF]' },
+          { icon: Clock, label: '24/7 Support', color: 'text-purple-400' },
+        ].map(({ icon: Icon, label, color }) => (
+          <div key={label} className="bg-white/5 rounded-xl p-3 flex flex-col items-center gap-1.5 border border-white/5">
+            <Icon className={`w-4 h-4 ${color}`} />
+            <span className="text-slate-300 text-xs font-medium">{label}</span>
+          </div>
+        ))}
+      </div>
+
+      <div className="w-full space-y-2">
+        <a href={settings.telegram_url || '#'} target="_blank" rel="noreferrer"
+          className="w-full block bg-[#2AC3FF] hover:bg-[#1CA0D9] text-white font-bold py-3.5 rounded-2xl transition-all text-center text-sm">
+          Track via Telegram Support
+        </a>
+        <button onClick={onViewHistory} className="w-full text-slate-500 hover:text-white transition-colors text-sm py-2">
+          View History
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ─── Method icon/color map ─────────────────────────────────────────────────
+const METHOD_ICON: Record<string, { icon: string; color: string; bg: string }> = {
+  cashapp:  { icon: '💸', color: '#00D632', bg: '#00D63215' },
+  cash_app: { icon: '💸', color: '#00D632', bg: '#00D63215' },
+  chime:    { icon: '🏦', color: '#00CFAA', bg: '#00CFAA15' },
+  crypto:   { icon: '₿',  color: '#F7931A', bg: '#F7931A15' },
+  usdt:     { icon: '₮',  color: '#26A17B', bg: '#26A17B15' },
+  zelle:    { icon: '💜', color: '#6D1ED4', bg: '#6D1ED415' },
+  venmo:    { icon: '💙', color: '#3D95CE', bg: '#3D95CE15' },
+  paypal:   { icon: '🅿️', color: '#003087', bg: '#00308715' },
+  bank:     { icon: '🏛️', color: '#00D4FF', bg: '#00D4FF15' },
+  zappay:   { icon: '💰', color: '#7B2FFF', bg: '#7B2FFF15' },
+  default:  { icon: '💰', color: '#7B2FFF', bg: '#7B2FFF15' },
+}
+
+function getMethodMeta(name: string) {
+  const key = name?.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z_]/g, '')
+  return METHOD_ICON[key] || METHOD_ICON.default
+}
+
+// ─── Main page ─────────────────────────────────────────────────────────────
 export default function CashoutsPage() {
   const [tab, setTab] = useState<'new' | 'history'>('new')
-  const [methods, setMethods] = useState<any[]>([])
+
+  // Form state
+  const [methods, setMethods]           = useState<any[]>([])
   const [loadingMethods, setLoadingMethods] = useState(true)
   const [selectedMethod, setSelectedMethod] = useState<any>(null)
-  const [amount, setAmount] = useState('')
-  const [fieldValues, setFieldValues] = useState<Record<string, string>>({})
+  const [amount, setAmount]             = useState('0.00')
+  const [fieldValues, setFieldValues]   = useState<Record<string, string>>({})
+  const [qrFile, setQrFile]             = useState<File | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [step, setStep] = useState(1)
-  const [history, setHistory] = useState<any[]>([])
-  const [historyLoading, setHistoryLoading] = useState(false)
-  const [showContactModal, setShowContactModal] = useState(false)
-  const [settings, setSettings] = useState<any>({})
+  const [step, setStep]                 = useState<1 | 2 | 3>(1) // 1=method, 2=form, 3=timer
+  const [balance, setBalance]           = useState(0)
+  const [withdrawalId, setWithdrawalId] = useState<string | null>(null)
+  const [settings, setSettings]         = useState<any>({})
 
-  const fetchHistory = async () => {
+  // History state
+  const [history, setHistory]           = useState<any[]>([])
+  const [historyLoading, setHistoryLoading] = useState(false)
+
+  const fetchHistory = useCallback(async () => {
     setHistoryLoading(true)
     try {
       const res = await withdrawalApi.getAll()
-      setHistory(res.data.data)
-    } catch { } finally {
-      setHistoryLoading(false)
-    }
-  }
+      setHistory(res.data.data || [])
+    } catch {}
+    finally { setHistoryLoading(false) }
+  }, [])
 
   useEffect(() => {
     fetchHistory()
-    publicApi.getSettings().then(res => setSettings(res.data.data)).catch(() => {})
-    // Fetch payment methods from API
-    depositApi.getPaymentMethods().then(res => {
-      setMethods(res.data.data || [])
-    }).catch(() => {
-      setMethods([])
-    }).finally(() => setLoadingMethods(false))
-  }, [])
+    publicApi.getSettings().then(r => setSettings(r.data.data)).catch(() => {})
+    authApi.getBalance().then(r => setBalance(r.data.data?.balance || 0)).catch(() => {})
+    depositApi.getPaymentMethods()
+      .then(r => setMethods(r.data.data || []))
+      .catch(() => setMethods([]))
+      .finally(() => setLoadingMethods(false))
+  }, [fetchHistory])
 
-  // Parse fields from JSON string if needed
   const getFields = (method: any): any[] => {
     if (!method?.fields) return []
     if (Array.isArray(method.fields)) return method.fields
     try { return JSON.parse(method.fields) } catch { return [] }
   }
 
+  const handlePercentage = (pct: number) => {
+    setAmount(((balance * pct) / 100).toFixed(2))
+  }
+
+  const handleSelect = (m: any) => {
+    setSelectedMethod(m)
+    setFieldValues({})
+    setQrFile(null)
+    setAmount('0.00')
+    setStep(2)
+  }
+
   const handleSubmit = async () => {
-    if (!selectedMethod || !amount) return toast.error('Please complete all fields')
-    const amt = parseFloat(amount)
-    if (isNaN(amt) || amt <= 0) return toast.error('Enter a valid amount')
-    if (amt < selectedMethod.minAmount) return toast.error(`Minimum cashout is $${selectedMethod.minAmount}`)
-    if (amt > selectedMethod.maxAmount) return toast.error(`Maximum cashout is $${selectedMethod.maxAmount}`)
+    const numAmount = parseFloat(amount)
+    if (!numAmount || numAmount <= 0) return toast.error('Please enter a valid amount')
+    if (numAmount > balance) return toast.error('Insufficient balance')
 
     const fields = getFields(selectedMethod)
     const allFilled = fields.filter((f: any) => f.required).every((f: any) => fieldValues[f.name]?.trim())
-    if (!allFilled) return toast.error('Please fill all required payment details')
+    if (!allFilled) return toast.error('Please fill all required fields')
 
     setIsSubmitting(true)
     try {
-      const accountInfo = fields.map((f: any) => `${f.label}: ${fieldValues[f.name] || ''}`).join(' | ')
-      await withdrawalApi.create({
-        amount: amt,
-        paymentMethodId: selectedMethod.id,
-        accountInfo,
-      })
-      setShowContactModal(true)
+      const accountInfo = fields.length > 0
+        ? fields.map((f: any) => `${f.label}: ${fieldValues[f.name] || ''}`).join(' | ')
+        : selectedMethod.name
+
+      // Build as FormData to support QR file upload via /manual endpoint
+      const form = new FormData()
+      form.append('amount', numAmount.toString())
+      form.append('paymentMethodId', selectedMethod.id || selectedMethod.code || selectedMethod.name)
+      form.append('accountInfo', accountInfo)
+      if (qrFile) form.append('qrCode', qrFile)
+
+      const res = await withdrawalApi.manualCashout(form)
+      if (res.data?.data?.id) setWithdrawalId(res.data.data.id)
+
       toast.success('Cashout request submitted!')
       await fetchHistory()
+      setStep(3)
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Failed to submit cashout')
     } finally {
@@ -108,247 +297,281 @@ export default function CashoutsPage() {
   const resetForm = () => {
     setStep(1)
     setSelectedMethod(null)
-    setAmount('')
+    setAmount('0.00')
     setFieldValues({})
-    setShowContactModal(false)
+    setQrFile(null)
+    setWithdrawalId(null)
+  }
+
+  const handleViewHistory = () => {
+    resetForm()
+    setTab('history')
   }
 
   return (
-    <div className="space-y-6 max-w-4xl">
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-        <h2 className="font-display font-bold text-2xl text-white">CASHOUTS</h2>
-        <p className="text-slate-400 text-sm mt-1">Withdraw your winnings securely.</p>
+    <div className="max-w-2xl mx-auto space-y-6">
+      {/* Header */}
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+        className="flex items-end justify-between flex-wrap gap-4">
+        <div>
+          <h2 className="font-display font-bold text-2xl text-white">CASHOUTS</h2>
+          <p className="text-slate-400 text-sm mt-1">Withdraw your winnings securely.</p>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={() => { resetForm(); setTab('new') }} id="new-cashout-btn"
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all border ${tab === 'new' ? 'bg-neon-blue/10 text-neon-blue border-neon-blue/30' : 'glass text-slate-400 border-white/10 hover:text-white'}`}>
+            <Plus className="w-4 h-4" /> New Request
+          </button>
+          <button onClick={() => { setTab('history'); fetchHistory() }} id="history-tab-btn"
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all border ${tab === 'history' ? 'bg-neon-blue/10 text-neon-blue border-neon-blue/30' : 'glass text-slate-400 border-white/10 hover:text-white'}`}>
+            <History className="w-4 h-4" /> History
+          </button>
+        </div>
       </motion.div>
 
-      {/* Info banner */}
-      <div className="glass rounded-xl p-4 flex gap-3 border border-neon-blue/20">
-        <Info className="w-5 h-5 text-neon-blue flex-shrink-0 mt-0.5" />
+      {/* Notice */}
+      <div className="glass-card p-4 flex items-start gap-3 border border-white/5">
+        <AlertCircle className="w-4 h-4 text-neon-blue flex-shrink-0 mt-0.5" />
         <div>
-          <p className="text-sm text-white font-medium">Cashout Processing</p>
-          <p className="text-xs text-slate-400 mt-1">
-            Withdrawals are reviewed within 1–24 hours. Ensure your payment info is correct before submitting.
-          </p>
+          <p className="text-white text-sm font-medium">Cashout Processing</p>
+          <p className="text-slate-400 text-xs mt-0.5">Withdrawals are reviewed within 1–24 hours. Ensure your payment info is correct before submitting.</p>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-2">
-        {[{ id: 'new', label: 'New Request', icon: Plus }, { id: 'history', label: 'History', icon: History }].map(t => (
-          <button key={t.id} onClick={() => setTab(t.id as any)}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all ${
-              tab === t.id ? 'bg-neon-blue/10 text-neon-blue border border-neon-blue/20' : 'glass text-slate-400 hover:text-white border border-white/10'
-            }`}>
-            <t.icon className="w-4 h-4" />{t.label}
-          </button>
-        ))}
-      </div>
+      {/* New Request Tab */}
+      <AnimatePresence mode="wait">
+        {tab === 'new' && (
+          <motion.div key="new" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
 
-      {tab === 'new' && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+            {/* STEP 3 — Countdown Timer */}
+            {step === 3 && (
+              <div className="glass-card overflow-hidden">
+                <WithdrawalCountdown
+                  amount={amount}
+                  methodName={selectedMethod?.name || ''}
+                  settings={settings}
+                  onClose={resetForm}
+                  withdrawalId={withdrawalId}
+                  onViewHistory={handleViewHistory}
+                />
+              </div>
+            )}
 
-          {/* STEP 1 — Select Method */}
-          {step === 1 && (
-            <div>
-              <h3 className="font-display text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">
-                Select Withdrawal Method
-              </h3>
-              {loadingMethods ? (
-                <div className="flex items-center gap-3 text-slate-500 py-8">
-                  <Loader2 className="w-5 h-5 animate-spin" /> Loading methods...
-                </div>
-              ) : methods.length === 0 ? (
-                <p className="text-slate-500 py-8">No withdrawal methods available. Please contact support.</p>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  {methods.map(m => {
-                    const meta = getMeta(m.code)
-                    return (
-                      <button key={m.id}
-                        onClick={() => { setSelectedMethod(m); setStep(2) }}
-                        className="glass-card p-5 text-left hover:-translate-y-1 transition-all group flex flex-col gap-3"
-                      >
-                        <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl"
-                          style={{ background: `${meta.color}20`, border: `1px solid ${meta.color}40` }}>
-                          {meta.icon}
-                        </div>
-                        <div>
-                          <p className="text-white font-semibold">{m.name}</p>
-                          <p className="text-xs text-slate-500 mt-0.5">Min: ${m.minAmount} · Max: ${m.maxAmount.toLocaleString()}</p>
-                        </div>
-                        <ChevronRight className="w-4 h-4 text-slate-600 group-hover:text-neon-blue transition-colors mt-auto self-end" />
-                      </button>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* STEP 2 — Fill Details */}
-          {step === 2 && selectedMethod && (() => {
-            const meta = getMeta(selectedMethod.code)
-            const fields = getFields(selectedMethod)
-            return (
-              <div className="glass-card p-6 max-w-md space-y-5">
-                <button onClick={() => setStep(1)} className="text-xs text-slate-500 hover:text-white transition-colors">← Back</button>
-
-                <div className="flex items-center gap-3">
-                  <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl"
-                    style={{ background: `${meta.color}20`, border: `1px solid ${meta.color}40` }}>
-                    {meta.icon}
-                  </div>
-                  <div>
-                    <p className="text-white font-bold">{selectedMethod.name}</p>
-                    <p className="text-xs text-slate-500">Min: ${selectedMethod.minAmount} · Max: ${selectedMethod.maxAmount.toLocaleString()}</p>
-                  </div>
-                </div>
-
-                {/* Instructions */}
-                {selectedMethod.instructions && (
-                  <p className="text-xs text-slate-400 bg-white/5 rounded-xl p-3 border border-white/5">
-                    {selectedMethod.instructions}
-                  </p>
-                )}
-
-                {/* Amount */}
-                <div>
-                  <label className="block text-xs font-mono tracking-wider text-slate-400 uppercase mb-2">Amount (USD)</label>
-                  <input type="number" value={amount} onChange={e => setAmount(e.target.value)}
-                    placeholder={`Min $${selectedMethod.minAmount}`} className="input-neon text-xl font-display" />
-                  <div className="flex gap-2 mt-3">
-                    {[50, 100, 200, 500].map(amt => (
-                      <button key={amt} onClick={() => setAmount(String(amt))}
-                        className="px-3 py-1.5 text-xs glass rounded-lg text-slate-400 hover:text-neon-blue border border-white/10 hover:border-neon-blue/30 transition-all">
-                        ${amt}
-                      </button>
+            {/* STEP 1 — Select Method */}
+            {step === 1 && (
+              <div className="space-y-4">
+                <p className="text-xs font-mono text-slate-500 uppercase tracking-wider">SELECT WITHDRAWAL METHOD</p>
+                {loadingMethods ? (
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <div key={i} className="glass-card p-5 h-28 animate-pulse bg-white/3 rounded-2xl" />
                     ))}
                   </div>
-                </div>
-
-                {/* Dynamic Fields */}
-                {fields.map((field: any) => (
-                  <div key={field.name}>
-                    <label className="block text-xs font-mono tracking-wider text-slate-400 uppercase mb-2">
-                      {field.label}{field.required && <span className="text-red-400 ml-1">*</span>}
-                    </label>
-                    {field.type === 'select' && field.options ? (
-                      <select
-                        value={fieldValues[field.name] || ''}
-                        onChange={e => setFieldValues(prev => ({ ...prev, [field.name]: e.target.value }))}
-                        className="input-neon">
-                        <option value="">Select...</option>
-                        {field.options.map((opt: string) => (
-                          <option key={opt} value={opt}>{opt}</option>
-                        ))}
-                      </select>
-                    ) : (
-                      <input type="text" placeholder={field.placeholder || ''}
-                        value={fieldValues[field.name] || ''}
-                        onChange={e => setFieldValues(prev => ({ ...prev, [field.name]: e.target.value }))}
-                        className="input-neon" />
-                    )}
+                ) : methods.length === 0 ? (
+                  <div className="glass-card p-8 text-center text-slate-500 text-sm">No cashout methods available at this time.</div>
+                ) : (
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {methods.map(m => {
+                      const meta = getMethodMeta(m.code || m.name)
+                      const isSoon = !m.isActive
+                      return (
+                        <button key={m.id} onClick={() => !isSoon && handleSelect(m)} disabled={isSoon}
+                          className={`glass-card p-5 rounded-2xl text-left flex flex-col gap-3 group transition-all border ${isSoon ? 'opacity-50 cursor-not-allowed border-white/5' : 'hover:border-white/20 border-white/5 hover:scale-[1.02]'}`}>
+                          <div className="flex items-start justify-between">
+                            <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-2xl"
+                              style={{ background: meta.bg, border: `1px solid ${meta.color}30` }}>
+                              {meta.icon}
+                            </div>
+                            {!isSoon && <ChevronRight className="w-4 h-4 text-slate-600 group-hover:text-white transition-colors" />}
+                            {isSoon && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-slate-400 border border-white/10">Soon</span>}
+                          </div>
+                          <div>
+                            <p className="text-white font-semibold text-sm">{m.name}</p>
+                            {!isSoon && <p className="text-xs text-slate-500 mt-0.5">Min: ${m.minAmount} · Max: ${m.maxAmount?.toLocaleString()}</p>}
+                          </div>
+                        </button>
+                      )
+                    })}
                   </div>
-                ))}
-
-                <button onClick={handleSubmit} disabled={isSubmitting}
-                  className="btn-primary w-full py-3 text-sm disabled:opacity-50 flex items-center justify-center gap-2">
-                  {isSubmitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Submitting...</> : 'SUBMIT CASHOUT REQUEST'}
-                </button>
-              </div>
-            )
-          })()}
-        </motion.div>
-      )}
-
-      {/* Contact Modal */}
-      <AnimatePresence>
-        {showContactModal && (
-          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
-              className="glass-card p-6 md:p-8 max-w-md w-full text-center relative overflow-hidden">
-              <div className="absolute top-0 left-0 right-0 h-1 bg-neon-blue" />
-              <div className="w-16 h-16 bg-blue-500/10 border border-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Info className="w-8 h-8 text-blue-400" />
-              </div>
-              <h3 className="font-display font-bold text-2xl text-white mb-2">Contact an Operator</h3>
-              <p className="text-slate-400 text-sm mb-6">
-                Your withdrawal has been queued. Send this message to an operator to get paid instantly.
-              </p>
-              <div className="bg-dark-800 rounded-xl p-4 text-left border border-white/5 mb-6 select-all">
-                <p className="text-sm font-mono text-slate-300 whitespace-pre-line">
-{`Hello,
-
-I would like to request a withdrawal.
-
-Amount: $${amount}
-Method: ${selectedMethod?.name || ''}
-
-Please process my withdrawal request.`}
-                </p>
-              </div>
-              <div className="grid grid-cols-1 gap-3">
-                {settings.telegram_url && (
-                  <a href={settings.telegram_url} target="_blank" rel="noreferrer"
-                    className="btn-primary w-full py-3 flex items-center justify-center gap-2">
-                    <span className="font-bold">Contact on Telegram</span>
-                  </a>
-                )}
-                {settings.signal_number && (
-                  <a href={`https://signal.me/#p/${settings.signal_number}`} target="_blank" rel="noreferrer"
-                    className="glass w-full py-3 rounded-xl border border-white/10 hover:border-white/30 text-white flex items-center justify-center gap-2 transition-all">
-                    <span className="font-bold">Contact on Signal</span>
-                  </a>
-                )}
-                {settings.messenger_url && (
-                  <a href={settings.messenger_url} target="_blank" rel="noreferrer"
-                    className="glass w-full py-3 rounded-xl border border-white/10 hover:border-white/30 text-white flex items-center justify-center gap-2 transition-all">
-                    <span className="font-bold">Contact on Messenger</span>
-                  </a>
                 )}
               </div>
-              <button onClick={() => { resetForm(); setTab('history') }}
-                className="mt-6 text-sm text-slate-500 hover:text-white transition-colors">
-                Close & View History
-              </button>
-            </motion.div>
-          </div>
+            )}
+
+            {/* STEP 2 — Amount + Fields form (matches homepage modal exactly) */}
+            {step === 2 && selectedMethod && (() => {
+              const fields = getFields(selectedMethod)
+              const meta = getMethodMeta(selectedMethod.code || selectedMethod.name)
+
+              return (
+                <div className="bg-[#0F1219] rounded-3xl border border-white/5 overflow-hidden">
+                  {/* Header */}
+                  <div className="p-6 pb-4 flex justify-between items-start">
+                    <div>
+                      <h2 className="text-white font-bold text-2xl mb-1">{selectedMethod.name}</h2>
+                      <p className="text-slate-400 text-sm">Fill in all the fields to create a<br />withdrawal request.</p>
+                    </div>
+                    <button onClick={resetForm} className="p-2 text-slate-400 hover:text-white rounded-full transition-colors -mr-2">
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  <div className="p-6 pt-2 space-y-6">
+                    {/* Amount */}
+                    <div className="space-y-4">
+                      <p className="text-slate-400 text-sm text-center">Enter cashout amount</p>
+                      <div className="bg-[#1A1E29] rounded-2xl p-4 flex items-center border border-white/5 relative">
+                        <span className="text-slate-500 mr-2 text-3xl font-bold">$</span>
+                        <input type="text" value={amount}
+                          onChange={e => setAmount(e.target.value.replace(/[^0-9.]/g, ''))}
+                          className="bg-transparent text-white font-bold text-4xl w-full focus:outline-none placeholder:text-slate-700"
+                          placeholder="0.00" />
+                        {amount !== '0.00' && amount !== '' && (
+                          <button onClick={() => setAmount('0.00')} className="absolute right-4 text-slate-500 hover:text-slate-300">
+                            <X className="w-5 h-5" />
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-4 gap-2">
+                        {[25, 50, 75, 100].map(pct => (
+                          <button key={pct} onClick={() => handlePercentage(pct)}
+                            className="bg-[#1A1E29] hover:bg-[#252A36] text-[#2AC3FF] font-bold py-2.5 rounded-xl border border-white/5 transition-colors text-sm">
+                            {pct}%
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="flex justify-between items-center py-2 border-b border-white/5">
+                        <span className="text-slate-400 text-sm">Available balance</span>
+                        <span className="text-white font-bold text-sm">${balance.toFixed(2)}</span>
+                      </div>
+                    </div>
+
+                    {/* Dynamic fields from payment method */}
+                    {fields.length > 0 ? fields.map((field: any) => (
+                      <div key={field.name} className="space-y-2">
+                        <p className="text-slate-400 text-sm">{field.label}{field.required && ' *'}</p>
+                        {field.type === 'select' ? (
+                          <div className="bg-[#1A1E29] rounded-2xl border border-white/5">
+                            <select value={fieldValues[field.name] || ''} onChange={e => setFieldValues(p => ({ ...p, [field.name]: e.target.value }))}
+                              className="bg-transparent text-slate-300 text-sm w-full p-4 focus:outline-none">
+                              <option value="">{field.placeholder || 'Select...'}</option>
+                              {(field.options || []).map((opt: string) => <option key={opt} value={opt}>{opt}</option>)}
+                            </select>
+                          </div>
+                        ) : (
+                          <div className="bg-[#1A1E29] rounded-2xl p-4 border border-white/5 flex items-center relative">
+                            <input type="text" placeholder={field.placeholder || ''}
+                              value={fieldValues[field.name] || ''}
+                              onChange={e => setFieldValues(p => ({ ...p, [field.name]: e.target.value }))}
+                              className="bg-transparent text-slate-300 text-sm w-full focus:outline-none placeholder:text-slate-600 font-medium" />
+                            <div className="w-1.5 h-1.5 rounded-full bg-slate-600 absolute right-4" />
+                          </div>
+                        )}
+                      </div>
+                    )) : (
+                      // Fallback generic account info field
+                      <div className="space-y-2">
+                        <p className="text-slate-400 text-sm">Your {selectedMethod.name} account info *</p>
+                        <div className="bg-[#1A1E29] rounded-2xl p-4 border border-white/5 flex items-center relative">
+                          <input type="text" placeholder={`Enter your ${selectedMethod.name} details`}
+                            value={fieldValues['accountInfo'] || ''}
+                            onChange={e => setFieldValues(p => ({ ...p, accountInfo: e.target.value }))}
+                            className="bg-transparent text-slate-300 text-sm w-full focus:outline-none placeholder:text-slate-600 font-medium" />
+                          <div className="w-1.5 h-1.5 rounded-full bg-slate-600 absolute right-4" />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* QR Code Upload */}
+                    <div className="space-y-2">
+                      <p className="text-slate-400 text-sm flex items-center gap-2">
+                        <Paperclip className="w-4 h-4" /> QR Code (Optional)
+                      </p>
+                      <div className="bg-[#1A1E29] rounded-2xl p-4 border border-white/5 flex items-center">
+                        <input type="file" accept="image/*" onChange={e => setQrFile(e.target.files?.[0] || null)}
+                          className="bg-transparent text-slate-300 text-sm w-full focus:outline-none file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-[#2AC3FF]/10 file:text-[#2AC3FF] hover:file:bg-[#2AC3FF]/20" />
+                      </div>
+                    </div>
+
+                    {/* Buttons */}
+                    <div className="flex gap-3 pt-4">
+                      <button onClick={handleSubmit} disabled={isSubmitting}
+                        className="flex-[2] bg-[#2AC3FF] hover:bg-[#1CA0D9] text-white font-bold py-4 rounded-2xl transition-all disabled:opacity-50">
+                        {isSubmitting ? 'Processing...' : 'Continue'}
+                      </button>
+                      <button onClick={resetForm}
+                        className="flex-1 bg-[#1A1E29] hover:bg-[#252A36] text-white font-bold py-4 rounded-2xl transition-all border border-white/5">
+                        Back
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )
+            })()}
+          </motion.div>
+        )}
+
+        {/* History Tab */}
+        {tab === 'history' && (
+          <motion.div key="history" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+            <div className="glass-card overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-white/5">
+                      {['Reference', 'Method', 'Amount', 'Status', 'Date'].map(h => (
+                        <th key={h} className="text-left text-xs font-mono text-slate-500 uppercase tracking-wider px-5 py-3.5">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {historyLoading ? (
+                      Array.from({ length: 4 }).map((_, i) => (
+                        <tr key={i} className="border-b border-white/5">
+                          {Array.from({ length: 5 }).map((_, j) => (
+                            <td key={j} className="px-5 py-4"><div className="h-4 bg-white/5 rounded animate-pulse" /></td>
+                          ))}
+                        </tr>
+                      ))
+                    ) : history.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="px-5 py-16 text-center">
+                          <ArrowUpCircle className="w-10 h-10 text-slate-700 mx-auto mb-3" />
+                          <p className="text-slate-500 text-sm">No cashout requests yet.</p>
+                          <button onClick={() => setTab('new')} className="mt-3 text-neon-blue text-sm hover:underline">Create your first request →</button>
+                        </td>
+                      </tr>
+                    ) : history.map((tx: any, i) => (
+                      <motion.tr key={tx.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.03 }}
+                        className="border-b border-white/5 hover:bg-white/2 transition-colors">
+                        <td className="px-5 py-4">
+                          <span className="font-mono text-xs text-neon-blue bg-neon-blue/10 px-2 py-1 rounded">
+                            {tx.requestId || tx.id.slice(0, 10)}
+                          </span>
+                        </td>
+                        <td className="px-5 py-4 text-sm text-slate-300">{tx.paymentMethod?.name || tx.paymentMethodStr || tx.adminNotes || 'Manual'}</td>
+                        <td className="px-5 py-4 font-bold text-white">${tx.amount.toFixed(2)}</td>
+                        <td className="px-5 py-4">
+                          <StatusBadge status={tx.status} />
+                          {tx.status === 'pending' && (
+                            <p className="text-[10px] text-amber-500/70 mt-1 flex items-center gap-1">
+                              <Clock className="w-3 h-3" /> Processing ~10-15 mins
+                            </p>
+                          )}
+                        </td>
+                        <td className="px-5 py-4 text-xs text-slate-500">
+                          {new Date(tx.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </td>
+                      </motion.tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
-
-      {/* History Tab */}
-      {tab === 'history' && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-          <div className="glass-card overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="data-table">
-                <thead><tr><th>Reference</th><th>Method</th><th>Amount</th><th>Status</th><th>Date</th></tr></thead>
-                <tbody>
-                  {historyLoading ? (
-                    <tr><td colSpan={5} className="text-center py-8 text-slate-500">Loading...</td></tr>
-                  ) : history.length === 0 ? (
-                    <tr><td colSpan={5} className="text-center py-8 text-slate-500">No cashouts yet.</td></tr>
-                  ) : history.map((tx: any) => (
-                    <tr key={tx.id}>
-                      <td className="font-mono text-xs text-slate-400">{tx.id.slice(0, 10)}</td>
-                      <td>{tx.paymentMethod?.name || tx.adminNotes || 'Manual'}</td>
-                      <td className="text-white font-medium">${tx.amount.toFixed(2)}</td>
-                      <td>
-                        <StatusBadge status={tx.status} />
-                        {tx.status === 'pending' && (
-                          <p className="text-[10px] text-amber-500/70 mt-1 flex items-center gap-1">
-                            Processing ~10-15 mins
-                          </p>
-                        )}
-                      </td>
-                      <td className="text-xs text-slate-600">{new Date(tx.createdAt).toLocaleDateString()}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </motion.div>
-      )}
     </div>
   )
 }
