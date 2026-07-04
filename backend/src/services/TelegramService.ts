@@ -106,17 +106,60 @@ ${message}
     return this.sendTextMessage(text);
   }
 
-  static async sendWithdrawalRequestNotification(username: string, email: string, amount: number, method: string, accountInfo: string) {
+  static async sendWithdrawalRequestNotification(username: string, email: string, amount: number, method: string, accountInfo: string, requestId?: string, withdrawalId?: string) {
+    const token = process.env.TELEGRAM_BOT_TOKEN
+    const chatId = process.env.TELEGRAM_GROUP_CHAT_ID
+
+    if (!token || !chatId) {
+      logger.warn('Telegram Bot token or chat ID is not configured.')
+      return false
+    }
+
     const text = `
 💸 *New Withdrawal Request* 💸
-*User:* ${username} (${email})
+${requestId ? `📋 *Request ID:* \`${requestId}\`\n` : ''}*User:* ${username} (${email})
 *Amount:* $${amount.toFixed(2)}
 *Method:* ${method}
 
 *Account Info:*
 ${accountInfo}
-    `;
-    return this.sendTextMessage(text);
+    `.trim();
+
+    try {
+      const payload: any = {
+        chat_id: chatId,
+        text: text,
+        parse_mode: 'Markdown'
+      }
+
+      if (requestId) {
+        payload.reply_markup = {
+          inline_keyboard: [
+            [
+              { text: '✅ Approve', callback_data: `wd_approve_${requestId}` },
+              { text: '❌ Reject', callback_data: `wd_reject_${requestId}` },
+            ]
+          ]
+        }
+      }
+
+      const response = await axios.post(`https://api.telegram.org/bot${token}/sendMessage`, payload)
+
+      if (withdrawalId && response?.data?.result) {
+        await prisma.withdrawal.update({
+          where: { id: withdrawalId },
+          data: {
+            telegramMessageId: String(response.data.result.message_id),
+            telegramChatId: String(response.data.result.chat.id)
+          }
+        })
+      }
+
+      return true
+    } catch (error: any) {
+      logger.error('Failed to send Telegram message:', error?.response?.data || error.message)
+      return false
+    }
   }
 
   static async sendDepositNotification(username: string, email: string, amount: number, method: string, txRef: string) {

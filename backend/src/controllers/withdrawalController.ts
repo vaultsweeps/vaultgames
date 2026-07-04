@@ -82,7 +82,7 @@ export const createWithdrawal = asyncHandler(async (req: AuthRequest, res: Respo
   const username = user?.username || 'Unknown'
   const email = user?.email || req.user!.email || 'Unknown'
   
-  TelegramService.sendWithdrawalRequestNotification(username, email, amount, paymentMethod.name, accountInfo).catch(console.error)
+  TelegramService.sendWithdrawalRequestNotification(username, email, amount, paymentMethod.name, accountInfo, withdrawal.requestId, withdrawal.id).catch(console.error)
 
   res.status(201).json({ success: true, message: 'Withdrawal request submitted', data: withdrawal })
 })
