@@ -24,7 +24,7 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
     throw new AppError('Username already taken', 409)
   }
 
-  const hashedPassword = await bcrypt.hash(password, 12)
+  const hashedPassword = await bcrypt.hash(password, 10)
   const verifyToken = crypto.randomBytes(32).toString('hex')
 
   let referredById = null

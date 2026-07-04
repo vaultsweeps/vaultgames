@@ -64,39 +64,46 @@ export default function GameDetailsPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [gameRes, accRes, txRes, balRes] = await Promise.all([
-          publicApi.getGameDetails(id as string),
+        // Fetch game details first for instant rendering
+        const gameRes = await publicApi.getGameDetails(id as string)
+        setGame(gameRes.data.data)
+        setLoading(false) // Unblock UI immediately
+
+        // Fetch user-specific data in background
+        const [accRes, txRes, balRes] = await Promise.all([
           providerApi.getAccount(id as string).catch(() => ({ data: { data: null } })),
           providerApi.getTransactions(id as string).catch(() => ({ data: { data: [] } })),
           isAuthenticated ? authApi.getBalance().catch(() => ({ data: { data: { balance: 0 } } })) : Promise.resolve({ data: { data: { balance: 0 } } })
         ])
         
-        setGame(gameRes.data.data)
         if (accRes.data?.data) {
-          // If backend signals this game has no provider, show maintenance modal immediately
           if (accRes.data.data.isMaintenance) {
             setMaintenanceModalOpen(true)
           } else {
             setAccount(accRes.data.data)
-            setLastUpdate(new Date())
           }
         }
+        
         if (txRes.data?.data) {
           setTransactions(txRes.data.data)
         }
-        if (balRes.data?.data) {
+        
+        if (balRes.data?.data?.balance !== undefined) {
           setWalletBalance(balRes.data.data.balance)
         }
-      } catch (err) {
-        toast.error('Failed to load game details')
-        router.push('/games')
-      } finally {
-        setLoading(false)
+      } catch (err: any) {
+        console.error(err)
+        if (!game) {
+          toast.error('Failed to load game details')
+          router.push('/games')
+        }
       }
     }
     
-    if (id) fetchData()
-  }, [id, router])
+    if (id) {
+      fetchData()
+    }
+  }, [id, isAuthenticated])
 
 
   const handleDownload = async () => {
