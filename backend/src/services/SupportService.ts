@@ -41,17 +41,20 @@ export class SupportService {
         data: {
           conversation_id: convId,
           telegram_user_id: telegramUserId,
-          telegram_username: telegramUsername || null,
           source: 'telegram',
           status: 'open'
-        } as any
+        }
       });
-    } else if (telegramUsername && (conversation as any).telegram_username !== telegramUsername) {
-      // Keep username fresh in case user updates their Telegram handle
-      conversation = await prisma.conversation.update({
-        where: { id: conversation.id },
-        data: { telegram_username: telegramUsername } as any
-      });
+    }
+
+    // Use raw SQL to update the telegram_username to completely bypass Prisma Client validation 
+    // This prevents crashes on the live server if the Prisma Client hasn't been regenerated yet.
+    if (telegramUsername) {
+      try {
+        await prisma.$executeRaw`UPDATE "Conversation" SET telegram_username = ${telegramUsername} WHERE id = ${conversation.id}`;
+      } catch (e) {
+        // Ignore errors if column doesn't exist yet
+      }
     }
     return conversation;
   }
