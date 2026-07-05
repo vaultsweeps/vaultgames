@@ -11,6 +11,7 @@ interface GameTransferModalProps {
   accountName: string
   gameBalance: number
   walletBalance: number
+  totalDeposited: number
   startAmount: number
   onTransfer: (amount: number, type: 'recharge' | 'withdraw') => Promise<void>
   onChangeGame?: () => void
@@ -24,7 +25,7 @@ const presets = [
 ] as const
 
 export default function GameTransferModal({ 
-  isOpen, onClose, type, gameName, gameThumbnail, accountName, gameBalance, walletBalance, startAmount, onTransfer, onChangeGame
+  isOpen, onClose, type, gameName, gameThumbnail, accountName, gameBalance, walletBalance, totalDeposited, startAmount, onTransfer, onChangeGame
 }: GameTransferModalProps) {
   const [amount, setAmount] = useState<string>('')
   const [loading, setLoading] = useState(false)
@@ -40,20 +41,20 @@ export default function GameTransferModal({
 
   if (!isOpen) return null
 
-  // Cashout rules calculated based on gameBalance
+  // Cashout rules calculated strictly based on totalDeposited amount (excluding bonuses)
   let minCashout = 50;
   let maxCashout = 50;
   
-  if (gameBalance <= 5) {
+  if (totalDeposited <= 5) {
     minCashout = 50; maxCashout = 50;
-  } else if (gameBalance >= 6 && gameBalance <= 9) {
+  } else if (totalDeposited >= 6 && totalDeposited <= 9) {
     minCashout = 50; maxCashout = 100;
-  } else if (gameBalance >= 10 && gameBalance <= 15) {
-    minCashout = 50; maxCashout = gameBalance * 15;
-  } else if (gameBalance >= 16 && gameBalance <= 50) {
-    minCashout = gameBalance * 3; maxCashout = gameBalance * 15;
-  } else if (gameBalance > 50) {
-    minCashout = gameBalance * 3; maxCashout = 1000;
+  } else if (totalDeposited >= 10 && totalDeposited <= 15) {
+    minCashout = 50; maxCashout = totalDeposited * 15;
+  } else if (totalDeposited >= 16 && totalDeposited <= 50) {
+    minCashout = totalDeposited * 3; maxCashout = totalDeposited * 15;
+  } else if (totalDeposited > 50) {
+    minCashout = totalDeposited * 3; maxCashout = 1000;
   }
 
   const cashoutAmount = Math.min(Math.floor(gameBalance), maxCashout)

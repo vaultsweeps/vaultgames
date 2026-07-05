@@ -99,7 +99,13 @@ export const getProviderAccount = asyncHandler(async (req: AuthRequest, res: Res
     if (providerService) {
       try { balance = await providerService.getPlayerBalance(providerUser.providerUserId) } catch { balance = 0 }
     }
-    return res.json({ success: true, data: { accountName: providerUser.accountName, balance, hasAccount: true, providerName: providerUser.provider?.name || '' } })
+    const depositedResult = await prisma.providerTransaction.aggregate({
+      _sum: { amount: true },
+      where: { userId, providerId: providerUser.providerId, type: 'recharge', status: 'success' }
+    })
+    const totalDeposited = depositedResult._sum.amount || 0
+
+    return res.json({ success: true, data: { accountName: providerUser.accountName, balance, totalDeposited, hasAccount: true, providerName: providerUser.provider?.name || '' } })
   }
 
   // No gameId — return any provider account the user has (generic dashboard use)
@@ -119,11 +125,18 @@ export const getProviderAccount = asyncHandler(async (req: AuthRequest, res: Res
     }
   }
 
+  const depositedResult = await prisma.providerTransaction.aggregate({
+    _sum: { amount: true },
+    where: { userId, providerId: providerUser.providerId, type: 'recharge', status: 'success' }
+  })
+  const totalDeposited = depositedResult._sum.amount || 0
+
   res.json({
     success: true,
     data: {
       accountName: providerUser.accountName,
       balance,
+      totalDeposited,
       hasAccount: true,
       providerName: providerUser.provider?.name || ''
     }
@@ -218,9 +231,34 @@ export const transferFunds = asyncHandler(async (req: AuthRequest, res: Response
     }
   } else {
     // withdraw (cash out from game)
-    if (amount < 10) {
-      throw new AppError('Minimum cashout amount is $10.', 400);
+    const depositedResult = await prisma.providerTransaction.aggregate({
+      _sum: { amount: true },
+      where: { userId, providerId: providerUser.providerId, type: 'recharge', status: 'success' }
+    });
+    const totalDeposited = depositedResult._sum.amount || 0;
+
+    let minCashout = 50;
+    let maxCashout = 50;
+    
+    if (totalDeposited <= 5) {
+      minCashout = 50; maxCashout = 50;
+    } else if (totalDeposited >= 6 && totalDeposited <= 9) {
+      minCashout = 50; maxCashout = 100;
+    } else if (totalDeposited >= 10 && totalDeposited <= 15) {
+      minCashout = 50; maxCashout = totalDeposited * 15;
+    } else if (totalDeposited >= 16 && totalDeposited <= 50) {
+      minCashout = totalDeposited * 3; maxCashout = totalDeposited * 15;
+    } else if (totalDeposited > 50) {
+      minCashout = totalDeposited * 3; maxCashout = 1000;
     }
+
+    if (amount < minCashout) {
+      throw new AppError(`Minimum cashout amount is $${minCashout}.`, 400);
+    }
+    if (amount > maxCashout) {
+      throw new AppError(`Maximum cashout amount is $${maxCashout}.`, 400);
+    }
+
     const gameBalance = await providerService.getPlayerBalance(providerUser.providerUserId);
     if (gameBalance < amount) {
       throw new AppError('Insufficient funds in game account.', 400);

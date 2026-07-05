@@ -485,6 +485,7 @@ export default function GameDetailsPage() {
           accountName={account.accountName || ''}
           gameBalance={account.balance || 0}
           walletBalance={walletBalance}
+          totalDeposited={account.totalDeposited || 0}
           startAmount={transactions.find(t => t.type === 'recharge' && t.status === 'success')?.amount || 5}
           onTransfer={handleTransfer}
           onChangeGame={() => {
