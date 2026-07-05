@@ -69,12 +69,21 @@ export default function GameDetailsPage() {
         setGame(gameRes.data.data)
         setLoading(false) // Unblock UI immediately
 
-        // Fetch user-specific data in background
-        const [accRes, txRes, balRes] = await Promise.all([
-          providerApi.getAccount(id as string).catch(() => ({ data: { data: null } })),
-          providerApi.getTransactions(id as string).catch(() => ({ data: { data: [] } })),
-          isAuthenticated ? authApi.getBalance().catch(() => ({ data: { data: { balance: 0 } } })) : Promise.resolve({ data: { data: { balance: 0 } } })
-        ])
+        // Fetch user-specific data in background ONLY if authenticated
+        let accRes = { data: { data: null as any } }
+        let txRes = { data: { data: [] as any[] } }
+        let balRes = { data: { data: { balance: 0 } } }
+
+        if (isAuthenticated) {
+          const results = await Promise.all([
+            providerApi.getAccount(id as string).catch(() => ({ data: { data: null } })),
+            providerApi.getTransactions(id as string).catch(() => ({ data: { data: [] } })),
+            authApi.getBalance().catch(() => ({ data: { data: { balance: 0 } } }))
+          ])
+          accRes = results[0]
+          txRes = results[1]
+          balRes = results[2]
+        }
         
         if (accRes.data?.data) {
           if (accRes.data.data.isMaintenance) {

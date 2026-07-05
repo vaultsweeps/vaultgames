@@ -267,7 +267,11 @@ export const transferFunds = asyncHandler(async (req: AuthRequest, res: Response
         bonusAmount = amount * 0.3;
         let bonusDef = await prisma.bonus.findFirst({ where: { type: 'deposit' } });
         if (bonusDef) {
-          await prisma.bonusClaim.create({ data: { userId, bonusId: bonusDef.id, amount: bonusAmount } });
+          try {
+            await prisma.bonusClaim.create({ data: { userId, bonusId: bonusDef.id, amount: bonusAmount } });
+          } catch (e) {
+            // Ignore unique constraint error for recurring bonuses so transfer succeeds
+          }
         }
       }
 
