@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger'
 import { Response } from 'express'
 import prisma from '../lib/prisma'
 import { v4 as uuidv4 } from 'uuid'
@@ -86,12 +87,12 @@ export const createDeposit = asyncHandler(async (req: AuthRequest, res: Response
   }
 
   // Notify user
-  await createNotification(req.user!.id, {
+  createNotification(req.user!.id, {
     title: 'Deposit Submitted',
-    message: `Your deposit of $${amount} via ${paymentMethod.name} has been submitted and is pending review.`,
+    message: `Your deposit of $${amount} is being processed.`,
     type: 'info',
     link: '/dashboard/deposits'
-  })
+  }).catch(e => logger.error('Failed to send notification: ' + e.message))
 
   // Invalidate wallet cache since a new deposit was created (though it's pending, it's good practice)
   invalidateWalletCache(req.user!.id)
@@ -100,7 +101,7 @@ export const createDeposit = asyncHandler(async (req: AuthRequest, res: Response
   const user = deposit.user
   try {
     const bot = TelegramSupportBot.getInstance()
-    await bot.sendDepositNotification(deposit, user)
+    bot.sendDepositNotification(deposit, user).catch(e => logger.error("Telegram notification failed: " + e.message))
   } catch (e: any) {
     console.error('[Telegram Deposit Notification Error]', e?.message || e)
   }
@@ -129,3 +130,6 @@ export const getDeposit = asyncHandler(async (req: AuthRequest, res: Response) =
   if (!deposit) throw new AppError('Deposit not found', 404)
   res.json({ success: true, data: deposit })
 })
+
+
+

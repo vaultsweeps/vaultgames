@@ -11,6 +11,7 @@ dotenv.config()
 
 import { errorHandler } from './middleware/errorHandler'
 import { logger } from './utils/logger'
+import { performanceLogger } from './middleware/performanceLogger'
 
 // Routes
 import authRoutes from './routes/auth'
@@ -35,6 +36,9 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
   contentSecurityPolicy: false,
 }))
+
+// Performance logger (track slow API calls)
+app.use(performanceLogger)
 
 // CORS
 const allowedOrigins = [

@@ -1,4 +1,4 @@
-import { Response } from 'express'
+port { Response } from 'express'
 import prisma from '../lib/prisma'
 import { asyncHandler, AppError } from '../middleware/errorHandler'
 import { AuthRequest } from '../middleware/auth'
@@ -76,11 +76,12 @@ export const createWithdrawal = asyncHandler(async (req: AuthRequest, res: Respo
 
   invalidateWalletCache(req.user!.id)
 
-  await createNotification(req.user!.id, {
-    title: 'Cashout Submitted',
-    message: `Your cashout request of $${amount} has been submitted. We'll process it within 1-24 hours.`,
-    type: 'info', link: '/dashboard/cashouts'
-  })
+  createNotification(req.user!.id, {
+    title: 'Cashout Request Submitted',
+    message: `Your cashout of $${amount} via ${paymentMethod.name} is being processed.`,
+    type: 'info',
+    link: '/dashboard/cashouts'
+  }).catch(e => logger.error('Failed to send notification: ' + e.message))
 
   const user = await prisma.user.findUnique({ where: { id: req.user!.id } })
   const username = user?.username || 'Unknown'
@@ -325,3 +326,6 @@ export const createEnhancedWithdrawal = asyncHandler(async (req: AuthRequest, re
     }
   })
 })
+
+
+

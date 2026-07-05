@@ -192,7 +192,7 @@ export const banUser = asyncHandler(async (req: AuthRequest, res: Response) => {
     where: { id },
     data: { isBanned: true, isActive: false }
   })
-  await createNotification(id, { title: 'Account Banned', message: 'Your account has been banned. Contact support.', type: 'error' })
+  createNotification(id, { title: 'Account Banned', message: 'Your account has been banned. Contact support.', type: 'error' })
   res.json({ success: true, message: 'User banned successfully' })
 })
 
@@ -252,7 +252,7 @@ export const approveDeposit = asyncHandler(async (req: AuthRequest, res: Respons
     data: { status: 'approved', notes, approvedBy: req.user!.id, approvedAt: new Date() }
   })
 
-  await createNotification(deposit.userId, {
+  createNotification(deposit.userId, {
     title: 'Deposit Approved! ✓',
     message: `Your deposit of $${deposit.amount} has been approved and is ready to use.`,
     type: 'success', link: '/dashboard/deposits'
@@ -275,7 +275,7 @@ export const rejectDeposit = asyncHandler(async (req: AuthRequest, res: Response
 
   await prisma.deposit.update({ where: { id }, data: { status: 'failed', notes } })
 
-  await createNotification(deposit.userId, {
+  createNotification(deposit.userId, {
     title: 'Deposit Rejected',
     message: `Your deposit of $${deposit.amount} was rejected. Reason: ${notes || 'No reason provided'}. Contact support.`,
     type: 'error', link: '/dashboard/deposits'
@@ -320,7 +320,7 @@ export const approveWithdrawal = asyncHandler(async (req: AuthRequest, res: Resp
     data: { status: 'approved', adminNotes: notes, processedBy: req.user!.id }
   })
 
-  await createNotification(withdrawal.userId, {
+  createNotification(withdrawal.userId, {
     title: 'Cashout Approved',
     message: `Your cashout of $${withdrawal.amount} has been approved and will be processed shortly.`,
     type: 'success', link: '/dashboard/cashouts'
@@ -339,7 +339,7 @@ export const rejectWithdrawal = asyncHandler(async (req: AuthRequest, res: Respo
 
   await prisma.withdrawal.update({ where: { id }, data: { status: 'rejected', adminNotes: notes } })
 
-  await createNotification(withdrawal.userId, {
+  createNotification(withdrawal.userId, {
     title: 'Cashout Rejected',
     message: `Your cashout of $${withdrawal.amount} was rejected. ${notes ? `Reason: ${notes}` : ''} Please contact support.`,
     type: 'error', link: '/dashboard/cashouts'
@@ -356,7 +356,7 @@ export const markWithdrawalPaid = asyncHandler(async (req: AuthRequest, res: Res
 
   await prisma.withdrawal.update({ where: { id }, data: { status: 'paid', processedAt: new Date() } })
 
-  await createNotification(withdrawal.userId, {
+  createNotification(withdrawal.userId, {
     title: 'Cashout Paid! 💰',
     message: `Your cashout of $${withdrawal.amount} has been paid successfully.`,
     type: 'success', link: '/dashboard/cashouts'
@@ -469,7 +469,7 @@ export const adminReplyTicket = asyncHandler(async (req: AuthRequest, res: Respo
 
   await prisma.supportTicket.update({ where: { id }, data: { status: 'in_progress', updatedAt: new Date() } })
 
-  await createNotification(ticket.userId, {
+  createNotification(ticket.userId, {
     title: 'Support Reply',
     message: 'Our support team has replied to your ticket.',
     type: 'info', link: `/dashboard/support`
@@ -706,7 +706,7 @@ export const adminApproveEnhancedWithdrawal = asyncHandler(async (req: AuthReque
   }
 
   // Notify user in-app
-  await createNotification(updated.userId, {
+  createNotification(updated.userId, {
     title: '✅ Withdrawal Approved!',
     message: `Your withdrawal request ${requestId} for $${updated.amount.toFixed(2)} via ${updated.paymentMethodStr} has been approved.`,
     type: 'success',
@@ -764,7 +764,7 @@ export const adminRejectEnhancedWithdrawal = asyncHandler(async (req: AuthReques
   }
 
   // Notify user
-  await createNotification(updated.userId, {
+  createNotification(updated.userId, {
     title: '❌ Withdrawal Rejected',
     message: `Your withdrawal request ${requestId} for $${updated.amount.toFixed(2)} was rejected.${reason ? ` Reason: ${reason}` : ''} Please contact support if you have questions.`,
     type: 'error',
@@ -789,4 +789,6 @@ export const verifyUser = asyncHandler(async (req: AuthRequest, res: Response) =
   await prisma.user.update({ where: { id: id as string }, data: { isVerified: true, verifyToken: null } })
   res.json({ success: true, message: 'User verified successfully' })
 })
+
+
 

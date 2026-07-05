@@ -301,12 +301,12 @@ export const transferFunds = asyncHandler(async (req: AuthRequest, res: Response
           if (refBonusDef) {
             try {
               await prisma.bonusClaim.create({ data: { userId: user.referredById, bonusId: refBonusDef.id, amount: refBonus } });
-              await createNotification(user.referredById, {
+              createNotification(user.referredById, {
                 title: 'Referral Bonus Received!',
                 message: `You just received $${refBonus.toFixed(2)} because your referred friend ${user.username} made their first transfer.`,
                 type: 'success',
                 link: '/dashboard/bonuses'
-              });
+              }).catch(e => logger.error('Failed to send notification: ' + e.message));
             } catch (e) {
               // Ignore unique constraint error
             }
