@@ -93,8 +93,9 @@ export class TelegramSupportBot {
     const telegramUsername = ctx.from.username || null;
     const text = ctx.message.text;
 
+    let conversation: any = null;
     try {
-      let conversation = await SupportService.getOrCreateTelegramConversation(telegramUserId, name, telegramUsername);
+      conversation = await SupportService.getOrCreateTelegramConversation(telegramUserId, name, telegramUsername);
 
       if (!conversation.telegram_thread_id) {
         const topicName = `${conversation.conversation_id} - Telegram ${name}`;
@@ -114,6 +115,30 @@ export class TelegramSupportBot {
         message_thread_id: Number(conversation.telegram_thread_id)
       });
     } catch (e: any) {
+      if (e.description && e.description.includes('message thread not found')) {
+        try {
+          // The admin deleted the topic in the group, so we need to create a new one
+          const topicName = `${conversation.conversation_id} - Telegram ${name}`;
+          const topic = await ctx.telegram.createForumTopic(this.groupId, topicName);
+          conversation = await SupportService.updateConversationThreadId(conversation.id, topic.message_thread_id.toString());
+          
+          await ctx.telegram.sendMessage(
+            this.groupId,
+            `📩 New Telegram User (Recreated)\nConversation: ${conversation.conversation_id}\nTelegram User: ${name}${telegramUsername ? ` (@${telegramUsername})` : ''}\nTelegram ID: ${telegramUserId}`,
+            { message_thread_id: topic.message_thread_id }
+          );
+
+          await ctx.telegram.sendMessage(this.groupId, `User: ${text}`, {
+            message_thread_id: Number(conversation.telegram_thread_id)
+          });
+          return; // Success after recreation
+        } catch (retryError: any) {
+          logger.error('Error recreating topic', retryError);
+          await ctx.reply(`Sorry, an error occurred. Error: ${retryError.message || String(retryError)}`);
+          return;
+        }
+      }
+
       logger.error('Error handling private message', e);
       await ctx.reply(`Sorry, an error occurred while sending your message. Error: ${e.message || String(e)}`);
     }
