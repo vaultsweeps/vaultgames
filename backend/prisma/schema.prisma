@@ -190,13 +190,14 @@ model PaymentMethod {
   isActive     Boolean           @default(true)
   minAmount    Float             @default(10)
   maxAmount    Float             @default(100000)
-  feePercent   Float             @default(0)
-  iconUrl      String?
-  instructions String?
-  fields       Json              @default("[]")
-  apiConfig    Json?
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
+  feePercent     Float             @default(0)
+  iconUrl        String?
+  instructions   String?
+  fields         Json              @default("[]")
+  apiConfig      Json?
+  cashoutEnabled Boolean           @default(true)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
 
   deposits    Deposit[]
   withdrawals Withdrawal[]
