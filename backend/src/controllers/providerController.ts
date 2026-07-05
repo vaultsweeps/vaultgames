@@ -99,11 +99,11 @@ export const getProviderAccount = asyncHandler(async (req: AuthRequest, res: Res
     if (providerService) {
       try { balance = await providerService.getPlayerBalance(providerUser.providerUserId) } catch { balance = 0 }
     }
-    const depositedResult = await prisma.providerTransaction.aggregate({
-      _sum: { amount: true },
-      where: { userId, providerId: providerUser.providerId, type: 'recharge', status: 'success' }
+    const lastRecharge = await prisma.providerTransaction.findFirst({
+      where: { userId, providerId: providerUser.providerId, type: 'recharge', status: 'success' },
+      orderBy: { createdAt: 'desc' }
     })
-    const totalDeposited = depositedResult._sum.amount || 0
+    const totalDeposited = lastRecharge?.amount || 0
 
     return res.json({ success: true, data: { accountName: providerUser.accountName, balance, totalDeposited, hasAccount: true, providerName: providerUser.provider?.name || '' } })
   }
@@ -125,11 +125,11 @@ export const getProviderAccount = asyncHandler(async (req: AuthRequest, res: Res
     }
   }
 
-  const depositedResult = await prisma.providerTransaction.aggregate({
-    _sum: { amount: true },
-    where: { userId, providerId: providerUser.providerId, type: 'recharge', status: 'success' }
+  const lastRecharge = await prisma.providerTransaction.findFirst({
+    where: { userId, providerId: providerUser.providerId, type: 'recharge', status: 'success' },
+    orderBy: { createdAt: 'desc' }
   })
-  const totalDeposited = depositedResult._sum.amount || 0
+  const totalDeposited = lastRecharge?.amount || 0
 
   res.json({
     success: true,
@@ -231,11 +231,11 @@ export const transferFunds = asyncHandler(async (req: AuthRequest, res: Response
     }
   } else {
     // withdraw (cash out from game)
-    const depositedResult = await prisma.providerTransaction.aggregate({
-      _sum: { amount: true },
-      where: { userId, providerId: providerUser.providerId, type: 'recharge', status: 'success' }
+    const lastRecharge = await prisma.providerTransaction.findFirst({
+      where: { userId, providerId: providerUser.providerId, type: 'recharge', status: 'success' },
+      orderBy: { createdAt: 'desc' }
     });
-    const totalDeposited = depositedResult._sum.amount || 0;
+    const totalDeposited = lastRecharge?.amount || 0;
 
     let minCashout = 50;
     let maxCashout = 50;
