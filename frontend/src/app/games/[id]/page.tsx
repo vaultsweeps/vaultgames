@@ -54,6 +54,14 @@ export default function GameDetailsPage() {
   
   const { isAuthenticated } = useAuthStore()
   const [accountFetched, setAccountFetched] = useState(false)
+  // Start as true if a token cookie exists so we show a skeleton instead of "Get Access" during initial fetch
+  const [accountLoading, setAccountLoading] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const Cookies = require('js-cookie')
+      return !!Cookies.get('vaultsweeps_token')
+    }
+    return false
+  })
 
   useEffect(() => {
     if (account?.accountName && id) {
@@ -99,6 +107,7 @@ export default function GameDetailsPage() {
         }
 
         setAccountFetched(true)
+        setAccountLoading(false)
       } catch (err: any) {
         console.error(err)
         if (!game) {
@@ -106,6 +115,7 @@ export default function GameDetailsPage() {
           router.push('/games')
         }
         setAccountFetched(true)
+        setAccountLoading(false)
       }
     }
 
@@ -340,7 +350,23 @@ export default function GameDetailsPage() {
         </motion.div>
 
         {/* Credentials Card */}
-        {account?.hasAccount ? (
+        {accountLoading ? (
+          /* Skeleton shown while account data is loading — prevents flash of "Get Access" */
+          <div className="bg-[#1A1E29] rounded-2xl p-5 shadow-lg border border-white/5 space-y-3 animate-pulse">
+            <div className="bg-[#13161F] rounded-xl p-4 flex justify-between items-center border border-white/5">
+              <div className="h-4 bg-white/10 rounded w-32" />
+              <div className="h-4 w-4 bg-white/10 rounded" />
+            </div>
+            <div className="bg-[#13161F] rounded-xl p-4 flex justify-between items-center border border-white/5">
+              <div className="h-4 bg-white/10 rounded w-24" />
+              <div className="flex gap-3">
+                <div className="h-4 w-4 bg-white/10 rounded" />
+                <div className="h-4 w-4 bg-white/10 rounded" />
+              </div>
+            </div>
+            <div className="h-12 bg-white/5 rounded-xl border border-white/10" />
+          </div>
+        ) : account?.hasAccount ? (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-[#1A1E29] rounded-2xl p-5 shadow-lg border border-white/5 space-y-3">
             
             {/* Username */}
