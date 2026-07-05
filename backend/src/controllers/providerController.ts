@@ -245,7 +245,11 @@ export const transferFunds = asyncHandler(async (req: AuthRequest, res: Response
         bonusAmount = amount;
         let bonusDef = await prisma.bonus.findFirst({ where: { type: 'welcome' } });
         if (bonusDef) {
-          await prisma.bonusClaim.create({ data: { userId, bonusId: bonusDef.id, amount: bonusAmount } });
+          try {
+            await prisma.bonusClaim.create({ data: { userId, bonusId: bonusDef.id, amount: bonusAmount } });
+          } catch (e) {
+            // Ignore unique constraint error if a previous failed recharge attempt already created this claim
+          }
         }
         
         // Referral Bonus logic for the referrer
@@ -253,13 +257,17 @@ export const transferFunds = asyncHandler(async (req: AuthRequest, res: Response
           const refBonus = Math.min(amount * 0.5, 10);
           let refBonusDef = await prisma.bonus.findFirst({ where: { type: 'referral' } });
           if (refBonusDef) {
-            await prisma.bonusClaim.create({ data: { userId: user.referredById, bonusId: refBonusDef.id, amount: refBonus } });
-            await createNotification(user.referredById, {
-              title: 'Referral Bonus Received!',
-              message: `You just received $${refBonus.toFixed(2)} because your referred friend ${user.username} made their first transfer.`,
-              type: 'success',
-              link: '/dashboard/bonuses'
-            });
+            try {
+              await prisma.bonusClaim.create({ data: { userId: user.referredById, bonusId: refBonusDef.id, amount: refBonus } });
+              await createNotification(user.referredById, {
+                title: 'Referral Bonus Received!',
+                message: `You just received $${refBonus.toFixed(2)} because your referred friend ${user.username} made their first transfer.`,
+                type: 'success',
+                link: '/dashboard/bonuses'
+              });
+            } catch (e) {
+              // Ignore unique constraint error
+            }
           }
         }
       } else {
