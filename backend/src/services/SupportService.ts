@@ -29,7 +29,7 @@ export class SupportService {
     return conversation;
   }
 
-  static async getOrCreateTelegramConversation(telegramUserId: string, name: string) {
+  static async getOrCreateTelegramConversation(telegramUserId: string, name: string, telegramUsername?: string) {
     let conversation = await prisma.conversation.findFirst({
       where: { telegram_user_id: telegramUserId, status: 'open', source: 'telegram' }
     });
@@ -41,9 +41,16 @@ export class SupportService {
         data: {
           conversation_id: convId,
           telegram_user_id: telegramUserId,
+          telegram_username: telegramUsername || null,
           source: 'telegram',
           status: 'open'
         }
+      });
+    } else if (telegramUsername && conversation.telegram_username !== telegramUsername) {
+      // Keep username fresh in case user updates their Telegram handle
+      conversation = await prisma.conversation.update({
+        where: { id: conversation.id },
+        data: { telegram_username: telegramUsername }
       });
     }
     return conversation;

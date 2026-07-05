@@ -90,10 +90,11 @@ export class TelegramSupportBot {
   private async handlePrivateMessage(ctx: any) {
     const telegramUserId = ctx.from.id.toString();
     const name = ctx.from.first_name || 'User';
+    const telegramUsername = ctx.from.username || null;
     const text = ctx.message.text;
 
     try {
-      let conversation = await SupportService.getOrCreateTelegramConversation(telegramUserId, name);
+      let conversation = await SupportService.getOrCreateTelegramConversation(telegramUserId, name, telegramUsername);
 
       if (!conversation.telegram_thread_id) {
         const topicName = `${conversation.conversation_id} - Telegram ${name}`;
@@ -102,7 +103,7 @@ export class TelegramSupportBot {
 
         await ctx.telegram.sendMessage(
           this.groupId,
-          `📩 New Telegram User\nConversation: ${conversation.conversation_id}\nTelegram User: ${name}\nTelegram ID: ${telegramUserId}`,
+          `📩 New Telegram User\nConversation: ${conversation.conversation_id}\nTelegram User: ${name}${telegramUsername ? ` (@${telegramUsername})` : ''}\nTelegram ID: ${telegramUserId}`,
           { message_thread_id: topic.message_thread_id }
         );
       }

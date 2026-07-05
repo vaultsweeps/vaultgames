@@ -521,6 +521,7 @@ model Conversation {
   conversation_id    String    @unique
   user_id            String?
   telegram_user_id   String?
+  telegram_username  String?
   telegram_thread_id String?
   source             String    // 'website' | 'telegram'
   status             String    @default("open") // 'open' | 'waiting_for_agent' | 'waiting_for_user' | 'closed'
