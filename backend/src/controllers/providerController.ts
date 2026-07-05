@@ -252,23 +252,27 @@ export const transferFunds = asyncHandler(async (req: AuthRequest, res: Response
       minCashout = totalDeposited * 3; maxCashout = 1000;
     }
 
+    // Validate minimum eligibility only — exceeding max is handled by void logic
     if (amount < minCashout) {
       throw new AppError(`Minimum cashout amount is $${minCashout}.`, 400);
     }
-    if (amount > maxCashout) {
-      throw new AppError(`Maximum cashout amount is $${maxCashout}.`, 400);
+
+    // Fetch live game balance to determine actual withdrawal from provider
+    const liveGameBalance = await providerService.getPlayerBalance(providerUser.providerUserId);
+    if (liveGameBalance <= 0) {
+      throw new AppError('No game balance to cash out.', 400);
     }
 
-    const gameBalance = await providerService.getPlayerBalance(providerUser.providerUserId);
-    if (gameBalance < amount) {
-      throw new AppError('Insufficient funds in game account.', 400);
-    }
+    // Attach to req so we can use it later without re-fetching
+    (req as any).__cashout__ = { minCashout, maxCashout, liveGameBalance };
   }
 
   // 2. Process with provider
   const orderId = `TX_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
   let finalProviderAmount = amount;
   let bonusAmount = 0;
+  let voidedAmount = 0;       // amount voided due to exceeding cashout cap
+  let creditedAmount = amount; // amount that will actually be credited to wallet
 
   try {
     if (type === 'recharge') {
@@ -324,19 +328,28 @@ export const transferFunds = asyncHandler(async (req: AuthRequest, res: Response
       finalProviderAmount = amount + bonusAmount;
       await providerService.rechargePlayer(providerUser.providerUserId, finalProviderAmount, orderId);
     } else {
-      await providerService.withdrawPlayer(providerUser.providerUserId, amount, orderId);
+      // CASHOUT: withdraw FULL game balance from provider
+      const { maxCashout, liveGameBalance } = (req as any).__cashout__ as { minCashout: number; maxCashout: number; liveGameBalance: number };
+
+      const withdrawFromProvider = Math.floor(liveGameBalance); // full balance, floored
+      creditedAmount = Math.min(withdrawFromProvider, maxCashout);  // capped at their max
+      voidedAmount = Math.max(0, withdrawFromProvider - creditedAmount); // excess voided
+
+      await providerService.withdrawPlayer(providerUser.providerUserId, withdrawFromProvider, orderId);
     }
   } catch (err: any) {
     throw new AppError(`Transfer failed: ${err.message}`, 500);
   }
 
-  // 3. Record Transaction (log the base amount so wallet is deducted properly)
+  // 3. Record Transaction
+  // For cashouts: only record the creditedAmount so that only the allowed portion
+  // enters the wallet balance formula (totalGameWithdrawals). The voided amount never enters the books.
   await prisma.providerTransaction.create({
     data: {
       providerId: providerUser.providerId,
       userId,
       type,
-      amount,
+      amount: creditedAmount,
       orderId,
       status: 'success'
     }
@@ -345,11 +358,24 @@ export const transferFunds = asyncHandler(async (req: AuthRequest, res: Response
   // Invalidate the wallet cache since funds were moved
   invalidateWalletCache(userId);
 
+  // 4. Build response message
+  let message: string;
+  if (type === 'recharge' && bonusAmount > 0) {
+    message = `Transfer successful! Added $${bonusAmount.toFixed(2)} bonus to your game balance.`;
+  } else if (type === 'withdraw') {
+    if (voidedAmount > 0) {
+      message = `Cashout successful! $${creditedAmount.toFixed(2)} has been credited to your wallet. $${voidedAmount.toFixed(2)} was voided (exceeded your cashout limit).`;
+    } else {
+      message = `Cashout successful! $${creditedAmount.toFixed(2)} has been credited to your wallet.`;
+    }
+  } else {
+    message = 'Transfer successful';
+  }
+
   res.json({ 
     success: true, 
-    message: type === 'recharge' && bonusAmount > 0 
-      ? `Transfer successful! Added $${bonusAmount.toFixed(2)} bonus to your game balance.` 
-      : 'Transfer successful' 
+    message,
+    data: type === 'withdraw' ? { credited: creditedAmount, voided: voidedAmount } : undefined
   });
 })
 

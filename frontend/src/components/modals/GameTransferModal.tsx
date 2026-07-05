@@ -57,7 +57,12 @@ export default function GameTransferModal({
     minCashout = totalDeposited * 3; maxCashout = 1000;
   }
 
-  const cashoutAmount = Math.min(Math.floor(gameBalance), maxCashout)
+  // Full game balance withdrawn from provider on cashout
+  const fullGameBalance = Math.floor(gameBalance)
+  // Only up to maxCashout is credited to wallet — excess is voided
+  const creditedAmount = Math.min(fullGameBalance, maxCashout)
+  const voidedAmount = Math.max(0, fullGameBalance - creditedAmount)
+
   // User must have at least minCashout in their game balance to be eligible
   const isCashoutValid = totalDeposited > 0 && gameBalance >= minCashout
 
@@ -74,7 +79,8 @@ export default function GameTransferModal({
   const handleClear = () => setAmount('')
 
   const handleSubmit = async () => {
-    const finalAmount = type === 'cashout' ? cashoutAmount : parsedAmount;
+    // For cashout: always send the full game balance — backend handles void logic
+    const finalAmount = type === 'cashout' ? fullGameBalance : parsedAmount;
     if (finalAmount <= 0) return
     setLoading(true)
     await onTransfer(finalAmount, type === 'deposit' ? 'recharge' : 'withdraw')
@@ -229,9 +235,21 @@ export default function GameTransferModal({
                   </div>
                   
                   <div className="flex justify-between items-center text-slate-500 text-sm">
-                    <span>Cashout amount</span>
-                    <span className="font-bold text-[#2AC3FF]">$ {cashoutAmount}</span>
+                    <span>Game balance (full)</span>
+                    <span className="font-bold text-white">$ {fullGameBalance.toFixed(2)}</span>
                   </div>
+
+                  <div className="flex justify-between items-center text-slate-500 text-sm">
+                    <span>Will be credited to wallet</span>
+                    <span className="font-bold text-emerald-400">$ {creditedAmount.toFixed(2)}</span>
+                  </div>
+
+                  {voidedAmount > 0 && (
+                    <div className="flex justify-between items-center text-slate-500 text-sm">
+                      <span>Will be voided (over limit)</span>
+                      <span className="font-bold text-red-400">- $ {voidedAmount.toFixed(2)}</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="bg-[#1A1E29] rounded-2xl p-4 border border-white/5 flex justify-between items-center">
@@ -252,13 +270,11 @@ export default function GameTransferModal({
               </div>
             )}
             
-            {gameBalance > maxCashout && type === 'cashout' && (
-              <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl p-4 flex gap-3">
-                <AlertCircle className="w-5 h-5 text-orange-500 shrink-0 mt-0.5" />
-                <p className="text-sm text-orange-200">
-                  <span className="font-bold text-orange-500 block">Maximum Cashout Reached</span> 
-                  Winnings above the ${maxCashout} limit are voided by the system.
-                </p>
+            {/* Cashout range info */}
+            {!noSession && type === 'cashout' && (
+              <div className="bg-[#1A1E29] rounded-2xl p-4 border border-white/5 flex justify-between items-center">
+                <span className="text-slate-500 text-sm">Cashouts range <strong className="text-white">from ${minCashout} to ${maxCashout}</strong></span>
+                <span className="w-5 h-5 rounded-full bg-[#252A36] text-slate-400 flex items-center justify-center text-xs font-bold italic">i</span>
               </div>
             )}
 
