@@ -3,7 +3,6 @@ import prisma from '../lib/prisma'
 import { asyncHandler, AppError } from '../middleware/errorHandler'
 import { AuthRequest } from '../middleware/auth'
 import { createNotification } from '../services/notificationService'
-import { DepositService } from '../services/DepositService'
 import { logger } from '../utils/logger'
 import { supabase } from '../utils/supabase'
 import { WalletService } from '../services/WalletService'
@@ -106,8 +105,7 @@ export const getUsers = asyncHandler(async (req: AuthRequest, res: Response) => 
       select: {
         id: true, username: true, email: true, role: true, isVerified: true,
         isActive: true, isBanned: true, lastLogin: true, createdAt: true,
-        _count: { select: { deposits: true } },
-        profile: { select: { telegramUsername: true, messengerUsername: true, fullName: true } }
+        _count: { select: { deposits: true } }
       }
     }),
     prisma.user.count({ where })
@@ -245,7 +243,24 @@ export const approveDeposit = asyncHandler(async (req: AuthRequest, res: Respons
   const id = req.params.id as string
   const { notes } = req.body
 
-  await DepositService.approveDeposit(id, req.user!.id, notes)
+  const deposit = await prisma.deposit.findUnique({ where: { id }, include: { user: true } })
+  if (!deposit) throw new AppError('Deposit not found', 404)
+  if (deposit.status === 'approved') throw new AppError('Deposit already approved', 400)
+
+  await prisma.deposit.update({
+    where: { id },
+    data: { status: 'approved', notes, approvedBy: req.user!.id, approvedAt: new Date() }
+  })
+
+  await createNotification(deposit.userId, {
+    title: 'Deposit Approved! ✓',
+    message: `Your deposit of $${deposit.amount} has been approved and is ready to use.`,
+    type: 'success', link: '/dashboard/deposits'
+  })
+
+  await prisma.transactionLog.create({
+    data: { type: 'deposit_approved', entityId: id, userId: req.user!.id, amount: deposit.amount, status: 'approved' }
+  })
 
   res.json({ success: true, message: 'Deposit approved successfully' })
 })

@@ -6,21 +6,21 @@ import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, R
 import toast from 'react-hot-toast'
 
 const MONTHLY = [
-  { month: 'Jul', deposits: 18400, withdrawals: 12000, users: 320 },
-  { month: 'Aug', deposits: 22100, withdrawals: 15200, users: 410 },
-  { month: 'Sep', deposits: 19500, withdrawals: 13100, users: 380 },
-  { month: 'Oct', deposits: 28300, withdrawals: 18400, users: 520 },
-  { month: 'Nov', deposits: 32700, withdrawals: 22100, users: 680 },
-  { month: 'Dec', deposits: 38200, withdrawals: 24600, users: 820 },
-  { month: 'Jan', deposits: 45100, withdrawals: 28300, users: 940 },
+  { month: 'Jul', deposits: 0, withdrawals: 0, users: 0 },
+  { month: 'Aug', deposits: 0, withdrawals: 0, users: 0 },
+  { month: 'Sep', deposits: 0, withdrawals: 0, users: 0 },
+  { month: 'Oct', deposits: 0, withdrawals: 0, users: 0 },
+  { month: 'Nov', deposits: 0, withdrawals: 0, users: 0 },
+  { month: 'Dec', deposits: 0, withdrawals: 0, users: 0 },
+  { month: 'Jan', deposits: 0, withdrawals: 0, users: 0 },
 ]
 
 const PAYMENT_METHODS = [
-  { name: 'Bitcoin', value: 38, color: '#F7931A' },
-  { name: 'USDT', value: 28, color: '#26A17B' },
-  { name: 'Bank Transfer', value: 18, color: '#00D4FF' },
-  { name: 'Ethereum', value: 10, color: '#627EEA' },
-  { name: 'Other', value: 6, color: '#7B2FFF' },
+  { name: 'Bitcoin', value: 0, color: '#F7931A' },
+  { name: 'USDT', value: 0, color: '#26A17B' },
+  { name: 'Bank Transfer', value: 0, color: '#00D4FF' },
+  { name: 'Ethereum', value: 0, color: '#627EEA' },
+  { name: 'Other', value: 0, color: '#7B2FFF' },
 ]
 
 const CUSTOM_TOOLTIP = ({ active, payload, label }: any) => {

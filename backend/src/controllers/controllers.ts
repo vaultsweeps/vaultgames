@@ -166,11 +166,11 @@ import bcrypt from 'bcryptjs'
 import { ProviderFactory } from '../services/provider/ProviderFactory'
 
 export const updateProfile = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const { fullName, phone, country, telegramUsername, messengerUsername } = req.body
+  const { fullName, phone, country, telegramUsername } = req.body
   const profile = await prisma.userProfile.upsert({
     where: { userId: req.user!.id },
-    update: { fullName, phone, country, telegramUsername, messengerUsername },
-    create: { userId: req.user!.id, fullName, phone, country, telegramUsername, messengerUsername }
+    update: { fullName, phone, country, telegramUsername },
+    create: { userId: req.user!.id, fullName, phone, country, telegramUsername }
   })
   res.json({ success: true, message: 'Profile updated', data: profile })
 })

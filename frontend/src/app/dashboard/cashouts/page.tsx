@@ -182,10 +182,10 @@ function WithdrawalCountdown({
 }
 
 // ─── Method icon/color map ─────────────────────────────────────────────────
-const METHOD_ICON: Record<string, { icon: string; color: string; bg: string }> = {
-  cashapp:  { icon: '💸', color: '#00D632', bg: '#00D63215' },
-  cash_app: { icon: '💸', color: '#00D632', bg: '#00D63215' },
-  chime:    { icon: '🏦', color: '#00CFAA', bg: '#00CFAA15' },
+const METHOD_ICON: Record<string, { icon: any; color: string; bg: string; customUI?: boolean }> = {
+  cashapp:  { icon: <span className="text-white font-bold text-xl">$</span>, color: '#22c55e', bg: '#22c55e', customUI: true },
+  cash_app: { icon: <span className="text-white font-bold text-xl">$</span>, color: '#22c55e', bg: '#22c55e', customUI: true },
+  chime:    { icon: <span className="text-white font-bold text-xl">C</span>, color: '#10b981', bg: '#10b981', customUI: true },
   crypto:   { icon: '₿',  color: '#F7931A', bg: '#F7931A15' },
   usdt:     { icon: '₮',  color: '#26A17B', bg: '#26A17B15' },
   zelle:    { icon: '💜', color: '#6D1ED4', bg: '#6D1ED415' },
@@ -373,13 +373,13 @@ export default function CashoutsPage() {
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                     {methods.map(m => {
                       const meta = getMethodMeta(m.code || m.name)
-                      const isSoon = !m.isActive
+                      const isSoon = !m.cashoutEnabled
                       return (
                         <button key={m.id} onClick={() => !isSoon && handleSelect(m)} disabled={isSoon}
                           className={`glass-card p-5 rounded-2xl text-left flex flex-col gap-3 group transition-all border ${isSoon ? 'opacity-50 cursor-not-allowed border-white/5' : 'hover:border-white/20 border-white/5 hover:scale-[1.02]'}`}>
                           <div className="flex items-start justify-between">
-                            <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-2xl"
-                              style={{ background: meta.bg, border: `1px solid ${meta.color}30` }}>
+                            <div className={`w-11 h-11 flex items-center justify-center text-2xl ${meta.customUI ? 'rounded-full' : 'rounded-2xl'}`}
+                              style={{ background: meta.bg, border: meta.customUI ? 'none' : `1px solid ${meta.color}30` }}>
                               {meta.icon}
                             </div>
                             {!isSoon && <ChevronRight className="w-4 h-4 text-slate-600 group-hover:text-white transition-colors" />}

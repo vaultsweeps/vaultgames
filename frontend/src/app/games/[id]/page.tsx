@@ -148,19 +148,14 @@ export default function GameDetailsPage() {
   const handleProvision = async () => {
     setProvisioning(true)
     try {
-      const createRes = await providerApi.createAccount(id as string)
+      await providerApi.createAccount(id as string)
       toast.success('Game account created! Loading credentials...')
-      const createdAccountName = createRes.data?.data?.accountName
-
       // Re-fetch account data
       const accRes = await providerApi.getAccount(id as string)
-      if (accRes.data?.data && accRes.data.data.hasAccount) {
+      if (accRes.data?.data) {
         setAccount(accRes.data.data)
-      } else if (createdAccountName) {
-        // Fallback manually if getAccount didn't return immediately
-        setAccount({ accountName: createdAccountName, balance: 0, hasAccount: true })
+        setLastUpdate(new Date())
       }
-      setLastUpdate(new Date())
     } catch (err: any) {
       if (err?.response?.status === 503 || err?.response?.data?.message?.includes('No active game provider')) {
         setMaintenanceModalOpen(true)
@@ -306,11 +301,7 @@ export default function GameDetailsPage() {
         </motion.div>
 
         {/* Credentials Card */}
-        {account === null ? (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-[#1A1E29] rounded-2xl p-5 shadow-lg border border-white/5 flex items-center justify-center h-32">
-            <div className="w-8 h-8 border-2 border-[#2AC3FF]/30 border-t-[#2AC3FF] rounded-full animate-spin" />
-          </motion.div>
-        ) : account.hasAccount ? (
+        {account?.hasAccount ? (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-[#1A1E29] rounded-2xl p-5 shadow-lg border border-white/5 space-y-3">
             
             {/* Username */}

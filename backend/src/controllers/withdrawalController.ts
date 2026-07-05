@@ -49,13 +49,13 @@ export const createWithdrawal = asyncHandler(async (req: AuthRequest, res: Respo
 
   if (amount < 1) throw new AppError('Minimum withdrawal is $1', 400)
 
-  // Bonuses are non-withdrawable — only the real cash balance can be cashed out
+  // Referral bonuses are non-withdrawable — only the real cash balance can be cashed out
   const withdrawableBalance = await WalletService.getWithdrawableBalance(req.user!.id)
   if (amount > withdrawableBalance) {
-    const bonusBalance = await WalletService.getTotalBonusBalance(req.user!.id)
-    if (bonusBalance > 0) {
+    const referralBalance = await WalletService.getReferralBonusBalance(req.user!.id)
+    if (referralBalance > 0) {
       throw new AppError(
-        `Insufficient cashable balance. Your balance includes $${bonusBalance.toFixed(2)} in bonuses which can only be added to your game balance, not cashed out. Cashable balance: $${Math.max(0, withdrawableBalance).toFixed(2)}`,
+        `Insufficient cashable balance. Your balance includes $${referralBalance.toFixed(2)} in referral bonuses which can only be added to your game balance, not cashed out. Cashable balance: $${Math.max(0, withdrawableBalance).toFixed(2)}`,
         400
       )
     }
@@ -67,8 +67,10 @@ export const createWithdrawal = asyncHandler(async (req: AuthRequest, res: Respo
   if (amount < paymentMethod.minAmount) throw new AppError(`Minimum withdrawal for this method is $${paymentMethod.minAmount}`, 400)
   if (amount > paymentMethod.maxAmount) throw new AppError(`Maximum withdrawal is $${paymentMethod.maxAmount}`, 400)
 
+  const requestId = await generateRequestId()
+
   const withdrawal = await prisma.withdrawal.create({
-    data: { userId: req.user!.id, amount, currency, paymentMethodId, accountInfo, status: 'pending' },
+    data: { userId: req.user!.id, amount, currency, paymentMethodId, accountInfo, status: 'pending', requestId },
     include: { paymentMethod: true }
   })
 
@@ -82,7 +84,15 @@ export const createWithdrawal = asyncHandler(async (req: AuthRequest, res: Respo
   const username = user?.username || 'Unknown'
   const email = user?.email || req.user!.email || 'Unknown'
   
-  TelegramService.sendWithdrawalRequestNotification(username, email, amount, paymentMethod.name, accountInfo, withdrawal.requestId, withdrawal.id).catch(console.error)
+  TelegramService.sendManualCashoutRequest({
+    amount,
+    method: paymentMethod.name,
+    accountInfo: accountInfo || 'Not provided',
+    username,
+    email,
+    requestId: withdrawal.requestId,
+    withdrawalId: withdrawal.id
+  }).catch(console.error)
 
   res.status(201).json({ success: true, message: 'Withdrawal request submitted', data: withdrawal })
 })

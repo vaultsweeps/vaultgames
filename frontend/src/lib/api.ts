@@ -102,7 +102,6 @@ export const notificationsApi = {
 // Profile APIs
 export const profileApi = {
   update: (data: object) => apiClient.put('/profile', data),
-  updateProfile: (data: object) => apiClient.put('/profile', data),
   changePassword: (data: object) => apiClient.put('/profile/password', data),
   uploadAvatar: (file: FormData) => apiClient.post('/profile/avatar', file, {
     headers: { 'Content-Type': 'multipart/form-data' }

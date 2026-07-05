@@ -23,57 +23,49 @@ export class TelegramService {
       return
     }
 
-    const message = `
-🚨 *New Manual Cashout Request* 🚨
-${data.requestId ? `\n📋 *Request ID:* \`${data.requestId}\`` : ''}
-👤 *User:* ${data.username} (${data.email})
-💰 *Amount:* $${data.amount}
-🏦 *Method:* ${data.method.toUpperCase()}
-🏷️ *Account/Tag:* \`${data.accountInfo}\`
+    // Escape HTML special chars to prevent parse errors
+    const esc = (s: string) => String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
 
-Please process this request manually.
-    `.trim()
+    const message = [
+      `🚨 <b>New Cashout Request</b> 🚨`,
+      data.requestId ? `📋 <b>Request ID:</b> <code>${esc(data.requestId)}</code>` : '',
+      `👤 <b>User:</b> ${esc(data.username)} (${esc(data.email)})`,
+      `💰 <b>Amount:</b> $${data.amount}`,
+      `🏦 <b>Method:</b> ${esc(data.method.toUpperCase())}`,
+      `🏷 <b>Account/Tag:</b> <code>${esc(data.accountInfo)}</code>`,
+      ``,
+      `Please process this request manually.`,
+    ].filter(Boolean).join('\n')
+
+    const replyMarkup = data.requestId ? {
+      inline_keyboard: [[
+        { text: '✅ Approve', callback_data: `wd_approve_${data.requestId}` },
+        { text: '❌ Reject',  callback_data: `wd_reject_${data.requestId}` },
+      ]]
+    } : undefined
 
     try {
       let response;
       if (data.qrCodePath && fs.existsSync(data.qrCodePath)) {
-        // Send Photo with caption
         const formData = new FormData()
         formData.append('chat_id', chatId)
         formData.append('caption', message)
-        formData.append('parse_mode', 'Markdown')
-        if (data.requestId) {
-          formData.append('reply_markup', JSON.stringify({
-            inline_keyboard: [
-              [
-                { text: '✅ Approve', callback_data: `wd_approve_${data.requestId}` },
-                { text: '❌ Reject', callback_data: `wd_reject_${data.requestId}` },
-              ]
-            ]
-          }))
-        }
+        formData.append('parse_mode', 'HTML')
+        if (replyMarkup) formData.append('reply_markup', JSON.stringify(replyMarkup))
         formData.append('photo', fs.createReadStream(data.qrCodePath))
-
         response = await axios.post(`https://api.telegram.org/bot${token}/sendPhoto`, formData, {
           headers: formData.getHeaders()
         })
       } else {
-        // Send plain text message
         const payload: any = {
           chat_id: chatId,
           text: message,
-          parse_mode: 'Markdown'
+          parse_mode: 'HTML'
         }
-        if (data.requestId) {
-          payload.reply_markup = {
-            inline_keyboard: [
-              [
-                { text: '✅ Approve', callback_data: `wd_approve_${data.requestId}` },
-                { text: '❌ Reject', callback_data: `wd_reject_${data.requestId}` },
-              ]
-            ]
-          }
-        }
+        if (replyMarkup) payload.reply_markup = replyMarkup
         response = await axios.post(`https://api.telegram.org/bot${token}/sendMessage`, payload)
       }
 
@@ -89,7 +81,7 @@ Please process this request manually.
 
       logger.info('Telegram notification sent successfully.')
     } catch (error: any) {
-      logger.error(`Failed to send Telegram notification: ${error.message}`)
+      logger.error(`Failed to send Telegram notification: ${error?.response?.data ? JSON.stringify(error.response.data) : error.message}`)
     }
   }
 

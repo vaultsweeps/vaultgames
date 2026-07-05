@@ -114,8 +114,7 @@ export const createDeposit = asyncHandler(async (req: AuthRequest, res: Response
 // GET /api/deposits/payment-methods
 export const getPaymentMethods = asyncHandler(async (req: AuthRequest, res: Response) => {
   const methods = await prisma.paymentMethod.findMany({
-    where: { isActive: true },
-    select: { id: true, name: true, code: true, type: true, minAmount: true, maxAmount: true, feePercent: true, iconUrl: true, instructions: true, fields: true }
+    select: { id: true, name: true, code: true, type: true, minAmount: true, maxAmount: true, feePercent: true, iconUrl: true, instructions: true, fields: true, isActive: true, cashoutEnabled: true }
   })
   res.json({ success: true, data: methods })
 })
