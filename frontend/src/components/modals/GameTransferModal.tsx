@@ -1,3 +1,4 @@
+import React from 'react';
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, RefreshCw, AlertCircle, Banknote } from 'lucide-react'
@@ -24,7 +25,7 @@ const presets = [
   { label: 'X2', value: 'x2' },
 ] as const
 
-export default function GameTransferModal({ 
+const GameTransferModal = React.memo(function GameTransferModal({ 
   isOpen, onClose, type, gameName, gameThumbnail, accountName, gameBalance, walletBalance, totalDeposited, startAmount, onTransfer, onChangeGame
 }: GameTransferModalProps) {
   const [amount, setAmount] = useState<string>('')
@@ -340,3 +341,5 @@ export default function GameTransferModal({
     </AnimatePresence>
   )
 }
+
+export default GameTransferModal;
