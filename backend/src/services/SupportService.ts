@@ -44,13 +44,13 @@ export class SupportService {
           telegram_username: telegramUsername || null,
           source: 'telegram',
           status: 'open'
-        }
+        } as any
       });
-    } else if (telegramUsername && conversation.telegram_username !== telegramUsername) {
+    } else if (telegramUsername && (conversation as any).telegram_username !== telegramUsername) {
       // Keep username fresh in case user updates their Telegram handle
       conversation = await prisma.conversation.update({
         where: { id: conversation.id },
-        data: { telegram_username: telegramUsername }
+        data: { telegram_username: telegramUsername } as any
       });
     }
     return conversation;
