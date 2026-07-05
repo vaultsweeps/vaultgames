@@ -340,6 +340,6 @@ const GameTransferModal = React.memo(function GameTransferModal({
       </div>
     </AnimatePresence>
   )
-}
+})
 
 export default GameTransferModal;
