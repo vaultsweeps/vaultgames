@@ -1,4 +1,4 @@
-port { Response } from 'express'
+import { Response } from 'express'
 import prisma from '../lib/prisma'
 import { asyncHandler, AppError } from '../middleware/errorHandler'
 import { AuthRequest } from '../middleware/auth'
