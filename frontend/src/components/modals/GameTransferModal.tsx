@@ -58,7 +58,8 @@ export default function GameTransferModal({
   }
 
   const cashoutAmount = Math.min(Math.floor(gameBalance), maxCashout)
-  const isCashoutValid = gameBalance >= minCashout
+  // User must have at least minCashout in their game balance to be eligible
+  const isCashoutValid = totalDeposited > 0 && gameBalance >= minCashout
 
   const parsedAmount = parseFloat(amount) || 0
   
@@ -223,8 +224,8 @@ export default function GameTransferModal({
                   </div>
                   
                   <div className="flex justify-between items-center text-slate-500 text-sm">
-                    <span>Start amount</span>
-                    <span className="font-bold text-[#2AC3FF]">$ {startAmount}</span>
+                    <span>Total deposited</span>
+                    <span className="font-bold text-[#2AC3FF]">$ {totalDeposited.toFixed(2)}</span>
                   </div>
                   
                   <div className="flex justify-between items-center text-slate-500 text-sm">
