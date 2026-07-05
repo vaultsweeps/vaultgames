@@ -25,6 +25,7 @@ interface ProviderAccount {
   accountName: string | null
   balance: number
   hasAccount: boolean
+  totalDeposited?: number
 }
 
 export default function GameDetailsPage() {
