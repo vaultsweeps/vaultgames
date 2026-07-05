@@ -4,7 +4,7 @@ import prisma from '../lib/prisma'
 import { asyncHandler, AppError } from '../middleware/errorHandler'
 import { AuthRequest } from '../middleware/auth'
 import { ProviderFactory } from '../services/provider/ProviderFactory'
-import { WalletService } from '../services/WalletService'
+import { WalletService, invalidateWalletCache } from '../services/WalletService'
 import { SyncService } from '../services/syncService'
 import { createNotification } from '../services/notificationService'
 import { logger } from '../utils/logger'
@@ -295,6 +295,9 @@ export const transferFunds = asyncHandler(async (req: AuthRequest, res: Response
       status: 'success'
     }
   });
+
+  // Invalidate the wallet cache since funds were moved
+  invalidateWalletCache(userId);
 
   res.json({ 
     success: true, 

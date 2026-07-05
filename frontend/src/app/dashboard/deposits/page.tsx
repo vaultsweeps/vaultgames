@@ -58,10 +58,20 @@ export default function DepositsPage() {
   }
 
   useEffect(() => {
-    fetchHistory()
-    depositApi.getPaymentMethods().then(res => {
-      setMethods(res.data.data || [])
-    }).catch(() => setMethods([])).finally(() => setLoadingMethods(false))
+    setHistoryLoading(true)
+    setLoadingMethods(true)
+    Promise.all([
+      depositApi.getAll(),
+      depositApi.getPaymentMethods()
+    ]).then(([histRes, methRes]) => {
+      setDepositHistory(histRes.data.data)
+      setMethods(methRes.data.data || [])
+    }).catch(() => {
+      setMethods([])
+    }).finally(() => {
+      setHistoryLoading(false)
+      setLoadingMethods(false)
+    })
   }, [])
 
   const handleSubmit = async () => {
@@ -119,8 +129,10 @@ export default function DepositsPage() {
                 Select Payment Method
               </h3>
               {loadingMethods ? (
-                <div className="flex items-center gap-3 text-slate-500 py-8">
-                  <Loader2 className="w-5 h-5 animate-spin" /> Loading methods...
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {Array(3).fill(0).map((_, i) => (
+                    <div key={`meth-skel-${i}`} className="glass-card p-5 h-24 animate-pulse bg-white/5"></div>
+                  ))}
                 </div>
               ) : methods.length === 0 ? (
                 <p className="text-slate-500 py-8">No deposit methods available. Please contact support.</p>
@@ -256,7 +268,15 @@ export default function DepositsPage() {
                 </thead>
                 <tbody>
                   {historyLoading ? (
-                    <tr><td colSpan={5} className="text-center py-8 text-slate-500">Loading...</td></tr>
+                    Array(5).fill(0).map((_, i) => (
+                      <tr key={`skel-tx-${i}`}>
+                        <td><div className="h-4 w-20 bg-slate-800 rounded animate-pulse"></div></td>
+                        <td><div className="h-4 w-20 bg-slate-800 rounded animate-pulse"></div></td>
+                        <td><div className="h-4 w-16 bg-slate-800 rounded animate-pulse"></div></td>
+                        <td><div className="h-5 w-16 bg-slate-800 rounded-full animate-pulse"></div></td>
+                        <td><div className="h-4 w-20 bg-slate-800 rounded animate-pulse"></div></td>
+                      </tr>
+                    ))
                   ) : depositHistory.length === 0 ? (
                     <tr><td colSpan={5} className="text-center py-8 text-slate-500">No deposits yet.</td></tr>
                   ) : depositHistory.map((tx: any) => (

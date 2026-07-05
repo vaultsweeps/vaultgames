@@ -133,7 +133,15 @@ export default function DashboardPage() {
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={5} className="text-center py-4 text-slate-500">Loading transactions...</td></tr>
+                  Array(5).fill(0).map((_, i) => (
+                    <tr key={`skeleton-${i}`}>
+                      <td><div className="h-4 w-20 bg-slate-800 rounded animate-pulse"></div></td>
+                      <td><div className="h-4 w-16 bg-slate-800 rounded animate-pulse"></div></td>
+                      <td><div className="h-4 w-24 bg-slate-800 rounded animate-pulse"></div></td>
+                      <td><div className="h-5 w-16 bg-slate-800 rounded-full animate-pulse"></div></td>
+                      <td><div className="h-4 w-20 bg-slate-800 rounded animate-pulse"></div></td>
+                    </tr>
+                  ))
                 ) : transactions.length === 0 ? (
                   <tr><td colSpan={5} className="text-center py-4 text-slate-500">No recent transactions.</td></tr>
                 ) : transactions.map((tx: any) => (

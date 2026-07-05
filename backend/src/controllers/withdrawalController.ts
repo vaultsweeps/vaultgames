@@ -3,7 +3,7 @@ import prisma from '../lib/prisma'
 import { asyncHandler, AppError } from '../middleware/errorHandler'
 import { AuthRequest } from '../middleware/auth'
 import { createNotification } from '../services/notificationService'
-import { WalletService } from '../services/WalletService'
+import { WalletService, invalidateWalletCache } from '../services/WalletService'
 import { TelegramService } from '../services/TelegramService'
 import { logger } from '../utils/logger'
 
@@ -74,6 +74,8 @@ export const createWithdrawal = asyncHandler(async (req: AuthRequest, res: Respo
     include: { paymentMethod: true }
   })
 
+  invalidateWalletCache(req.user!.id)
+
   await createNotification(req.user!.id, {
     title: 'Cashout Submitted',
     message: `Your cashout request of $${amount} has been submitted. We'll process it within 1-24 hours.`,
@@ -140,6 +142,8 @@ export const createManualWithdrawal = asyncHandler(async (req: AuthRequest, res:
       paymentMethodStr: methodName
     }
   })
+
+  invalidateWalletCache(req.user!.id)
 
   const user = await prisma.user.findUnique({ where: { id: req.user!.id } })
 

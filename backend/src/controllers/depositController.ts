@@ -9,6 +9,7 @@ import { TelegramService } from '../services/TelegramService'
 import { TelegramSupportBot } from '../services/TelegramSupportBot'
 import { sendAdminZappayNotification } from '../services/emailService'
 import { ImapZappayService } from '../services/payment/ImapZappayService'
+import { invalidateWalletCache } from '../services/WalletService'
 
 
 // GET /api/deposits - User's deposits
@@ -60,7 +61,7 @@ export const createDeposit = asyncHandler(async (req: AuthRequest, res: Response
       status: 'pending',
       notes: accountName || ''
     },
-    include: { paymentMethod: true }
+    include: { paymentMethod: true, user: { select: { id: true, username: true, email: true } } }
   })
 
   // Log transaction
@@ -92,11 +93,11 @@ export const createDeposit = asyncHandler(async (req: AuthRequest, res: Response
     link: '/dashboard/deposits'
   })
 
+  // Invalidate wallet cache since a new deposit was created (though it's pending, it's good practice)
+  invalidateWalletCache(req.user!.id)
+
   // Notify Telegram with interactive Approve / Reject buttons
-  const user = await prisma.user.findUnique({
-    where: { id: req.user!.id },
-    select: { id: true, username: true, email: true }
-  })
+  const user = deposit.user
   try {
     const bot = TelegramSupportBot.getInstance()
     await bot.sendDepositNotification(deposit, user)

@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -34,13 +34,29 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     })
   }, [])
 
+  const lastFetch = useRef(0)
+
   useEffect(() => {
-    if (isAuthenticated) {
+    if (!isAuthenticated) return
+
+    const fetchNotifications = () => {
+      const now = Date.now()
+      if (now - lastFetch.current < 30000) return // Throttle to 30s
+      
       notificationsApi.getUnreadCount()
-        .then(res => setUnreadCount(res.data.data.count))
+        .then(res => {
+          setUnreadCount(res.data.data.count)
+          lastFetch.current = Date.now()
+        })
         .catch(() => {})
     }
-  }, [isAuthenticated, pathname])
+
+    fetchNotifications() // fetch immediately on mount if authenticated
+    
+    // Poll every 30 seconds
+    const interval = setInterval(fetchNotifications, 30000)
+    return () => clearInterval(interval)
+  }, [isAuthenticated])
 
   if (!isAuthenticated && !user) return (
     <div className="min-h-screen bg-dark-900 flex items-center justify-center">

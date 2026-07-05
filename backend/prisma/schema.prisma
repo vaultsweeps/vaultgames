@@ -139,8 +139,8 @@ model Deposit {
   user          User           @relation(fields: [userId], references: [id])
   paymentMethod PaymentMethod? @relation(fields: [paymentMethodId], references: [id])
 
-  @@index([userId])
   @@index([status])
+  @@index([userId, status])
 
   transaction DepositTransaction?
 }
@@ -176,8 +176,8 @@ model Withdrawal {
   user          User           @relation(fields: [userId], references: [id])
   paymentMethod PaymentMethod? @relation(fields: [paymentMethodId], references: [id])
 
-  @@index([userId])
   @@index([status])
+  @@index([userId, status])
   @@index([requestId])
   @@index([createdAt])
 }
@@ -271,6 +271,7 @@ model BonusClaim {
   user  User  @relation(fields: [userId], references: [id])
   bonus Bonus @relation(fields: [bonusId], references: [id])
 
+  @@index([userId])
   @@unique([userId, bonusId])
 }
 
@@ -445,6 +446,7 @@ model ProviderUser {
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   provider        Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
   @@unique([providerId, providerUserId])
   @@unique([userId, providerId])
 }
@@ -478,6 +480,8 @@ model ProviderTransaction {
 
   provider        Provider @relation(fields: [providerId], references: [id])
   user            User     @relation(fields: [userId], references: [id])
+  
+  @@index([userId, type, status])
 }
 
 model PaymentWebhook {

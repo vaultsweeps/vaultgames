@@ -6,6 +6,29 @@ export interface AuthRequest extends Request {
   user?: { id: string; role: string; email: string }
 }
 
+// ─── In-memory auth cache (30-second TTL) ────────────────────────────────────
+// Prevents repeated DB lookups for the same user when multiple parallel API
+// calls arrive in the same short window (e.g. 3 parallel fetches on page load).
+type CachedAuthUser = { id: string; role: string; email: string; isActive: boolean; isBanned: boolean; expiresAt: number }
+const authCache = new Map<string, CachedAuthUser>()
+const AUTH_CACHE_TTL = 30_000 // 30 seconds
+
+function getCachedAuthUser(id: string): CachedAuthUser | null {
+  const cached = authCache.get(id)
+  if (!cached) return null
+  if (Date.now() > cached.expiresAt) { authCache.delete(id); return null }
+  return cached
+}
+
+function setCachedAuthUser(user: { id: string; role: string; email: string; isActive: boolean; isBanned: boolean }) {
+  authCache.set(user.id, { ...user, expiresAt: Date.now() + AUTH_CACHE_TTL })
+}
+
+// Evict user from auth cache (call after banning/suspending a user)
+export function evictAuthCache(userId: string) {
+  authCache.delete(userId)
+}
+
 export const authenticate = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const authHeader = req.headers.authorization
@@ -16,12 +39,20 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
     const token = authHeader.split(' ')[1]
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { id: string; role: string; email: string }
 
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.id },
-      select: { id: true, role: true, email: true, isActive: true, isBanned: true }
-    })
+    // Layer 1: in-memory cache — avoids DB on repeated requests within 30s
+    let user = getCachedAuthUser(decoded.id)
 
-    if (!user) return res.status(401).json({ success: false, message: 'User not found' })
+    if (!user) {
+      // Layer 2: DB lookup (only when cache is cold)
+      const dbUser = await prisma.user.findUnique({
+        where: { id: decoded.id },
+        select: { id: true, role: true, email: true, isActive: true, isBanned: true }
+      })
+      if (!dbUser) return res.status(401).json({ success: false, message: 'User not found' })
+      setCachedAuthUser(dbUser)
+      user = getCachedAuthUser(decoded.id)!
+    }
+
     if (!user.isActive) return res.status(403).json({ success: false, message: 'Account is suspended' })
     if (user.isBanned) return res.status(403).json({ success: false, message: 'Account is banned' })
 
