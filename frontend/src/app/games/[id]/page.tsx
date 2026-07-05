@@ -53,6 +53,7 @@ export default function GameDetailsPage() {
   const [isRefreshing, setIsRefreshing] = useState(false)
   
   const { isAuthenticated } = useAuthStore()
+  const [accountFetched, setAccountFetched] = useState(false)
 
   useEffect(() => {
     if (account?.accountName && id) {
@@ -69,22 +70,64 @@ export default function GameDetailsPage() {
         setGame(gameRes.data.data)
         setLoading(false) // Unblock UI immediately
 
-        // Fetch user-specific data in background ONLY if authenticated
-        let accRes = { data: { data: null as any } }
-        let txRes = { data: { data: [] as any[] } }
-        let balRes = { data: { data: { balance: 0 } } }
-
-        if (isAuthenticated) {
+        // Check cookie directly — more reliable than isAuthenticated on first render
+        // because Zustand's persisted state may not be rehydrated yet.
+        const token = Cookies.get('vaultsweeps_token')
+        if (token) {
           const results = await Promise.all([
             providerApi.getAccount(id as string).catch(() => ({ data: { data: null } })),
             providerApi.getTransactions(id as string).catch(() => ({ data: { data: [] } })),
             authApi.getBalance().catch(() => ({ data: { data: { balance: 0 } } }))
           ])
-          accRes = results[0]
-          txRes = results[1]
-          balRes = results[2]
+          const [accRes, txRes, balRes] = results
+
+          if (accRes.data?.data) {
+            if (accRes.data.data.isMaintenance) {
+              setMaintenanceModalOpen(true)
+            } else {
+              setAccount(accRes.data.data)
+            }
+          }
+
+          if (txRes.data?.data) {
+            setTransactions(txRes.data.data)
+          }
+
+          if (balRes.data?.data?.balance !== undefined) {
+            setWalletBalance(balRes.data.data.balance)
+          }
         }
-        
+
+        setAccountFetched(true)
+      } catch (err: any) {
+        console.error(err)
+        if (!game) {
+          toast.error('Failed to load game details')
+          router.push('/games')
+        }
+        setAccountFetched(true)
+      }
+    }
+
+    if (id) {
+      fetchData()
+    }
+  }, [id])
+
+  // If store hydrates after initial render and we now know user is authenticated,
+  // re-fetch account data if it wasn't loaded yet.
+  useEffect(() => {
+    if (!isAuthenticated || !id || !accountFetched) return
+    if (account) return // already loaded
+
+    const refetch = async () => {
+      try {
+        const [accRes, txRes, balRes] = await Promise.all([
+          providerApi.getAccount(id as string).catch(() => ({ data: { data: null } })),
+          providerApi.getTransactions(id as string).catch(() => ({ data: { data: [] } })),
+          authApi.getBalance().catch(() => ({ data: { data: { balance: 0 } } }))
+        ])
+
         if (accRes.data?.data) {
           if (accRes.data.data.isMaintenance) {
             setMaintenanceModalOpen(true)
@@ -92,27 +135,14 @@ export default function GameDetailsPage() {
             setAccount(accRes.data.data)
           }
         }
-        
-        if (txRes.data?.data) {
-          setTransactions(txRes.data.data)
-        }
-        
-        if (balRes.data?.data?.balance !== undefined) {
-          setWalletBalance(balRes.data.data.balance)
-        }
-      } catch (err: any) {
-        console.error(err)
-        if (!game) {
-          toast.error('Failed to load game details')
-          router.push('/games')
-        }
-      }
+
+        if (txRes.data?.data) setTransactions(txRes.data.data)
+        if (balRes.data?.data?.balance !== undefined) setWalletBalance(balRes.data.data.balance)
+      } catch {}
     }
-    
-    if (id) {
-      fetchData()
-    }
-  }, [id, isAuthenticated])
+
+    refetch()
+  }, [isAuthenticated, accountFetched])
 
 
   const handleDownload = async () => {
