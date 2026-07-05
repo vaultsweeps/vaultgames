@@ -113,9 +113,9 @@ export class TelegramSupportBot {
       await ctx.telegram.sendMessage(this.groupId, `User: ${text}`, {
         message_thread_id: Number(conversation.telegram_thread_id)
       });
-    } catch (e) {
+    } catch (e: any) {
       logger.error('Error handling private message', e);
-      await ctx.reply('Sorry, an error occurred while sending your message.');
+      await ctx.reply(`Sorry, an error occurred while sending your message. Error: ${e.message || String(e)}`);
     }
   }
 
