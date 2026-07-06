@@ -37,7 +37,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
       </head>
-      <body className="bg-dark-900 text-slate-200 antialiased" suppressHydrationWarning>
+      <body className="bg-background text-primary antialiased transition-colors duration-300" suppressHydrationWarning>
         <ThemeProvider>
           {/* Global navigation progress loader — shown on every route change */}
           <Suspense fallback={null}>

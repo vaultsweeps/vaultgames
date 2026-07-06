@@ -56,28 +56,28 @@ function BonusCard({ bonus, color }: { bonus: Bonus; color: string }) {
               <div className="font-display font-black text-3xl" style={{ color }}>${bonus.amount}</div>
             )}
             {!bonus.percentage && !bonus.amount && (
-              <div className="font-display font-black text-2xl text-slate-500">CUSTOM</div>
+              <div className="font-display font-black text-2xl text-muted">CUSTOM</div>
             )}
             {bonus.maxBonus != null && (
-              <div className="text-xs text-slate-500">up to ${bonus.maxBonus}</div>
+              <div className="text-xs text-muted">up to ${bonus.maxBonus}</div>
             )}
           </div>
         </div>
 
         {bonus.description && (
-          <p className="text-slate-400 text-sm leading-relaxed mb-4">{bonus.description}</p>
+          <p className="text-secondary text-sm leading-relaxed mb-4">{bonus.description}</p>
         )}
 
         <div className="grid grid-cols-2 gap-3 mb-4">
           {bonus.minDeposit != null && (
             <div className="glass rounded-lg p-3">
-              <p className="text-xs text-slate-500 mb-1">Min. Deposit</p>
+              <p className="text-xs text-muted mb-1">Min. Deposit</p>
               <p className="text-white text-sm font-medium">${bonus.minDeposit}</p>
             </div>
           )}
           {bonus.maxBonus != null && (
             <div className="glass rounded-lg p-3">
-              <p className="text-xs text-slate-500 mb-1">Max Bonus</p>
+              <p className="text-xs text-muted mb-1">Max Bonus</p>
               <p className="text-white text-sm font-medium">${bonus.maxBonus}</p>
             </div>
           )}
@@ -92,7 +92,7 @@ function BonusCard({ bonus, color }: { bonus: Bonus; color: string }) {
         {(bonus.requirements || bonus.terms) && (
           <>
             <button onClick={() => setExpanded(!expanded)}
-              className="flex items-center gap-1 text-xs text-slate-500 hover:text-white transition-colors mb-3 w-full">
+              className="flex items-center gap-1 text-xs text-muted hover:text-white transition-colors mb-3 w-full">
               {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
               {expanded ? 'Hide' : 'Show'} Terms & Requirements
             </button>
@@ -102,13 +102,13 @@ function BonusCard({ bonus, color }: { bonus: Bonus; color: string }) {
                 {bonus.requirements && (
                   <div className="glass rounded-lg p-3">
                     <p className="text-xs font-mono text-neon-blue uppercase tracking-wider mb-1">Requirements</p>
-                    <p className="text-slate-400 text-xs">{bonus.requirements}</p>
+                    <p className="text-secondary text-xs">{bonus.requirements}</p>
                   </div>
                 )}
                 {bonus.terms && (
                   <div className="glass rounded-lg p-3">
                     <p className="text-xs font-mono text-neon-blue uppercase tracking-wider mb-1">Terms & Conditions</p>
-                    <p className="text-slate-400 text-xs">{bonus.terms}</p>
+                    <p className="text-secondary text-xs">{bonus.terms}</p>
                   </div>
                 )}
               </motion.div>
@@ -146,9 +146,9 @@ export default function BonusesPage() {
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex items-end justify-between flex-wrap gap-3">
         <div>
           <h2 className="font-display font-bold text-2xl text-white">BONUSES & PROMOTIONS</h2>
-          <p className="text-slate-400 text-sm mt-1">Claim exclusive bonuses and boost your gaming experience.</p>
+          <p className="text-secondary text-sm mt-1">Claim exclusive bonuses and boost your gaming experience.</p>
         </div>
-        <button onClick={fetchBonuses} className="glass border border-white/10 rounded-xl px-3 py-2 text-slate-400 hover:text-white transition-all flex items-center gap-2 text-sm">
+        <button onClick={fetchBonuses} className="glass border border-border-strong rounded-xl px-3 py-2 text-secondary hover:text-white transition-all flex items-center gap-2 text-sm">
           <RefreshCw className="w-4 h-4" /> Refresh
         </button>
       </motion.div>
@@ -166,7 +166,7 @@ export default function BonusesPage() {
       ) : bonuses.length === 0 ? (
         <div className="glass-card py-20 text-center">
           <Gift className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-          <p className="text-slate-500">No active bonuses at the moment. Check back soon!</p>
+          <p className="text-muted">No active bonuses at the moment. Check back soon!</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">

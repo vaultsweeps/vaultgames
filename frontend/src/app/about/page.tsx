@@ -32,7 +32,7 @@ export default function AboutPage() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-dark-900">
+    <div className="min-h-screen bg-background">
       <Navbar />
       <main className="pt-24 pb-20">
         <div className="max-w-6xl mx-auto px-4">
@@ -42,7 +42,7 @@ export default function AboutPage() {
             <h1 className="font-display font-bold text-5xl sm:text-6xl text-white mb-4">
               ABOUT <span className="gradient-text">VAULT SWEEPS</span>
             </h1>
-            <p className="text-slate-400 text-xl max-w-2xl mx-auto leading-relaxed">
+            <p className="text-secondary text-xl max-w-2xl mx-auto leading-relaxed">
               We're building the future of online gaming — a platform where players come first, security is non-negotiable, and every experience is extraordinary.
             </p>
           </div>
@@ -69,7 +69,7 @@ export default function AboutPage() {
                     <v.icon className="w-6 h-6" style={{ color: v.color }} />
                   </div>
                   <h3 className="font-display font-bold text-white mb-2">{v.title}</h3>
-                  <p className="text-slate-400 text-sm leading-relaxed">{v.desc}</p>
+                  <p className="text-secondary text-sm leading-relaxed">{v.desc}</p>
                 </div>
               ))}
             </div>
@@ -89,7 +89,7 @@ export default function AboutPage() {
                     <div className="glass-card p-5">
                       <span className="font-display font-black text-neon-blue text-lg">{m.year}</span>
                       <h3 className="font-display font-bold text-white mt-1 mb-1">{m.title}</h3>
-                      <p className="text-slate-400 text-sm">{m.desc}</p>
+                      <p className="text-secondary text-sm">{m.desc}</p>
                     </div>
                   </div>
                 ))}
@@ -102,7 +102,7 @@ export default function AboutPage() {
             <div className="absolute inset-0 cyber-grid opacity-10" />
             <div className="relative z-10">
               <h2 className="font-display font-bold text-3xl text-white mb-3">JOIN THE <span className="gradient-text">VAULT SWEEPS</span></h2>
-              <p className="text-slate-400 mb-6">Be part of the fastest-growing gaming community online.</p>
+              <p className="text-secondary mb-6">Be part of the fastest-growing gaming community online.</p>
               {mounted && isAuthenticated ? (
                 <Link href="/dashboard" className="btn-primary inline-block py-3 px-10 text-sm">Go to Dashboard</Link>
               ) : (

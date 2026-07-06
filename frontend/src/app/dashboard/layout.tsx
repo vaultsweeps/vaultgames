@@ -59,7 +59,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, [isAuthenticated])
 
   if (!isAuthenticated && !user) return (
-    <div className="min-h-screen bg-dark-900 flex items-center justify-center">
+    <div className="min-h-screen bg-background flex items-center justify-center">
       <div className="w-8 h-8 border-2 border-neon-blue/30 border-t-neon-blue rounded-full animate-spin" />
     </div>
   )
@@ -67,7 +67,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
       {/* Logo */}
-      <div className="p-6 border-b border-white/5">
+      <div className="p-6 border-b border-border-subtle">
         <Link href="/" className="flex items-center gap-2">
           <img src="/images/vault-sweeps-logo.png" alt="Vault Sweeps" className="h-10 w-auto object-contain drop-shadow-md" />
           <span className="font-display font-bold text-sm gradient-text">VAULT SWEEPS</span>
@@ -82,7 +82,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
           <div className="min-w-0">
             <p className="text-white text-sm font-medium truncate">{user?.username}</p>
-            <p className="text-slate-500 text-xs truncate">{user?.email}</p>
+            <p className="text-muted text-xs truncate">{user?.email}</p>
           </div>
         </div>
       </div>
@@ -97,7 +97,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all group ${
                 active
                   ? 'bg-neon-blue/10 text-neon-blue border border-neon-blue/20'
-                  : 'text-slate-400 hover:text-white hover:bg-white/5'
+                  : 'text-secondary hover:text-white hover:bg-white/5'
               }`}
             >
               <item.icon className={`w-4 h-4 ${active ? 'text-neon-blue' : 'group-hover:text-white'}`} />
@@ -117,8 +117,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </nav>
 
       {/* Bottom */}
-      <div className="p-4 border-t border-white/5">
-        <button onClick={logout} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-slate-400 hover:text-red-400 hover:bg-red-500/5 transition-all">
+      <div className="p-4 border-t border-border-subtle">
+        <button onClick={logout} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-secondary hover:text-red-400 hover:bg-red-500/5 transition-all">
           <LogOut className="w-4 h-4" />
           Logout
         </button>
@@ -127,9 +127,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   )
 
   return (
-    <div className="min-h-screen bg-dark-900 flex">
+    <div className="min-h-screen bg-background flex">
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex w-64 bg-dark-800 border-r border-white/5 flex-col flex-shrink-0 fixed inset-y-0 left-0 z-30">
+      <aside className="hidden lg:flex w-64 bg-surface border-r border-border-subtle flex-col flex-shrink-0 fixed inset-y-0 left-0 z-30">
         <SidebarContent />
       </aside>
 
@@ -143,7 +143,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <motion.aside
               initial={{ x: -256 }} animate={{ x: 0 }} exit={{ x: -256 }}
               transition={{ type: 'spring', damping: 25 }}
-              className="fixed inset-y-0 left-0 w-64 bg-dark-800 border-r border-white/5 flex flex-col z-50 lg:hidden"
+              className="fixed inset-y-0 left-0 w-64 bg-surface border-r border-border-subtle flex flex-col z-50 lg:hidden"
             >
               <SidebarContent />
             </motion.aside>
@@ -154,27 +154,27 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Main content */}
       <div className="flex-1 lg:ml-64 flex flex-col min-h-screen">
         {/* Top bar */}
-        <header className="sticky top-0 z-20 bg-dark-800/80 backdrop-blur-sm border-b border-white/5 px-4 sm:px-6 py-4">
+        <header className="sticky top-0 z-20 bg-surface/80 backdrop-blur-sm border-b border-border-subtle px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <button onClick={() => setSidebarOpen(true)} className="lg:hidden text-slate-400 hover:text-white">
+              <button onClick={() => setSidebarOpen(true)} className="lg:hidden text-secondary hover:text-white">
                 <Menu className="w-5 h-5" />
               </button>
               <div>
                 <h1 className="font-display font-bold text-white text-sm">
                   {NAV_ITEMS.find(n => n.href === pathname)?.label || 'Dashboard'}
                 </h1>
-                <p className="text-slate-500 text-xs hidden sm:block">Manage your gaming account</p>
+                <p className="text-muted text-xs hidden sm:block">Manage your gaming account</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <Link href="/dashboard/notifications" className="relative w-9 h-9 glass rounded-lg flex items-center justify-center text-slate-400 hover:text-white border border-white/10 transition-all">
+              <Link href="/dashboard/notifications" className="relative w-9 h-9 glass rounded-lg flex items-center justify-center text-secondary hover:text-white border border-border-strong transition-all">
                 <Bell className="w-4 h-4" />
                 {unreadCount > 0 && (
                   <span className="absolute -top-1 -right-1 w-4 h-4 bg-neon-blue rounded-full text-xs text-white flex items-center justify-center font-mono">{unreadCount > 9 ? '9+' : unreadCount}</span>
                 )}
               </Link>
-              <Link href="/" className="text-xs text-slate-500 hover:text-white transition-colors hidden sm:block">← Back to site</Link>
+              <Link href="/" className="text-xs text-muted hover:text-white transition-colors hidden sm:block">← Back to site</Link>
             </div>
           </div>
         </header>

@@ -40,10 +40,10 @@ function FAQItem({ q, a }: { q: string; a: string }) {
     <div className="glass-card overflow-hidden">
       <button className="w-full flex items-center justify-between px-6 py-4 text-left" onClick={() => setOpen(!open)}>
         <span className="font-medium text-white text-sm">{q}</span>
-        <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform flex-shrink-0 ml-4 ${open ? 'rotate-180' : ''}`} />
+        <ChevronDown className={`w-4 h-4 text-secondary transition-transform flex-shrink-0 ml-4 ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
-        <div className="px-6 pb-4 text-slate-400 text-sm leading-relaxed border-t border-white/5 pt-4">{a}</div>
+        <div className="px-6 pb-4 text-secondary text-sm leading-relaxed border-t border-border-subtle pt-4">{a}</div>
       )}
     </div>
   )
@@ -83,7 +83,7 @@ export default function HomePageClient() {
                   <f.icon className="w-6 h-6" style={{ color: f.color }} />
                 </div>
                 <h3 className="font-display text-sm font-bold text-white mb-2">{f.title}</h3>
-                <p className="text-slate-500 text-xs leading-relaxed">{f.desc}</p>
+                <p className="text-muted text-xs leading-relaxed">{f.desc}</p>
               </motion.div>
             ))}
           </div>
@@ -111,7 +111,7 @@ export default function HomePageClient() {
                   <div className="text-xs font-mono mb-3 px-2 py-0.5 rounded-full inline-block" style={{ color, background: `${color}15`, border: `1px solid ${color}30` }}>{badge}</div>
                   <div className="font-display font-black text-4xl mb-2" style={{ color }}>{amountDisplay}</div>
                   <h3 className="font-display text-sm font-bold text-white mb-2">{b.title}</h3>
-                  <p className="text-slate-500 text-xs mb-3">{b.description || b.requirements}</p>
+                  <p className="text-muted text-xs mb-3">{b.description || b.requirements}</p>
                   {b.minDeposit && <p className="text-xs text-slate-600 flex items-center gap-1"><Check className="w-3 h-3" />Min deposit ${b.minDeposit}</p>}
                 </motion.div>
               )
@@ -141,10 +141,10 @@ export default function HomePageClient() {
             {TESTIMONIALS.map((t, i) => (
               <motion.div key={i} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }} className="glass-card p-6">
                 <div className="flex gap-1 mb-4">{Array.from({ length: t.rating }).map((_, j) => <Star key={j} className="w-4 h-4 text-yellow-400 fill-current" />)}</div>
-                <p className="text-slate-300 text-sm leading-relaxed mb-4">"{t.text}"</p>
+                <p className="text-secondary text-sm leading-relaxed mb-4">"{t.text}"</p>
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-gradient-to-br from-neon-blue to-neon-purple flex items-center justify-center text-white text-xs font-bold">{t.name.charAt(0)}</div>
-                  <div><p className="text-white text-sm font-medium">{t.name}</p><p className="text-slate-500 text-xs">{t.role}</p></div>
+                  <div><p className="text-white text-sm font-medium">{t.name}</p><p className="text-muted text-xs">{t.role}</p></div>
                 </div>
               </motion.div>
             ))}
@@ -174,7 +174,7 @@ export default function HomePageClient() {
             <div className="relative z-10">
               <p className="font-mono text-xs tracking-[0.3em] text-neon-blue uppercase mb-3">Ready to play?</p>
               <h2 className="font-display font-black text-5xl text-white mb-4">JOIN <span className="gradient-text">VAULT SWEEPS</span> TODAY</h2>
-              <p className="text-slate-400 text-lg mb-8 max-w-xl mx-auto">Start your gaming journey with the best bonuses, fastest withdrawals, and premium games.</p>
+              <p className="text-secondary text-lg mb-8 max-w-xl mx-auto">Start your gaming journey with the best bonuses, fastest withdrawals, and premium games.</p>
               <div className="flex flex-wrap justify-center gap-4">
                 {mounted && isAuthenticated ? (
                   <Link href="/dashboard" className="btn-primary py-3 px-10 text-sm">Go to Dashboard</Link>

@@ -34,7 +34,7 @@ export default function ProfilePage() {
     <div className="space-y-6 max-w-2xl">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
         <h2 className="font-display font-bold text-2xl text-white">PROFILE SETTINGS</h2>
-        <p className="text-slate-400 text-sm mt-1">Manage your account information and security.</p>
+        <p className="text-secondary text-sm mt-1">Manage your account information and security.</p>
       </motion.div>
 
       {/* Avatar section */}
@@ -49,10 +49,10 @@ export default function ProfilePage() {
         </div>
         <div>
           <p className="text-white font-medium">{user?.username}</p>
-          <p className="text-slate-500 text-sm">{user?.email}</p>
+          <p className="text-muted text-sm">{user?.email}</p>
           <div className="flex items-center gap-2 mt-1">
             <div className={`w-2 h-2 rounded-full ${user?.isVerified ? 'bg-green-400' : 'bg-orange-400'}`} />
-            <span className="text-xs text-slate-500">{user?.isVerified ? 'Email verified' : 'Email not verified'}</span>
+            <span className="text-xs text-muted">{user?.isVerified ? 'Email verified' : 'Email not verified'}</span>
           </div>
         </div>
       </div>
@@ -65,7 +65,7 @@ export default function ProfilePage() {
           { id: 'security', label: 'Security', icon: Shield },
         ].map(t => (
           <button key={t.id} onClick={() => setTab(t.id as any)}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all ${tab === t.id ? 'bg-neon-blue/10 text-neon-blue border border-neon-blue/20' : 'glass text-slate-400 hover:text-white border border-white/10'}`}>
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all ${tab === t.id ? 'bg-neon-blue/10 text-neon-blue border border-neon-blue/20' : 'glass text-secondary hover:text-white border border-border-strong'}`}>
             <t.icon className="w-4 h-4" />{t.label}
           </button>
         ))}
@@ -77,28 +77,28 @@ export default function ProfilePage() {
             <form onSubmit={profileForm.handleSubmit(onSaveProfile)} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-mono tracking-wider text-slate-400 uppercase mb-2">Full Name</label>
+                  <label className="block text-xs font-mono tracking-wider text-secondary uppercase mb-2">Full Name</label>
                   <input {...profileForm.register('fullName')} type="text" placeholder="Your full name" className="input-neon" />
                 </div>
                 <div>
-                  <label className="block text-xs font-mono tracking-wider text-slate-400 uppercase mb-2">Phone Number</label>
+                  <label className="block text-xs font-mono tracking-wider text-secondary uppercase mb-2">Phone Number</label>
                   <input {...profileForm.register('phone')} type="tel" placeholder="+1 234 567 890" className="input-neon" />
                 </div>
                 <div>
-                  <label className="block text-xs font-mono tracking-wider text-slate-400 uppercase mb-2">Country</label>
+                  <label className="block text-xs font-mono tracking-wider text-secondary uppercase mb-2">Country</label>
                   <input {...profileForm.register('country')} type="text" placeholder="Your country" className="input-neon" />
                 </div>
                 <div>
-                  <label className="block text-xs font-mono tracking-wider text-slate-400 uppercase mb-2">Telegram Username</label>
+                  <label className="block text-xs font-mono tracking-wider text-secondary uppercase mb-2">Telegram Username</label>
                   <input {...profileForm.register('telegramUsername')} type="text" placeholder="@username" className="input-neon" />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-mono tracking-wider text-slate-400 uppercase mb-2">Email (read-only)</label>
+                <label className="block text-xs font-mono tracking-wider text-secondary uppercase mb-2">Email (read-only)</label>
                 <input type="email" value={user?.email || ''} readOnly className="input-neon opacity-50 cursor-not-allowed" />
               </div>
               <div>
-                <label className="block text-xs font-mono tracking-wider text-slate-400 uppercase mb-2">Username (read-only)</label>
+                <label className="block text-xs font-mono tracking-wider text-secondary uppercase mb-2">Username (read-only)</label>
                 <input type="text" value={user?.username || ''} readOnly className="input-neon opacity-50 cursor-not-allowed" />
               </div>
               <button type="submit" disabled={saving} className="btn-primary py-3 px-8 text-sm flex items-center gap-2 disabled:opacity-50">
@@ -115,15 +115,15 @@ export default function ProfilePage() {
           <div className="glass-card p-6">
             <form onSubmit={passwordForm.handleSubmit(onChangePassword)} className="space-y-4">
               <div>
-                <label className="block text-xs font-mono tracking-wider text-slate-400 uppercase mb-2">Current Password</label>
+                <label className="block text-xs font-mono tracking-wider text-secondary uppercase mb-2">Current Password</label>
                 <input {...passwordForm.register('currentPassword', { required: true })} type="password" placeholder="••••••••" className="input-neon" />
               </div>
               <div>
-                <label className="block text-xs font-mono tracking-wider text-slate-400 uppercase mb-2">New Password</label>
+                <label className="block text-xs font-mono tracking-wider text-secondary uppercase mb-2">New Password</label>
                 <input {...passwordForm.register('newPassword', { required: true, minLength: 8 })} type="password" placeholder="••••••••" className="input-neon" />
               </div>
               <div>
-                <label className="block text-xs font-mono tracking-wider text-slate-400 uppercase mb-2">Confirm New Password</label>
+                <label className="block text-xs font-mono tracking-wider text-secondary uppercase mb-2">Confirm New Password</label>
                 <input {...passwordForm.register('confirmPassword', { required: true })} type="password" placeholder="••••••••" className="input-neon" />
               </div>
               <button type="submit" disabled={saving} className="btn-primary py-3 px-8 text-sm flex items-center gap-2 disabled:opacity-50">
@@ -148,7 +148,7 @@ export default function ProfilePage() {
               <div key={i} className="flex items-center justify-between glass rounded-lg px-4 py-3">
                 <div className="flex items-center gap-3">
                   <div className={`w-2 h-2 rounded-full ${item.ok ? 'bg-green-400' : 'bg-orange-400'}`} />
-                  <span className="text-sm text-slate-300">{item.label}</span>
+                  <span className="text-sm text-secondary">{item.label}</span>
                 </div>
                 <span className={`text-xs font-medium ${item.ok ? 'text-green-400' : 'text-orange-400'}`}>{item.status}</span>
               </div>

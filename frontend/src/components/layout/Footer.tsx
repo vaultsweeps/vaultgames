@@ -13,7 +13,7 @@ export default function Footer() {
   }, [])
 
   return (
-    <footer className="bg-dark-800 border-t border-white/5 mt-auto">
+    <footer className="bg-surface border-t border-border-subtle mt-auto">
       <div className="max-w-7xl mx-auto px-4 py-16">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
           {/* Brand */}
@@ -22,7 +22,7 @@ export default function Footer() {
               <img src="/images/vault-sweeps-logo.png" alt="Vault Sweeps" className="h-10 w-auto object-contain drop-shadow-md" />
               <span className="font-display font-bold text-lg gradient-text">VAULT SWEEPS</span>
             </Link>
-            <p className="text-slate-500 text-sm leading-relaxed mb-5">
+            <p className="text-muted text-sm leading-relaxed mb-5">
               {settings.site_description || 'The ultimate gaming destination. Join millions of players and experience the future of gaming.'}
             </p>
             <div className="flex gap-3">
@@ -34,7 +34,7 @@ export default function Footer() {
                 { icon: Instagram, href: '#', color: 'hover:text-pink-500' },
               ].map((s, i) => (
                 <a key={i} href={s.href} target="_blank" rel="noopener noreferrer"
-                  className={`w-9 h-9 glass rounded-lg flex items-center justify-center text-slate-500 ${s.color} transition-all hover:scale-110`}>
+                  className={`w-9 h-9 glass rounded-lg flex items-center justify-center text-muted ${s.color} transition-all hover:scale-110`}>
                   <s.icon className="w-4 h-4" />
                 </a>
               ))}
@@ -46,7 +46,7 @@ export default function Footer() {
             <h4 className="font-display text-xs tracking-widest text-neon-blue uppercase mb-4">Navigation</h4>
             <ul className="space-y-2">
               {[['/', 'Home'], ['/games', 'Games'], ['/bonuses', 'Bonuses'], ['/cashout-rules', 'Cashout Rules'], ['/about', 'About Us'], ['/contact', 'Contact Us']].map(([href, label]) => (
-                <li key={href}><Link href={href} className="text-sm text-slate-500 hover:text-white transition-colors">{label}</Link></li>
+                <li key={href}><Link href={href} className="text-sm text-muted hover:text-white transition-colors">{label}</Link></li>
               ))}
             </ul>
           </div>
@@ -56,7 +56,7 @@ export default function Footer() {
             <h4 className="font-display text-xs tracking-widest text-neon-blue uppercase mb-4">Account</h4>
             <ul className="space-y-2">
               {[['/register', 'Register'], ['/login', 'Login'], ['/dashboard', 'Dashboard'], ['/dashboard/deposits', 'Deposits'], ['/dashboard/support', 'Support']].map(([href, label]) => (
-                <li key={href}><Link href={href} className="text-sm text-slate-500 hover:text-white transition-colors">{label}</Link></li>
+                <li key={href}><Link href={href} className="text-sm text-muted hover:text-white transition-colors">{label}</Link></li>
               ))}
             </ul>
           </div>
@@ -66,17 +66,17 @@ export default function Footer() {
             <h4 className="font-display text-xs tracking-widest text-neon-blue uppercase mb-4">Contact Us</h4>
             <div className="space-y-3">
               <a href={settings.telegram_url || process.env.NEXT_PUBLIC_TELEGRAM_URL || '#'} target="_blank" rel="noopener noreferrer"
-                className="flex items-center gap-3 glass rounded-lg px-4 py-3 text-sm text-slate-400 hover:text-neon-blue hover:border-neon-blue/30 border border-transparent transition-all">
+                className="flex items-center gap-3 glass rounded-lg px-4 py-3 text-sm text-secondary hover:text-neon-blue hover:border-neon-blue/30 border border-transparent transition-all">
                 <Send className="w-4 h-4 text-blue-400" />
                 Telegram Support
               </a>
               <a href={settings.facebook_url || process.env.NEXT_PUBLIC_FACEBOOK_URL || '#'} target="_blank" rel="noopener noreferrer"
-                className="flex items-center gap-3 glass rounded-lg px-4 py-3 text-sm text-slate-400 hover:text-neon-blue hover:border-neon-blue/30 border border-transparent transition-all">
+                className="flex items-center gap-3 glass rounded-lg px-4 py-3 text-sm text-secondary hover:text-neon-blue hover:border-neon-blue/30 border border-transparent transition-all">
                 <MessageCircle className="w-4 h-4 text-blue-600" />
                 Facebook Messenger
               </a>
               <Link href="/dashboard/support"
-                className="flex items-center gap-3 glass rounded-lg px-4 py-3 text-sm text-slate-400 hover:text-neon-blue hover:border-neon-blue/30 border border-transparent transition-all">
+                className="flex items-center gap-3 glass rounded-lg px-4 py-3 text-sm text-secondary hover:text-neon-blue hover:border-neon-blue/30 border border-transparent transition-all">
                 <MessageCircle className="w-4 h-4 text-neon-blue" />
                 Support Tickets
               </Link>
@@ -84,11 +84,11 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="mt-12 pt-6 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="mt-12 pt-6 border-t border-border-subtle flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-xs text-slate-600">© {year} Vault Sweeps. All rights reserved.</p>
           <div className="flex gap-6">
             {[['#', 'Privacy Policy'], ['#', 'Terms of Service'], ['#', 'Cookie Policy']].map(([href, label]) => (
-              <Link key={label} href={href} className="text-xs text-slate-600 hover:text-slate-400 transition-colors">{label}</Link>
+              <Link key={label} href={href} className="text-xs text-slate-600 hover:text-secondary transition-colors">{label}</Link>
             ))}
           </div>
         </div>

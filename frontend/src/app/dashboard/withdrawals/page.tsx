@@ -32,7 +32,7 @@ const StatusBadge = ({ status }: { status: string }) => {
     approved: { cls: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20', icon: <CheckCircle2 className="w-3 h-3" />, label: 'Approved' },
     rejected: { cls: 'bg-red-500/15 text-red-400 border-red-500/20',        icon: <XCircle className="w-3 h-3" />,         label: 'Rejected' },
   }
-  const s = map[status] ?? { cls: 'bg-slate-500/15 text-slate-400 border-slate-500/20', icon: null, label: status }
+  const s = map[status] ?? { cls: 'bg-slate-500/15 text-secondary border-slate-500/20', icon: null, label: status }
   return (
     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${s.cls}`}>
       {s.icon}{s.label}
@@ -128,7 +128,7 @@ export default function WithdrawalsPage() {
         className="flex items-end justify-between flex-wrap gap-4">
         <div>
           <h2 className="font-display font-bold text-2xl text-white">WITHDRAWALS</h2>
-          <p className="text-slate-400 text-sm mt-1">Request cashouts and track their status in real-time.</p>
+          <p className="text-secondary text-sm mt-1">Request cashouts and track their status in real-time.</p>
         </div>
         <button
           onClick={() => setShowForm(true)}
@@ -152,7 +152,7 @@ export default function WithdrawalsPage() {
             </div>
             <div>
               <p className={`font-bold text-lg font-display ${color}`}>{value}</p>
-              <p className="text-xs text-slate-500">{label}</p>
+              <p className="text-xs text-muted">{label}</p>
             </div>
           </div>
         ))}
@@ -160,13 +160,13 @@ export default function WithdrawalsPage() {
 
       {/* Filter */}
       <div className="flex items-center gap-3">
-        <Filter className="w-4 h-4 text-slate-500" />
+        <Filter className="w-4 h-4 text-muted" />
         {['', 'pending', 'approved', 'rejected'].map(s => (
           <button key={s} onClick={() => setStatusFilter(s)}
             className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
               statusFilter === s
                 ? 'bg-neon-blue/10 text-neon-blue border-neon-blue/30'
-                : 'glass text-slate-400 border-white/10 hover:text-white'
+                : 'glass text-secondary border-border-strong hover:text-white'
             }`}>
             {s === '' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1)}
           </button>
@@ -178,16 +178,16 @@ export default function WithdrawalsPage() {
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-white/5">
+              <tr className="border-b border-border-subtle">
                 {['Request ID', 'Date', 'Amount', 'Method', 'Account', 'Status', 'Details'].map(h => (
-                  <th key={h} className="text-left text-xs font-mono text-slate-500 uppercase tracking-wider px-5 py-3.5">{h}</th>
+                  <th key={h} className="text-left text-xs font-mono text-muted uppercase tracking-wider px-5 py-3.5">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
-                  <tr key={i} className="border-b border-white/5">
+                  <tr key={i} className="border-b border-border-subtle">
                     {Array.from({ length: 7 }).map((_, j) => (
                       <td key={j} className="px-5 py-4">
                         <div className="h-4 bg-white/5 rounded animate-pulse" style={{ width: `${60 + j * 10}%` }} />
@@ -199,7 +199,7 @@ export default function WithdrawalsPage() {
                 <tr>
                   <td colSpan={7} className="px-5 py-16 text-center">
                     <DollarSign className="w-10 h-10 text-slate-700 mx-auto mb-3" />
-                    <p className="text-slate-500 text-sm">No withdrawal requests found.</p>
+                    <p className="text-muted text-sm">No withdrawal requests found.</p>
                     <button onClick={() => setShowForm(true)} className="mt-3 text-neon-blue text-sm hover:underline">
                       Create your first request →
                     </button>
@@ -209,18 +209,18 @@ export default function WithdrawalsPage() {
                 withdrawals.map((w, i) => (
                   <motion.tr key={w.id}
                     initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.03 }}
-                    className="border-b border-white/5 hover:bg-white/2 transition-colors">
+                    className="border-b border-border-subtle hover:bg-white/2 transition-colors">
                     <td className="px-5 py-4">
                       <span className="font-mono text-xs text-neon-blue bg-neon-blue/10 px-2 py-1 rounded">{w.requestId}</span>
                     </td>
-                    <td className="px-5 py-4 text-xs text-slate-500">
+                    <td className="px-5 py-4 text-xs text-muted">
                       {new Date(w.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                     </td>
                     <td className="px-5 py-4">
                       <span className="font-bold text-white">${w.amount.toFixed(2)}</span>
                     </td>
-                    <td className="px-5 py-4 text-sm text-slate-300">{w.paymentMethodStr}</td>
-                    <td className="px-5 py-4 text-xs text-slate-500 max-w-[140px] truncate">{w.accountDetails}</td>
+                    <td className="px-5 py-4 text-sm text-secondary">{w.paymentMethodStr}</td>
+                    <td className="px-5 py-4 text-xs text-muted max-w-[140px] truncate">{w.accountDetails}</td>
                     <td className="px-5 py-4">
                       <StatusBadge status={w.status} />
                       {w.status === 'pending' && (
@@ -251,20 +251,20 @@ export default function WithdrawalsPage() {
 
         {/* Pagination */}
         {pagination.pages > 1 && (
-          <div className="flex items-center justify-between px-5 py-3.5 border-t border-white/5">
-            <p className="text-xs text-slate-500">
+          <div className="flex items-center justify-between px-5 py-3.5 border-t border-border-subtle">
+            <p className="text-xs text-muted">
               Showing {((pagination.page - 1) * pagination.limit) + 1}–{Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total}
             </p>
             <div className="flex gap-2">
               <button onClick={() => fetchWithdrawals(pagination.page - 1)} disabled={pagination.page <= 1}
-                className="w-8 h-8 glass rounded-lg flex items-center justify-center text-slate-400 hover:text-white border border-white/10 disabled:opacity-30 transition-all">
+                className="w-8 h-8 glass rounded-lg flex items-center justify-center text-secondary hover:text-white border border-border-strong disabled:opacity-30 transition-all">
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              <span className="text-xs text-slate-400 flex items-center px-2">
+              <span className="text-xs text-secondary flex items-center px-2">
                 {pagination.page} / {pagination.pages}
               </span>
               <button onClick={() => fetchWithdrawals(pagination.page + 1)} disabled={pagination.page >= pagination.pages}
-                className="w-8 h-8 glass rounded-lg flex items-center justify-center text-slate-400 hover:text-white border border-white/10 disabled:opacity-30 transition-all">
+                className="w-8 h-8 glass rounded-lg flex items-center justify-center text-secondary hover:text-white border border-border-strong disabled:opacity-30 transition-all">
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
@@ -292,16 +292,16 @@ export default function WithdrawalsPage() {
               <div className="flex items-center justify-between mb-6">
                 <h3 className="font-display font-bold text-xl text-white">NEW WITHDRAWAL</h3>
                 <button onClick={() => !submitting && setShowForm(false)}
-                  className="w-8 h-8 glass rounded-lg flex items-center justify-center text-slate-400 hover:text-white border border-white/10 transition-all">
+                  className="w-8 h-8 glass rounded-lg flex items-center justify-center text-secondary hover:text-white border border-border-strong transition-all">
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-mono text-slate-400 uppercase tracking-wider mb-2">Amount (USD)</label>
+                  <label className="block text-xs font-mono text-secondary uppercase tracking-wider mb-2">Amount (USD)</label>
                   <div className="relative">
-                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 font-bold">$</span>
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted font-bold">$</span>
                     <input
                       id="withdrawal-amount"
                       type="number"
@@ -320,10 +320,10 @@ export default function WithdrawalsPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-mono text-slate-400 uppercase tracking-wider mb-2">Payment Method</label>
+                  <label className="block text-xs font-mono text-secondary uppercase tracking-wider mb-2">Payment Method</label>
                   <select
                     id="withdrawal-method"
-                    className="input-neon bg-dark-800"
+                    className="input-neon bg-surface"
                     {...register('paymentMethod', { required: 'Please select a payment method' })}
                   >
                     <option value="">Select method...</option>
@@ -333,7 +333,7 @@ export default function WithdrawalsPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-mono text-slate-400 uppercase tracking-wider mb-2">Account Details</label>
+                  <label className="block text-xs font-mono text-secondary uppercase tracking-wider mb-2">Account Details</label>
                   <textarea
                     id="withdrawal-account-details"
                     className="input-neon resize-none h-24"
@@ -352,7 +352,7 @@ export default function WithdrawalsPage() {
 
                 <div className="flex gap-3 pt-2">
                   <button type="button" onClick={() => !submitting && setShowForm(false)}
-                    className="flex-1 glass rounded-xl py-3 text-slate-400 text-sm border border-white/10 hover:text-white transition-all">
+                    className="flex-1 glass rounded-xl py-3 text-secondary text-sm border border-border-strong hover:text-white transition-all">
                     Cancel
                   </button>
                   <button type="submit" disabled={submitting}

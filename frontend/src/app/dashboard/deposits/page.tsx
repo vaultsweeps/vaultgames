@@ -104,7 +104,7 @@ export default function DepositsPage() {
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
         <h2 className="font-display font-bold text-2xl text-white">DEPOSITS</h2>
-        <p className="text-slate-400 text-sm mt-1">Fund your account to access platform features.</p>
+        <p className="text-secondary text-sm mt-1">Fund your account to access platform features.</p>
       </motion.div>
 
       {/* Tabs */}
@@ -112,7 +112,7 @@ export default function DepositsPage() {
         {[{ id: 'new', label: 'New Deposit', icon: Plus }, { id: 'history', label: 'History', icon: History }].map(t => (
           <button key={t.id} onClick={() => setTab(t.id as any)}
             className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all ${
-              tab === t.id ? 'bg-neon-blue/10 text-neon-blue border border-neon-blue/20' : 'glass text-slate-400 hover:text-white border border-white/10'
+              tab === t.id ? 'bg-neon-blue/10 text-neon-blue border border-neon-blue/20' : 'glass text-secondary hover:text-white border border-border-strong'
             }`}>
             <t.icon className="w-4 h-4" />{t.label}
           </button>
@@ -125,7 +125,7 @@ export default function DepositsPage() {
           {/* STEP 1 — Select Method */}
           {step === 1 && (
             <div>
-              <h3 className="font-display text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">
+              <h3 className="font-display text-sm font-bold text-secondary uppercase tracking-wider mb-4">
                 Select Payment Method
               </h3>
               {loadingMethods ? (
@@ -135,7 +135,7 @@ export default function DepositsPage() {
                   ))}
                 </div>
               ) : methods.length === 0 ? (
-                <p className="text-slate-500 py-8">No deposit methods available. Please contact support.</p>
+                <p className="text-muted py-8">No deposit methods available. Please contact support.</p>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {methods.map(m => {
@@ -162,14 +162,14 @@ export default function DepositsPage() {
                             {meta.icon}
                           </div>
                           {isSoon && (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-slate-400 border border-white/10">
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-secondary border border-border-strong">
                               Soon
                             </span>
                           )}
                         </div>
                         <div className="flex-1">
                           <p className="text-white font-semibold">{m.name}</p>
-                          <p className="text-xs text-slate-500 mt-0.5">{meta.desc}</p>
+                          <p className="text-xs text-muted mt-0.5">{meta.desc}</p>
                           {!isSoon && <p className="text-xs text-slate-600 mt-1">Min: ${m.minAmount} · Max: ${m.maxAmount.toLocaleString()}</p>}
                         </div>
                         {!isSoon && <ChevronRight className="w-4 h-4 text-slate-600 group-hover:text-neon-blue transition-colors self-end" />}
@@ -186,7 +186,7 @@ export default function DepositsPage() {
             const meta = getMeta(selectedMethod.code)
             return (
               <div className="glass-card p-6 max-w-md space-y-5">
-                <button onClick={() => setStep(1)} className="text-xs text-slate-500 hover:text-white transition-colors">← Back</button>
+                <button onClick={() => setStep(1)} className="text-xs text-muted hover:text-white transition-colors">← Back</button>
                 <div className="flex items-center gap-3">
                   <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl"
                     style={{ background: `${meta.color}20`, border: `1px solid ${meta.color}40` }}>
@@ -194,16 +194,16 @@ export default function DepositsPage() {
                   </div>
                   <div>
                     <p className="text-white font-bold">{selectedMethod.name}</p>
-                    <p className="text-xs text-slate-500">Min: ${selectedMethod.minAmount} · Max: ${selectedMethod.maxAmount.toLocaleString()}</p>
+                    <p className="text-xs text-muted">Min: ${selectedMethod.minAmount} · Max: ${selectedMethod.maxAmount.toLocaleString()}</p>
                   </div>
                 </div>
                 {selectedMethod.instructions && (
-                  <p className="text-xs text-slate-400 bg-white/5 rounded-xl p-3 border border-white/5">
+                  <p className="text-xs text-secondary bg-white/5 rounded-xl p-3 border border-border-subtle">
                     {selectedMethod.instructions}
                   </p>
                 )}
                 <div>
-                  <label className="block text-xs font-mono tracking-wider text-slate-400 uppercase mb-2">Deposit Amount (USD)</label>
+                  <label className="block text-xs font-mono tracking-wider text-secondary uppercase mb-2">Deposit Amount (USD)</label>
                   <input
                     type="number" value={depositAmount}
                     onChange={e => setDepositAmount(e.target.value)}
@@ -215,7 +215,7 @@ export default function DepositsPage() {
                   <div className="flex gap-2 mt-3">
                     {[50, 100, 250, 500].map(amt => (
                       <button key={amt} onClick={() => setDepositAmount(String(amt))}
-                        className="px-3 py-1.5 text-xs glass rounded-lg text-slate-400 hover:text-neon-blue border border-white/10 hover:border-neon-blue/30 transition-all">
+                        className="px-3 py-1.5 text-xs glass rounded-lg text-secondary hover:text-neon-blue border border-border-strong hover:border-neon-blue/30 transition-all">
                         ${amt}
                       </button>
                     ))}
@@ -237,20 +237,20 @@ export default function DepositsPage() {
                 <CreditCard className="w-8 h-8 text-neon-blue" />
               </div>
               <h3 className="font-display font-bold text-xl text-white mb-2">PAYMENT REQUEST CREATED</h3>
-              <p className="text-slate-400 text-sm mb-6">
+              <p className="text-secondary text-sm mb-6">
                 Your deposit request for <span className="text-white font-medium">${depositAmount}</span> via {selectedMethod.name} has been submitted.
               </p>
               <div className="glass rounded-xl p-4 text-left mb-6 space-y-2 text-sm">
-                <div className="flex justify-between"><span className="text-slate-500">Method</span><span className="text-white">{selectedMethod.name}</span></div>
-                <div className="flex justify-between"><span className="text-slate-500">Amount</span><span className="text-neon-blue font-mono">${depositAmount}</span></div>
-                <div className="flex justify-between"><span className="text-slate-500">Status</span><span className="badge-pending text-xs px-2 py-0.5 rounded-full">PENDING</span></div>
+                <div className="flex justify-between"><span className="text-muted">Method</span><span className="text-white">{selectedMethod.name}</span></div>
+                <div className="flex justify-between"><span className="text-muted">Amount</span><span className="text-neon-blue font-mono">${depositAmount}</span></div>
+                <div className="flex justify-between"><span className="text-muted">Status</span><span className="badge-pending text-xs px-2 py-0.5 rounded-full">PENDING</span></div>
               </div>
-              <p className="text-xs text-slate-500 mb-4">
+              <p className="text-xs text-muted mb-4">
                 Our team will review and approve your deposit within 1–24 hours.
               </p>
               <div className="flex gap-3">
                 <button onClick={resetForm} className="btn-neon flex-1 text-sm py-2.5">New Deposit</button>
-                <button onClick={() => setTab('history')} className="glass flex-1 text-sm py-2.5 rounded-xl text-slate-400 hover:text-white border border-white/10 transition-all">View History</button>
+                <button onClick={() => setTab('history')} className="glass flex-1 text-sm py-2.5 rounded-xl text-secondary hover:text-white border border-border-strong transition-all">View History</button>
               </div>
             </motion.div>
           )}
@@ -278,10 +278,10 @@ export default function DepositsPage() {
                       </tr>
                     ))
                   ) : depositHistory.length === 0 ? (
-                    <tr><td colSpan={5} className="text-center py-8 text-slate-500">No deposits yet.</td></tr>
+                    <tr><td colSpan={5} className="text-center py-8 text-muted">No deposits yet.</td></tr>
                   ) : depositHistory.map((tx: any) => (
                     <tr key={tx.id}>
-                      <td className="font-mono text-xs text-slate-400">{tx.paymentReference || tx.id.slice(0, 10)}</td>
+                      <td className="font-mono text-xs text-secondary">{tx.paymentReference || tx.id.slice(0, 10)}</td>
                       <td>{tx.paymentMethod?.name || tx.currency}</td>
                       <td className="text-white font-medium">${tx.amount.toFixed(2)}</td>
                       <td><StatusBadge status={tx.status} /></td>

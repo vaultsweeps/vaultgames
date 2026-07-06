@@ -52,7 +52,7 @@ export default function FeaturedGames() {
           {loading ? (
             <div className="col-span-full py-16 flex justify-center"><Loader fullScreen={false} /></div>
           ) : games.length === 0 ? (
-            <div className="col-span-full text-center py-10 text-slate-500">No games found.</div>
+            <div className="col-span-full text-center py-10 text-muted">No games found.</div>
           ) : games.map((game, i) => (
             <motion.div
               key={game.id}
@@ -61,7 +61,7 @@ export default function FeaturedGames() {
               viewport={{ once: true }}
               transition={{ delay: Math.min(i * 0.05, 0.5) }}
               whileHover={{ y: -5, scale: 1.02 }}
-              className="relative aspect-square rounded-[1.5rem] sm:rounded-[2rem] overflow-hidden group cursor-pointer shadow-lg bg-dark-800"
+              className="relative aspect-square rounded-[1.5rem] sm:rounded-[2rem] overflow-hidden group cursor-pointer shadow-lg bg-surface"
             >
               <Link href={`/games/${game.id}`} className="absolute inset-0 z-20" aria-label={game.name}></Link>
               
@@ -90,7 +90,7 @@ export default function FeaturedGames() {
         </div>
         
         <div className="mt-8 flex justify-center">
-           <Link href="/games" className="glass px-8 py-3 rounded-full text-sm font-bold text-slate-300 hover:text-white hover:bg-white/10 transition-colors flex items-center gap-2">
+           <Link href="/games" className="glass px-8 py-3 rounded-full text-sm font-bold text-secondary hover:text-white hover:bg-white/10 transition-colors flex items-center gap-2">
              View All Games <ChevronRight className="w-4 h-4" />
            </Link>
         </div>

@@ -11,10 +11,10 @@ const CATEGORIES = ['General', 'Deposits', 'Cashouts', 'Games', 'Bonuses', 'Tech
 const PRIORITIES = ['low', 'medium', 'high']
 
 const STATUS_STYLES: Record<string, string> = {
-  open: 'badge-pending', in_progress: 'badge-pending', resolved: 'badge-approved', closed: 'text-slate-500 bg-slate-500/10 border border-slate-500/20'
+  open: 'badge-pending', in_progress: 'badge-pending', resolved: 'badge-approved', closed: 'text-muted bg-slate-500/10 border border-slate-500/20'
 }
 const PRIORITY_STYLES: Record<string, string> = {
-  low: 'text-slate-400', medium: 'text-yellow-400', high: 'text-red-400', urgent: 'text-red-500'
+  low: 'text-secondary', medium: 'text-yellow-400', high: 'text-red-400', urgent: 'text-red-500'
 }
 
 export default function SupportPage() {
@@ -60,7 +60,7 @@ export default function SupportPage() {
     <div className="space-y-6 max-w-4xl">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
         <h2 className="font-display font-bold text-2xl text-white">SUPPORT CENTER</h2>
-        <p className="text-slate-400 text-sm mt-1">Get help from our team 24/7.</p>
+        <p className="text-secondary text-sm mt-1">Get help from our team 24/7.</p>
       </motion.div>
 
       {/* Tabs */}
@@ -72,7 +72,7 @@ export default function SupportPage() {
           { id: 'contact', label: 'Contact Us' },
         ].map(t => (
           <button key={t.id} onClick={() => setTab(t.id as any)}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all ${tab === t.id ? 'bg-neon-blue/10 text-neon-blue border border-neon-blue/20' : 'glass text-slate-400 hover:text-white border border-white/10'}`}>
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all ${tab === t.id ? 'bg-neon-blue/10 text-neon-blue border border-neon-blue/20' : 'glass text-secondary hover:text-white border border-border-strong'}`}>
             {t.icon && <t.icon className="w-4 h-4" />}{t.label}
           </button>
         ))}
@@ -89,7 +89,7 @@ export default function SupportPage() {
       {tab === 'tickets' && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
           {ticketsLoading ? (
-            <div className="glass-card py-16 text-center text-slate-500">Loading tickets...</div>
+            <div className="glass-card py-16 text-center text-muted">Loading tickets...</div>
           ) : tickets.length > 0 ? (
             <div className="glass-card overflow-hidden">
               <div className="overflow-x-auto">
@@ -100,11 +100,11 @@ export default function SupportPage() {
                       <tr key={t.id} className="cursor-pointer">
                         <td className="font-mono text-xs text-neon-blue">{t.id.slice(0, 8)}</td>
                         <td className="text-white text-sm font-medium">{t.subject}</td>
-                        <td className="text-xs text-slate-500">{t.category}</td>
+                        <td className="text-xs text-muted">{t.category}</td>
                         <td className={`text-xs font-medium ${PRIORITY_STYLES[t.priority]}`}>{t.priority.toUpperCase()}</td>
                         <td><span className={`${STATUS_STYLES[t.status]} text-xs px-2 py-0.5 rounded-full font-mono`}>{t.status.replace('_', ' ')}</span></td>
                         <td className="text-xs text-slate-600">{new Date(t.createdAt).toLocaleDateString()}</td>
-                        <td className="text-xs text-slate-400">{t.replies?.length ?? 0} replies</td>
+                        <td className="text-xs text-secondary">{t.replies?.length ?? 0} replies</td>
                       </tr>
                     ))}
                   </tbody>
@@ -114,7 +114,7 @@ export default function SupportPage() {
           ) : (
             <div className="glass-card py-16 text-center">
               <HelpCircle className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-              <p className="text-slate-400 font-medium mb-1">No support tickets yet</p>
+              <p className="text-secondary font-medium mb-1">No support tickets yet</p>
               <p className="text-slate-600 text-sm mb-4">Need help? Create a ticket and our team will assist you.</p>
               <button onClick={() => setTab('new')} className="btn-primary text-sm py-2 px-6">Create Ticket</button>
             </div>
@@ -129,7 +129,7 @@ export default function SupportPage() {
             <h3 className="font-display font-bold text-white mb-5">OPEN NEW TICKET</h3>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div>
-                <label className="block text-xs font-mono tracking-wider text-slate-400 uppercase mb-2">Subject</label>
+                <label className="block text-xs font-mono tracking-wider text-secondary uppercase mb-2">Subject</label>
                 <input {...register('subject', { required: 'Subject is required' })} type="text"
                   placeholder="Brief description of your issue"
                   className="input-neon" />
@@ -137,21 +137,21 @@ export default function SupportPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-mono tracking-wider text-slate-400 uppercase mb-2">Category</label>
-                  <select {...register('category', { required: true })} className="input-neon bg-dark-800">
+                  <label className="block text-xs font-mono tracking-wider text-secondary uppercase mb-2">Category</label>
+                  <select {...register('category', { required: true })} className="input-neon bg-surface">
                     <option value="">Select category</option>
                     {CATEGORIES.map(c => <option key={c} value={c.toLowerCase()}>{c}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-mono tracking-wider text-slate-400 uppercase mb-2">Priority</label>
-                  <select {...register('priority')} className="input-neon bg-dark-800">
+                  <label className="block text-xs font-mono tracking-wider text-secondary uppercase mb-2">Priority</label>
+                  <select {...register('priority')} className="input-neon bg-surface">
                     {PRIORITIES.map(p => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
                   </select>
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-mono tracking-wider text-slate-400 uppercase mb-2">Message</label>
+                <label className="block text-xs font-mono tracking-wider text-secondary uppercase mb-2">Message</label>
                 <textarea {...register('message', { required: 'Message is required', minLength: { value: 20, message: 'Please provide more details (min 20 chars)' } })}
                   rows={5} placeholder="Describe your issue in detail..."
                   className="input-neon resize-none" />
@@ -179,7 +179,7 @@ export default function SupportPage() {
               <Send className="w-6 h-6 text-blue-400" />
             </div>
             <h4 className="font-display font-bold text-white mb-2">Telegram Support</h4>
-            <p className="text-slate-500 text-sm mb-3">Fastest response via Telegram. Our team is online 24/7.</p>
+            <p className="text-muted text-sm mb-3">Fastest response via Telegram. Our team is online 24/7.</p>
             <span className="text-xs text-blue-400 flex items-center gap-1">Open Telegram <ChevronRight className="w-3 h-3" /></span>
           </a>
 
@@ -189,7 +189,7 @@ export default function SupportPage() {
               <MessageCircle className="w-6 h-6 text-blue-600" />
             </div>
             <h4 className="font-display font-bold text-white mb-2">Facebook Messenger</h4>
-            <p className="text-slate-500 text-sm mb-3">Chat with us on Facebook Messenger for quick support.</p>
+            <p className="text-muted text-sm mb-3">Chat with us on Facebook Messenger for quick support.</p>
             <span className="text-xs text-blue-400 flex items-center gap-1">Open Messenger <ChevronRight className="w-3 h-3" /></span>
           </a>
 
@@ -201,7 +201,7 @@ export default function SupportPage() {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               {[['Telegram', '< 5 min', '#00D4FF'], ['Messenger', '< 15 min', '#1877F2'], ['Email', '< 2 hours', '#7B2FFF'], ['Ticket', '< 24 hours', '#00FFC8']].map(([ch, time, color]) => (
                 <div key={ch} className="glass rounded-lg p-3 text-center">
-                  <p className="text-xs text-slate-500 mb-1">{ch}</p>
+                  <p className="text-xs text-muted mb-1">{ch}</p>
                   <p className="text-sm font-medium" style={{ color }}>{time}</p>
                 </div>
               ))}

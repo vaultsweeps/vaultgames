@@ -55,7 +55,7 @@ function TxRow({ tx }: { tx: TxItem }) {
   const dateStr = new Date(tx.date).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 
   return (
-    <div className={`border-b border-white/5 last:border-0 ${isRejected && tx.rejectionReason ? 'cursor-pointer' : ''}`}
+    <div className={`border-b border-border-subtle last:border-0 ${isRejected && tx.rejectionReason ? 'cursor-pointer' : ''}`}
       onClick={() => isRejected && tx.rejectionReason && setExpanded(p => !p)}>
       <div className="flex items-center gap-3 py-3 px-1">
         <div className={`w-9 h-9 rounded-full ${color} flex items-center justify-center font-bold text-white text-sm flex-shrink-0`}>
@@ -68,11 +68,11 @@ function TxRow({ tx }: { tx: TxItem }) {
               ? <ArrowDownLeft className="w-3 h-3 text-emerald-400 flex-shrink-0" />
               : <ArrowUpRight className="w-3 h-3 text-amber-400 flex-shrink-0" />}
           </div>
-          <p className="text-slate-500 text-xs">{dateStr}</p>
+          <p className="text-muted text-xs">{dateStr}</p>
         </div>
         <div className="text-right flex-shrink-0">
           <p className="text-white font-bold text-sm">${tx.amount.toFixed(2)}</p>
-          <p className={`text-xs capitalize font-medium flex items-center gap-1 justify-end ${STATUS_COLOR[tx.status.toLowerCase()] || 'text-slate-400'}`}>
+          <p className={`text-xs capitalize font-medium flex items-center gap-1 justify-end ${STATUS_COLOR[tx.status.toLowerCase()] || 'text-secondary'}`}>
             {isRejected && <span className="w-1.5 h-1.5 rounded-full bg-current inline-block" />}
             {tx.status.charAt(0).toUpperCase() + tx.status.slice(1)}
           </p>
@@ -166,23 +166,23 @@ export default function WalletModal({ isOpen, onClose, balance }: WalletModalPro
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ duration: 0.2 }}
-              className="bg-[#0F1219] w-full max-w-md rounded-3xl overflow-hidden shadow-2xl border border-white/5 flex flex-col max-h-[90vh]"
+              className="bg-background w-full max-w-md rounded-3xl overflow-hidden shadow-2xl border border-border-subtle flex flex-col max-h-[90vh]"
             >
               {/* Header */}
               <div className="p-5 pb-0 flex justify-between items-center relative">
                 <h2 className="text-white font-bold text-xl">Wallet</h2>
-                <button onClick={onClose} className="p-2 text-slate-400 hover:text-white rounded-full transition-colors">
+                <button onClick={onClose} className="p-2 text-secondary hover:text-white rounded-full transition-colors">
                   <X className="w-5 h-5" />
                 </button>
-                <p className="text-slate-400 text-xs absolute top-12 left-5 max-w-[250px]">
+                <p className="text-secondary text-xs absolute top-12 left-5 max-w-[250px]">
                   Deposit and cash out your funds in your wallet
                 </p>
               </div>
 
               <div className="p-5 flex-1 overflow-y-auto mt-6">
                 {/* Balance Card */}
-                <div className="bg-[#1A1E29] rounded-2xl p-6 flex flex-col items-center justify-center mb-6 shadow-inner border border-white/5">
-                  <p className="text-slate-400 text-sm mb-1">Balance</p>
+                <div className="bg-surface rounded-2xl p-6 flex flex-col items-center justify-center mb-6 shadow-inner border border-border-subtle">
+                  <p className="text-secondary text-sm mb-1">Balance</p>
                   <div className="flex items-baseline gap-1">
                     <span className="text-[#2AC3FF] font-bold text-3xl">$</span>
                     <span className="text-white font-black text-4xl">{balance.toFixed(2)}</span>
@@ -190,13 +190,13 @@ export default function WalletModal({ isOpen, onClose, balance }: WalletModalPro
                 </div>
 
                 {/* Tabs */}
-                <div className="flex justify-between border-b border-white/5 mb-5 px-4">
+                <div className="flex justify-between border-b border-border-subtle mb-5 px-4">
                   {['deposit', 'cashout', 'history'].map((tab) => (
                     <button
                       key={tab}
                       onClick={() => setActiveTab(tab as any)}
                       className={`pb-3 px-2 capitalize text-sm font-bold transition-colors relative ${
-                        activeTab === tab ? 'text-white' : 'text-slate-500 hover:text-slate-300'
+                        activeTab === tab ? 'text-white' : 'text-muted hover:text-secondary'
                       }`}
                     >
                       {tab}
@@ -222,8 +222,8 @@ export default function WalletModal({ isOpen, onClose, balance }: WalletModalPro
                               toast.error('This method is coming soon!')
                             }
                           }}
-                          className={`bg-[#1A1E29] rounded-2xl p-4 flex flex-col transition-all border border-white/5 relative overflow-hidden text-left
-                            ${method.soon ? 'opacity-50 cursor-not-allowed hover:bg-[#1A1E29]' : 'hover:bg-[#252A36] hover:-translate-y-1'}`}
+                          className={`bg-surface rounded-2xl p-4 flex flex-col transition-all border border-border-subtle relative overflow-hidden text-left
+                            ${method.soon ? 'opacity-50 cursor-not-allowed hover:bg-surface' : 'hover:bg-surface-elevated hover:-translate-y-1'}`}
                         >
                           <div className="flex justify-between items-start mb-3">
                             <div className={`w-8 h-8 rounded-full ${method.color} flex items-center justify-center font-bold text-sm shadow-lg`}>
@@ -238,7 +238,7 @@ export default function WalletModal({ isOpen, onClose, balance }: WalletModalPro
                               </span>
                             )}
                             {method.soon && (
-                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#252A36] text-slate-400">
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-surface-elevated text-secondary">
                                 Soon
                               </span>
                             )}
@@ -259,36 +259,36 @@ export default function WalletModal({ isOpen, onClose, balance }: WalletModalPro
                   {activeTab === 'cashout' && (
                     <div className="py-2 space-y-6">
                       <div>
-                        <h3 className="text-slate-400 text-sm font-medium mb-3 px-2">Cash methods</h3>
+                        <h3 className="text-secondary text-sm font-medium mb-3 px-2">Cash methods</h3>
                         <div className="grid grid-cols-2 gap-3">
-                          <button onClick={() => setCashoutMethod('chime')} className="bg-[#1A1E29] hover:bg-[#252A36] border border-white/5 rounded-2xl p-6 flex flex-col items-center justify-center gap-3 transition-colors">
+                          <button onClick={() => setCashoutMethod('chime')} className="bg-surface hover:bg-surface-elevated border border-border-subtle rounded-2xl p-6 flex flex-col items-center justify-center gap-3 transition-colors">
                             <div className="w-12 h-12 rounded-full bg-emerald-500 flex items-center justify-center font-bold text-white text-xl">C</div>
                             <span className="text-white font-bold text-sm">Chime</span>
                           </button>
-                          <button onClick={() => setCashoutMethod('cashapp')} className="bg-[#1A1E29] hover:bg-[#252A36] border border-white/5 rounded-2xl p-6 flex flex-col items-center justify-center gap-3 transition-colors">
+                          <button onClick={() => setCashoutMethod('cashapp')} className="bg-surface hover:bg-surface-elevated border border-border-subtle rounded-2xl p-6 flex flex-col items-center justify-center gap-3 transition-colors">
                             <div className="w-12 h-12 rounded-full bg-green-500 flex items-center justify-center font-bold text-white text-xl">$</div>
                             <span className="text-white font-bold text-sm">CashApp</span>
                           </button>
                         </div>
                       </div>
                       <div>
-                        <h3 className="text-slate-400 text-sm font-medium mb-3 px-2">Cryptocurrency</h3>
+                        <h3 className="text-secondary text-sm font-medium mb-3 px-2">Cryptocurrency</h3>
                         <div className="grid grid-cols-2 gap-3">
-                          <div className="bg-[#1A1E29] border border-white/5 rounded-2xl p-5 flex flex-col items-center justify-center gap-2 opacity-60 cursor-not-allowed">
+                          <div className="bg-surface border border-border-subtle rounded-2xl p-5 flex flex-col items-center justify-center gap-2 opacity-60 cursor-not-allowed">
                             <div className="w-10 h-10 rounded-full bg-orange-500 flex items-center justify-center font-bold text-white text-xl">₿</div>
                             <div className="text-center">
                               <span className="text-white font-bold text-sm block">Bitcoin</span>
-                              <span className="text-slate-500 text-[10px] block">BTC Network</span>
+                              <span className="text-muted text-[10px] block">BTC Network</span>
                             </div>
-                            <span className="bg-[#252A36] text-slate-400 text-[10px] font-bold px-3 py-1 rounded-full mt-1">Soon</span>
+                            <span className="bg-surface-elevated text-secondary text-[10px] font-bold px-3 py-1 rounded-full mt-1">Soon</span>
                           </div>
-                          <div className="bg-[#1A1E29] border border-white/5 rounded-2xl p-5 flex flex-col items-center justify-center gap-2 opacity-60 cursor-not-allowed">
+                          <div className="bg-surface border border-border-subtle rounded-2xl p-5 flex flex-col items-center justify-center gap-2 opacity-60 cursor-not-allowed">
                             <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center font-bold text-white text-xl">⬨</div>
                             <div className="text-center">
                               <span className="text-white font-bold text-sm block">Ethereum</span>
-                              <span className="text-slate-500 text-[10px] block">ERC-20</span>
+                              <span className="text-muted text-[10px] block">ERC-20</span>
                             </div>
-                            <span className="bg-[#252A36] text-slate-400 text-[10px] font-bold px-3 py-1 rounded-full mt-1">Soon</span>
+                            <span className="bg-surface-elevated text-secondary text-[10px] font-bold px-3 py-1 rounded-full mt-1">Soon</span>
                           </div>
                         </div>
                       </div>
@@ -315,14 +315,14 @@ export default function WalletModal({ isOpen, onClose, balance }: WalletModalPro
                         </div>
                       ) : history.length === 0 ? (
                         <div className="text-center py-10">
-                          <p className="text-slate-500 text-sm mb-3">No transactions yet.</p>
+                          <p className="text-muted text-sm mb-3">No transactions yet.</p>
                           <button onClick={() => setActiveTab('deposit')} className="text-[#2AC3FF] text-sm hover:underline">Make your first deposit →</button>
                         </div>
                       ) : (
                         <div className="-mx-2">
                           {history.map(tx => <TxRow key={`${tx.kind}-${tx.id}`} tx={tx} />)}
                           <div className="pt-3 text-center">
-                            <Link href="/dashboard/deposits" onClick={onClose} className="text-xs text-slate-500 hover:text-white transition-colors">
+                            <Link href="/dashboard/deposits" onClick={onClose} className="text-xs text-muted hover:text-white transition-colors">
                               View full history →
                             </Link>
                           </div>

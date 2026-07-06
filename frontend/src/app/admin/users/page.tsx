@@ -63,19 +63,19 @@ export default function AdminUsersPage() {
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex items-end justify-between flex-wrap gap-3">
         <div>
           <h2 className="font-display font-bold text-2xl text-white">USER MANAGEMENT</h2>
-          <p className="text-slate-400 text-sm">Manage platform users and their accounts.</p>
+          <p className="text-secondary text-sm">Manage platform users and their accounts.</p>
         </div>
         <div className="flex gap-3">
-          <button onClick={fetchUsers} className="glass border border-white/10 rounded-xl px-3 py-2 text-slate-400 hover:text-white transition-all">
+          <button onClick={fetchUsers} className="glass border border-border-strong rounded-xl px-3 py-2 text-secondary hover:text-white transition-all">
             <RefreshCw className="w-4 h-4" />
           </button>
           <div className="glass-card px-4 py-2 text-center">
             <p className="text-neon-blue font-bold text-lg font-display">{users.length}</p>
-            <p className="text-xs text-slate-500">Total Users</p>
+            <p className="text-xs text-muted">Total Users</p>
           </div>
           <div className="glass-card px-4 py-2 text-center">
             <p className="text-red-400 font-bold text-lg font-display">{users.filter(u => u.isBanned).length}</p>
-            <p className="text-xs text-slate-500">Banned</p>
+            <p className="text-xs text-muted">Banned</p>
           </div>
         </div>
       </motion.div>
@@ -83,10 +83,10 @@ export default function AdminUsersPage() {
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
           <input type="text" placeholder="Search users..." value={search} onChange={e => setSearch(e.target.value)} className="input-neon pl-10" />
         </div>
-        <select value={filter} onChange={e => setFilter(e.target.value)} className="input-neon bg-dark-800 w-full sm:w-40">
+        <select value={filter} onChange={e => setFilter(e.target.value)} className="input-neon bg-surface w-full sm:w-40">
           <option value="all">All Users</option>
           <option value="active">Active</option>
           <option value="banned">Banned</option>
@@ -101,7 +101,7 @@ export default function AdminUsersPage() {
             <thead><tr><th>User</th><th>Status</th><th>Verified</th><th>Deposits</th><th>Total Deposited</th><th>Last Login</th><th>Joined</th><th>Actions</th></tr></thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={8} className="text-center py-10 text-slate-500">Loading users...</td></tr>
+                <tr><td colSpan={8} className="text-center py-10 text-muted">Loading users...</td></tr>
               ) : filtered.map(user => (
                 <tr key={user.id}>
                   <td>
@@ -111,7 +111,7 @@ export default function AdminUsersPage() {
                       </div>
                       <div>
                         <p className="text-white text-sm font-medium">{user.username}</p>
-                        <p className="text-xs text-slate-500">{user.email}</p>
+                        <p className="text-xs text-muted">{user.email}</p>
                       </div>
                     </div>
                   </td>
@@ -128,14 +128,14 @@ export default function AdminUsersPage() {
                       {user.isVerified ? '✓ Yes' : '✗ No'}
                     </span>
                   </td>
-                  <td className="text-slate-300">{user.deposits?.length ?? 0}</td>
+                  <td className="text-secondary">{user.deposits?.length ?? 0}</td>
                   <td className="text-white font-medium">${(user.deposits?.reduce((s: number, d: { amount: number }) => s + d.amount, 0) ?? 0).toFixed(0)}</td>
-                  <td className="text-xs text-slate-500">{user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : 'Never'}</td>
+                  <td className="text-xs text-muted">{user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : 'Never'}</td>
                   <td className="text-xs text-slate-600">{new Date(user.createdAt).toLocaleDateString()}</td>
                   <td>
                     <div className="flex gap-1">
                       <button onClick={() => setSelectedUser(user)}
-                        className="w-7 h-7 glass rounded-lg flex items-center justify-center text-slate-400 hover:text-neon-blue border border-white/10 transition-all">
+                        className="w-7 h-7 glass rounded-lg flex items-center justify-center text-secondary hover:text-neon-blue border border-border-strong transition-all">
                         <Eye className="w-3.5 h-3.5" />
                       </button>
                       {!user.isVerified && (
@@ -176,7 +176,7 @@ export default function AdminUsersPage() {
               </div>
               <div>
                 <h3 className="font-display font-bold text-xl text-white">{selectedUser.username}</h3>
-                <p className="text-slate-400 text-sm">{selectedUser.email}</p>
+                <p className="text-secondary text-sm">{selectedUser.email}</p>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-2 mb-5">
@@ -189,7 +189,7 @@ export default function AdminUsersPage() {
                 ['Joined', selectedUser.createdAt],
               ].map(([k, v]) => (
                 <div key={k} className="glass rounded-lg px-3 py-2">
-                  <p className="text-xs text-slate-500">{k}</p>
+                  <p className="text-xs text-muted">{k}</p>
                   <p className="text-sm text-white font-medium">{v}</p>
                 </div>
               ))}
@@ -201,7 +201,7 @@ export default function AdminUsersPage() {
               {!selectedUser.isBanned ? (
                 <>
                   <button onClick={() => handleAction(selectedUser.id, selectedUser.isActive ? 'suspend' : 'activate')}
-                    className="flex-1 py-2.5 glass border border-white/10 rounded-xl text-yellow-400 text-sm hover:bg-yellow-400/5 transition-all">
+                    className="flex-1 py-2.5 glass border border-border-strong rounded-xl text-yellow-400 text-sm hover:bg-yellow-400/5 transition-all">
                     {selectedUser.isActive ? 'Suspend' : 'Activate'}
                   </button>
                   <button onClick={() => handleAction(selectedUser.id, 'ban')}
@@ -216,7 +216,7 @@ export default function AdminUsersPage() {
                 </button>
               )}
             </div>
-            <button onClick={() => setSelectedUser(null)} className="w-full mt-2 glass rounded-xl py-2.5 text-slate-400 text-sm border border-white/10 transition-all hover:text-white">Close</button>
+            <button onClick={() => setSelectedUser(null)} className="w-full mt-2 glass rounded-xl py-2.5 text-secondary text-sm border border-border-strong transition-all hover:text-white">Close</button>
           </motion.div>
         </div>
       )}

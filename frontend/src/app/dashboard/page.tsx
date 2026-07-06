@@ -84,16 +84,16 @@ export default function DashboardPage() {
           <div className="absolute inset-0 cyber-grid opacity-10" />
           <div className="absolute right-0 top-0 w-64 h-64 bg-neon-blue/5 rounded-full blur-3xl" />
           <div className="relative z-10">
-            <p className="text-slate-500 text-sm mb-1">Welcome back,</p>
+            <p className="text-muted text-sm mb-1">Welcome back,</p>
             <h2 className="font-display font-bold text-3xl text-white mb-2">{user?.username?.toUpperCase()}</h2>
-            <p className="text-slate-400 text-sm">Manage your deposits, cashouts, games, and more from your dashboard.</p>
+            <p className="text-secondary text-sm">Manage your deposits, cashouts, games, and more from your dashboard.</p>
           </div>
         </div>
       </motion.div>
 
       {/* Quick Actions */}
       <div>
-        <h3 className="font-display font-bold text-sm text-slate-400 uppercase tracking-wider mb-4">Quick Actions</h3>
+        <h3 className="font-display font-bold text-sm text-secondary uppercase tracking-wider mb-4">Quick Actions</h3>
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
           {QUICK_ACTIONS.map((action, i) => (
             <motion.div key={i} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
@@ -103,7 +103,7 @@ export default function DashboardPage() {
                   <action.icon className="w-5 h-5" style={{ color: action.color }} />
                 </div>
                 <p className="text-white text-sm font-medium mb-1">{action.label}</p>
-                <p className="text-slate-500 text-xs">{action.desc}</p>
+                <p className="text-muted text-xs">{action.desc}</p>
               </Link>
             </motion.div>
           ))}
@@ -113,7 +113,7 @@ export default function DashboardPage() {
       {/* Recent Transactions */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-display font-bold text-sm text-slate-400 uppercase tracking-wider">Recent Transactions</h3>
+          <h3 className="font-display font-bold text-sm text-secondary uppercase tracking-wider">Recent Transactions</h3>
           <div className="flex gap-3">
             <Link href="/dashboard/deposits" className="text-xs text-neon-blue hover:underline">Deposits</Link>
             <Link href="/dashboard/cashouts" className="text-xs text-neon-blue hover:underline">Cashouts</Link>
@@ -143,7 +143,7 @@ export default function DashboardPage() {
                     </tr>
                   ))
                 ) : transactions.length === 0 ? (
-                  <tr><td colSpan={5} className="text-center py-4 text-slate-500">No recent transactions.</td></tr>
+                  <tr><td colSpan={5} className="text-center py-4 text-muted">No recent transactions.</td></tr>
                 ) : transactions.map((tx: any) => (
                   <tr key={tx.id}>
                     <td>
@@ -161,7 +161,7 @@ export default function DashboardPage() {
             </table>
           </div>
           {RECENT_TRANSACTIONS.length === 0 && (
-            <div className="py-12 text-center text-slate-500">
+            <div className="py-12 text-center text-muted">
               <Clock className="w-8 h-8 mx-auto mb-3 opacity-50" />
               <p className="text-sm">No transactions yet</p>
             </div>
@@ -179,10 +179,10 @@ export default function DashboardPage() {
               </div>
               <div>
                 <p className="text-white text-sm font-medium">Need Help?</p>
-                <p className="text-slate-500 text-xs">Open a support ticket or contact us directly</p>
+                <p className="text-muted text-xs">Open a support ticket or contact us directly</p>
               </div>
             </div>
-            <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-neon-blue transition-colors" />
+            <ChevronRight className="w-4 h-4 text-muted group-hover:text-neon-blue transition-colors" />
           </div>
         </Link>
       </motion.div>

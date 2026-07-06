@@ -8,7 +8,7 @@ import { adminApi } from '@/lib/api'
 const CUSTOM_TOOLTIP = ({ active, payload, label }: any) => {
   if (active && payload?.length) return (
     <div className="glass-card px-4 py-3 text-xs">
-      <p className="text-slate-400 mb-2">{label}</p>
+      <p className="text-secondary mb-2">{label}</p>
       {payload.map((p: any) => (
         <p key={p.name} style={{ color: p.color }}>{p.name}: ${p.value?.toLocaleString()}</p>
       ))}
@@ -33,7 +33,7 @@ export default function AdminDashboard() {
 
   useEffect(() => { fetchStats() }, [])
 
-  if (loading) return <div className="text-center py-20 text-slate-500">Loading dashboard data...</div>
+  if (loading) return <div className="text-center py-20 text-muted">Loading dashboard data...</div>
   if (!stats) return <div className="text-center py-20 text-red-500">Failed to load dashboard</div>
 
   const STATS = [
@@ -49,9 +49,9 @@ export default function AdminDashboard() {
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex justify-between items-end">
         <div>
           <h2 className="font-display font-bold text-2xl text-white">DASHBOARD OVERVIEW</h2>
-          <p className="text-slate-400 text-sm">Platform performance at a glance.</p>
+          <p className="text-secondary text-sm">Platform performance at a glance.</p>
         </div>
-        <button onClick={fetchStats} className="glass border border-white/10 rounded-xl px-3 py-2 text-slate-400 hover:text-white transition-all flex items-center gap-2 text-sm">
+        <button onClick={fetchStats} className="glass border border-border-strong rounded-xl px-3 py-2 text-secondary hover:text-white transition-all flex items-center gap-2 text-sm">
           <RefreshCw className="w-4 h-4" /> Refresh
         </button>
       </motion.div>
@@ -68,7 +68,7 @@ export default function AdminDashboard() {
               <span className="text-xs font-medium text-green-400">{stat.change}</span>
             </div>
             <p className="font-display font-bold text-xl text-white mb-0.5">{stat.value}</p>
-            <p className="text-xs text-slate-500">{stat.label}</p>
+            <p className="text-xs text-muted">{stat.label}</p>
             <p className="text-xs text-slate-600 mt-1">{stat.sub}</p>
           </motion.div>
         ))}
@@ -127,16 +127,16 @@ export default function AdminDashboard() {
           </div>
           <div className="space-y-3">
             {stats.pendingItems?.length === 0 ? (
-              <p className="text-slate-500 text-sm text-center py-4">All caught up!</p>
+              <p className="text-muted text-sm text-center py-4">All caught up!</p>
             ) : stats.pendingItems?.map((item: any, i: number) => (
-              <div key={i} className="flex items-center justify-between glass rounded-lg px-4 py-3 hover:border-white/10 border border-transparent transition-all cursor-pointer group">
+              <div key={i} className="flex items-center justify-between glass rounded-lg px-4 py-3 hover:border-border-strong border border-transparent transition-all cursor-pointer group">
                 <div className="flex items-center gap-3">
                   <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
                     item.type === 'deposit' ? 'bg-green-400' : item.type === 'cashout' ? 'bg-orange-400' : 'bg-red-400'
                   }`} />
                   <div>
                     <p className="text-sm text-white font-medium">{item.user}</p>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-muted">
                       {item.type === 'deposit' ? `Deposit ${item.amount} via ${item.method}`
                        : item.type === 'cashout' ? `Cashout ${item.amount} via ${item.method}`
                        : item.subject}
@@ -171,7 +171,7 @@ export default function AdminDashboard() {
                 </div>
                 <div>
                   <p className="text-white font-bold text-lg leading-none">{s.value}</p>
-                  <p className="text-slate-500 text-xs">{s.label}</p>
+                  <p className="text-muted text-xs">{s.label}</p>
                 </div>
               </div>
             ))}

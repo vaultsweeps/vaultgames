@@ -89,7 +89,7 @@ function WithdrawalCountdown({
           <CheckCircle className="w-10 h-10 text-emerald-400" />
         </div>
         <h2 className="text-white text-2xl font-bold mb-2">Payment Approved!</h2>
-        <p className="text-slate-400 text-center text-sm mb-8">Your cashout of ${amount} has been successfully processed and sent to your {methodName} account.</p>
+        <p className="text-secondary text-center text-sm mb-8">Your cashout of ${amount} has been successfully processed and sent to your {methodName} account.</p>
         <button onClick={onViewHistory} className="w-full max-w-xs bg-[#2AC3FF] hover:bg-[#1CA0D9] text-white font-bold py-3.5 rounded-2xl transition-all">View History</button>
       </div>
     )
@@ -102,13 +102,13 @@ function WithdrawalCountdown({
           <X className="w-10 h-10 text-red-400" />
         </div>
         <h2 className="text-white text-2xl font-bold mb-2">Payment Rejected</h2>
-        <p className="text-slate-400 text-center text-sm mb-8">Your cashout of ${amount} could not be processed. Please contact support.</p>
+        <p className="text-secondary text-center text-sm mb-8">Your cashout of ${amount} could not be processed. Please contact support.</p>
         <div className="w-full max-w-xs space-y-3">
           <a href={settings.telegram_url || '#'} target="_blank" rel="noreferrer"
             className="w-full block bg-[#2AC3FF] hover:bg-[#1CA0D9] text-white font-bold py-3.5 rounded-2xl transition-all text-center">
             Contact Support
           </a>
-          <button onClick={onClose} className="w-full bg-white/5 hover:bg-white/10 text-white font-bold py-3.5 rounded-2xl transition-all border border-white/10">Close</button>
+          <button onClick={onClose} className="w-full bg-white/5 hover:bg-white/10 text-white font-bold py-3.5 rounded-2xl transition-all border border-border-strong">Close</button>
         </div>
       </div>
     )
@@ -119,9 +119,9 @@ function WithdrawalCountdown({
       <div className="w-full flex justify-between items-center mb-6">
         <div>
           <h2 className="text-white text-xl font-bold">Withdrawal Submitted</h2>
-          <p className="text-slate-400 text-xs mt-0.5">${amount} via {methodName}</p>
+          <p className="text-secondary text-xs mt-0.5">${amount} via {methodName}</p>
         </div>
-        <button onClick={onClose} className="p-2 text-slate-400 hover:text-white rounded-full transition-colors">
+        <button onClick={onClose} className="p-2 text-secondary hover:text-white rounded-full transition-colors">
           <X className="w-5 h-5" />
         </button>
       </div>
@@ -144,7 +144,7 @@ function WithdrawalCountdown({
               <span className="text-white text-4xl font-bold font-mono tabular-nums leading-none">
                 {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
               </span>
-              <span className="text-slate-400 text-xs mt-1">remaining</span>
+              <span className="text-secondary text-xs mt-1">remaining</span>
             </>
           )}
         </div>
@@ -152,7 +152,7 @@ function WithdrawalCountdown({
 
       <motion.div key={msg.text} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} className="text-center mt-4 mb-6">
         <p className="text-white font-semibold text-base">{msg.text}</p>
-        <p className="text-slate-400 text-sm mt-1">{msg.sub}</p>
+        <p className="text-secondary text-sm mt-1">{msg.sub}</p>
       </motion.div>
 
       <div className="w-full grid grid-cols-3 gap-2 mb-6">
@@ -161,9 +161,9 @@ function WithdrawalCountdown({
           { icon: Zap, label: 'Fast Transfer', color: 'text-[#2AC3FF]' },
           { icon: Clock, label: '24/7 Support', color: 'text-purple-400' },
         ].map(({ icon: Icon, label, color }) => (
-          <div key={label} className="bg-white/5 rounded-xl p-3 flex flex-col items-center gap-1.5 border border-white/5">
+          <div key={label} className="bg-white/5 rounded-xl p-3 flex flex-col items-center gap-1.5 border border-border-subtle">
             <Icon className={`w-4 h-4 ${color}`} />
-            <span className="text-slate-300 text-xs font-medium">{label}</span>
+            <span className="text-secondary text-xs font-medium">{label}</span>
           </div>
         ))}
       </div>
@@ -173,7 +173,7 @@ function WithdrawalCountdown({
           className="w-full block bg-[#2AC3FF] hover:bg-[#1CA0D9] text-white font-bold py-3.5 rounded-2xl transition-all text-center text-sm">
           Track via Telegram Support
         </a>
-        <button onClick={onViewHistory} className="w-full text-slate-500 hover:text-white transition-colors text-sm py-2">
+        <button onClick={onViewHistory} className="w-full text-muted hover:text-white transition-colors text-sm py-2">
           View History
         </button>
       </div>
@@ -315,26 +315,26 @@ export default function CashoutsPage() {
         className="flex items-end justify-between flex-wrap gap-4">
         <div>
           <h2 className="font-display font-bold text-2xl text-white">CASHOUTS</h2>
-          <p className="text-slate-400 text-sm mt-1">Withdraw your winnings securely.</p>
+          <p className="text-secondary text-sm mt-1">Withdraw your winnings securely.</p>
         </div>
         <div className="flex gap-2">
           <button onClick={() => { resetForm(); setTab('new') }} id="new-cashout-btn"
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all border ${tab === 'new' ? 'bg-neon-blue/10 text-neon-blue border-neon-blue/30' : 'glass text-slate-400 border-white/10 hover:text-white'}`}>
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all border ${tab === 'new' ? 'bg-neon-blue/10 text-neon-blue border-neon-blue/30' : 'glass text-secondary border-border-strong hover:text-white'}`}>
             <Plus className="w-4 h-4" /> New Request
           </button>
           <button onClick={() => { setTab('history'); fetchHistory() }} id="history-tab-btn"
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all border ${tab === 'history' ? 'bg-neon-blue/10 text-neon-blue border-neon-blue/30' : 'glass text-slate-400 border-white/10 hover:text-white'}`}>
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all border ${tab === 'history' ? 'bg-neon-blue/10 text-neon-blue border-neon-blue/30' : 'glass text-secondary border-border-strong hover:text-white'}`}>
             <History className="w-4 h-4" /> History
           </button>
         </div>
       </motion.div>
 
       {/* Notice */}
-      <div className="glass-card p-4 flex items-start gap-3 border border-white/5">
+      <div className="glass-card p-4 flex items-start gap-3 border border-border-subtle">
         <AlertCircle className="w-4 h-4 text-neon-blue flex-shrink-0 mt-0.5" />
         <div>
           <p className="text-white text-sm font-medium">Cashout Processing</p>
-          <p className="text-slate-400 text-xs mt-0.5">Withdrawals are reviewed within 1–24 hours. Ensure your payment info is correct before submitting.</p>
+          <p className="text-secondary text-xs mt-0.5">Withdrawals are reviewed within 1–24 hours. Ensure your payment info is correct before submitting.</p>
         </div>
       </div>
 
@@ -360,7 +360,7 @@ export default function CashoutsPage() {
             {/* STEP 1 — Select Method */}
             {step === 1 && (
               <div className="space-y-4">
-                <p className="text-xs font-mono text-slate-500 uppercase tracking-wider">SELECT WITHDRAWAL METHOD</p>
+                <p className="text-xs font-mono text-muted uppercase tracking-wider">SELECT WITHDRAWAL METHOD</p>
                 {loadingMethods ? (
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                     {Array.from({ length: 3 }).map((_, i) => (
@@ -368,7 +368,7 @@ export default function CashoutsPage() {
                     ))}
                   </div>
                 ) : methods.length === 0 ? (
-                  <div className="glass-card p-8 text-center text-slate-500 text-sm">No cashout methods available at this time.</div>
+                  <div className="glass-card p-8 text-center text-muted text-sm">No cashout methods available at this time.</div>
                 ) : (
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                     {methods.map(m => {
@@ -376,18 +376,18 @@ export default function CashoutsPage() {
                       const isSoon = !m.cashoutEnabled
                       return (
                         <button key={m.id} onClick={() => !isSoon && handleSelect(m)} disabled={isSoon}
-                          className={`glass-card p-5 rounded-2xl text-left flex flex-col gap-3 group transition-all border ${isSoon ? 'opacity-50 cursor-not-allowed border-white/5' : 'hover:border-white/20 border-white/5 hover:scale-[1.02]'}`}>
+                          className={`glass-card p-5 rounded-2xl text-left flex flex-col gap-3 group transition-all border ${isSoon ? 'opacity-50 cursor-not-allowed border-border-subtle' : 'hover:border-white/20 border-border-subtle hover:scale-[1.02]'}`}>
                           <div className="flex items-start justify-between">
                             <div className={`w-11 h-11 flex items-center justify-center text-2xl ${meta.customUI ? 'rounded-full' : 'rounded-2xl'}`}
                               style={{ background: meta.bg, border: meta.customUI ? 'none' : `1px solid ${meta.color}30` }}>
                               {meta.icon}
                             </div>
                             {!isSoon && <ChevronRight className="w-4 h-4 text-slate-600 group-hover:text-white transition-colors" />}
-                            {isSoon && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-slate-400 border border-white/10">Soon</span>}
+                            {isSoon && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-secondary border border-border-strong">Soon</span>}
                           </div>
                           <div>
                             <p className="text-white font-semibold text-sm">{m.name}</p>
-                            {!isSoon && <p className="text-xs text-slate-500 mt-0.5">Min: ${m.minAmount} · Max: ${m.maxAmount?.toLocaleString()}</p>}
+                            {!isSoon && <p className="text-xs text-muted mt-0.5">Min: ${m.minAmount} · Max: ${m.maxAmount?.toLocaleString()}</p>}
                           </div>
                         </button>
                       )
@@ -403,14 +403,14 @@ export default function CashoutsPage() {
               const meta = getMethodMeta(selectedMethod.code || selectedMethod.name)
 
               return (
-                <div className="bg-[#0F1219] rounded-3xl border border-white/5 overflow-hidden">
+                <div className="bg-background rounded-3xl border border-border-subtle overflow-hidden">
                   {/* Header */}
                   <div className="p-6 pb-4 flex justify-between items-start">
                     <div>
                       <h2 className="text-white font-bold text-2xl mb-1">{selectedMethod.name}</h2>
-                      <p className="text-slate-400 text-sm">Fill in all the fields to create a<br />withdrawal request.</p>
+                      <p className="text-secondary text-sm">Fill in all the fields to create a<br />withdrawal request.</p>
                     </div>
-                    <button onClick={resetForm} className="p-2 text-slate-400 hover:text-white rounded-full transition-colors -mr-2">
+                    <button onClick={resetForm} className="p-2 text-secondary hover:text-white rounded-full transition-colors -mr-2">
                       <X className="w-5 h-5" />
                     </button>
                   </div>
@@ -418,15 +418,15 @@ export default function CashoutsPage() {
                   <div className="p-6 pt-2 space-y-6">
                     {/* Amount */}
                     <div className="space-y-4">
-                      <p className="text-slate-400 text-sm text-center">Enter cashout amount</p>
-                      <div className="bg-[#1A1E29] rounded-2xl p-4 flex items-center border border-white/5 relative">
-                        <span className="text-slate-500 mr-2 text-3xl font-bold">$</span>
+                      <p className="text-secondary text-sm text-center">Enter cashout amount</p>
+                      <div className="bg-surface rounded-2xl p-4 flex items-center border border-border-subtle relative">
+                        <span className="text-muted mr-2 text-3xl font-bold">$</span>
                         <input type="text" value={amount}
                           onChange={e => setAmount(e.target.value.replace(/[^0-9.]/g, ''))}
                           className="bg-transparent text-white font-bold text-4xl w-full focus:outline-none placeholder:text-slate-700"
                           placeholder="0.00" />
                         {amount !== '0.00' && amount !== '' && (
-                          <button onClick={() => setAmount('0.00')} className="absolute right-4 text-slate-500 hover:text-slate-300">
+                          <button onClick={() => setAmount('0.00')} className="absolute right-4 text-muted hover:text-secondary">
                             <X className="w-5 h-5" />
                           </button>
                         )}
@@ -435,14 +435,14 @@ export default function CashoutsPage() {
                       <div className="grid grid-cols-4 gap-2">
                         {[25, 50, 75, 100].map(pct => (
                           <button key={pct} onClick={() => handlePercentage(pct)}
-                            className="bg-[#1A1E29] hover:bg-[#252A36] text-[#2AC3FF] font-bold py-2.5 rounded-xl border border-white/5 transition-colors text-sm">
+                            className="bg-surface hover:bg-surface-elevated text-[#2AC3FF] font-bold py-2.5 rounded-xl border border-border-subtle transition-colors text-sm">
                             {pct}%
                           </button>
                         ))}
                       </div>
 
-                      <div className="flex justify-between items-center py-2 border-b border-white/5">
-                        <span className="text-slate-400 text-sm">Available balance</span>
+                      <div className="flex justify-between items-center py-2 border-b border-border-subtle">
+                        <span className="text-secondary text-sm">Available balance</span>
                         <span className="text-white font-bold text-sm">${balance.toFixed(2)}</span>
                       </div>
                     </div>
@@ -450,21 +450,21 @@ export default function CashoutsPage() {
                     {/* Dynamic fields from payment method */}
                     {fields.length > 0 ? fields.map((field: any) => (
                       <div key={field.name} className="space-y-2">
-                        <p className="text-slate-400 text-sm">{field.label}{field.required && ' *'}</p>
+                        <p className="text-secondary text-sm">{field.label}{field.required && ' *'}</p>
                         {field.type === 'select' ? (
-                          <div className="bg-[#1A1E29] rounded-2xl border border-white/5">
+                          <div className="bg-surface rounded-2xl border border-border-subtle">
                             <select value={fieldValues[field.name] || ''} onChange={e => setFieldValues(p => ({ ...p, [field.name]: e.target.value }))}
-                              className="bg-transparent text-slate-300 text-sm w-full p-4 focus:outline-none">
+                              className="bg-transparent text-secondary text-sm w-full p-4 focus:outline-none">
                               <option value="">{field.placeholder || 'Select...'}</option>
                               {(field.options || []).map((opt: string) => <option key={opt} value={opt}>{opt}</option>)}
                             </select>
                           </div>
                         ) : (
-                          <div className="bg-[#1A1E29] rounded-2xl p-4 border border-white/5 flex items-center relative">
+                          <div className="bg-surface rounded-2xl p-4 border border-border-subtle flex items-center relative">
                             <input type="text" placeholder={field.placeholder || ''}
                               value={fieldValues[field.name] || ''}
                               onChange={e => setFieldValues(p => ({ ...p, [field.name]: e.target.value }))}
-                              className="bg-transparent text-slate-300 text-sm w-full focus:outline-none placeholder:text-slate-600 font-medium" />
+                              className="bg-transparent text-secondary text-sm w-full focus:outline-none placeholder:text-slate-600 font-medium" />
                             <div className="w-1.5 h-1.5 rounded-full bg-slate-600 absolute right-4" />
                           </div>
                         )}
@@ -472,12 +472,12 @@ export default function CashoutsPage() {
                     )) : (
                       // Fallback generic account info field
                       <div className="space-y-2">
-                        <p className="text-slate-400 text-sm">Your {selectedMethod.name} account info *</p>
-                        <div className="bg-[#1A1E29] rounded-2xl p-4 border border-white/5 flex items-center relative">
+                        <p className="text-secondary text-sm">Your {selectedMethod.name} account info *</p>
+                        <div className="bg-surface rounded-2xl p-4 border border-border-subtle flex items-center relative">
                           <input type="text" placeholder={`Enter your ${selectedMethod.name} details`}
                             value={fieldValues['accountInfo'] || ''}
                             onChange={e => setFieldValues(p => ({ ...p, accountInfo: e.target.value }))}
-                            className="bg-transparent text-slate-300 text-sm w-full focus:outline-none placeholder:text-slate-600 font-medium" />
+                            className="bg-transparent text-secondary text-sm w-full focus:outline-none placeholder:text-slate-600 font-medium" />
                           <div className="w-1.5 h-1.5 rounded-full bg-slate-600 absolute right-4" />
                         </div>
                       </div>
@@ -485,12 +485,12 @@ export default function CashoutsPage() {
 
                     {/* QR Code Upload */}
                     <div className="space-y-2">
-                      <p className="text-slate-400 text-sm flex items-center gap-2">
+                      <p className="text-secondary text-sm flex items-center gap-2">
                         <Paperclip className="w-4 h-4" /> QR Code (Optional)
                       </p>
-                      <div className="bg-[#1A1E29] rounded-2xl p-4 border border-white/5 flex items-center">
+                      <div className="bg-surface rounded-2xl p-4 border border-border-subtle flex items-center">
                         <input type="file" accept="image/*" onChange={e => setQrFile(e.target.files?.[0] || null)}
-                          className="bg-transparent text-slate-300 text-sm w-full focus:outline-none file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-[#2AC3FF]/10 file:text-[#2AC3FF] hover:file:bg-[#2AC3FF]/20" />
+                          className="bg-transparent text-secondary text-sm w-full focus:outline-none file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-[#2AC3FF]/10 file:text-[#2AC3FF] hover:file:bg-[#2AC3FF]/20" />
                       </div>
                     </div>
 
@@ -501,7 +501,7 @@ export default function CashoutsPage() {
                         {isSubmitting ? 'Processing...' : 'Continue'}
                       </button>
                       <button onClick={resetForm}
-                        className="flex-1 bg-[#1A1E29] hover:bg-[#252A36] text-white font-bold py-4 rounded-2xl transition-all border border-white/5">
+                        className="flex-1 bg-surface hover:bg-surface-elevated text-white font-bold py-4 rounded-2xl transition-all border border-border-subtle">
                         Back
                       </button>
                     </div>
@@ -519,16 +519,16 @@ export default function CashoutsPage() {
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b border-white/5">
+                    <tr className="border-b border-border-subtle">
                       {['Reference', 'Method', 'Amount', 'Status', 'Date'].map(h => (
-                        <th key={h} className="text-left text-xs font-mono text-slate-500 uppercase tracking-wider px-5 py-3.5">{h}</th>
+                        <th key={h} className="text-left text-xs font-mono text-muted uppercase tracking-wider px-5 py-3.5">{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {historyLoading ? (
                       Array.from({ length: 4 }).map((_, i) => (
-                        <tr key={i} className="border-b border-white/5">
+                        <tr key={i} className="border-b border-border-subtle">
                           {Array.from({ length: 5 }).map((_, j) => (
                             <td key={j} className="px-5 py-4"><div className="h-4 bg-white/5 rounded animate-pulse" /></td>
                           ))}
@@ -538,19 +538,19 @@ export default function CashoutsPage() {
                       <tr>
                         <td colSpan={5} className="px-5 py-16 text-center">
                           <ArrowUpCircle className="w-10 h-10 text-slate-700 mx-auto mb-3" />
-                          <p className="text-slate-500 text-sm">No cashout requests yet.</p>
+                          <p className="text-muted text-sm">No cashout requests yet.</p>
                           <button onClick={() => setTab('new')} className="mt-3 text-neon-blue text-sm hover:underline">Create your first request →</button>
                         </td>
                       </tr>
                     ) : history.map((tx: any, i) => (
                       <motion.tr key={tx.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.03 }}
-                        className="border-b border-white/5 hover:bg-white/2 transition-colors">
+                        className="border-b border-border-subtle hover:bg-white/2 transition-colors">
                         <td className="px-5 py-4">
                           <span className="font-mono text-xs text-neon-blue bg-neon-blue/10 px-2 py-1 rounded">
                             {tx.requestId || tx.id.slice(0, 10)}
                           </span>
                         </td>
-                        <td className="px-5 py-4 text-sm text-slate-300">{tx.paymentMethod?.name || tx.paymentMethodStr || tx.adminNotes || 'Manual'}</td>
+                        <td className="px-5 py-4 text-sm text-secondary">{tx.paymentMethod?.name || tx.paymentMethodStr || tx.adminNotes || 'Manual'}</td>
                         <td className="px-5 py-4 font-bold text-white">${tx.amount.toFixed(2)}</td>
                         <td className="px-5 py-4">
                           <StatusBadge status={tx.status} />
@@ -560,7 +560,7 @@ export default function CashoutsPage() {
                             </p>
                           )}
                         </td>
-                        <td className="px-5 py-4 text-xs text-slate-500">
+                        <td className="px-5 py-4 text-xs text-muted">
                           {new Date(tx.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                         </td>
                       </motion.tr>

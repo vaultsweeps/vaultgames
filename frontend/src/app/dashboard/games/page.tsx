@@ -84,9 +84,9 @@ export default function GamesPage() {
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex items-end justify-between flex-wrap gap-3">
         <div>
           <h2 className="font-display font-bold text-2xl text-white">GAMES LIBRARY</h2>
-          <p className="text-slate-400 text-sm mt-1">Browse and download all available games.</p>
+          <p className="text-secondary text-sm mt-1">Browse and download all available games.</p>
         </div>
-        <button onClick={fetchGames} className="glass border border-white/10 rounded-xl px-3 py-2 text-slate-400 hover:text-white transition-all flex items-center gap-2 text-sm">
+        <button onClick={fetchGames} className="glass border border-border-strong rounded-xl px-3 py-2 text-secondary hover:text-white transition-all flex items-center gap-2 text-sm">
           <RefreshCw className="w-4 h-4" /> Refresh
         </button>
       </motion.div>
@@ -94,13 +94,13 @@ export default function GamesPage() {
       {/* Search & Filter */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
           <input type="text" placeholder="Search games..." value={search} onChange={e => setSearch(e.target.value)} className="input-neon pl-10" />
         </div>
         <div className="flex gap-2 flex-wrap">
           {categories.slice(0, 6).map(cat => (
             <button key={cat} onClick={() => setCategory(cat)}
-              className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${category === cat ? 'bg-neon-blue/10 text-neon-blue border border-neon-blue/20' : 'glass text-slate-400 hover:text-white border border-white/10'}`}>
+              className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${category === cat ? 'bg-neon-blue/10 text-neon-blue border border-neon-blue/20' : 'glass text-secondary hover:text-white border border-border-strong'}`}>
               {cat}
             </button>
           ))}
@@ -123,7 +123,7 @@ export default function GamesPage() {
       ) : filtered.length === 0 ? (
         <div className="glass-card py-16 text-center">
           <Gamepad2 className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-          <p className="text-slate-500">{games.length === 0 ? 'No games available yet.' : 'No games match your search.'}</p>
+          <p className="text-muted">{games.length === 0 ? 'No games available yet.' : 'No games match your search.'}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -144,7 +144,7 @@ export default function GamesPage() {
                   <span className="absolute top-2 left-2 text-xs font-mono text-neon-blue bg-neon-blue/10 border border-neon-blue/30 px-2 py-0.5 rounded-full">FEATURED</span>
                 )}
                 {game.category && (
-                  <span className="absolute top-2 right-2 text-xs text-slate-300 glass px-2 py-0.5 rounded-full border border-white/10">{game.category}</span>
+                  <span className="absolute top-2 right-2 text-xs text-secondary glass px-2 py-0.5 rounded-full border border-border-strong">{game.category}</span>
                 )}
               </div>
               {/* Info */}
@@ -157,7 +157,7 @@ export default function GamesPage() {
                     </div>
                   )}
                 </div>
-                <p className="text-slate-500 text-xs mb-3 line-clamp-2">{game.description || 'No description available.'}</p>
+                <p className="text-muted text-xs mb-3 line-clamp-2">{game.description || 'No description available.'}</p>
                 <div className="flex items-center justify-between text-xs text-slate-600 mb-3">
                   <span className="flex items-center gap-1"><Download className="w-3 h-3" />{game.downloadCount > 999 ? `${(game.downloadCount/1000).toFixed(0)}K` : game.downloadCount}</span>
                   {game.version && <span className="font-mono text-neon-blue/50">v{game.version}</span>}
@@ -195,16 +195,16 @@ export default function GamesPage() {
               {selectedGame.rating > 0 && <div className="flex items-center gap-1 text-yellow-400"><Star className="w-4 h-4 fill-current" /><span className="text-sm">{selectedGame.rating}</span></div>}
             </div>
             <div className="flex gap-2 mb-4">
-              {selectedGame.category && <span className="text-xs glass px-2 py-1 rounded-lg text-slate-400 border border-white/10">{selectedGame.category}</span>}
+              {selectedGame.category && <span className="text-xs glass px-2 py-1 rounded-lg text-secondary border border-border-strong">{selectedGame.category}</span>}
               {selectedGame.version && <span className="text-xs text-neon-blue/70 font-mono glass px-2 py-1 rounded-lg border border-neon-blue/10">v{selectedGame.version}</span>}
             </div>
-            <p className="text-slate-300 text-sm leading-relaxed mb-5">{selectedGame.description || 'No description available.'}</p>
+            <p className="text-secondary text-sm leading-relaxed mb-5">{selectedGame.description || 'No description available.'}</p>
             <div className="flex gap-3">
               <button onClick={() => handleDownload(selectedGame)} disabled={downloading === selectedGame.id || !selectedGame.downloadUrl}
                 className="btn-primary flex-1 py-3 text-sm flex items-center justify-center gap-2 disabled:opacity-50">
                 {downloading === selectedGame.id ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><Download className="w-4 h-4" /> Download Game</>}
               </button>
-              <button onClick={() => setSelectedGame(null)} className="glass px-5 py-3 rounded-xl text-slate-400 hover:text-white border border-white/10 transition-all text-sm">Close</button>
+              <button onClick={() => setSelectedGame(null)} className="glass px-5 py-3 rounded-xl text-secondary hover:text-white border border-border-strong transition-all text-sm">Close</button>
             </div>
           </motion.div>
         </div>

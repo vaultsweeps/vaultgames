@@ -73,7 +73,7 @@ export default function StatsSection() {
               <div className="font-display font-black text-3xl sm:text-4xl mb-2" style={{ color: stat.color }}>
                 <AnimatedCounter target={stat.value} suffix={stat.suffix} />
               </div>
-              <p className="text-slate-400 text-sm font-medium">{stat.label}</p>
+              <p className="text-secondary text-sm font-medium">{stat.label}</p>
             </motion.div>
           ))}
         </div>

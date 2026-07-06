@@ -276,7 +276,7 @@ export default function GameDetailsPage() {
   }
 
   if (loading) return (
-    <div className="min-h-screen bg-dark-900 flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col">
       <Navbar />
       <div className="pt-32 pb-20 flex-grow flex items-center justify-center">
         <Loader fullScreen={false} />
@@ -289,7 +289,7 @@ export default function GameDetailsPage() {
   const isMasked = password === '********'
 
   return (
-    <div className="min-h-screen bg-[#0F1219] flex flex-col font-sans">
+    <div className="min-h-screen bg-background flex flex-col font-sans">
       <Navbar />
       
       <div className="flex-1 pt-24 pb-24 px-4 max-w-lg mx-auto w-full space-y-4">
@@ -299,7 +299,7 @@ export default function GameDetailsPage() {
         </Link>
 
         {/* Top Game Card */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-[#1A1E29] rounded-2xl p-4 flex flex-col sm:flex-row items-center gap-4 shadow-lg border border-white/5">
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-surface rounded-2xl p-4 flex flex-col sm:flex-row items-center gap-4 shadow-lg border border-border-subtle">
           <div className="w-full sm:w-1/2 h-32 rounded-xl overflow-hidden relative bg-black/40">
             {game.thumbnailUrl && <img src={game.thumbnailUrl} alt={game.name} className="w-full h-full object-cover" />}
           </div>
@@ -317,7 +317,7 @@ export default function GameDetailsPage() {
         </motion.div>
 
         {/* Balance Card */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="bg-[#1A1E29] rounded-2xl p-5 shadow-lg border border-white/5">
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="bg-surface rounded-2xl p-5 shadow-lg border border-border-subtle">
           <div className="flex justify-between items-center mb-6">
             <div>
               <p className="text-3xl font-black text-white">${account?.balance?.toFixed(2) || '0.00'}</p>
@@ -347,7 +347,7 @@ export default function GameDetailsPage() {
             </button>
             <button 
               onClick={() => { setTransferType('cashout'); setTransferModalOpen(true); }}
-              className="bg-[#252A36] hover:bg-[#2F3543] text-white font-bold py-3.5 rounded-xl flex-1 flex items-center justify-center gap-2 transition-all border border-white/5"
+              className="bg-surface-elevated hover:bg-surface-elevated text-white font-bold py-3.5 rounded-xl flex-1 flex items-center justify-center gap-2 transition-all border border-border-subtle"
             >
               <ArrowUpCircle className="w-5 h-5" /> Cash Out
             </button>
@@ -357,25 +357,25 @@ export default function GameDetailsPage() {
         {/* Credentials Card */}
         {accountLoading ? (
           /* Skeleton shown while account data is loading — prevents flash of "Get Access" */
-          <div className="bg-[#1A1E29] rounded-2xl p-5 shadow-lg border border-white/5 space-y-3 animate-pulse">
-            <div className="bg-[#13161F] rounded-xl p-4 flex justify-between items-center border border-white/5">
+          <div className="bg-surface rounded-2xl p-5 shadow-lg border border-border-subtle space-y-3 animate-pulse">
+            <div className="bg-surface-elevated rounded-xl p-4 flex justify-between items-center border border-border-subtle">
               <div className="h-4 bg-white/10 rounded w-32" />
               <div className="h-4 w-4 bg-white/10 rounded" />
             </div>
-            <div className="bg-[#13161F] rounded-xl p-4 flex justify-between items-center border border-white/5">
+            <div className="bg-surface-elevated rounded-xl p-4 flex justify-between items-center border border-border-subtle">
               <div className="h-4 bg-white/10 rounded w-24" />
               <div className="flex gap-3">
                 <div className="h-4 w-4 bg-white/10 rounded" />
                 <div className="h-4 w-4 bg-white/10 rounded" />
               </div>
             </div>
-            <div className="h-12 bg-white/5 rounded-xl border border-white/10" />
+            <div className="h-12 bg-white/5 rounded-xl border border-border-strong" />
           </div>
         ) : account?.hasAccount ? (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-[#1A1E29] rounded-2xl p-5 shadow-lg border border-white/5 space-y-3">
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-surface rounded-2xl p-5 shadow-lg border border-border-subtle space-y-3">
             
             {/* Username */}
-            <div className="bg-[#13161F] rounded-xl p-4 flex justify-between items-center border border-white/5">
+            <div className="bg-surface-elevated rounded-xl p-4 flex justify-between items-center border border-border-subtle">
               <span className="text-slate-300 font-mono text-sm">{account.accountName}</span>
               <button onClick={() => copyToClipboard(account.accountName!)} className="text-slate-500 hover:text-white transition-colors">
                 <Copy className="w-4 h-4" />
@@ -383,7 +383,7 @@ export default function GameDetailsPage() {
             </div>
 
             {/* Password */}
-            <div className="bg-[#13161F] rounded-xl p-4 flex justify-between items-center border border-white/5">
+            <div className="bg-surface-elevated rounded-xl p-4 flex justify-between items-center border border-border-subtle">
               <span className="text-slate-300 font-mono text-sm">{showPassword ? password : '••••••••'}</span>
               <div className="flex items-center gap-3">
                 <button onClick={() => setShowPassword(!showPassword)} className="transition-colors text-slate-500 hover:text-white">
@@ -398,13 +398,13 @@ export default function GameDetailsPage() {
             <button 
               onClick={handleResetPassword} 
               disabled={resetting}
-              className="w-full bg-[#1A1E29] hover:bg-[#252A36] border border-white/10 text-white py-3.5 rounded-xl mt-2 transition-all font-medium disabled:opacity-50"
+              className="w-full bg-surface hover:bg-surface-elevated border border-border-strong text-white py-3.5 rounded-xl mt-2 transition-all font-medium disabled:opacity-50"
             >
               {resetting ? 'Resetting...' : 'Reset password'}
             </button>
           </motion.div>
         ) : (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-[#1A1E29] rounded-2xl p-6 shadow-lg border border-white/5">
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-surface rounded-2xl p-6 shadow-lg border border-border-subtle">
             {!isAuthenticated ? (
               <div className="text-center">
                 <AlertCircle className="w-8 h-8 text-slate-500 mx-auto mb-3" />
@@ -445,7 +445,7 @@ export default function GameDetailsPage() {
 
         {/* Transactions Card */}
         {account?.hasAccount && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="bg-[#1A1E29] rounded-2xl p-5 shadow-lg border border-white/5">
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="bg-surface rounded-2xl p-5 shadow-lg border border-border-subtle">
             <div className="flex justify-between text-xs font-medium text-slate-500 mb-4 px-2">
               <span>ID</span>
               <span className="text-center">Amount</span>
@@ -457,7 +457,7 @@ export default function GameDetailsPage() {
                 <div className="text-center py-6 text-slate-500 text-sm">No recent transactions</div>
               ) : (
                 transactions.map((tx) => (
-                  <div key={tx.id} className="bg-[#13161F] rounded-xl p-3.5 flex justify-between items-center border border-white/5">
+                  <div key={tx.id} className="bg-surface-elevated rounded-xl p-3.5 flex justify-between items-center border border-border-subtle">
                     <span className="text-slate-400 font-mono text-xs uppercase w-20 truncate" title={tx.id}>#{tx.id.slice(-6)}</span>
                     <span className="text-white font-bold text-sm w-20 text-center">${tx.amount.toFixed(2)}</span>
                     <div className="text-right w-24">
@@ -508,7 +508,7 @@ export default function GameDetailsPage() {
       {/* Maintenance Modal */}
       {maintenanceModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="bg-[#1A1E29] border border-white/10 rounded-2xl p-6 max-w-sm w-full shadow-2xl relative overflow-hidden">
+          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="bg-surface border border-border-strong rounded-2xl p-6 max-w-sm w-full shadow-2xl relative overflow-hidden">
             <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-orange-500 to-red-500" />
             <div className="text-center mb-6 mt-2">
               <AlertCircle className="w-12 h-12 text-orange-400 mx-auto mb-4" />
@@ -517,7 +517,7 @@ export default function GameDetailsPage() {
                 This game is currently under maintenance or being integrated. It will be available very soon!
               </p>
             </div>
-            <button onClick={() => setMaintenanceModalOpen(false)} className="w-full bg-[#252A36] hover:bg-[#2F3543] border border-white/10 text-white font-bold py-3 rounded-xl transition-colors">
+            <button onClick={() => setMaintenanceModalOpen(false)} className="w-full bg-surface-elevated hover:bg-surface-elevated border border-border-strong text-white font-bold py-3 rounded-xl transition-colors">
               Got it
             </button>
           </motion.div>

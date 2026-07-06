@@ -41,7 +41,7 @@ function CopyButton({ text, label }: { text: string; label?: string }) {
   return (
     <button
       onClick={handleCopy}
-      className="p-2 rounded-lg bg-white/5 hover:bg-neon-blue/10 border border-white/10 hover:border-neon-blue/30 transition-all text-slate-400 hover:text-neon-blue"
+      className="p-2 rounded-lg bg-white/5 hover:bg-neon-blue/10 border border-border-strong hover:border-neon-blue/30 transition-all text-secondary hover:text-neon-blue"
     >
       {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
     </button>
@@ -143,7 +143,7 @@ export default function InvitePage() {
                 <p className="text-neon-blue text-xs font-mono tracking-widest uppercase">Referral Program</p>
               </div>
               <h2 className="font-display font-bold text-2xl text-white mb-1">Invite & Earn</h2>
-              <p className="text-slate-400 text-sm">Earn a <span className="text-neon-blue font-semibold">50% bonus (up to $10)</span> on your referrals' first deposit!</p>
+              <p className="text-secondary text-sm">Earn a <span className="text-neon-blue font-semibold">50% bonus (up to $10)</span> on your referrals' first deposit!</p>
             </div>
             <button
               onClick={handleShare}
@@ -167,7 +167,7 @@ export default function InvitePage() {
               <p className="font-display font-black text-xl text-white">
                 {card.format((info?.stats as any)?.[card.key] ?? 0)}
               </p>
-              <p className="text-slate-500 text-xs mt-0.5">{card.label}</p>
+              <p className="text-muted text-xs mt-0.5">{card.label}</p>
             </div>
           ))}
         </div>
@@ -177,7 +177,7 @@ export default function InvitePage() {
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
         <div className="glass-card overflow-hidden">
           {/* Tab Header */}
-          <div className="flex border-b border-white/5">
+          <div className="flex border-b border-border-subtle">
             {([
               { id: 'invite', label: 'Invite Code', icon: Link2 },
               { id: 'promo', label: 'Promo Code', icon: Tag },
@@ -189,7 +189,7 @@ export default function InvitePage() {
                 className={`flex-1 flex items-center justify-center gap-2 py-3.5 text-xs font-bold font-mono uppercase tracking-wider transition-all relative ${
                   activeTab === tab.id
                     ? 'text-neon-blue'
-                    : 'text-slate-500 hover:text-slate-300'
+                    : 'text-muted hover:text-secondary'
                 }`}
               >
                 <tab.icon className="w-3.5 h-3.5" />
@@ -210,15 +210,15 @@ export default function InvitePage() {
                 <motion.div key="invite" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} className="space-y-5">
                   {/* Referral Code */}
                   <div>
-                    <p className="text-slate-400 text-xs font-mono uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                    <p className="text-secondary text-xs font-mono uppercase tracking-wider mb-2 flex items-center gap-1.5">
                       <Shield className="w-3 h-3" /> Your Invite Code
                     </p>
                     <div className="flex items-center gap-2">
-                      <div className="flex-1 bg-dark-900 border border-neon-blue/20 rounded-xl px-5 py-3.5 flex items-center justify-between">
+                      <div className="flex-1 bg-background border border-neon-blue/20 rounded-xl px-5 py-3.5 flex items-center justify-between">
                         <span className="font-mono font-bold text-xl tracking-[0.2em] text-neon-blue">
                           {info?.referralCode ?? '—'}
                         </span>
-                        <span className="text-[10px] text-slate-500 font-mono">INVITE CODE</span>
+                        <span className="text-[10px] text-muted font-mono">INVITE CODE</span>
                       </div>
                       {info?.referralCode && <CopyButton text={info.referralCode} label="Invite code" />}
                     </div>
@@ -226,11 +226,11 @@ export default function InvitePage() {
 
                   {/* Referral Link */}
                   <div>
-                    <p className="text-slate-400 text-xs font-mono uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                    <p className="text-secondary text-xs font-mono uppercase tracking-wider mb-2 flex items-center gap-1.5">
                       <Link2 className="w-3 h-3" /> Your Invite Link
                     </p>
                     <div className="flex items-center gap-2">
-                      <div className="flex-1 bg-dark-900 border border-white/10 rounded-xl px-4 py-3 text-slate-300 text-sm font-mono truncate">
+                      <div className="flex-1 bg-background border border-border-strong rounded-xl px-4 py-3 text-secondary text-sm font-mono truncate">
                         {info?.referralLink ?? '—'}
                       </div>
                       {info?.referralLink && <CopyButton text={info.referralLink} label="Invite link" />}
@@ -241,14 +241,14 @@ export default function InvitePage() {
                   <button
                     onClick={handleGenerate}
                     disabled={generating}
-                    className="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors disabled:opacity-50"
+                    className="flex items-center gap-2 text-sm text-secondary hover:text-white transition-colors disabled:opacity-50"
                   >
                     <RefreshCw className={`w-4 h-4 ${generating ? 'animate-spin' : ''}`} />
                     {generating ? 'Generating...' : 'Generate new code'}
                   </button>
 
                   {/* How it works */}
-                  <div className="bg-dark-900/60 rounded-xl p-4 border border-white/5 space-y-3">
+                  <div className="bg-background/60 rounded-xl p-4 border border-border-subtle space-y-3">
                     <p className="text-xs font-mono text-neon-blue uppercase tracking-wider">How it works</p>
                     {[
                       { step: '01', text: 'Share your invite link or code with friends' },
@@ -258,7 +258,7 @@ export default function InvitePage() {
                     ].map(item => (
                       <div key={item.step} className="flex items-start gap-3">
                         <span className="font-display font-black text-lg text-neon-blue/20 leading-none flex-shrink-0">{item.step}</span>
-                        <p className="text-slate-400 text-sm">{item.text}</p>
+                        <p className="text-secondary text-sm">{item.text}</p>
                       </div>
                     ))}
                   </div>
@@ -270,14 +270,14 @@ export default function InvitePage() {
                 <motion.div key="promo" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} className="space-y-5">
                   <div>
                     <p className="text-white font-medium mb-1">Set Your Custom Promo Code</p>
-                    <p className="text-slate-500 text-sm">Create a custom code (e.g. <span className="text-neon-blue font-mono">JOHN50</span>) that others can use when signing up.</p>
+                    <p className="text-muted text-sm">Create a custom code (e.g. <span className="text-neon-blue font-mono">JOHN50</span>) that others can use when signing up.</p>
                   </div>
 
                   {/* Current promo code display */}
                   {info?.promoCode && (
                     <div className="bg-neon-blue/5 border border-neon-blue/20 rounded-xl p-4 flex items-center justify-between">
                       <div>
-                        <p className="text-xs text-slate-500 font-mono uppercase tracking-wider mb-0.5">Active Promo Code</p>
+                        <p className="text-xs text-muted font-mono uppercase tracking-wider mb-0.5">Active Promo Code</p>
                         <p className="font-display font-black text-2xl text-neon-blue tracking-wider">{info.promoCode}</p>
                       </div>
                       <CopyButton text={info.promoCode} label="Promo code" />
@@ -286,7 +286,7 @@ export default function InvitePage() {
 
                   {/* Input */}
                   <div className="space-y-2">
-                    <label className="text-slate-400 text-xs font-mono uppercase tracking-wider block">
+                    <label className="text-secondary text-xs font-mono uppercase tracking-wider block">
                       {info?.promoCode ? 'Change Promo Code' : 'Create Promo Code'}
                     </label>
                     <div className="flex gap-2">
@@ -312,7 +312,7 @@ export default function InvitePage() {
                   {/* Info box */}
                   <div className="bg-neon-purple/5 border border-neon-purple/20 rounded-xl p-4 space-y-2">
                     <p className="text-xs font-mono text-neon-purple uppercase tracking-wider">Promo Code Benefits</p>
-                    <ul className="space-y-1.5 text-sm text-slate-400">
+                    <ul className="space-y-1.5 text-sm text-secondary">
                       <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-green-400 flex-shrink-0" /> Custom branded code your community can remember</li>
                       <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-green-400 flex-shrink-0" /> Works just like your invite code for sign-ups</li>
                       <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-green-400 flex-shrink-0" /> Track all sign-ups from both codes in one place</li>
@@ -328,11 +328,11 @@ export default function InvitePage() {
                     <div className="text-center py-12">
                       <Users className="w-10 h-10 text-slate-600 mx-auto mb-3" />
                       <p className="text-white font-medium mb-1">No referrals yet</p>
-                      <p className="text-slate-500 text-sm">Share your invite code to start earning!</p>
+                      <p className="text-muted text-sm">Share your invite code to start earning!</p>
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      <div className="grid grid-cols-3 text-xs font-mono text-slate-500 uppercase tracking-wider px-3 pb-2 border-b border-white/5">
+                      <div className="grid grid-cols-3 text-xs font-mono text-muted uppercase tracking-wider px-3 pb-2 border-b border-border-subtle">
                         <span>User</span>
                         <span className="text-center">Deposited</span>
                         <span className="text-right">Joined</span>
@@ -346,7 +346,7 @@ export default function InvitePage() {
                           className="flex items-center justify-between bg-white/[0.02] hover:bg-white/[0.04] rounded-xl px-3 py-3 transition-colors"
                         >
                           <div className="flex items-center gap-2">
-                            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-neon-blue/30 to-neon-purple/30 flex items-center justify-center text-xs font-bold text-white border border-white/10">
+                            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-neon-blue/30 to-neon-purple/30 flex items-center justify-center text-xs font-bold text-white border border-border-strong">
                               {r.username.charAt(0).toUpperCase()}
                             </div>
                             <div>
@@ -359,7 +359,7 @@ export default function InvitePage() {
                                 ${r.totalDeposited.toFixed(0)}
                               </span>
                             ) : (
-                              <span className="text-xs px-2 py-0.5 rounded-full bg-white/5 text-slate-500 font-mono">No deposit</span>
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-white/5 text-muted font-mono">No deposit</span>
                             )}
                           </div>
                           <p className="text-slate-600 text-xs text-right">

@@ -69,12 +69,12 @@ export default function NotificationsPage() {
           <h2 className="font-display font-bold text-2xl text-white flex items-center gap-2">
             <Bell className="w-6 h-6 text-neon-blue" /> Notifications
           </h2>
-          <p className="text-slate-400 text-sm mt-1">Stay updated with your account activity</p>
+          <p className="text-secondary text-sm mt-1">Stay updated with your account activity</p>
         </div>
         {notifications.some(n => !n.isRead) && (
           <button 
             onClick={markAllAsRead}
-            className="text-xs bg-white/5 hover:bg-white/10 text-white font-mono px-4 py-2 rounded-lg transition-colors border border-white/10"
+            className="text-xs bg-white/5 hover:bg-white/10 text-white font-mono px-4 py-2 rounded-lg transition-colors border border-border-strong"
           >
             Mark all as read
           </button>
@@ -87,10 +87,10 @@ export default function NotificationsPage() {
             <div className="w-6 h-6 border-2 border-neon-blue/30 border-t-neon-blue rounded-full animate-spin" />
           </div>
         ) : notifications.length === 0 ? (
-          <div className="glass-card p-12 text-center border border-white/5">
+          <div className="glass-card p-12 text-center border border-border-subtle">
             <Bell className="w-12 h-12 text-slate-600 mx-auto mb-4" />
             <h3 className="text-white font-medium mb-1">No notifications yet</h3>
-            <p className="text-slate-500 text-sm">You're all caught up!</p>
+            <p className="text-muted text-sm">You're all caught up!</p>
           </div>
         ) : (
           <AnimatePresence>
@@ -104,8 +104,8 @@ export default function NotificationsPage() {
                 onClick={() => !notif.isRead && markAsRead(notif.id)}
                 className={`p-4 rounded-xl border transition-all cursor-pointer ${
                   notif.isRead 
-                    ? 'bg-[#13161F] border-white/5 opacity-70' 
-                    : 'bg-[#1A1E29] border-white/10 hover:border-white/20 shadow-lg'
+                    ? 'bg-surface-elevated border-border-subtle opacity-70' 
+                    : 'bg-surface border-border-strong hover:border-white/20 shadow-lg'
                 }`}
               >
                 <div className="flex gap-4">
@@ -114,14 +114,14 @@ export default function NotificationsPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-start mb-1">
-                      <h4 className={`font-bold truncate ${notif.isRead ? 'text-slate-300' : 'text-white'}`}>
+                      <h4 className={`font-bold truncate ${notif.isRead ? 'text-secondary' : 'text-white'}`}>
                         {notif.title}
                       </h4>
-                      <span className="text-[10px] font-mono text-slate-500 ml-2 shrink-0">
+                      <span className="text-[10px] font-mono text-muted ml-2 shrink-0">
                         {new Date(notif.createdAt).toLocaleDateString()}
                       </span>
                     </div>
-                    <p className="text-sm text-slate-400 leading-relaxed">{notif.message}</p>
+                    <p className="text-sm text-secondary leading-relaxed">{notif.message}</p>
                   </div>
                   {!notif.isRead && (
                     <div className="shrink-0 flex items-center justify-center">

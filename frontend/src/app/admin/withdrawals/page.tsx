@@ -44,7 +44,7 @@ const StatusBadge = ({ status }: { status: string }) => {
     rejected: 'bg-red-500/15 text-red-400 border-red-500/25',
   }
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${map[status] || 'bg-slate-500/15 text-slate-400 border-slate-500/25'}`}>
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${map[status] || 'bg-slate-500/15 text-secondary border-slate-500/25'}`}>
       {status === 'pending' && <Clock className="w-3 h-3" />}
       {status === 'approved' && <CheckCircle2 className="w-3 h-3" />}
       {status === 'rejected' && <XCircle className="w-3 h-3" />}
@@ -170,58 +170,58 @@ export default function AdminWithdrawalsPage() {
         className="flex items-end justify-between flex-wrap gap-3">
         <div>
           <h2 className="font-display font-bold text-2xl text-white">WITHDRAWAL MANAGEMENT</h2>
-          <p className="text-slate-400 text-sm">Review, approve, and reject withdrawal requests in real-time.</p>
+          <p className="text-secondary text-sm">Review, approve, and reject withdrawal requests in real-time.</p>
         </div>
         <div className="flex gap-3 items-center">
           <button onClick={() => fetchItems(page)} id="refresh-withdrawals-btn"
-            className="glass border border-white/10 rounded-xl px-3 py-2 text-slate-400 hover:text-white transition-all">
+            className="glass border border-border-strong rounded-xl px-3 py-2 text-secondary hover:text-white transition-all">
             <RefreshCw className="w-4 h-4" />
           </button>
           <button onClick={handleExportCSV} id="export-csv-btn"
-            className="glass border border-white/10 rounded-xl px-3 py-2 text-slate-400 hover:text-emerald-400 transition-all flex items-center gap-2 text-sm">
+            className="glass border border-border-strong rounded-xl px-3 py-2 text-secondary hover:text-emerald-400 transition-all flex items-center gap-2 text-sm">
             <Download className="w-4 h-4" /> Export CSV
           </button>
           <div className="glass-card px-4 py-2 text-center">
             <p className="text-amber-400 font-bold text-lg font-display">{totalPending}</p>
-            <p className="text-xs text-slate-500">Pending</p>
+            <p className="text-xs text-muted">Pending</p>
           </div>
           <div className="glass-card px-4 py-2 text-center">
             <p className="text-orange-400 font-bold text-lg font-display">${totalPendingAmt.toLocaleString()}</p>
-            <p className="text-xs text-slate-500">Pending $</p>
+            <p className="text-xs text-muted">Pending $</p>
           </div>
         </div>
       </motion.div>
 
       {/* Filters */}
       <div className="glass-card p-4 space-y-3">
-        <div className="flex items-center gap-2 text-slate-400 text-xs font-mono">
+        <div className="flex items-center gap-2 text-secondary text-xs font-mono">
           <Filter className="w-3.5 h-3.5" /> FILTERS
         </div>
         <div className="flex flex-wrap gap-3">
           <div className="relative flex-1 min-w-[200px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
             <input id="withdrawal-search" type="text" placeholder="Search request ID, user..." value={search}
               onChange={e => setSearch(e.target.value)}
               className="input-neon pl-10 text-sm" />
           </div>
           <select id="status-filter" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-            className="input-neon bg-dark-800 w-36 text-sm">
+            className="input-neon bg-surface w-36 text-sm">
             <option value="all">All Status</option>
             <option value="pending">Pending</option>
             <option value="approved">Approved</option>
             <option value="rejected">Rejected</option>
           </select>
           <select value={methodFilter} onChange={e => setMethodFilter(e.target.value)}
-            className="input-neon bg-dark-800 w-40 text-sm">
+            className="input-neon bg-surface w-40 text-sm">
             <option value="">All Methods</option>
             {['Cash App','Venmo','Zelle','Crypto','Bank Transfer','Chime','PayPal'].map(m =>
               <option key={m} value={m}>{m}</option>
             )}
           </select>
           <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
-            className="input-neon bg-dark-800 text-sm w-40" title="From date" />
+            className="input-neon bg-surface text-sm w-40" title="From date" />
           <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
-            className="input-neon bg-dark-800 text-sm w-40" title="To date" />
+            className="input-neon bg-surface text-sm w-40" title="To date" />
         </div>
       </div>
 
@@ -230,16 +230,16 @@ export default function AdminWithdrawalsPage() {
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-white/5">
+              <tr className="border-b border-border-subtle">
                 {['Request ID', 'User', 'Amount', 'Method', 'Account', 'Status', 'Date', 'Actions'].map(h => (
-                  <th key={h} className="text-left text-xs font-mono text-slate-500 uppercase tracking-wider px-4 py-3.5">{h}</th>
+                  <th key={h} className="text-left text-xs font-mono text-muted uppercase tracking-wider px-4 py-3.5">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 Array.from({ length: 6 }).map((_, i) => (
-                  <tr key={i} className="border-b border-white/5">
+                  <tr key={i} className="border-b border-border-subtle">
                     {Array.from({ length: 8 }).map((_, j) => (
                       <td key={j} className="px-4 py-3.5">
                         <div className="h-4 bg-white/5 rounded animate-pulse" />
@@ -249,7 +249,7 @@ export default function AdminWithdrawalsPage() {
                 ))
               ) : items.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-16 text-center text-slate-500 text-sm">
+                  <td colSpan={8} className="px-4 py-16 text-center text-muted text-sm">
                     No withdrawal requests match the filters.
                   </td>
                 </tr>
@@ -257,17 +257,17 @@ export default function AdminWithdrawalsPage() {
                 items.map((w, i) => (
                   <motion.tr key={w.id}
                     initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.025 }}
-                    className="border-b border-white/5 hover:bg-white/2 transition-colors group">
+                    className="border-b border-border-subtle hover:bg-white/2 transition-colors group">
                     <td className="px-4 py-3.5">
                       <span className="font-mono text-xs text-neon-blue bg-neon-blue/10 px-2 py-1 rounded">{w.requestId}</span>
                     </td>
                     <td className="px-4 py-3.5">
                       <p className="text-white text-sm font-medium">{w.user?.username}</p>
-                      <p className="text-xs text-slate-500">{w.user?.email}</p>
+                      <p className="text-xs text-muted">{w.user?.email}</p>
                     </td>
                     <td className="px-4 py-3.5 font-bold text-white">${w.amount.toLocaleString()}</td>
-                    <td className="px-4 py-3.5 text-sm text-slate-300">{w.paymentMethodStr}</td>
-                    <td className="px-4 py-3.5 text-xs text-slate-500 max-w-[120px] truncate">{w.accountDetails}</td>
+                    <td className="px-4 py-3.5 text-sm text-secondary">{w.paymentMethodStr}</td>
+                    <td className="px-4 py-3.5 text-xs text-muted max-w-[120px] truncate">{w.accountDetails}</td>
                     <td className="px-4 py-3.5"><StatusBadge status={w.status} /></td>
                     <td className="px-4 py-3.5 text-xs text-slate-600">
                       {new Date(w.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })}
@@ -275,7 +275,7 @@ export default function AdminWithdrawalsPage() {
                     <td className="px-4 py-3.5">
                       <div className="flex items-center gap-1">
                         <button onClick={() => setSelected(w)} title="View details"
-                          className="w-7 h-7 glass rounded-lg flex items-center justify-center text-slate-400 hover:text-neon-blue border border-white/10 transition-all">
+                          className="w-7 h-7 glass rounded-lg flex items-center justify-center text-secondary hover:text-neon-blue border border-border-strong transition-all">
                           <Eye className="w-3.5 h-3.5" />
                         </button>
                         {w.status === 'pending' && (
@@ -301,18 +301,18 @@ export default function AdminWithdrawalsPage() {
 
         {/* Pagination */}
         {pagination.pages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3.5 border-t border-white/5">
-            <p className="text-xs text-slate-500">
+          <div className="flex items-center justify-between px-4 py-3.5 border-t border-border-subtle">
+            <p className="text-xs text-muted">
               {((page - 1) * pagination.limit) + 1}–{Math.min(page * pagination.limit, pagination.total)} of {pagination.total} requests
             </p>
             <div className="flex gap-2">
               <button onClick={() => fetchItems(page - 1)} disabled={page <= 1}
-                className="w-8 h-8 glass rounded-lg flex items-center justify-center text-slate-400 hover:text-white border border-white/10 disabled:opacity-30 transition-all">
+                className="w-8 h-8 glass rounded-lg flex items-center justify-center text-secondary hover:text-white border border-border-strong disabled:opacity-30 transition-all">
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              <span className="text-xs text-slate-400 flex items-center px-2">{page} / {pagination.pages}</span>
+              <span className="text-xs text-secondary flex items-center px-2">{page} / {pagination.pages}</span>
               <button onClick={() => fetchItems(page + 1)} disabled={page >= pagination.pages}
-                className="w-8 h-8 glass rounded-lg flex items-center justify-center text-slate-400 hover:text-white border border-white/10 disabled:opacity-30 transition-all">
+                className="w-8 h-8 glass rounded-lg flex items-center justify-center text-secondary hover:text-white border border-border-strong disabled:opacity-30 transition-all">
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
@@ -330,7 +330,7 @@ export default function AdminWithdrawalsPage() {
               className="glass-card max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
               <div className="flex items-center justify-between mb-5">
                 <h3 className="font-display font-bold text-xl text-white">REQUEST DETAILS</h3>
-                <button onClick={() => setSelected(null)} className="w-8 h-8 glass rounded-lg flex items-center justify-center text-slate-400 hover:text-white border border-white/10 transition-all">
+                <button onClick={() => setSelected(null)} className="w-8 h-8 glass rounded-lg flex items-center justify-center text-secondary hover:text-white border border-border-strong transition-all">
                   <X className="w-4 h-4" />
                 </button>
               </div>
@@ -354,12 +354,12 @@ export default function AdminWithdrawalsPage() {
                   ] : []),
                 ].map(([k, v]) => (
                   <div key={k} className="flex justify-between items-start glass rounded-xl px-4 py-2.5 gap-3">
-                    <span className="text-xs text-slate-500 flex-shrink-0">{k}</span>
+                    <span className="text-xs text-muted flex-shrink-0">{k}</span>
                     <span className="text-sm text-white text-right break-all">{v}</span>
                   </div>
                 ))}
                 <div className="flex justify-between items-center glass rounded-xl px-4 py-2.5">
-                  <span className="text-xs text-slate-500">Status</span>
+                  <span className="text-xs text-muted">Status</span>
                   <StatusBadge status={selected.status} />
                 </div>
               </div>
@@ -392,12 +392,12 @@ export default function AdminWithdrawalsPage() {
               <div className="flex items-center justify-between mb-5">
                 <h3 className="font-display font-bold text-lg text-white">REJECTION REASON</h3>
                 <button onClick={() => !processing && setShowRejectModal(null)}
-                  className="w-8 h-8 glass rounded-lg flex items-center justify-center text-slate-400 hover:text-white border border-white/10 transition-all">
+                  className="w-8 h-8 glass rounded-lg flex items-center justify-center text-secondary hover:text-white border border-border-strong transition-all">
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
-              <p className="text-xs text-slate-400 mb-3 font-mono">
+              <p className="text-xs text-secondary mb-3 font-mono">
                 Rejecting: <span className="text-neon-blue">{showRejectModal.requestId}</span>
               </p>
 
@@ -407,7 +407,7 @@ export default function AdminWithdrawalsPage() {
                     className={`w-full text-left px-3 py-2.5 rounded-xl text-sm transition-all border ${
                       selectedReason === r
                         ? 'bg-red-500/10 border-red-500/30 text-red-400'
-                        : 'glass border-white/10 text-slate-400 hover:text-white'
+                        : 'glass border-border-strong text-secondary hover:text-white'
                     }`}>
                     {r}
                   </button>
@@ -415,7 +415,7 @@ export default function AdminWithdrawalsPage() {
               </div>
 
               <div className="mb-4">
-                <label className="block text-xs font-mono text-slate-500 uppercase tracking-wider mb-2">Custom reason (optional)</label>
+                <label className="block text-xs font-mono text-muted uppercase tracking-wider mb-2">Custom reason (optional)</label>
                 <input type="text" placeholder="Enter custom rejection reason..."
                   value={customReason}
                   onChange={e => { setCustomReason(e.target.value); setSelectedReason('') }}
@@ -424,7 +424,7 @@ export default function AdminWithdrawalsPage() {
 
               <div className="flex gap-2">
                 <button onClick={() => !processing && setShowRejectModal(null)}
-                  className="flex-1 glass rounded-xl py-2.5 text-slate-400 text-sm border border-white/10 hover:text-white transition-all">
+                  className="flex-1 glass rounded-xl py-2.5 text-secondary text-sm border border-border-strong hover:text-white transition-all">
                   Cancel
                 </button>
                 <button onClick={handleReject} disabled={!!processing}

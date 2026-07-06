@@ -113,15 +113,15 @@ export default function UserDetailsPage() {
           <div className="glass-card p-5">
             <h3 className="text-lg font-bold text-white mb-4">Account Info</h3>
             <div className="space-y-3">
-              <div className="flex justify-between border-b border-white/5 pb-2">
+              <div className="flex justify-between border-b border-border-subtle pb-2">
                 <span className="text-slate-400">Email</span>
                 <span className="text-white">{user.email}</span>
               </div>
-              <div className="flex justify-between border-b border-white/5 pb-2">
+              <div className="flex justify-between border-b border-border-subtle pb-2">
                 <span className="text-slate-400">Joined</span>
                 <span className="text-white">{new Date(user.createdAt).toLocaleDateString()}</span>
               </div>
-              <div className="flex justify-between border-b border-white/5 pb-2">
+              <div className="flex justify-between border-b border-border-subtle pb-2">
                 <span className="text-slate-400">Role</span>
                 <span className="text-white capitalize">{user.role}</span>
               </div>
@@ -140,7 +140,7 @@ export default function UserDetailsPage() {
             {user.providerUsers && user.providerUsers.length > 0 ? (
               <div className="space-y-3">
                 {user.providerUsers.map((pu: any) => (
-                  <div key={pu.id} className="p-3 bg-white/5 rounded-lg border border-white/5">
+                  <div key={pu.id} className="p-3 bg-white/5 rounded-lg border border-border-subtle">
                     <div className="flex justify-between items-center mb-1">
                       <span className="font-semibold text-white">{pu.provider.name}</span>
                     </div>
@@ -209,7 +209,7 @@ export default function UserDetailsPage() {
               <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><Gift size={18} /> Recent Bonuses</h3>
               <div className="space-y-2">
                 {user.bonusClaims && user.bonusClaims.length > 0 ? user.bonusClaims.map((claim: any) => (
-                  <div key={claim.id} className="p-3 bg-white/5 rounded-lg border border-white/5 flex justify-between items-center">
+                  <div key={claim.id} className="p-3 bg-white/5 rounded-lg border border-border-subtle flex justify-between items-center">
                     <div>
                       <div className="text-sm font-semibold text-white">{claim.bonus?.title || 'Unknown Bonus'}</div>
                       <div className="text-xs text-slate-400">{new Date(claim.createdAt).toLocaleDateString()}</div>
@@ -225,7 +225,7 @@ export default function UserDetailsPage() {
               <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><Ticket size={18} /> Support Tickets</h3>
               <div className="space-y-2">
                 {user.tickets && user.tickets.length > 0 ? user.tickets.map((ticket: any) => (
-                  <div key={ticket.id} className="p-3 bg-white/5 rounded-lg border border-white/5">
+                  <div key={ticket.id} className="p-3 bg-white/5 rounded-lg border border-border-subtle">
                     <div className="text-sm font-semibold text-white truncate" title={ticket.subject}>{ticket.subject}</div>
                     <div className="flex justify-between items-center mt-2">
                       <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${

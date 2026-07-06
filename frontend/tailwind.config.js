@@ -8,6 +8,14 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        background: 'var(--bg-background)',
+        surface: 'var(--bg-surface)',
+        'surface-elevated': 'var(--bg-surface-elevated)',
+        primary: 'var(--text-primary)',
+        secondary: 'var(--text-secondary)',
+        muted: 'var(--text-muted)',
+        'border-subtle': 'var(--border-subtle)',
+        'border-strong': 'var(--border-strong)',
         neon: {
           blue: '#00D4FF',
           purple: '#7B2FFF',

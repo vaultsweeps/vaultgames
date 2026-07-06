@@ -25,8 +25,8 @@ const PAYMENT_METHODS = [
 
 const CUSTOM_TOOLTIP = ({ active, payload, label }: any) => {
   if (active && payload?.length) return (
-    <div className="glass-card px-4 py-3 text-xs border border-white/10">
-      <p className="text-slate-400 mb-2 font-medium">{label}</p>
+    <div className="glass-card px-4 py-3 text-xs border border-border-strong">
+      <p className="text-secondary mb-2 font-medium">{label}</p>
       {payload.map((p: any) => (
         <p key={p.name} style={{ color: p.color }} className="mb-0.5">
           {p.name}: {typeof p.value === 'number' && p.name !== 'users' ? `$${p.value.toLocaleString()}` : p.value}
@@ -58,12 +58,12 @@ export default function AdminReportsPage() {
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex items-end justify-between flex-wrap gap-3">
         <div>
           <h2 className="font-display font-bold text-2xl text-white">REPORTS & ANALYTICS</h2>
-          <p className="text-slate-400 text-sm">Platform performance and financial reports.</p>
+          <p className="text-secondary text-sm">Platform performance and financial reports.</p>
         </div>
         <div className="flex gap-2">
           {['7m', '3m', '1m', '1w'].map(p => (
             <button key={p} onClick={() => setPeriod(p)}
-              className={`px-3 py-1.5 text-xs rounded-lg font-mono transition-all ${period === p ? 'bg-neon-blue/10 text-neon-blue border border-neon-blue/20' : 'glass text-slate-400 border border-white/10'}`}>
+              className={`px-3 py-1.5 text-xs rounded-lg font-mono transition-all ${period === p ? 'bg-neon-blue/10 text-neon-blue border border-neon-blue/20' : 'glass text-secondary border border-border-strong'}`}>
               {p}
             </button>
           ))}
@@ -84,7 +84,7 @@ export default function AdminReportsPage() {
               <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: `${s.color}15` }}>
                 <s.icon className="w-4 h-4" style={{ color: s.color }} />
               </div>
-              <span className="text-xs text-slate-500">{s.label}</span>
+              <span className="text-xs text-muted">{s.label}</span>
             </div>
             <p className="font-display font-black text-2xl text-white">{s.value}</p>
           </motion.div>
@@ -137,9 +137,9 @@ export default function AdminReportsPage() {
               <div key={m.name} className="flex items-center justify-between text-xs">
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full" style={{ background: m.color }} />
-                  <span className="text-slate-400">{m.name}</span>
+                  <span className="text-secondary">{m.name}</span>
                 </div>
-                <span className="text-slate-300 font-mono">{m.value}%</span>
+                <span className="text-secondary font-mono">{m.value}%</span>
               </div>
             ))}
           </div>
@@ -172,9 +172,9 @@ export default function AdminReportsPage() {
           ].map((r, i) => (
             <button key={i} onClick={() => handleExport(r.label)} disabled={exporting}
               className="glass-card p-4 text-left hover:border-neon-blue/20 transition-all group disabled:opacity-50">
-              <Download className="w-5 h-5 text-slate-500 group-hover:text-neon-blue transition-colors mb-2" />
+              <Download className="w-5 h-5 text-muted group-hover:text-neon-blue transition-colors mb-2" />
               <p className="text-white text-sm font-medium">{r.label}</p>
-              <p className="text-xs text-slate-500">{r.sub}</p>
+              <p className="text-xs text-muted">{r.sub}</p>
             </button>
           ))}
         </div>

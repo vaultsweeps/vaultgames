@@ -37,7 +37,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-dark-900 flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
       {/* Background effects */}
       <div className="absolute inset-0 cyber-grid opacity-20" />
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-neon-blue/10 rounded-full blur-3xl" />
@@ -55,7 +55,7 @@ export default function LoginPage() {
             <span className="font-display font-bold text-xl gradient-text">VAULT SWEEPS</span>
           </Link>
           <h1 className="font-display font-bold text-3xl text-white mb-2">WELCOME BACK</h1>
-          <p className="text-slate-400 text-sm">Sign in to your account to continue</p>
+          <p className="text-secondary text-sm">Sign in to your account to continue</p>
         </div>
 
         {/* Form card */}
@@ -63,9 +63,9 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
             {/* Email */}
             <div>
-              <label className="block text-xs font-mono tracking-wider text-slate-400 uppercase mb-2">Email Address</label>
+              <label className="block text-xs font-mono tracking-wider text-secondary uppercase mb-2">Email Address</label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
                 <input
                   {...register('email')}
                   type="email"
@@ -79,9 +79,9 @@ export default function LoginPage() {
 
             {/* Password */}
             <div>
-              <label className="block text-xs font-mono tracking-wider text-slate-400 uppercase mb-2">Password</label>
+              <label className="block text-xs font-mono tracking-wider text-secondary uppercase mb-2">Password</label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
                 <input
                   {...register('password')}
                   type={showPassword ? 'text' : 'password'}
@@ -90,7 +90,7 @@ export default function LoginPage() {
                   style={{ paddingLeft: '2.5rem', paddingRight: '2.5rem' }}
                 />
                 <button type="button" onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-secondary">
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
@@ -111,8 +111,8 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <div className="mt-6 pt-6 border-t border-white/5 text-center">
-            <p className="text-slate-500 text-sm">
+          <div className="mt-6 pt-6 border-t border-border-subtle text-center">
+            <p className="text-muted text-sm">
               Don't have an account?{' '}
               <Link href="/register" className="text-neon-blue hover:underline font-medium">Create one free</Link>
             </p>

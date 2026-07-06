@@ -103,13 +103,13 @@ export default function LiveChat() {
   };
 
   if (loading) {
-    return <div className="glass-card py-16 text-center text-slate-500">Connecting to live support...</div>;
+    return <div className="glass-card py-16 text-center text-muted">Connecting to live support...</div>;
   }
 
   return (
-    <div className="glass-card flex flex-col h-[600px] max-h-[70vh] border border-white/10 rounded-xl overflow-hidden relative">
+    <div className="glass-card flex flex-col h-[600px] max-h-[70vh] border border-border-strong rounded-xl overflow-hidden relative">
       {/* Header */}
-      <div className="bg-dark-900/50 border-b border-white/5 p-4 flex items-center justify-between">
+      <div className="bg-background/50 border-b border-border-subtle p-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-neon-blue/20 flex items-center justify-center">
             <Bot className="w-5 h-5 text-neon-blue" />
@@ -123,7 +123,7 @@ export default function LiveChat() {
         </div>
         <button
           onClick={() => { fetchConversation() }}
-          className="p-2 text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-colors"
+          className="p-2 text-secondary hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-colors"
           title="Refresh Messages"
         >
           <RefreshCw className="w-4 h-4" />
@@ -133,7 +133,7 @@ export default function LiveChat() {
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-black/20">
         {messages.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-slate-500">
+          <div className="h-full flex flex-col items-center justify-center text-muted">
             <Bot className="w-12 h-12 mb-3 opacity-50" />
             <p>Send a message to start the conversation.</p>
           </div>
@@ -151,9 +151,9 @@ export default function LiveChat() {
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${isUser ? 'bg-purple-500/20 text-purple-400' : 'bg-neon-blue/20 text-neon-blue'}`}>
                     {isUser ? <UserIcon className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
                   </div>
-                  <div className={`p-3 rounded-2xl text-sm ${isUser ? 'bg-purple-600 text-white rounded-tr-none' : 'glass border-white/5 text-slate-200 rounded-tl-none'}`}>
+                  <div className={`p-3 rounded-2xl text-sm ${isUser ? 'bg-purple-600 text-white rounded-tr-none' : 'glass border-border-subtle text-primary rounded-tl-none'}`}>
                     {msg.message}
-                    <div className={`text-[10px] mt-1 ${isUser ? 'text-purple-300' : 'text-slate-500'}`}>
+                    <div className={`text-[10px] mt-1 ${isUser ? 'text-purple-300' : 'text-muted'}`}>
                       {new Date(msg.created_at || new Date()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </div>
                   </div>
@@ -166,14 +166,14 @@ export default function LiveChat() {
       </div>
 
       {/* Input */}
-      <div className="p-3 bg-dark-900/50 border-t border-white/5">
+      <div className="p-3 bg-background/50 border-t border-border-subtle">
         <form onSubmit={sendMessage} className="flex items-center gap-2 relative">
           <input
             type="text"
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             placeholder="Type your message..."
-            className="input-neon flex-1 pr-12 bg-dark-800"
+            className="input-neon flex-1 pr-12 bg-surface"
           />
           <button
             type="submit"

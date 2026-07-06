@@ -8,7 +8,7 @@ import HomePageClient from '@/components/home/HomePageClient'
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-dark-900">
+    <div className="min-h-screen bg-background">
       <Navbar />
       <main className="pt-24 pb-12">
         <HeroSlider />

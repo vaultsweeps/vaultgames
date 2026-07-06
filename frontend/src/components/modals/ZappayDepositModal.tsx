@@ -117,19 +117,19 @@ export default function ZappayDepositModal({ isOpen, onClose }: ZappayDepositMod
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="bg-[#0F1219] w-full max-w-md rounded-3xl overflow-hidden shadow-2xl border border-white/5 flex flex-col"
+          className="bg-background w-full max-w-md rounded-3xl overflow-hidden shadow-2xl border border-border-subtle flex flex-col"
         >
           {/* Header */}
           <div className="p-6 pb-4 flex justify-between items-start">
             <div>
               <h2 className="text-white font-bold text-2xl mb-1">Zappay</h2>
               {step === 1 ? (
-                <p className="text-slate-400 text-sm">First, send your payment via Zappay</p>
+                <p className="text-secondary text-sm">First, send your payment via Zappay</p>
               ) : (
-                <p className="text-slate-400 text-sm">Provide your payment details for verification</p>
+                <p className="text-secondary text-sm">Provide your payment details for verification</p>
               )}
             </div>
-            <button onClick={onClose} className="p-2 text-slate-400 hover:text-white rounded-full transition-colors -mr-2">
+            <button onClick={onClose} className="p-2 text-secondary hover:text-white rounded-full transition-colors -mr-2">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -137,11 +137,11 @@ export default function ZappayDepositModal({ isOpen, onClose }: ZappayDepositMod
           <div className="p-6 pt-2 space-y-6">
             {step === 1 && (
               <div className="space-y-6">
-                <div className="bg-[#1A1E29] rounded-2xl p-5 border border-[#2AC3FF]/30 flex flex-col gap-4 text-center">
+                <div className="bg-surface rounded-2xl p-5 border border-[#2AC3FF]/30 flex flex-col gap-4 text-center">
                   <div className="w-12 h-12 rounded-full bg-[#2AC3FF]/10 flex items-center justify-center mx-auto">
                     <ArrowRight className="w-6 h-6 text-[#2AC3FF]" />
                   </div>
-                  <p className="text-sm text-slate-300 leading-relaxed">
+                  <p className="text-sm text-secondary leading-relaxed">
                     To start, you must send the money via Zappay. Once you've completed the transfer, you will receive a Profile Name/Sender Name.
                   </p>
                 </div>
@@ -164,7 +164,7 @@ export default function ZappayDepositModal({ isOpen, onClose }: ZappayDepositMod
                   </button>
                   <button 
                     onClick={onClose}
-                    className="flex-1 bg-[#1A1E29] hover:bg-[#252A36] text-white font-bold py-4 rounded-2xl transition-all border border-white/5"
+                    className="flex-1 bg-surface hover:bg-surface-elevated text-white font-bold py-4 rounded-2xl transition-all border border-border-subtle"
                   >
                     Cancel
                   </button>
@@ -175,9 +175,9 @@ export default function ZappayDepositModal({ isOpen, onClose }: ZappayDepositMod
             {step === 2 && (
               <div className="space-y-6">
                 <div className="space-y-4">
-                  <p className="text-slate-400 text-sm text-center">Enter the amount you sent</p>
+                  <p className="text-secondary text-sm text-center">Enter the amount you sent</p>
                   
-                  <div className="bg-[#1A1E29] rounded-2xl p-4 flex items-center justify-between border border-white/5 relative">
+                  <div className="bg-surface rounded-2xl p-4 flex items-center justify-between border border-border-subtle relative">
                     <div className="flex items-center w-full">
                       <span className="text-[#2AC3FF] mr-2 text-3xl font-bold">$</span>
                       <input 
@@ -189,7 +189,7 @@ export default function ZappayDepositModal({ isOpen, onClose }: ZappayDepositMod
                       />
                     </div>
                     {amount !== '0.00' && amount !== '' && (
-                      <button onClick={() => setAmount('')} className="absolute right-4 text-slate-500 hover:text-slate-300">
+                      <button onClick={() => setAmount('')} className="absolute right-4 text-muted hover:text-secondary">
                         <X className="w-5 h-5" />
                       </button>
                     )}
@@ -200,14 +200,14 @@ export default function ZappayDepositModal({ isOpen, onClose }: ZappayDepositMod
                       <button 
                         key={add}
                         onClick={() => handleAdd(add)}
-                        className="bg-[#1A1E29] hover:bg-[#252A36] text-[#2AC3FF] font-bold py-2.5 rounded-xl border border-white/5 transition-colors text-sm"
+                        className="bg-surface hover:bg-surface-elevated text-[#2AC3FF] font-bold py-2.5 rounded-xl border border-border-subtle transition-colors text-sm"
                       >
                         +{add}
                       </button>
                     ))}
                     <button 
                       onClick={() => handleMultiply(2)}
-                      className="bg-[#1A1E29] hover:bg-[#252A36] text-[#2AC3FF] font-bold py-2.5 rounded-xl border border-white/5 transition-colors text-sm"
+                      className="bg-surface hover:bg-surface-elevated text-[#2AC3FF] font-bold py-2.5 rounded-xl border border-border-subtle transition-colors text-sm"
                     >
                       X2
                     </button>
@@ -221,18 +221,18 @@ export default function ZappayDepositModal({ isOpen, onClose }: ZappayDepositMod
                 </div>
 
                 <div className="space-y-2">
-                  <p className="text-slate-400 text-sm">Sender Zappay Profile Name</p>
-                  <div className="bg-[#1A1E29] rounded-2xl p-4 border border-white/5 flex items-center relative">
+                  <p className="text-secondary text-sm">Sender Zappay Profile Name</p>
+                  <div className="bg-surface rounded-2xl p-4 border border-border-subtle flex items-center relative">
                     <input 
                       type="text"
                       value={profileName}
                       onChange={(e) => setProfileName(e.target.value)}
                       placeholder="Your Profile Name (e.g. Nick Roger)"
-                      className="bg-transparent text-slate-300 text-sm w-full focus:outline-none placeholder:text-slate-600 font-medium"
+                      className="bg-transparent text-secondary text-sm w-full focus:outline-none placeholder:text-slate-600 font-medium"
                     />
                     <div className="w-1.5 h-1.5 rounded-full bg-[#2AC3FF] absolute right-4"></div>
                   </div>
-                  <p className="text-xs text-slate-500 mt-1">Make sure this matches exactly to enable automatic verification.</p>
+                  <p className="text-xs text-muted mt-1">Make sure this matches exactly to enable automatic verification.</p>
                 </div>
 
                 <div className="flex gap-3 pt-4">
@@ -245,7 +245,7 @@ export default function ZappayDepositModal({ isOpen, onClose }: ZappayDepositMod
                   </button>
                   <button 
                     onClick={() => setStep(1)}
-                    className="flex-1 bg-[#1A1E29] hover:bg-[#252A36] text-white font-bold py-4 rounded-2xl transition-all border border-white/5"
+                    className="flex-1 bg-surface hover:bg-surface-elevated text-white font-bold py-4 rounded-2xl transition-all border border-border-subtle"
                   >
                     Back
                   </button>
@@ -259,7 +259,7 @@ export default function ZappayDepositModal({ isOpen, onClose }: ZappayDepositMod
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
                     <div className="w-16 h-16 rounded-full border-4 border-[#2AC3FF]/30 border-t-[#2AC3FF] animate-spin mx-auto"></div>
                     <h3 className="text-white font-bold text-xl">Verifying Payment...</h3>
-                    <p className="text-slate-400 text-sm">We are checking our Zappay inbox for your payment of <span className="text-white font-bold">${amount}</span> from <span className="text-white font-bold">{profileName}</span>. This may take up to 60 seconds.</p>
+                    <p className="text-secondary text-sm">We are checking our Zappay inbox for your payment of <span className="text-white font-bold">${amount}</span> from <span className="text-white font-bold">{profileName}</span>. This may take up to 60 seconds.</p>
                   </motion.div>
                 )}
 
@@ -269,7 +269,7 @@ export default function ZappayDepositModal({ isOpen, onClose }: ZappayDepositMod
                       <CheckCircle className="w-8 h-8" />
                     </div>
                     <h3 className="text-white font-bold text-2xl">Payment Verified!</h3>
-                    <p className="text-slate-400 text-sm">Your deposit has been successfully verified and added to your balance.</p>
+                    <p className="text-secondary text-sm">Your deposit has been successfully verified and added to your balance.</p>
                     <button onClick={onClose} className="w-full bg-[#2AC3FF] hover:bg-[#1CA0D9] text-white font-bold py-4 rounded-2xl transition-all mt-4">
                       Close
                     </button>
@@ -282,8 +282,8 @@ export default function ZappayDepositModal({ isOpen, onClose }: ZappayDepositMod
                       <X className="w-8 h-8" />
                     </div>
                     <h3 className="text-white font-bold text-2xl">Verification Failed</h3>
-                    <p className="text-slate-400 text-sm">We could not find a matching payment. If you already sent it, please wait a few minutes and check your history.</p>
-                    <button onClick={onClose} className="w-full bg-[#1A1E29] hover:bg-[#252A36] text-white font-bold py-4 rounded-2xl transition-all border border-white/5 mt-4">
+                    <p className="text-secondary text-sm">We could not find a matching payment. If you already sent it, please wait a few minutes and check your history.</p>
+                    <button onClick={onClose} className="w-full bg-surface hover:bg-surface-elevated text-white font-bold py-4 rounded-2xl transition-all border border-border-subtle mt-4">
                       Close
                     </button>
                   </motion.div>
@@ -295,7 +295,7 @@ export default function ZappayDepositModal({ isOpen, onClose }: ZappayDepositMod
                       <div className="w-8 h-8 border-4 border-current border-t-transparent rounded-full animate-spin"></div>
                     </div>
                     <h3 className="text-white font-bold text-2xl">Verification Pending</h3>
-                    <p className="text-slate-400 text-sm">Your deposit request is submitted but verification is taking longer than expected. It will automatically be approved in the background once the email arrives.</p>
+                    <p className="text-secondary text-sm">Your deposit request is submitted but verification is taking longer than expected. It will automatically be approved in the background once the email arrives.</p>
                     <button onClick={onClose} className="w-full bg-[#2AC3FF] hover:bg-[#1CA0D9] text-white font-bold py-4 rounded-2xl transition-all mt-4">
                       Got it
                     </button>

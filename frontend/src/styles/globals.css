@@ -11,12 +11,37 @@
   --dark-900: #030712;
   --dark-800: #0a0f1e;
   --dark-700: #0f172a;
+
+  /* Light mode defaults (Preview) */
+  --bg-background: #f8fafc;
+  --bg-surface: #ffffff;
+  --bg-surface-elevated: #f1f5f9;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --border-subtle: rgba(0, 0, 0, 0.1);
+  --border-strong: rgba(0, 0, 0, 0.2);
+}
+
+.dark {
+  /* Current Dark Mode UI */
+  --bg-background: #0F1219;
+  --bg-surface: #1A1E29;
+  --bg-surface-elevated: #13161F;
+  --text-primary: #ffffff;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --border-subtle: rgba(255, 255, 255, 0.05);
+  --border-strong: rgba(255, 255, 255, 0.15);
 }
 
 .theme-night {
   --dark-900: #000000;
   --dark-800: #060606;
   --dark-700: #0d0d0d;
+  --bg-background: #000000;
+  --bg-surface: #0a0a0a;
+  --bg-surface-elevated: #111111;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -24,8 +49,8 @@
 html { scroll-behavior: smooth; }
 
 body {
-  background-color: var(--dark-900);
-  color: #e2e8f0;
+  background-color: var(--bg-background);
+  color: var(--text-primary);
   font-family: 'Inter', sans-serif;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
@@ -33,25 +58,25 @@ body {
 
 /* Scrollbar */
 ::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: var(--dark-800); }
+::-webkit-scrollbar-track { background: var(--bg-surface); }
 ::-webkit-scrollbar-thumb { background: var(--neon-blue); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--neon-purple); }
 
 /* Glass morphism */
 .glass {
-  background: rgba(15, 18, 25, 0.85);
+  background: var(--bg-surface);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-subtle);
 }
 
 .glass-card {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--bg-surface);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(0, 212, 255, 0.15);
+  border: 1px solid var(--border-subtle);
   border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.05);
 }
 
 /* Neon text effects */
@@ -156,7 +181,7 @@ body {
 
 /* Loading skeleton */
 .skeleton {
-  background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.05) 75%);
+  background: linear-gradient(90deg, var(--bg-surface) 25%, var(--bg-surface-elevated) 50%, var(--bg-surface) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
@@ -187,17 +212,17 @@ body {
 }
 .data-table td { 
   padding: 12px 16px; 
-  border-bottom: 1px solid rgba(255,255,255,0.05); 
-  color: #94a3b8;
+  border-bottom: 1px solid var(--border-subtle); 
+  color: var(--text-secondary);
   font-size: 14px;
 }
-.data-table tr:hover td { background: rgba(255,255,255,0.03); }
+.data-table tr:hover td { background: var(--bg-surface-elevated); }
 
 /* Input styles */
 .input-neon {
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.1);
-  color: #e2e8f0;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  color: var(--text-primary);
   padding: 12px 16px;
   border-radius: 8px;
   font-size: 14px;
@@ -222,15 +247,15 @@ body {
   box-shadow: 0 0 0 3px rgba(0,212,255,0.1), 0 0 15px rgba(0,212,255,0.05);
 }
 
-.input-neon::placeholder { color: rgba(255,255,255,0.3); }
+.input-neon::placeholder { color: var(--text-muted); opacity: 0.6; }
 
 /* Remove browser-native autofill styling that can shift layout */
 .input-neon:-webkit-autofill,
 .input-neon:-webkit-autofill:hover,
 .input-neon:-webkit-autofill:focus {
-  -webkit-text-fill-color: #e2e8f0;
-  -webkit-box-shadow: 0 0 0px 1000px rgba(15,18,25,1) inset;
-  box-shadow: 0 0 0px 1000px rgba(15,18,25,1) inset;
+  -webkit-text-fill-color: var(--text-primary);
+  -webkit-box-shadow: 0 0 0px 1000px var(--bg-surface) inset;
+  box-shadow: 0 0 0px 1000px var(--bg-surface) inset;
   transition: background-color 5000s ease-in-out 0s;
 }
 
@@ -249,3 +274,16 @@ body {
 
 /* Hero slider override */
 .hero-swiper .swiper-slide { height: 100vh !important; }
+
+/* Smooth theme transitions */
+*, *::before, *::after {
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.2s ease;
+}
+/* Exclude transitions on things that shouldn't animate */
+.no-transition, button:active, a:active, input, textarea, select, .animate-spin, .animate-pulse {
+  transition: none !important;
+}
+
+/* Light mode: scan-line less aggressive */
+:root .scan-line { opacity: 0.12; }
+.dark .scan-line { opacity: 0.3; }

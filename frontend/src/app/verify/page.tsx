@@ -45,23 +45,23 @@ export default function VerifyPage() {
   if (!user) return null
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#0B0F19] p-4">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/95 backdrop-blur-sm p-4">
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="w-full max-w-lg bg-[#13161F] rounded-2xl border border-white/5 shadow-2xl relative"
+        className="w-full max-w-lg bg-surface-elevated rounded-2xl border border-border-subtle shadow-2xl relative"
       >
         {/* Header */}
-        <div className="p-6 border-b border-white/5 relative">
+        <div className="p-6 border-b border-border-subtle relative">
           <button 
             onClick={() => router.push('/')}
-            className="absolute right-6 top-6 text-slate-400 hover:text-white transition-colors"
+            className="absolute right-6 top-6 text-secondary hover:text-white transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
           
           <h1 className="text-2xl font-bold text-white mb-2">Welcome Bonus</h1>
-          <p className="text-slate-400">
+          <p className="text-secondary">
             Confirm your phone number and email address to receive bonus!
           </p>
         </div>
@@ -74,28 +74,28 @@ export default function VerifyPage() {
             {/* Phone Card */}
             <button 
               onClick={handleVerifyPhone}
-              className="flex flex-col items-center justify-center gap-3 p-6 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.04] transition-colors"
+              className="flex flex-col items-center justify-center gap-3 p-6 rounded-xl border border-border-subtle bg-white/[0.02] hover:bg-white/[0.04] transition-colors"
             >
-              <div className="w-12 h-12 rounded-full border border-white/10 flex items-center justify-center">
-                <Phone className="w-5 h-5 text-slate-300" />
+              <div className="w-12 h-12 rounded-full border border-border-strong flex items-center justify-center">
+                <Phone className="w-5 h-5 text-secondary" />
               </div>
-              <span className="text-slate-300 font-medium">Confirm phone<br/>number</span>
+              <span className="text-secondary font-medium">Confirm phone<br/>number</span>
             </button>
 
             {/* Email Card */}
             <button 
               onClick={handleVerifyEmail}
               disabled={isSending}
-              className="flex flex-col items-center justify-center gap-3 p-6 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.04] transition-colors disabled:opacity-50"
+              className="flex flex-col items-center justify-center gap-3 p-6 rounded-xl border border-border-subtle bg-white/[0.02] hover:bg-white/[0.04] transition-colors disabled:opacity-50"
             >
-              <div className="w-12 h-12 rounded-full border border-white/10 flex items-center justify-center">
+              <div className="w-12 h-12 rounded-full border border-border-strong flex items-center justify-center">
                 {isSending ? (
                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 ) : (
-                  <Mail className="w-5 h-5 text-slate-300" />
+                  <Mail className="w-5 h-5 text-secondary" />
                 )}
               </div>
-              <span className="text-slate-300 font-medium">Confirm email<br/>address</span>
+              <span className="text-secondary font-medium">Confirm email<br/>address</span>
             </button>
           </div>
 

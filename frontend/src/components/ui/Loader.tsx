@@ -3,7 +3,7 @@ import styles from './Loader.module.css'
 
 export default function Loader({ fullScreen = true }: { fullScreen?: boolean }) {
   const containerClass = fullScreen 
-    ? `fixed inset-0 z-[9999] bg-[#0F1219] flex items-center justify-center`
+    ? `fixed inset-0 z-[9999] bg-background flex items-center justify-center`
     : `flex items-center justify-center w-full h-full min-h-[200px]`
 
   return (

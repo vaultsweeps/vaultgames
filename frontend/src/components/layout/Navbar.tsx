@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Menu, X, Bell, ChevronDown, User, LogOut, Settings, LayoutDashboard, Gamepad2, Zap, Moon, Sun, Wallet, Home, Trophy, Gift, Users, Crown } from 'lucide-react'
+import { Menu, X, Bell, ChevronDown, User, LogOut, Settings, LayoutDashboard, Moon, Sun, SunMoon, Wallet, Home, Gift, Crown } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useTheme } from '@/components/ThemeProvider'
 import WalletModal from '@/components/modals/WalletModal'
@@ -51,7 +51,7 @@ export default function Navbar() {
   return (
     <>
     <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-      isScrolled ? 'bg-[#030712]/95 border-b border-white/5 py-3 shadow-lg shadow-black/30' : 'bg-transparent py-5'
+      isScrolled ? 'bg-background/95 border-b border-border-subtle py-3 shadow-lg shadow-black/20' : 'bg-transparent py-5'
     }`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between">
@@ -69,7 +69,7 @@ export default function Navbar() {
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover:text-neon-blue ${
                   pathname === link.href
                     ? 'text-neon-blue bg-neon-blue/10'
-                    : 'text-slate-400'
+                    : 'text-secondary'
                 }`}
               >
                 {link.label}
@@ -79,12 +79,17 @@ export default function Navbar() {
 
           {/* Right side */}
           <div className="hidden lg:flex items-center gap-3">
+            {/* Theme Toggle — cycles dark → light → night */}
             <button 
-              onClick={() => setTheme(theme === 'dark' ? 'night' : 'dark')}
-              className="p-2 rounded-lg glass text-slate-400 hover:text-neon-blue transition-colors mr-2"
-              title={theme === 'dark' ? "Switch to Night Mode (AMOLED)" : "Switch to Dark Mode"}
+              onClick={() => {
+                if (theme === 'dark') setTheme('light')
+                else if (theme === 'light') setTheme('night')
+                else setTheme('dark')
+              }}
+              className="p-2 rounded-lg glass text-secondary hover:text-neon-blue transition-colors mr-2"
+              title={theme === 'dark' ? 'Switch to Light Mode' : theme === 'light' ? 'Switch to Night Mode' : 'Switch to Dark Mode'}
             >
-              {theme === 'dark' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+              {theme === 'light' ? <Sun className="w-4 h-4 text-amber-400" /> : theme === 'night' ? <Moon className="w-4 h-4 text-indigo-400" /> : <SunMoon className="w-4 h-4" />}
             </button>
             {isAuthenticated ? (
               <>
@@ -98,7 +103,7 @@ export default function Navbar() {
                 <Link href="/dashboard" className="btn-neon text-xs py-2 px-4 flex items-center gap-2">
                   <LayoutDashboard className="w-3.5 h-3.5" /> Dashboard
                 </Link>
-                <Link href="/dashboard/notifications" className="relative p-2 rounded-lg glass text-slate-400 hover:text-white transition-colors border border-white/10 hover:border-neon-blue/30">
+                <Link href="/dashboard/notifications" className="relative p-2 rounded-lg glass text-secondary hover:text-white transition-colors border border-border-strong hover:border-neon-blue/30">
                   <Bell className="w-4 h-4" />
                   {unreadCount > 0 && (
                     <span className="absolute -top-1 -right-1 w-4 h-4 bg-neon-blue rounded-full text-xs text-white flex items-center justify-center font-mono">
@@ -109,15 +114,15 @@ export default function Navbar() {
                 <div className="relative">
                   <button
                     onClick={() => setProfileOpen(!profileOpen)}
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg glass border border-white/10 hover:border-neon-blue/30 transition-all"
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg glass border border-border-strong hover:border-neon-blue/30 transition-all"
                   >
                     <div className="w-7 h-7 rounded-full bg-gradient-to-br from-neon-blue to-neon-purple flex items-center justify-center">
                       <span className="text-xs font-bold text-white">
                         {user?.username?.charAt(0).toUpperCase()}
                       </span>
                     </div>
-                    <span className="text-sm text-slate-300">{user?.username}</span>
-                    <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${profileOpen ? 'rotate-180' : ''}`} />
+                    <span className="text-sm text-secondary">{user?.username}</span>
+                    <ChevronDown className={`w-4 h-4 text-secondary transition-transform ${profileOpen ? 'rotate-180' : ''}`} />
                   </button>
                   <AnimatePresence>
                     {profileOpen && (
@@ -132,10 +137,10 @@ export default function Navbar() {
                             <Settings className="w-4 h-4" /> Admin Panel
                           </Link>
                         )}
-                        <Link href="/dashboard/profile" className="flex items-center gap-2 px-4 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors">
+                        <Link href="/dashboard/profile" className="flex items-center gap-2 px-4 py-2 text-sm text-secondary hover:text-white hover:bg-white/5 transition-colors">
                           <User className="w-4 h-4" /> Profile
                         </Link>
-                        <hr className="border-white/10 my-1" />
+                        <hr className="border-border-strong my-1" />
                         <button onClick={logout} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 transition-colors">
                           <LogOut className="w-4 h-4" /> Logout
                         </button>
@@ -146,7 +151,7 @@ export default function Navbar() {
               </>
             ) : (
               <>
-                <Link href="/login" className="px-4 py-2 text-sm text-slate-300 hover:text-white transition-colors font-medium">
+                <Link href="/login" className="px-4 py-2 text-sm text-secondary hover:text-white transition-colors font-medium">
                   Login
                 </Link>
                 <Link href="/register" className="btn-primary text-xs py-2.5 px-5">
@@ -158,12 +163,17 @@ export default function Navbar() {
 
           {/* Mobile top-right icons: Theme + Wallet + Bell + Profile */}
           <div className="lg:hidden flex items-center gap-2">
-            {/* Theme Toggle */}
+            {/* Theme Toggle Mobile */}
             <button
-              onClick={() => setTheme(theme === 'dark' ? 'night' : 'dark')}
-              className="p-2 text-slate-400 hover:text-neon-blue transition-colors"
+              onClick={() => {
+                if (theme === 'dark') setTheme('light')
+                else if (theme === 'light') setTheme('night')
+                else setTheme('dark')
+              }}
+              className="p-2 text-secondary hover:text-neon-blue transition-colors"
+              title={theme === 'dark' ? 'Light Mode' : theme === 'light' ? 'Night Mode' : 'Dark Mode'}
             >
-              {theme === 'dark' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+              {theme === 'light' ? <Sun className="w-5 h-5 text-amber-400" /> : theme === 'night' ? <Moon className="w-5 h-5 text-indigo-400" /> : <SunMoon className="w-5 h-5" />}
             </button>
 
             {isAuthenticated && (
@@ -178,7 +188,7 @@ export default function Navbar() {
                 </button>
 
                 {/* Bell */}
-                <Link href="/dashboard/notifications" className="relative p-1.5 text-slate-400 hover:text-white transition-colors">
+                <Link href="/dashboard/notifications" className="relative p-1.5 text-secondary hover:text-white transition-colors">
                   <Bell className="w-5 h-5" />
                   {unreadCount > 0 && (
                     <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-neon-blue rounded-full text-[9px] text-white flex items-center justify-center font-mono">
@@ -188,7 +198,7 @@ export default function Navbar() {
                 </Link>
 
                 {/* Profile Avatar */}
-                <Link href="/dashboard/profile" className="w-8 h-8 rounded-full bg-gradient-to-br from-neon-blue to-neon-purple flex items-center justify-center text-white font-bold text-xs border border-white/10 shrink-0">
+                <Link href="/dashboard/profile" className="w-8 h-8 rounded-full bg-gradient-to-br from-neon-blue to-neon-purple flex items-center justify-center text-white font-bold text-xs border border-border-strong shrink-0">
                   {user?.username?.charAt(0).toUpperCase() || <User className="w-4 h-4" />}
                 </Link>
               </>
@@ -204,7 +214,7 @@ export default function Navbar() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="lg:hidden glass border-t border-white/5 overflow-hidden"
+            className="lg:hidden glass border-t border-border-subtle overflow-hidden"
           >
             <div className="px-4 py-4 space-y-1">
               {navLinks.map(link => (
@@ -213,7 +223,7 @@ export default function Navbar() {
                   href={link.href}
                   onClick={() => setMobileOpen(false)}
                   className={`block px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                    pathname === link.href ? 'text-neon-blue bg-neon-blue/10' : 'text-slate-400'
+                    pathname === link.href ? 'text-neon-blue bg-neon-blue/10' : 'text-secondary'
                   }`}
                 >
                   {link.label}
@@ -243,9 +253,9 @@ export default function Navbar() {
     {/* Mobile Bottom Navigation Bar */}
     <div className="lg:hidden fixed bottom-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5 pointer-events-none w-max">
       {/* Main Nav Pill */}
-      <div className="border border-white/10 rounded-full px-4 py-2.5 flex items-center gap-3 pointer-events-auto shadow-2xl shadow-black/60 bg-[#0F1219]/95 backdrop-blur-xl">
+      <div className="border border-border-strong rounded-full px-4 py-2.5 flex items-center gap-3 pointer-events-auto shadow-2xl shadow-black/60 bg-background/95 backdrop-blur-xl">
         {/* Home */}
-        <Link href="/" className={`relative flex items-center justify-center w-9 h-9 rounded-full transition-all ${pathname === '/' ? 'bg-white/10 text-white' : 'text-slate-400 hover:text-white'}`}>
+        <Link href="/" className={`relative flex items-center justify-center w-9 h-9 rounded-full transition-all ${pathname === '/' ? 'bg-white/10 text-white' : 'text-secondary hover:text-white'}`}>
           <Home className="w-5 h-5" />
           {pathname === '/' && <div className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 w-4 h-0.5 bg-neon-purple rounded-full shadow-[0_0_8px_rgba(168,85,247,0.9)]" />}
         </Link>
@@ -259,7 +269,7 @@ export default function Navbar() {
         </Link>
 
         {/* Gift/Bonuses */}
-        <Link href="/bonuses" className={`relative flex items-center justify-center w-9 h-9 rounded-full transition-all ${pathname.includes('/bonuses') ? 'bg-white/10 text-white' : 'text-slate-400 hover:text-white'}`}>
+        <Link href="/bonuses" className={`relative flex items-center justify-center w-9 h-9 rounded-full transition-all ${pathname.includes('/bonuses') ? 'bg-white/10 text-white' : 'text-secondary hover:text-white'}`}>
           <Gift className="w-5 h-5" />
           {pathname.includes('/bonuses') && <div className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 w-4 h-0.5 bg-neon-purple rounded-full shadow-[0_0_8px_rgba(168,85,247,0.9)]" />}
         </Link>
@@ -274,7 +284,7 @@ export default function Navbar() {
       {/* Menu Toggle Button */}
       <button
         onClick={() => setMobileOpen(!mobileOpen)}
-        className="w-11 h-11 rounded-full bg-gradient-to-br from-[#8b5cf6] to-[#6366f1] flex items-center justify-center text-white shadow-xl shadow-indigo-500/30 pointer-events-auto border border-white/10 active:scale-95 transition-transform"
+        className="w-11 h-11 rounded-full bg-gradient-to-br from-[#8b5cf6] to-[#6366f1] flex items-center justify-center text-white shadow-xl shadow-indigo-500/30 pointer-events-auto border border-border-strong active:scale-95 transition-transform"
       >
         {mobileOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
       </button>

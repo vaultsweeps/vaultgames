@@ -37,7 +37,7 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-dark-900 flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
       <div className="absolute inset-0 cyber-grid opacity-20" />
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-neon-blue/10 rounded-full blur-3xl" />
 
@@ -47,12 +47,12 @@ export default function ForgotPasswordPage() {
         className="w-full max-w-md relative z-10"
       >
         <div className="text-center mb-8">
-          <Link href="/login" className="inline-flex items-center gap-2 mb-4 group text-slate-400 hover:text-white transition-colors">
+          <Link href="/login" className="inline-flex items-center gap-2 mb-4 group text-secondary hover:text-white transition-colors">
             <ArrowLeft className="w-4 h-4" />
             <span className="text-sm font-medium">Back to login</span>
           </Link>
           <h1 className="font-display font-bold text-3xl text-white mb-2">FORGOT PASSWORD</h1>
-          <p className="text-slate-400 text-sm">Enter your email to receive a reset link</p>
+          <p className="text-secondary text-sm">Enter your email to receive a reset link</p>
         </div>
 
         <div className="glass-card p-8">
@@ -62,16 +62,16 @@ export default function ForgotPasswordPage() {
                 <Mail className="w-8 h-8" />
               </div>
               <h2 className="text-white text-xl font-bold">Check your inbox</h2>
-              <p className="text-slate-400 text-sm">
+              <p className="text-secondary text-sm">
                 We've sent password reset instructions to your email address.
               </p>
             </div>
           ) : (
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
               <div>
-                <label className="block text-xs font-mono tracking-wider text-slate-400 uppercase mb-2">Email Address</label>
+                <label className="block text-xs font-mono tracking-wider text-secondary uppercase mb-2">Email Address</label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
                   <input
                     {...register('email')}
                     type="email"

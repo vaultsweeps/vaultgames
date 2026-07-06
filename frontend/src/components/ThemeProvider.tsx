@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react'
 
-type Theme = 'dark' | 'night'
+type Theme = 'dark' | 'night' | 'light'
 
 interface ThemeContextType {
   theme: Theme
@@ -15,9 +15,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>('dark')
 
   useEffect(() => {
-    // Load initial theme from localStorage
+    // Load initial theme from localStorage — default stays 'dark'
     const savedTheme = localStorage.getItem('vaultsweeps_theme') as Theme
-    if (savedTheme === 'night' || savedTheme === 'dark') {
+    if (savedTheme === 'night' || savedTheme === 'dark' || savedTheme === 'light') {
       setThemeState(savedTheme)
     }
   }, [])
@@ -28,11 +28,17 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }
 
   useEffect(() => {
-    if (theme === 'night') {
-      document.documentElement.classList.add('theme-night')
-    } else {
-      document.documentElement.classList.remove('theme-night')
+    const html = document.documentElement
+
+    // Remove all theme classes first
+    html.classList.remove('dark', 'theme-night')
+
+    if (theme === 'dark') {
+      html.classList.add('dark')
+    } else if (theme === 'night') {
+      html.classList.add('dark', 'theme-night')
     }
+    // 'light' = no .dark class → :root variables (light mode) take effect
   }, [theme])
 
   return (

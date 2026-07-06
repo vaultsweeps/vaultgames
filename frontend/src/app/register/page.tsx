@@ -94,11 +94,11 @@ export default function RegisterPage() {
 
   if (registered) {
     return (
-      <div className="min-h-screen bg-dark-900 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="glass-card p-12 max-w-md text-center">
           <CheckCircle className="w-16 h-16 text-green-400 mx-auto mb-4" />
           <h2 className="font-display font-bold text-2xl text-white mb-3">ACCOUNT CREATED!</h2>
-          <p className="text-slate-400 mb-6">We sent a verification email to your inbox. Please verify to activate your account.</p>
+          <p className="text-secondary mb-6">We sent a verification email to your inbox. Please verify to activate your account.</p>
           <Link href="/login" className="btn-primary">Go to Login</Link>
         </motion.div>
       </div>
@@ -106,7 +106,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-dark-900 flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
       <div className="absolute inset-0 cyber-grid opacity-20" />
       <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-neon-purple/10 rounded-full blur-3xl" />
       <div className="absolute bottom-1/4 left-1/4 w-72 h-72 bg-neon-blue/10 rounded-full blur-3xl" />
@@ -119,14 +119,14 @@ export default function RegisterPage() {
             <span className="font-display font-bold text-xl gradient-text">VAULT SWEEPS</span>
           </Link>
           <h1 className="font-display font-black text-5xl text-white mb-4 leading-tight">JOIN THE<br /><span className="gradient-text">VAULT SWEEPS</span></h1>
-          <p className="text-slate-400 text-lg mb-8 leading-relaxed">Create your free account and start your gaming journey today.</p>
+          <p className="text-secondary text-lg mb-8 leading-relaxed">Create your free account and start your gaming journey today.</p>
           <div className="space-y-3">
             {PERKS.map((perk, i) => (
               <motion.div key={i} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 * i }} className="flex items-center gap-3">
                 <div className="w-5 h-5 rounded-full bg-neon-blue/20 border border-neon-blue/40 flex items-center justify-center">
                   <div className="w-2 h-2 rounded-full bg-neon-blue" />
                 </div>
-                <span className="text-slate-300 text-sm">{perk}</span>
+                <span className="text-secondary text-sm">{perk}</span>
               </motion.div>
             ))}
           </div>
@@ -138,12 +138,12 @@ export default function RegisterPage() {
             </p>
             <ul className="space-y-2">
               {CRITERIA.map(c => (
-                <li key={c.id} className="flex items-center gap-2 text-xs text-slate-400">
+                <li key={c.id} className="flex items-center gap-2 text-xs text-secondary">
                   <div className="w-1.5 h-1.5 rounded-full bg-neon-blue/50" />
                   {c.label}
                 </li>
               ))}
-              <li className="flex items-center gap-2 text-xs text-slate-400">
+              <li className="flex items-center gap-2 text-xs text-secondary">
                 <div className="w-1.5 h-1.5 rounded-full bg-neon-blue/50" />
                 Must be unique — not already used on this platform or in the game
               </li>
@@ -165,9 +165,9 @@ export default function RegisterPage() {
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               {/* Username field */}
               <div>
-                <label className="block text-xs font-mono tracking-wider text-slate-400 uppercase mb-2">Username</label>
+                <label className="block text-xs font-mono tracking-wider text-secondary uppercase mb-2">Username</label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
                   <input
                     {...register('username')}
                     type="text"
@@ -179,7 +179,7 @@ export default function RegisterPage() {
                   />
                   {/* Status icon */}
                   <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                    {availStatus === 'checking' && <Loader2 className="w-4 h-4 text-slate-400 animate-spin" />}
+                    {availStatus === 'checking' && <Loader2 className="w-4 h-4 text-secondary animate-spin" />}
                     {availStatus === 'available' && <CheckCircle className="w-4 h-4 text-emerald-400" />}
                     {availStatus === 'taken' && <XCircle className="w-4 h-4 text-red-400" />}
                   </div>
@@ -208,11 +208,11 @@ export default function RegisterPage() {
                 {/* Live criteria checklist — show when typing */}
                 {usernameVal.length > 0 && (
                   <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
-                    className="mt-2 p-3 bg-white/3 rounded-xl border border-white/5 space-y-1.5">
+                    className="mt-2 p-3 bg-white/3 rounded-xl border border-border-subtle space-y-1.5">
                     {CRITERIA.map(c => {
                       const pass = c.test(usernameVal)
                       return (
-                        <div key={c.id} className={`flex items-center gap-2 text-[11px] transition-colors ${pass ? 'text-emerald-400' : 'text-slate-500'}`}>
+                        <div key={c.id} className={`flex items-center gap-2 text-[11px] transition-colors ${pass ? 'text-emerald-400' : 'text-muted'}`}>
                           {pass
                             ? <CheckCircle className="w-3 h-3 flex-shrink-0" />
                             : <div className="w-3 h-3 rounded-full border border-slate-600 flex-shrink-0" />}
@@ -221,7 +221,7 @@ export default function RegisterPage() {
                       )
                     })}
                     <div className={`flex items-center gap-2 text-[11px] transition-colors ${
-                      availStatus === 'available' ? 'text-emerald-400' : availStatus === 'taken' ? 'text-red-400' : 'text-slate-500'
+                      availStatus === 'available' ? 'text-emerald-400' : availStatus === 'taken' ? 'text-red-400' : 'text-muted'
                     }`}>
                       {availStatus === 'available'
                         ? <CheckCircle className="w-3 h-3 flex-shrink-0" />
@@ -235,20 +235,20 @@ export default function RegisterPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-mono tracking-wider text-slate-400 uppercase mb-2">Email</label>
+                <label className="block text-xs font-mono tracking-wider text-secondary uppercase mb-2">Email</label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
                   <input {...register('email')} type="email" placeholder="you@email.com" className="input-neon" style={{ paddingLeft: '2.5rem' }} />
                 </div>
                 {errors.email && <p className="text-red-400 text-xs mt-1">{errors.email.message}</p>}
               </div>
 
               <div>
-                <label className="block text-xs font-mono tracking-wider text-slate-400 uppercase mb-2">Password</label>
+                <label className="block text-xs font-mono tracking-wider text-secondary uppercase mb-2">Password</label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
                   <input {...register('password')} type={showPassword ? 'text' : 'password'} placeholder="••••••••" className="input-neon" style={{ paddingLeft: '2.5rem', paddingRight: '2.5rem' }} />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-secondary">
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
@@ -256,9 +256,9 @@ export default function RegisterPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-mono tracking-wider text-slate-400 uppercase mb-2">Confirm Password</label>
+                <label className="block text-xs font-mono tracking-wider text-secondary uppercase mb-2">Confirm Password</label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
                   <input {...register('confirmPassword')} type="password" placeholder="••••••••" className="input-neon" style={{ paddingLeft: '2.5rem' }} />
                 </div>
                 {errors.confirmPassword && <p className="text-red-400 text-xs mt-1">{errors.confirmPassword.message}</p>}
@@ -288,8 +288,8 @@ export default function RegisterPage() {
               </button>
             </form>
 
-            <div className="mt-5 pt-5 border-t border-white/5 text-center">
-              <p className="text-slate-500 text-sm">Already have an account? <Link href="/login" className="text-neon-blue hover:underline font-medium">Sign in</Link></p>
+            <div className="mt-5 pt-5 border-t border-border-subtle text-center">
+              <p className="text-muted text-sm">Already have an account? <Link href="/login" className="text-neon-blue hover:underline font-medium">Sign in</Link></p>
             </div>
           </div>
         </motion.div>

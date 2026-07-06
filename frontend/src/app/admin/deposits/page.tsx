@@ -68,19 +68,19 @@ export default function AdminDepositsPage() {
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex items-end justify-between">
         <div>
           <h2 className="font-display font-bold text-2xl text-white">DEPOSIT MANAGEMENT</h2>
-          <p className="text-slate-400 text-sm">Review and process deposit requests.</p>
+          <p className="text-secondary text-sm">Review and process deposit requests.</p>
         </div>
         <div className="flex gap-3">
-          <button onClick={fetchDeposits} className="glass border border-white/10 rounded-xl px-3 py-2 text-slate-400 hover:text-white transition-all flex items-center gap-2">
+          <button onClick={fetchDeposits} className="glass border border-border-strong rounded-xl px-3 py-2 text-secondary hover:text-white transition-all flex items-center gap-2">
             <RefreshCw className="w-4 h-4" />
           </button>
           <div className="glass-card px-4 py-2 text-center">
             <p className="text-yellow-400 font-bold text-lg font-display">{totalPending}</p>
-            <p className="text-xs text-slate-500">Pending</p>
+            <p className="text-xs text-muted">Pending</p>
           </div>
           <div className="glass-card px-4 py-2 text-center">
             <p className="text-green-400 font-bold text-lg font-display">${totalAmount.toLocaleString()}</p>
-            <p className="text-xs text-slate-500">Approved Total</p>
+            <p className="text-xs text-muted">Approved Total</p>
           </div>
         </div>
       </motion.div>
@@ -88,10 +88,10 @@ export default function AdminDepositsPage() {
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
           <input type="text" placeholder="Search by user, ID, reference..." value={search} onChange={e => setSearch(e.target.value)} className="input-neon pl-10" />
         </div>
-        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="input-neon bg-dark-800 w-full sm:w-40">
+        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="input-neon bg-surface w-full sm:w-40">
           <option value="all">All Status</option>
           <option value="pending">Pending</option>
           <option value="processing">Processing</option>
@@ -109,23 +109,23 @@ export default function AdminDepositsPage() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={8} className="text-center py-10 text-slate-500">Loading deposits...</td></tr>
+                <tr><td colSpan={8} className="text-center py-10 text-muted">Loading deposits...</td></tr>
               ) : filtered.map(d => (
                 <tr key={d.id}>
                   <td className="font-mono text-xs text-neon-blue">{d.id.slice(0, 10)}</td>
                   <td>
                     <p className="text-white text-sm">{d.user?.username}</p>
-                    <p className="text-xs text-slate-500">{d.user?.email}</p>
+                    <p className="text-xs text-muted">{d.user?.email}</p>
                   </td>
                   <td className="text-white font-bold">${d.amount.toLocaleString()}</td>
-                  <td className="text-slate-400 text-sm">{d.paymentMethod?.name || 'Unknown'}</td>
-                  <td className="font-mono text-xs text-slate-500">{d.paymentReference || 'N/A'}</td>
+                  <td className="text-secondary text-sm">{d.paymentMethod?.name || 'Unknown'}</td>
+                  <td className="font-mono text-xs text-muted">{d.paymentReference || 'N/A'}</td>
                   <td><span className={`${STATUS_MAP[d.status]} text-xs px-2 py-0.5 rounded-full font-mono`}>{d.status}</span></td>
                   <td className="text-xs text-slate-600">{new Date(d.createdAt).toLocaleDateString()}</td>
                   <td>
                     <div className="flex gap-1">
                       <button onClick={() => { setSelected(d); setNotes(d.notes) }}
-                        className="w-7 h-7 glass rounded-lg flex items-center justify-center text-slate-400 hover:text-neon-blue border border-white/10 hover:border-neon-blue/30 transition-all">
+                        className="w-7 h-7 glass rounded-lg flex items-center justify-center text-secondary hover:text-neon-blue border border-border-strong hover:border-neon-blue/30 transition-all">
                         <Eye className="w-3.5 h-3.5" />
                       </button>
                       {(d.status === 'pending' || d.status === 'processing') && (
@@ -148,7 +148,7 @@ export default function AdminDepositsPage() {
           </table>
         </div>
         {filtered.length === 0 && (
-          <div className="py-12 text-center text-slate-500 text-sm">No deposits found</div>
+          <div className="py-12 text-center text-muted text-sm">No deposits found</div>
         )}
       </div>
 
@@ -170,7 +170,7 @@ export default function AdminDepositsPage() {
                 ['Date', new Date(selected.createdAt).toLocaleString()]
               ].map(([k, v]) => (
                 <div key={k} className="flex justify-between glass rounded-lg px-4 py-2.5">
-                  <span className="text-xs text-slate-500">{k}</span>
+                  <span className="text-xs text-muted">{k}</span>
                   <span className={`text-sm font-medium ${k === 'Status' ? STATUS_MAP[v as string] + ' text-xs px-2 py-0.5 rounded-full font-mono' : 'text-white'}`}>{v}</span>
                 </div>
               ))}
@@ -178,7 +178,7 @@ export default function AdminDepositsPage() {
             {(selected.status === 'pending' || selected.status === 'processing') && (
               <>
                 <div className="mb-4">
-                  <label className="block text-xs text-slate-400 mb-2">Admin Notes</label>
+                  <label className="block text-xs text-secondary mb-2">Admin Notes</label>
                   <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} className="input-neon resize-none text-sm" placeholder="Optional notes..." />
                 </div>
                 <div className="flex gap-3">
@@ -193,7 +193,7 @@ export default function AdminDepositsPage() {
                 </div>
               </>
             )}
-            <button onClick={() => setSelected(null)} className="w-full mt-3 glass rounded-xl py-2.5 text-slate-400 hover:text-white border border-white/10 transition-all text-sm">Close</button>
+            <button onClick={() => setSelected(null)} className="w-full mt-3 glass rounded-xl py-2.5 text-secondary hover:text-white border border-border-strong transition-all text-sm">Close</button>
           </motion.div>
         </div>
       )}

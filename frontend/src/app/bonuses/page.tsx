@@ -47,7 +47,7 @@ export default function BonusesPage() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-dark-900">
+    <div className="min-h-screen bg-background">
       <Navbar />
 
       <main className="pt-24 pb-20">
@@ -55,7 +55,7 @@ export default function BonusesPage() {
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-14">
             <p className="font-mono text-xs tracking-[0.3em] text-neon-blue uppercase mb-3">Promotions</p>
             <h1 className="font-display font-bold text-5xl text-white mb-4">BONUSES & <span className="gradient-text">PROMOTIONS</span></h1>
-            <p className="text-slate-400 text-lg max-w-2xl mx-auto">Maximize your gaming with our incredible bonus offers. New promotions added regularly.</p>
+            <p className="text-secondary text-lg max-w-2xl mx-auto">Maximize your gaming with our incredible bonus offers. New promotions added regularly.</p>
           </motion.div>
 
           {loading ? (
@@ -69,7 +69,7 @@ export default function BonusesPage() {
               ))}
             </div>
           ) : bonuses.length === 0 ? (
-            <div className="text-center py-20 text-slate-500">
+            <div className="text-center py-20 text-muted">
               <Gift className="w-12 h-12 mx-auto mb-4 opacity-30" />
               <p>No active bonuses at the moment. Check back soon!</p>
             </div>
@@ -109,28 +109,28 @@ export default function BonusesPage() {
                             <p className="font-display font-black text-2xl" style={{ color }}>${bonus.amount}</p>
                           )}
                           {!bonus.percentage && !bonus.amount && (
-                            <p className="font-display font-black text-xl text-slate-500">CUSTOM</p>
+                            <p className="font-display font-black text-xl text-muted">CUSTOM</p>
                           )}
                         </div>
                       </div>
 
                       {bonus.description && (
-                        <p className="text-slate-400 text-sm mb-4 leading-relaxed">{bonus.description}</p>
+                        <p className="text-secondary text-sm mb-4 leading-relaxed">{bonus.description}</p>
                       )}
 
                       <div className="space-y-1.5 mb-4">
                         {bonus.maxBonus != null && (
-                          <div className="flex items-center gap-2 text-xs text-slate-500">
+                          <div className="flex items-center gap-2 text-xs text-muted">
                             <Check className="w-3 h-3 text-green-400 flex-shrink-0" /> Max bonus: ${bonus.maxBonus}
                           </div>
                         )}
                         {bonus.minDeposit != null && (
-                          <div className="flex items-center gap-2 text-xs text-slate-500">
+                          <div className="flex items-center gap-2 text-xs text-muted">
                             <Check className="w-3 h-3 text-green-400 flex-shrink-0" /> Min deposit: ${bonus.minDeposit}
                           </div>
                         )}
                         {bonus.requirements && (
-                          <div className="flex items-center gap-2 text-xs text-slate-500">
+                          <div className="flex items-center gap-2 text-xs text-muted">
                             <Check className="w-3 h-3 text-green-400 flex-shrink-0" /> {bonus.requirements}
                           </div>
                         )}
@@ -142,7 +142,7 @@ export default function BonusesPage() {
                       </div>
 
                       {bonus.terms && (
-                        <div className="text-xs text-slate-600 mb-4 leading-relaxed border-t border-white/5 pt-3">{bonus.terms}</div>
+                        <div className="text-xs text-slate-600 mb-4 leading-relaxed border-t border-border-subtle pt-3">{bonus.terms}</div>
                       )}
 
                       <Link
@@ -163,7 +163,7 @@ export default function BonusesPage() {
               className="glass-card p-8 text-center">
               <Gift className="w-10 h-10 text-neon-blue mx-auto mb-3" />
               <h2 className="font-display font-bold text-2xl text-white mb-2">More Bonuses Await</h2>
-              <p className="text-slate-400 mb-5">Create your free account to see all available bonuses and promotions.</p>
+              <p className="text-secondary mb-5">Create your free account to see all available bonuses and promotions.</p>
               <Link href="/register" className="btn-primary inline-block py-3 px-10 text-sm">Join Free & Claim Bonus</Link>
             </motion.div>
           )}

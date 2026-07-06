@@ -64,12 +64,12 @@ export default function ChooseGameModal({ isOpen, onClose }: ChooseGameModalProp
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="bg-[#0F1219] w-full max-w-md rounded-3xl overflow-hidden shadow-2xl border border-white/5 flex flex-col max-h-[85vh]"
+          className="bg-background w-full max-w-md rounded-3xl overflow-hidden shadow-2xl border border-border-subtle flex flex-col max-h-[85vh]"
         >
           {/* Header */}
-          <div className="p-6 pb-4 flex justify-between items-center sticky top-0 bg-[#0F1219] z-10 border-b border-white/5">
+          <div className="p-6 pb-4 flex justify-between items-center sticky top-0 bg-background z-10 border-b border-border-subtle">
             <h2 className="text-white font-bold text-2xl">Choose Game</h2>
-            <button onClick={onClose} className="p-2 text-slate-400 hover:text-white rounded-full transition-colors -mr-2">
+            <button onClick={onClose} className="p-2 text-secondary hover:text-white rounded-full transition-colors -mr-2">
               <X className="w-6 h-6" />
             </button>
           </div>
@@ -88,19 +88,19 @@ export default function ChooseGameModal({ isOpen, onClose }: ChooseGameModalProp
                       <div 
                         key={game.id} 
                         onClick={() => handleGameClick(game.id)}
-                        className="bg-[#1A1E29] rounded-2xl p-4 flex items-center justify-between border border-white/5 hover:bg-[#252A36] transition-colors cursor-pointer group"
+                        className="bg-surface rounded-2xl p-4 flex items-center justify-between border border-border-subtle hover:bg-surface-elevated transition-colors cursor-pointer group"
                       >
                         <div className="flex items-center gap-4">
                           <div className="w-14 h-14 rounded-xl overflow-hidden bg-black/50 shrink-0">
                             {game.thumbnailUrl ? (
                               <img src={game.thumbnailUrl} alt={game.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
                             ) : (
-                              <div className="w-full h-full flex items-center justify-center text-slate-500 font-bold text-xs">{game.name.slice(0, 3).toUpperCase()}</div>
+                              <div className="w-full h-full flex items-center justify-center text-muted font-bold text-xs">{game.name.slice(0, 3).toUpperCase()}</div>
                             )}
                           </div>
                           <div>
                             <h3 className="text-white font-bold text-lg leading-tight">{game.name}</h3>
-                            <p className="text-slate-500 text-sm font-mono mt-0.5">{game.accountName}</p>
+                            <p className="text-muted text-sm font-mono mt-0.5">{game.accountName}</p>
                           </div>
                         </div>
                         <div>
@@ -133,14 +133,14 @@ export default function ChooseGameModal({ isOpen, onClose }: ChooseGameModalProp
                         <div 
                           key={game.id} 
                           onClick={() => handleGameClick(game.id)}
-                          className="bg-[#1A1E29] rounded-2xl p-4 flex items-center justify-between border border-white/5 hover:bg-[#252A36] transition-colors cursor-pointer group"
+                          className="bg-surface rounded-2xl p-4 flex items-center justify-between border border-border-subtle hover:bg-surface-elevated transition-colors cursor-pointer group"
                         >
                           <div className="flex items-center gap-4">
                             <div className="w-14 h-14 rounded-xl overflow-hidden bg-black/50 shrink-0">
                               {game.thumbnailUrl ? (
                                 <img src={game.thumbnailUrl} alt={game.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
                               ) : (
-                                <div className="w-full h-full flex items-center justify-center text-slate-500 font-bold text-xs">{game.name.slice(0, 3).toUpperCase()}</div>
+                                <div className="w-full h-full flex items-center justify-center text-muted font-bold text-xs">{game.name.slice(0, 3).toUpperCase()}</div>
                               )}
                             </div>
                             <div>

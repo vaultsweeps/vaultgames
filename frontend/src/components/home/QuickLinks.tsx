@@ -96,7 +96,7 @@ export default function QuickLinks() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.85, y: 20 }}
               transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-              className="bg-[#1A1E29] border border-white/10 rounded-2xl p-7 max-w-sm w-full shadow-2xl relative overflow-hidden"
+              className="bg-surface border border-border-strong rounded-2xl p-7 max-w-sm w-full shadow-2xl relative overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Top accent bar */}
@@ -104,7 +104,7 @@ export default function QuickLinks() {
 
               <button
                 onClick={() => setShowMaintenance(false)}
-                className="absolute top-4 right-4 text-slate-500 hover:text-white transition-colors"
+                className="absolute top-4 right-4 text-muted hover:text-white transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -115,7 +115,7 @@ export default function QuickLinks() {
                 </div>
                 <h3 className="text-xl font-display font-bold text-white mb-1">{maintenanceTitle}</h3>
                 <p className="text-orange-400 font-semibold text-sm mb-3">Under Maintenance · Coming Soon</p>
-                <p className="text-slate-400 text-sm leading-relaxed">
+                <p className="text-secondary text-sm leading-relaxed">
                   This feature is currently being built and will be available very soon. Stay tuned!
                 </p>
               </div>

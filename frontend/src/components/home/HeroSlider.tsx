@@ -59,7 +59,7 @@ export default function HeroSlider() {
 
   return (
     <section className="pt-6 pb-4 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-      <div className="relative w-full h-[280px] sm:h-[320px] lg:h-[360px] rounded-[2rem] overflow-hidden shadow-[0_0_40px_rgba(123,47,255,0.15)] group bg-dark-800">
+      <div className="relative w-full h-[280px] sm:h-[320px] lg:h-[360px] rounded-[2rem] overflow-hidden shadow-[0_0_40px_rgba(123,47,255,0.15)] group bg-surface">
         <AnimatePresence mode="wait">
           <motion.div
             key={slide.id}
