@@ -11,33 +11,49 @@ import { logger } from '../utils/logger'
 
 // POST /api/provider/create-account?gameId=xxx
 export const createProviderAccount = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const startTotal = performance.now();
   const userId = req.user!.id
   const gameId = req.query.gameId as string | undefined
 
-  // Resolve the provider for this game
-  const providerService = gameId
-    ? await ProviderFactory.getProviderForGame(gameId)
-    : await ProviderFactory.getActiveProvider()
+  // Resolve the provider and user concurrently to save DB round-trips
+  const t0 = performance.now();
+  const [providerService, user] = await Promise.all([
+    gameId ? ProviderFactory.getProviderForGame(gameId) : ProviderFactory.getActiveProvider(),
+    prisma.user.findUnique({ where: { id: userId }, select: { id: true, username: true } })
+  ]);
+  const t1 = performance.now();
+  logger.info(`[createAccount] Provider & User lookup took ${t1 - t0}ms`);
 
   if (!providerService) throw new AppError('No active game provider configured. Please contact support.', 503)
+  if (!user) throw new AppError('User not found', 404)
 
   const providerId = providerService.getProviderId()
 
+  const t2 = performance.now();
   // Check if user already has an account with THIS provider
   const existing = await prisma.providerUser.findFirst({ where: { userId, providerId } })
+  const t3 = performance.now();
+  logger.info(`[createAccount] Existing account lookup took ${t3 - t2}ms`);
+  
   if (existing) {
     return res.json({ success: true, message: 'Provider account already exists', data: { accountName: existing.accountName } })
   }
 
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, username: true } })
-  if (!user) throw new AppError('User not found', 404)
-
   try {
+    const t4 = performance.now();
     const providerData = await providerService.createPlayer(user.username)
+    const t5 = performance.now();
+    logger.info(`[createAccount] External Provider API creation took ${t5 - t4}ms`);
+    
+    const t6 = performance.now();
     await prisma.providerUser.create({
       data: { userId, providerId, providerUserId: providerData.userId, accountName: providerData.accountName }
     })
+    const t7 = performance.now();
+    logger.info(`[createAccount] DB Insert took ${t7 - t6}ms`);
+    
     res.json({ success: true, message: 'Game account created successfully!', data: { accountName: providerData.accountName } })
+    logger.info(`[createAccount] Total Request Time: ${performance.now() - startTotal}ms`);
   } catch (err: any) {
     if (err?.message?.includes('Username Already Exists') || err?.message?.includes('Username already exists')) {
       let newProviderData = null;
@@ -78,58 +94,80 @@ export const createProviderAccount = asyncHandler(async (req: AuthRequest, res: 
 
 // GET /api/provider/account?gameId=xxx
 export const getProviderAccount = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const startTotal = performance.now();
   const userId = req.user!.id
   const gameId = req.query.gameId as string | undefined
 
   // If a gameId is given, resolve the provider ONLY for that specific game.
   // If the game has no provider assigned, return maintenance status — do NOT fall back.
   if (gameId) {
+    const t0 = performance.now();
     const providerId = await ProviderFactory.getProviderIdForGame(gameId)
     if (!providerId) {
       // Game exists but has no provider — show maintenance
       return res.json({ success: true, data: { accountName: null, balance: 0, hasAccount: false, isMaintenance: true } })
     }
     const providerUser = await prisma.providerUser.findFirst({ where: { userId, providerId }, include: { provider: true } })
+    const t1 = performance.now();
+    logger.info(`[getAccount] DB Lookups (Provider ID + User) took ${t1 - t0}ms`);
+
     if (!providerUser) {
       return res.json({ success: true, data: { accountName: null, balance: 0, hasAccount: false } })
     }
-    // Get live balance
+    
+    // Get live balance and DB lastRecharge in parallel
+    const t2 = performance.now();
     const providerService = await ProviderFactory.getProviderById(providerUser.providerId)
+    
     let balance = 0
-    if (providerService) {
-      try { balance = await providerService.getPlayerBalance(providerUser.providerUserId) } catch { balance = 0 }
+    let totalDeposited = 0
+    
+    const [balanceResult, lastRechargeResult] = await Promise.allSettled([
+      providerService ? providerService.getPlayerBalance(providerUser.providerUserId) : Promise.reject('No provider service'),
+      prisma.providerTransaction.findFirst({
+        where: { userId, providerId: providerUser.providerId, type: 'recharge', status: 'success' },
+        orderBy: { createdAt: 'desc' }
+      })
+    ]);
+
+    if (balanceResult.status === 'fulfilled') balance = balanceResult.value;
+    if (lastRechargeResult.status === 'fulfilled' && lastRechargeResult.value) {
+      totalDeposited = lastRechargeResult.value.amount;
     }
-    const lastRecharge = await prisma.providerTransaction.findFirst({
-      where: { userId, providerId: providerUser.providerId, type: 'recharge', status: 'success' },
-      orderBy: { createdAt: 'desc' }
-    })
-    const totalDeposited = lastRecharge?.amount || 0
+    
+    const t3 = performance.now();
+    logger.info(`[getAccount] Parallel Balance & Recharge fetch took ${t3 - t2}ms`);
+    logger.info(`[getAccount] Total Request Time: ${performance.now() - startTotal}ms`);
 
     return res.json({ success: true, data: { accountName: providerUser.accountName, balance, totalDeposited, hasAccount: true, providerName: providerUser.provider?.name || '' } })
   }
 
   // No gameId — return any provider account the user has (generic dashboard use)
+  const t0_gen = performance.now();
   const providerUser = await prisma.providerUser.findFirst({ where: { userId }, include: { provider: true } })
   if (!providerUser) {
     return res.json({ success: true, data: { accountName: null, balance: 0, hasAccount: false } })
   }
 
-  // Get live balance from the correct provider
+  // Get live balance and DB lastRecharge in parallel
   const providerService = await ProviderFactory.getProviderById(providerUser.providerId)
   let balance = 0
-  if (providerService) {
-    try {
-      balance = await providerService.getPlayerBalance(providerUser.providerUserId)
-    } catch {
-      balance = 0
-    }
-  }
+  let totalDeposited = 0
 
-  const lastRecharge = await prisma.providerTransaction.findFirst({
-    where: { userId, providerId: providerUser.providerId, type: 'recharge', status: 'success' },
-    orderBy: { createdAt: 'desc' }
-  })
-  const totalDeposited = lastRecharge?.amount || 0
+  const [balanceResult, lastRechargeResult] = await Promise.allSettled([
+    providerService ? providerService.getPlayerBalance(providerUser.providerUserId) : Promise.reject('No provider service'),
+    prisma.providerTransaction.findFirst({
+      where: { userId, providerId: providerUser.providerId, type: 'recharge', status: 'success' },
+      orderBy: { createdAt: 'desc' }
+    })
+  ]);
+
+  if (balanceResult.status === 'fulfilled') balance = balanceResult.value;
+  if (lastRechargeResult.status === 'fulfilled' && lastRechargeResult.value) {
+    totalDeposited = lastRechargeResult.value.amount;
+  }
+  
+  logger.info(`[getAccount (generic)] Total Request Time: ${performance.now() - startTotal}ms`);
 
   res.json({
     success: true,

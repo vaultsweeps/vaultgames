@@ -9,6 +9,28 @@ const apiClient: AxiosInstance = axios.create({
   headers: { 'Content-Type': 'application/json' }
 })
 
+// Request deduplication cache for GET requests
+const pendingRequests = new Map<string, Promise<any>>()
+const originalGet = apiClient.get
+
+apiClient.get = async function (url: string, config?: AxiosRequestConfig) {
+  const key = `${url}_${JSON.stringify(config?.params || {})}`
+  
+  if (pendingRequests.has(key)) {
+    return pendingRequests.get(key)
+  }
+
+  const promise = originalGet.call(this, url, config).finally(() => {
+    // Micro-cache: Keep the promise around for 500ms to deduplicate rapid successive calls
+    setTimeout(() => {
+      pendingRequests.delete(key)
+    }, 500)
+  })
+  
+  pendingRequests.set(key, promise)
+  return promise
+}
+
 // Request interceptor - attach JWT token
 apiClient.interceptors.request.use(
   (config) => {

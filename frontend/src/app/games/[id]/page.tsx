@@ -198,14 +198,18 @@ export default function GameDetailsPage() {
   const handleProvision = async () => {
     setProvisioning(true)
     try {
-      await providerApi.createAccount(id as string)
-      toast.success('Game account created! Loading credentials...')
-      // Re-fetch account data
-      const accRes = await providerApi.getAccount(id as string)
-      if (accRes.data?.data) {
-        setAccount(accRes.data.data)
-        setLastUpdate(new Date())
-      }
+      const res = await providerApi.createAccount(id as string)
+      toast.success('Game account created!')
+      
+      // Optimistic UI Update: Skip the slow getAccount API call
+      // A brand new account will always have $0.00 balance and 0 totalDeposited.
+      setAccount({
+        accountName: res.data.data.accountName,
+        balance: 0,
+        hasAccount: true,
+        totalDeposited: 0
+      })
+      setLastUpdate(new Date())
     } catch (err: any) {
       if (err?.response?.status === 503 || err?.response?.data?.message?.includes('No active game provider')) {
         setMaintenanceModalOpen(true)

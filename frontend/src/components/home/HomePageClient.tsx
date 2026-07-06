@@ -31,7 +31,7 @@ const FAQS = [
 const TESTIMONIALS = [
   { name: 'Alex K.', rating: 5, text: 'Best gaming platform I\'ve used. Instant withdrawals and amazing game selection!', role: 'VIP Player' },
   { name: 'Maria S.', rating: 5, text: 'Customer support is incredible. Had an issue at 3am and it was resolved in minutes.', role: 'Active Member' },
-  { name: 'David T.', rating: 5, text: 'The bonuses are insane. Got 100% on my first deposit and won big!', role: 'Pro Gamer' },
+  { name: 'David T.', rating: 5, text: 'The bonuses are insane. Got 500% on my first deposit and won big!', role: 'Pro Gamer' },
 ]
 
 function FAQItem({ q, a }: { q: string; a: string }) {

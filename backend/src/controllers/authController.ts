@@ -60,15 +60,14 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
   })
 
   // Auto-create provider account (async)
-  try {
-    const providerService = await ProviderFactory.getActiveProvider()
-    if (providerService) {
-      let newProviderData = null;
-      let attempts = 0;
-      let currentUsername = username;
+  ;(async () => {
+    try {
+      const providerService = await ProviderFactory.getActiveProvider()
+      if (providerService) {
+        let newProviderData = null;
+        let attempts = 0;
+        let currentUsername = username;
 
-      // Wrap in an IIFE to handle the async loop gracefully
-      (async () => {
         while (!newProviderData && attempts < 5) {
           attempts++;
           try {
@@ -95,11 +94,11 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
             }
           });
         }
-      })();
+      }
+    } catch (e) {
+      console.error('Provider fetch error:', e)
     }
-  } catch (e) {
-    console.error('Provider fetch error:', e)
-  }
+  })();
 
   res.status(201).json({
     success: true,

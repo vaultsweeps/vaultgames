@@ -74,3 +74,20 @@ export async function getCached<T>(
 
   return freshData;
 }
+
+/**
+ * Invalidates a cached key in both Memory and Redis.
+ */
+export async function invalidateCached(key: string): Promise<void> {
+  // Clear Memory Cache
+  memoryCache.delete(key);
+
+  // Clear Redis
+  if (redis) {
+    try {
+      await redis.del(key);
+    } catch (error) {
+      logger.error(`Redis Delete Error for key ${key}:`, error);
+    }
+  }
+}

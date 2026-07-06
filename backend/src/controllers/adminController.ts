@@ -6,68 +6,66 @@ import { createNotification } from '../services/notificationService'
 import { logger } from '../utils/logger'
 import { supabase } from '../utils/supabase'
 import { WalletService } from '../services/WalletService'
-import { redis } from '../lib/redis'
+import { redis, getCached } from '../lib/redis'
 
 // GET /api/admin/stats
 export const getDashboardStats = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  const data = await getCached('admin_dashboard_stats', async () => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
 
-  // Run in smaller batches to prevent exceeding Supabase connection pool size (15)
-  const [totalUsers, activeUsers] = await Promise.all([
-    prisma.user.count({ where: { role: 'user' } }),
-    prisma.user.count({ where: { role: 'user', isActive: true, isBanned: false } })
-  ])
+    // Run in smaller batches to prevent exceeding Supabase connection pool size (15)
+    const [totalUsers, activeUsers] = await Promise.all([
+      prisma.user.count({ where: { role: 'user' } }),
+      prisma.user.count({ where: { role: 'user', isActive: true, isBanned: false } })
+    ])
 
-  const [totalDepositsData, totalWithdrawalsData] = await Promise.all([
-    prisma.deposit.aggregate({ where: { status: 'approved' }, _sum: { amount: true }, _count: true }),
-    prisma.withdrawal.aggregate({ where: { status: { in: ['approved', 'paid'] } }, _sum: { amount: true }, _count: true })
-  ])
+    const [totalDepositsData, totalWithdrawalsData] = await Promise.all([
+      prisma.deposit.aggregate({ where: { status: 'approved' }, _sum: { amount: true }, _count: true }),
+      prisma.withdrawal.aggregate({ where: { status: { in: ['approved', 'paid'] } }, _sum: { amount: true }, _count: true })
+    ])
 
-  const [pendingDeposits, pendingWithdrawals] = await Promise.all([
-    prisma.deposit.count({ where: { status: 'pending' } }),
-    prisma.withdrawal.count({ where: { status: 'pending' } })
-  ])
+    const [pendingDeposits, pendingWithdrawals] = await Promise.all([
+      prisma.deposit.count({ where: { status: 'pending' } }),
+      prisma.withdrawal.count({ where: { status: 'pending' } })
+    ])
 
-  const [todayDeposits, todayWithdrawals] = await Promise.all([
-    prisma.deposit.aggregate({ where: { status: 'approved', createdAt: { gte: today } }, _sum: { amount: true } }),
-    prisma.withdrawal.aggregate({ where: { status: { in: ['approved', 'paid'] }, createdAt: { gte: today } }, _sum: { amount: true } })
-  ])
+    const [todayDeposits, todayWithdrawals] = await Promise.all([
+      prisma.deposit.aggregate({ where: { status: 'approved', createdAt: { gte: today } }, _sum: { amount: true } }),
+      prisma.withdrawal.aggregate({ where: { status: { in: ['approved', 'paid'] }, createdAt: { gte: today } }, _sum: { amount: true } })
+    ])
 
-  const [pendingDepositsList, pendingWithdrawalsList, openTickets] = await Promise.all([
-    prisma.deposit.findMany({ where: { status: 'pending' }, take: 3, orderBy: { createdAt: 'desc' }, include: { user: { select: { username: true } }, paymentMethod: { select: { name: true } } } }),
-    prisma.withdrawal.findMany({ where: { status: 'pending' }, take: 3, orderBy: { createdAt: 'desc' }, include: { user: { select: { username: true } }, paymentMethod: { select: { name: true } } } }),
-    prisma.supportTicket.findMany({ where: { status: 'open' }, take: 3, orderBy: { createdAt: 'desc' }, include: { user: { select: { username: true } } } })
-  ])
+    const [pendingDepositsList, pendingWithdrawalsList, openTickets] = await Promise.all([
+      prisma.deposit.findMany({ where: { status: 'pending' }, take: 3, orderBy: { createdAt: 'desc' }, include: { user: { select: { username: true } }, paymentMethod: { select: { name: true } } } }),
+      prisma.withdrawal.findMany({ where: { status: 'pending' }, take: 3, orderBy: { createdAt: 'desc' }, include: { user: { select: { username: true } }, paymentMethod: { select: { name: true } } } }),
+      prisma.supportTicket.findMany({ where: { status: 'open' }, take: 3, orderBy: { createdAt: 'desc' }, include: { user: { select: { username: true } } } })
+    ])
 
-  const totalDeposited = totalDepositsData._sum.amount || 0
-  const totalWithdrawn = totalWithdrawalsData._sum.amount || 0
+    const totalDeposited = totalDepositsData._sum.amount || 0
+    const totalWithdrawn = totalWithdrawalsData._sum.amount || 0
 
-  // Combine pending items into a unified list
-  const pendingItems = [
-    ...pendingDepositsList.map(d => ({ type: 'deposit', user: d.user.username, amount: `$${d.amount}`, method: d.paymentMethod?.name || 'Unknown', time: new Date(d.createdAt).toLocaleDateString(), createdAt: d.createdAt })),
-    ...pendingWithdrawalsList.map(w => ({ type: 'cashout', user: w.user.username, amount: `$${w.amount}`, method: w.paymentMethod?.name || 'Unknown', time: new Date(w.createdAt).toLocaleDateString(), createdAt: w.createdAt })),
-    ...openTickets.map(t => ({ type: 'support', user: t.user.username, subject: t.subject, priority: t.priority, time: new Date(t.createdAt).toLocaleDateString(), createdAt: t.createdAt }))
-  ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5)
+    // Combine pending items into a unified list
+    const pendingItems = [
+      ...pendingDepositsList.map(d => ({ type: 'deposit', user: d.user.username, amount: `$${d.amount}`, method: d.paymentMethod?.name || 'Unknown', time: new Date(d.createdAt).toLocaleDateString(), createdAt: d.createdAt })),
+      ...pendingWithdrawalsList.map(w => ({ type: 'cashout', user: w.user.username, amount: `$${w.amount}`, method: w.paymentMethod?.name || 'Unknown', time: new Date(w.createdAt).toLocaleDateString(), createdAt: w.createdAt })),
+      ...openTickets.map(t => ({ type: 'support', user: t.user.username, subject: t.subject, priority: t.priority, time: new Date(t.createdAt).toLocaleDateString(), createdAt: t.createdAt }))
+    ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5)
 
-  // Generate some realistic-looking past 7 days data based on total counts
-  // In a real prod environment we would group by date using raw SQL
-  const dailyData = Array.from({ length: 7 }).map((_, i) => {
-    const d = new Date()
-    d.setDate(d.getDate() - (6 - i))
-    return { day: d.toLocaleDateString('en-US', { weekday: 'short' }), users: Math.floor(totalUsers / 7) + Math.floor(Math.random() * 10), deposits: Math.floor(totalDeposited / 30) + Math.floor(Math.random() * 1000) }
-  })
+    // Generate some realistic-looking past 7 days data based on total counts
+    const dailyData = Array.from({ length: 7 }).map((_, i) => {
+      const d = new Date()
+      d.setDate(d.getDate() - (6 - i))
+      return { day: d.toLocaleDateString('en-US', { weekday: 'short' }), users: Math.floor(totalUsers / 7) + Math.floor(Math.random() * 10), deposits: Math.floor(totalDeposited / 30) + Math.floor(Math.random() * 1000) }
+    })
 
-  // Same for revenue (monthly)
-  const revenueData = Array.from({ length: 7 }).map((_, i) => {
-    const d = new Date()
-    d.setMonth(d.getMonth() - (6 - i))
-    return { month: d.toLocaleDateString('en-US', { month: 'short' }), deposits: Math.floor(totalDeposited / 12) + Math.floor(Math.random() * 5000), cashouts: Math.floor(totalWithdrawn / 12) + Math.floor(Math.random() * 3000) }
-  })
+    // Same for revenue (monthly)
+    const revenueData = Array.from({ length: 7 }).map((_, i) => {
+      const d = new Date()
+      d.setMonth(d.getMonth() - (6 - i))
+      return { month: d.toLocaleDateString('en-US', { month: 'short' }), deposits: Math.floor(totalDeposited / 12) + Math.floor(Math.random() * 5000), cashouts: Math.floor(totalWithdrawn / 12) + Math.floor(Math.random() * 3000) }
+    })
 
-  res.json({
-    success: true,
-    data: {
+    return {
       totalUsers, activeUsers,
       totalDeposits: totalDeposited, totalDepositsCount: totalDepositsData._count,
       totalWithdrawals: totalWithdrawn, totalWithdrawalsCount: totalWithdrawalsData._count,
@@ -79,6 +77,11 @@ export const getDashboardStats = asyncHandler(async (req: AuthRequest, res: Resp
       dailyData,
       revenueData
     }
+  }, 60)
+
+  res.json({
+    success: true,
+    data
   })
 })
 
