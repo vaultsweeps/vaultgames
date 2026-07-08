@@ -73,7 +73,7 @@ export class ImapChimePayPalService {
 
       const since = new Date(Date.now() - 24 * 3600 * 1000)
       const messages = await connection.search(
-        ['UNSEEN', ['SINCE', since]],
+        [['SINCE', since]],
         { bodies: ['HEADER', 'TEXT', ''], markSeen: false }
       )
 
@@ -90,6 +90,9 @@ export class ImapChimePayPalService {
           const text  = (mail.text  || '').replace(/\s+/g, ' ')
           const html  = (mail.html  || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ')
           const fullBody = `${text} ${html}`
+          
+          // Generate a unique ID for this email to prevent double-processing
+          const emailId = mail.messageId || `msg_${item.attributes.uid}_${item.attributes.date?.getTime() || Date.now()}`
 
           let subject = ''
           if (headerPart?.body?.subject) {
@@ -105,14 +108,11 @@ export class ImapChimePayPalService {
           let paymentMethod: 'chime' | 'paypal' | null = null
 
           // ── Chime patterns ──────────────────────────────────────────────
-          //  "Luis, you just received $20.00 from Chad M. for 696."
-          //  "Chad M. just sent you money 💸"
           if (combined.includes('chime')) {
             paymentMethod = 'chime'
 
             const rxRecv = fullBody.match(/you just received\s+\$?([\d,.]+)\s+from\s+([^.!?\n]+)/i)
             const rxSent = fullBody.match(/([A-Za-z .']+?)\s+just sent you\s+\$?([\d,.]+)/i)
-            const rxSubj = subject.match(/([A-Za-z .']+?)\s+just sent you money/i)
             const rxAmt  = fullBody.match(/\$([\d,.]+)/)
 
             if (rxRecv) {
@@ -130,7 +130,6 @@ export class ImapChimePayPalService {
           }
 
           // ── PayPal patterns ─────────────────────────────────────────────
-          //  "You've got money from Chad M." / "Chad M. sent you $20.00"
           else if (combined.includes('paypal')) {
             paymentMethod = 'paypal'
 
@@ -152,6 +151,12 @@ export class ImapChimePayPalService {
           }
 
           if (!amount || !senderName || !paymentMethod) continue
+
+          // Check if we already processed this exact email
+          const alreadyProcessed = await prisma.deposit.findFirst({
+            where: { transactionId: emailId }
+          })
+          if (alreadyProcessed) continue
 
           logger.info(`[ImapChimePayPal] Email detected — method:${paymentMethod} sender:"${senderName}" amount:$${amount}`)
 
@@ -179,13 +184,18 @@ export class ImapChimePayPalService {
 
           logger.info(`[ImapChimePayPal] ✅ Matched deposit ${match.id} — approving`)
 
-          // Mark email seen
-          await connection.addFlags(item.attributes.uid, ['\\Seen'])
+          // Mark email seen (best effort)
+          await connection.addFlags(item.attributes.uid, ['\\Seen']).catch(() => {})
 
-          // Approve deposit
+          // Approve deposit and save emailId to transactionId to prevent double processing
           await prisma.deposit.update({
             where: { id: match.id },
-            data: { status: 'approved', approvedAt: new Date(), approvedBy: 'system_imap' }
+            data: { 
+              status: 'approved', 
+              approvedAt: new Date(), 
+              approvedBy: 'system_imap',
+              transactionId: emailId
+            }
           })
 
           // Invalidate wallet cache (balance is computed from approved deposits)
