@@ -200,12 +200,27 @@ export default function ChimePayPalDepositModal({ isOpen, onClose, method }: Chi
                   >
                     Can't find tag
                   </a>
-                  <a 
-                    href={currentConfig.linkUrl}
+                  <button 
+                    onClick={() => {
+                      const isAndroid = /Android/i.test(navigator.userAgent || '');
+                      if (method === 'paypal') {
+                        if (isAndroid) {
+                          window.location.href = 'intent://paypal.com/paypalme/Luis9542#Intent;scheme=https;package=com.paypal.android.p2pmobile;end;';
+                        } else {
+                          window.location.href = 'https://www.paypal.com/paypalme/Luis9542';
+                        }
+                      } else if (method === 'chime') {
+                        if (isAndroid) {
+                          window.location.href = 'intent://chime.com/r/Luis-Feliciano-114/?c=q#Intent;scheme=https;package=com.onedebit.chime;end;';
+                        } else {
+                          window.location.href = 'https://www.chime.com/r/Luis-Feliciano-114/?c=q';
+                        }
+                      }
+                    }}
                     className={`flex-[2] ${currentConfig.color} hover:opacity-90 text-white font-bold py-4 rounded-2xl transition-all text-center flex items-center justify-center`}
                   >
                     Open {currentConfig.name} to Pay
-                  </a>
+                  </button>
                 </div>
 
                 <button 
