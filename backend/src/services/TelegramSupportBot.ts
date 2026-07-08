@@ -249,6 +249,32 @@ export class TelegramSupportBot {
     }
   }
 
+  // ─── Send Auto-Approved Notification to Telegram ─────────────────────────
+  public async sendAutoApprovedDepositNotification(deposit: any, user: any) {
+    const token = process.env.TELEGRAM_BOT_TOKEN
+    const groupId = process.env.TELEGRAM_GROUP_CHAT_ID
+
+    if (!token || !groupId) return
+
+    const methodName = deposit.paymentMethod?.name || deposit.paymentMethod?.code || 'Unknown'
+    const profileName = deposit.notes?.trim() || 'Not provided'
+
+    const text =
+      `✅ Deposit Approved Automatically\n\n` +
+      `📋 Ref: ${deposit.paymentReference}\n` +
+      `👤 User: ${user?.username || 'Unknown'} (${user?.email || 'N/A'})\n` +
+      `💰 Amount: $${Number(deposit.amount).toFixed(2)}\n` +
+      `💳 Method: ${methodName}\n` +
+      `🙍 Sender Name: ${profileName}\n` +
+      `✨ Verified via Email`;
+
+    try {
+      await this.bot.telegram.sendMessage(groupId, text);
+    } catch (e) {
+      logger.error('Failed to send auto-approved Telegram notification', e)
+    }
+  }
+
   // ─── Process Deposit (Approve / Reject) ─────────────────────────────────
   private async processDeposit(ctx: any, depositId: string, action: 'approve' | 'reject') {
     const agentName = ctx.from?.username ? `@${ctx.from.username}` : ctx.from?.first_name || 'Agent';

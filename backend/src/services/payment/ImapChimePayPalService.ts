@@ -4,28 +4,32 @@ import cron from 'node-cron'
 import prisma from '../../lib/prisma'
 import { logger } from '../../utils/logger'
 import { invalidateWalletCache } from '../WalletService'
+import { TelegramSupportBot } from '../TelegramSupportBot'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 function normalize(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim()
 }
 
-/** Returns true when names overlap sufficiently (case-insensitive, partial token match) */
+/** Returns true when first name and first letter of last name match */
 function namesMatch(emailName: string, profileName: string): boolean {
-  const a = normalize(emailName)
-  const b = normalize(profileName)
-  if (!a || !b) return false
+  const emailTokens = normalize(emailName).split(' ').filter(Boolean)
+  const profileTokens = normalize(profileName).split(' ').filter(Boolean)
 
-  // Exact match
-  if (a === b) return true
-  // One contains the other
-  if (a.includes(b) || b.includes(a)) return true
+  if (emailTokens.length === 0 || profileTokens.length === 0) return false
 
-  // At least one word token matches (handles "Chad M." vs "Chad")
-  const tokensA = a.split(' ')
-  const tokensB = b.split(' ')
-  const commonTokens = tokensA.filter(t => t.length > 1 && tokensB.includes(t))
-  return commonTokens.length >= 1
+  // First name must match exactly
+  if (emailTokens[0] !== profileTokens[0]) return false
+
+  // If both have a last name (or initial), the first letter must match
+  const emailLastInit = emailTokens.length > 1 ? emailTokens[1][0] : ''
+  const profileLastInit = profileTokens.length > 1 ? profileTokens[1][0] : ''
+
+  if (emailLastInit && profileLastInit) {
+    if (emailLastInit !== profileLastInit) return false
+  }
+
+  return true
 }
 
 // ─── Service ────────────────────────────────────────────────────────────────
@@ -213,6 +217,14 @@ export class ImapChimePayPalService {
               metadata: { source: 'imap_auto_verify', method: paymentMethod, sender: senderName }
             }
           })
+
+          // Send Telegram auto-approved notification
+          try {
+            const bot = TelegramSupportBot.getInstance()
+            bot.sendAutoApprovedDepositNotification(match, match.user).catch(() => {})
+          } catch (e) {
+            logger.error('[ImapChimePayPal] Failed to send Telegram notification', e)
+          }
 
           approved++
         } catch (emailErr) {
