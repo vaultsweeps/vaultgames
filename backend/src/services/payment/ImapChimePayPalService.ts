@@ -113,6 +113,7 @@ export class ImapChimePayPalService {
 
             const rxRecv = fullBody.match(/you just received\s+\$?([\d,.]+)\s+from\s+([^.!?\n]+)/i)
             const rxSent = fullBody.match(/([A-Za-z .']+?)\s+just sent you\s+\$?([\d,.]+)/i)
+            const rxSubj = subject.match(/([A-Za-z .']+?)\s+just sent you money/i)
             const rxAmt  = fullBody.match(/\$([\d,.]+)/)
 
             if (rxRecv) {
