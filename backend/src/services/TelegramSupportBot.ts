@@ -207,23 +207,26 @@ export class TelegramSupportBot {
       hour: '2-digit', minute: '2-digit', hour12: false
     });
 
+    const methodName = deposit.paymentMethod?.name || deposit.paymentMethod?.code || 'Unknown'
+    const profileName = deposit.notes?.trim() || 'Not provided'
+
     const text =
-      `New Deposit Request\n\n` +
-      `Ref: ${deposit.paymentReference}\n` +
-      `User: ${user?.username || 'Unknown'} (${user?.email || 'N/A'})\n` +
-      `Amount: $${Number(deposit.amount).toFixed(2)}\n` +
-      `Method: Zappay\n` +
-      `Profile Name: ${deposit.notes || 'Not provided'}\n` +
-      `Created: ${createdAt}\n` +
-      `Status: Pending`;
+      `🏦 New Deposit Request\n\n` +
+      `📋 Ref: ${deposit.paymentReference}\n` +
+      `👤 User: ${user?.username || 'Unknown'} (${user?.email || 'N/A'})\n` +
+      `💰 Amount: $${Number(deposit.amount).toFixed(2)}\n` +
+      `💳 Method: ${methodName}\n` +
+      `🙍 Sender Name: ${profileName}\n` +
+      `🕐 Created: ${createdAt}\n` +
+      `⏳ Status: Pending`;
 
     try {
       const sent = await this.bot.telegram.sendMessage(groupId, text, {
         reply_markup: {
           inline_keyboard: [
             [
-              { text: 'Approve', callback_data: `dep_approve_${deposit.id}` },
-              { text: 'Reject',  callback_data: `dep_reject_${deposit.id}` },
+              { text: '✅ Approve', callback_data: `dep_approve_${deposit.id}` },
+              { text: '❌ Reject',  callback_data: `dep_reject_${deposit.id}` },
             ]
           ]
         }

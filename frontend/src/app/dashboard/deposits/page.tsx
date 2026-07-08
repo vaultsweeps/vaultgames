@@ -5,6 +5,7 @@ import toast from 'react-hot-toast'
 import { CreditCard, Plus, History, Loader2, ChevronRight } from 'lucide-react'
 import { depositApi } from '@/lib/api'
 import ZappayDepositModal from '@/components/modals/ZappayDepositModal'
+import ChimePayPalDepositModal from '@/components/modals/ChimePayPalDepositModal'
 
 // Method icon/color map
 const METHOD_META: Record<string, { icon: string; color: string; desc: string }> = {
@@ -46,6 +47,7 @@ export default function DepositsPage() {
   const [historyLoading, setHistoryLoading] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showZappayModal, setShowZappayModal] = useState(false)
+  const [chimePayPalMethod, setChimePayPalMethod] = useState<'chime'|'paypal'|null>(null)
 
   const fetchHistory = async () => {
     setHistoryLoading(true)
@@ -138,9 +140,16 @@ export default function DepositsPage() {
                 <p className="text-muted py-8">No deposit methods available. Please contact support.</p>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {methods.map(m => {
+                  {methods
+                    .sort((a, b) => {
+                      const aSoon = !['zappay', 'chime', 'paypal'].includes(a.code?.toLowerCase() || '') && !['zappay', 'chime', 'paypal'].includes(a.name?.toLowerCase() || '');
+                      const bSoon = !['zappay', 'chime', 'paypal'].includes(b.code?.toLowerCase() || '') && !['zappay', 'chime', 'paypal'].includes(b.name?.toLowerCase() || '');
+                      if (aSoon === bSoon) return 0;
+                      return aSoon ? 1 : -1;
+                    })
+                    .map(m => {
                     const meta = getMeta(m.code)
-                    const isSoon = m.code !== 'zappay'
+                    const isSoon = !['zappay', 'chime', 'paypal'].includes(m.code?.toLowerCase() || '') && !['zappay', 'chime', 'paypal'].includes(m.name?.toLowerCase() || '')
                     return (
                       <button key={m.id}
                         onClick={() => { 
@@ -150,6 +159,8 @@ export default function DepositsPage() {
                           }
                           if (m.code === 'zappay') {
                             setShowZappayModal(true)
+                          } else if (['chime', 'paypal'].includes(m.code.toLowerCase())) {
+                            setChimePayPalMethod(m.code.toLowerCase() as 'chime' | 'paypal')
                           } else {
                             setSelectedMethod(m); 
                             setStep(2) 
@@ -301,6 +312,14 @@ export default function DepositsPage() {
           setShowZappayModal(false)
           fetchHistory()
         }} 
+      />
+      <ChimePayPalDepositModal
+        isOpen={chimePayPalMethod !== null}
+        onClose={() => {
+          setChimePayPalMethod(null)
+          fetchHistory()
+        }}
+        method={chimePayPalMethod}
       />
     </div>
   )

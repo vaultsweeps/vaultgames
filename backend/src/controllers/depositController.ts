@@ -10,6 +10,7 @@ import { TelegramService } from '../services/TelegramService'
 import { TelegramSupportBot } from '../services/TelegramSupportBot'
 import { sendAdminZappayNotification } from '../services/emailService'
 import { ImapZappayService } from '../services/payment/ImapZappayService'
+import { ImapChimePayPalService } from '../services/payment/ImapChimePayPalService'
 import { invalidateWalletCache } from '../services/WalletService'
 
 
@@ -70,23 +71,74 @@ export const createDeposit = asyncHandler(async (req: AuthRequest, res: Response
     data: { type: 'deposit_created', entityId: deposit.id, userId: req.user!.id, amount, status: 'pending' }
   })
 
-  let paymentUrl: string | null = null;
+  let paymentUrl: string | null = null
+  const user = deposit.user
   
   if (paymentMethod.code.toUpperCase() === 'ZAPPAY') {
     // Generate Zappay URL
-    const returnUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/dashboard/deposits?status=pending`;
-    paymentUrl = ZappayService.createPaymentRequest(amount, paymentReference, returnUrl);
+    const returnUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/dashboard/deposits?status=pending`
+    paymentUrl = ZappayService.createPaymentRequest(amount, paymentReference, returnUrl)
 
     // Notify Admin via Email
-    sendAdminZappayNotification(amount, accountName, paymentReference).catch(console.error);
+    sendAdminZappayNotification(amount, accountName, paymentReference).catch(console.error)
 
     // Trigger instant IMAP check after a short delay
     setTimeout(() => {
-      ImapZappayService.parseEmailsAndVerifyDeposits().catch(console.error);
-    }, 3000);
+      ImapZappayService.parseEmailsAndVerifyDeposits().catch(console.error)
+    }, 3000)
+
+    // Also send Telegram notification for Zappay
+    try {
+      const bot = TelegramSupportBot.getInstance()
+      bot.sendDepositNotification(deposit, user).catch((e: any) => logger.error('Telegram notification failed: ' + e.message))
+    } catch (e: any) {
+      logger.error('[Telegram Deposit Notification Error] ' + (e?.message || e))
+    }
+  } else if (['chime', 'paypal'].includes(paymentMethod.code.toLowerCase())) {
+    // For Chime/PayPal: try auto-verification via IMAP first (30s window)
+    // Then fall back to Telegram notification only if email not received
+    const depositId = deposit.id
+
+    setTimeout(async () => {
+      try {
+        // Poll IMAP for up to 30 seconds
+        const autoApproved = await ImapChimePayPalService.pollForDeposit(depositId, 30000, 5000)
+
+        if (autoApproved) {
+          logger.info(`[DepositController] Deposit ${depositId} auto-approved via email — skipping Telegram`)
+          // Notify user of approval
+          createNotification(deposit.userId, {
+            title: 'Deposit Approved!',
+            message: `Your $${amount} ${paymentMethod.name} deposit was automatically verified and credited.`,
+            type: 'success',
+            link: '/dashboard/deposits'
+          }).catch(() => {})
+        } else {
+          logger.info(`[DepositController] No email match for deposit ${depositId} — sending Telegram`)
+          // Send Telegram notification for manual review
+          const bot = TelegramSupportBot.getInstance()
+          await bot.sendDepositNotification(deposit, user)
+        }
+      } catch (e: any) {
+        logger.error('[Chime/PayPal post-deposit handler] ' + (e?.message || e))
+        // Fallback: always send Telegram if something fails
+        try {
+          const bot = TelegramSupportBot.getInstance()
+          bot.sendDepositNotification(deposit, user).catch(() => {})
+        } catch {}
+      }
+    }, 2000) // Start polling 2 seconds after deposit creation
+  } else {
+    // Other methods — send Telegram notification immediately
+    try {
+      const bot = TelegramSupportBot.getInstance()
+      bot.sendDepositNotification(deposit, user).catch((e: any) => logger.error('Telegram notification failed: ' + e.message))
+    } catch (e: any) {
+      logger.error('[Telegram Deposit Notification Error] ' + (e?.message || e))
+    }
   }
 
-  // Notify user
+  // Notify user that deposit was submitted
   createNotification(req.user!.id, {
     title: 'Deposit Submitted',
     message: `Your deposit of $${amount} is being processed.`,
@@ -94,17 +146,8 @@ export const createDeposit = asyncHandler(async (req: AuthRequest, res: Response
     link: '/dashboard/deposits'
   }).catch(e => logger.error('Failed to send notification: ' + e.message))
 
-  // Invalidate wallet cache since a new deposit was created (though it's pending, it's good practice)
+  // Invalidate wallet cache
   invalidateWalletCache(req.user!.id)
-
-  // Notify Telegram with interactive Approve / Reject buttons
-  const user = deposit.user
-  try {
-    const bot = TelegramSupportBot.getInstance()
-    bot.sendDepositNotification(deposit, user).catch(e => logger.error("Telegram notification failed: " + e.message))
-  } catch (e: any) {
-    console.error('[Telegram Deposit Notification Error]', e?.message || e)
-  }
 
   res.status(201).json({
     success: true,

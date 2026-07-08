@@ -371,7 +371,12 @@ export default function CashoutsPage() {
                   <div className="glass-card p-8 text-center text-muted text-sm">No cashout methods available at this time.</div>
                 ) : (
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {methods.map(m => {
+                    {[...methods]
+                      .sort((a, b) => {
+                        if (a.cashoutEnabled === b.cashoutEnabled) return 0
+                        return a.cashoutEnabled ? -1 : 1
+                      })
+                      .map(m => {
                       const meta = getMethodMeta(m.code || m.name)
                       const isSoon = !m.cashoutEnabled
                       return (

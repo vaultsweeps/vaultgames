@@ -136,6 +136,7 @@ app.use(errorHandler)
 
 import { TelegramSupportBot } from './services/TelegramSupportBot'
 import { ImapZappayService } from './services/payment/ImapZappayService'
+import { ImapChimePayPalService } from './services/payment/ImapChimePayPalService'
 
 // Start server
 app.listen(PORT, () => {
@@ -143,6 +144,7 @@ app.listen(PORT, () => {
   logger.info(`📱 Environment: ${process.env.NODE_ENV || 'development'}`)
   TelegramSupportBot.getInstance().start()
   ImapZappayService.startCron()
+  ImapChimePayPalService.startCron()
 })
 
 export default app

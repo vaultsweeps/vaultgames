@@ -5,6 +5,7 @@ import Link from 'next/link'
 import toast from 'react-hot-toast'
 import ManualCashoutModal from './ManualCashoutModal'
 import ZappayDepositModal from './ZappayDepositModal'
+import ChimePayPalDepositModal from './ChimePayPalDepositModal'
 import { depositApi, withdrawalApi } from '@/lib/api'
 
 interface WalletModalProps {
@@ -14,14 +15,14 @@ interface WalletModalProps {
 }
 
 const paymentMethods = [
-  { id: 'zappay', name: 'Zappay', icon: 'Z', badge: 'Active', color: 'bg-indigo-500' },
-  { id: 'crypto', name: 'Cryptocurrency', icon: '₿', badge: '+15%', tag: '+5', color: 'bg-orange-500', soon: true },
-  { id: 'chime', name: 'Chime', icon: 'C', badge: 'No fee', color: 'bg-emerald-500', soon: true },
-  { id: 'cashapp', name: 'CashApp Pay', icon: '$', badge: 'No fee', color: 'bg-green-500', soon: true },
-  { id: 'paypal', name: 'PayPal', icon: 'P', badge: 'No fee', color: 'bg-blue-500', soon: true },
-  { id: 'apple', name: 'Apple Pay', icon: '', badge: '-5%', color: 'bg-slate-100 text-black', soon: true },
-  { id: 'google', name: 'Google Pay', icon: 'G', badge: '-5%', color: 'bg-white text-black', soon: true },
-  { id: 'card', name: 'Debit Card', icon: '💳', badge: '-10%', color: 'bg-blue-600', soon: true },
+  { id: 'zappay',  name: 'Zappay',         icon: 'Z',  badge: 'Active',  color: 'bg-indigo-500' },
+  { id: 'chime',   name: 'Chime',          icon: 'C',  badge: 'No fee',  color: 'bg-emerald-500' },
+  { id: 'paypal',  name: 'PayPal',         icon: 'P',  badge: 'No fee',  color: 'bg-blue-500' },
+  { id: 'crypto',  name: 'Cryptocurrency', icon: '₿',  badge: '+15%',    color: 'bg-orange-500',         soon: true },
+  { id: 'cashapp', name: 'CashApp Pay',    icon: '$',  badge: 'No fee',  color: 'bg-green-500',          soon: true },
+  { id: 'apple',   name: 'Apple Pay',      icon: '',   badge: '-5%',     color: 'bg-slate-100 text-black', soon: true },
+  { id: 'google',  name: 'Google Pay',     icon: 'G',  badge: '-5%',     color: 'bg-white text-black',   soon: true },
+  { id: 'card',    name: 'Debit Card',     icon: '💳', badge: '-10%',    color: 'bg-blue-600',           soon: true },
 ]
 
 type TxItem = {
@@ -102,7 +103,7 @@ function TxRow({ tx }: { tx: TxItem }) {
 export default function WalletModal({ isOpen, onClose, balance }: WalletModalProps) {
   const [activeTab, setActiveTab] = useState<'deposit' | 'cashout' | 'history'>('deposit')
   const [cashoutMethod, setCashoutMethod] = useState<'chime' | 'cashapp' | null>(null)
-  const [depositMethod, setDepositMethod] = useState<'zappay' | null>(null)
+  const [depositMethod, setDepositMethod] = useState<'zappay' | 'chime' | 'paypal' | null>(null)
   const [history, setHistory] = useState<TxItem[]>([])
   const [historyLoading, setHistoryLoading] = useState(false)
 
@@ -217,7 +218,7 @@ export default function WalletModal({ isOpen, onClose, balance }: WalletModalPro
                           onClick={() => {
                             if (!method.soon) {
                               // Sub-modal opens at z-[300], above this overlay at z-[200]
-                              setDepositMethod(method.id as 'zappay')
+                              setDepositMethod(method.id as 'zappay' | 'chime' | 'paypal')
                             } else {
                               toast.error('This method is coming soon!')
                             }
@@ -345,8 +346,13 @@ export default function WalletModal({ isOpen, onClose, balance }: WalletModalPro
         balance={balance}
       />
       <ZappayDepositModal
-        isOpen={depositMethod !== null}
+        isOpen={depositMethod === 'zappay'}
         onClose={() => setDepositMethod(null)}
+      />
+      <ChimePayPalDepositModal
+        isOpen={depositMethod === 'chime' || depositMethod === 'paypal'}
+        onClose={() => setDepositMethod(null)}
+        method={depositMethod === 'chime' ? 'chime' : depositMethod === 'paypal' ? 'paypal' : null}
       />
     </>
   )
