@@ -23,7 +23,7 @@ export default function ContactPage() {
   const CHANNELS = [
     { icon: Send, label: 'Telegram', handle: '@Vault Sweeps', href: 'https://t.me/vaultsweeps', color: '#229ED9', response: '< 5 min', desc: 'Fastest support channel' },
     { icon: MessageCircle, label: 'Facebook Messenger', handle: 'Vault Sweeps', href: 'https://m.me/vaultsweeps', color: '#1877F2', response: '< 15 min', desc: 'Chat on Messenger' },
-    { icon: Mail, label: 'Email', handle: 'support@vaultsweeps.com', href: 'mailto:support@vaultsweeps.com', color: '#7B2FFF', response: '< 24 hr', desc: 'For detailed inquiries' },
+    { icon: Mail, label: 'Email', handle: 'supportvaultsweeps@gmail.com', href: 'mailto:supportvaultsweeps@gmail.com', color: '#7B2FFF', response: '< 24 hr', desc: 'For detailed inquiries' },
   ]
 
   return (

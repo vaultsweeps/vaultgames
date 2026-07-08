@@ -69,6 +69,8 @@ export const authApi = {
   getMe: () => apiClient.get('/auth/me'),
   refreshToken: () => apiClient.post('/auth/refresh'),
   getBalance: () => apiClient.get('/auth/balance'),
+  /** Single bundled request: returns user + wallet balance + provider account */
+  dashboardInit: (gameId?: string) => apiClient.get('/auth/dashboard-init', { params: gameId ? { gameId } : {} }),
 }
 
 // Deposit APIs

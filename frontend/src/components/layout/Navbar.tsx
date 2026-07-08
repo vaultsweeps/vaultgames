@@ -20,6 +20,7 @@ export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const { user, isAuthenticated, logout } = useAuthStore()
   const { theme, setTheme } = useTheme()
   const pathname = usePathname()
@@ -43,6 +44,7 @@ export default function Navbar() {
   }, [isAuthenticated, walletOpen, pathname])
 
   useEffect(() => {
+    setMounted(true)
     const handler = () => setIsScrolled(window.scrollY > 20)
     window.addEventListener('scroll', handler)
     return () => window.removeEventListener('scroll', handler)
@@ -51,7 +53,7 @@ export default function Navbar() {
   return (
     <>
     <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-      isScrolled ? 'bg-background/95 border-b border-border-subtle py-3 shadow-lg shadow-black/20' : 'bg-transparent py-5'
+      isScrolled ? 'bg-black/95 backdrop-blur-md border-b border-white/10 py-3 shadow-lg shadow-black/50' : 'bg-transparent py-5'
     }`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between">
@@ -79,18 +81,21 @@ export default function Navbar() {
 
           {/* Right side */}
           <div className="hidden lg:flex items-center gap-3">
-            {/* Theme Toggle — cycles dark → light → night */}
-            <button 
-              onClick={() => {
-                if (theme === 'dark') setTheme('light')
-                else if (theme === 'light') setTheme('night')
-                else setTheme('dark')
-              }}
-              className="p-2 rounded-lg glass text-secondary hover:text-neon-blue transition-colors mr-2"
-              title={theme === 'dark' ? 'Switch to Light Mode' : theme === 'light' ? 'Switch to Night Mode' : 'Switch to Dark Mode'}
-            >
-              {theme === 'light' ? <Sun className="w-4 h-4 text-amber-400" /> : theme === 'night' ? <Moon className="w-4 h-4 text-indigo-400" /> : <SunMoon className="w-4 h-4" />}
-            </button>
+            {/* Theme Toggle — cycles dark → light → night. Only rendered after mount to avoid hydration mismatch */}
+            {mounted && (
+              <button 
+                onClick={() => {
+                  if (theme === 'dark') setTheme('light')
+                  else if (theme === 'light') setTheme('night')
+                  else setTheme('dark')
+                }}
+                className="p-2 rounded-lg glass text-secondary hover:text-neon-blue transition-colors mr-2"
+                title={theme === 'dark' ? 'Switch to Light Mode' : theme === 'light' ? 'Switch to Night Mode' : 'Switch to Dark Mode'}
+                suppressHydrationWarning
+              >
+                {theme === 'light' ? <Sun className="w-4 h-4 text-amber-400" /> : theme === 'night' ? <Moon className="w-4 h-4 text-indigo-400" /> : <SunMoon className="w-4 h-4" />}
+              </button>
+            )}
             {isAuthenticated ? (
               <>
                 <button
@@ -163,18 +168,21 @@ export default function Navbar() {
 
           {/* Mobile top-right icons: Theme + Wallet + Bell + Profile */}
           <div className="lg:hidden flex items-center gap-2">
-            {/* Theme Toggle Mobile */}
-            <button
-              onClick={() => {
-                if (theme === 'dark') setTheme('light')
-                else if (theme === 'light') setTheme('night')
-                else setTheme('dark')
-              }}
-              className="p-2 text-secondary hover:text-neon-blue transition-colors"
-              title={theme === 'dark' ? 'Light Mode' : theme === 'light' ? 'Night Mode' : 'Dark Mode'}
-            >
-              {theme === 'light' ? <Sun className="w-5 h-5 text-amber-400" /> : theme === 'night' ? <Moon className="w-5 h-5 text-indigo-400" /> : <SunMoon className="w-5 h-5" />}
-            </button>
+            {/* Theme Toggle Mobile — only rendered after mount */}
+            {mounted && (
+              <button
+                onClick={() => {
+                  if (theme === 'dark') setTheme('light')
+                  else if (theme === 'light') setTheme('night')
+                  else setTheme('dark')
+                }}
+                className="p-2 text-secondary hover:text-neon-blue transition-colors"
+                title={theme === 'dark' ? 'Light Mode' : theme === 'light' ? 'Night Mode' : 'Dark Mode'}
+                suppressHydrationWarning
+              >
+                {theme === 'light' ? <Sun className="w-5 h-5 text-amber-400" /> : theme === 'night' ? <Moon className="w-5 h-5 text-indigo-400" /> : <SunMoon className="w-5 h-5" />}
+              </button>
+            )}
 
             {isAuthenticated && (
               <>

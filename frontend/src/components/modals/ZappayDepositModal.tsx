@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, CheckCircle, ArrowRight } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { depositApi } from '@/lib/api'
+import { depositApi, publicApi } from '@/lib/api'
 
 interface ZappayDepositModalProps {
   isOpen: boolean
@@ -15,10 +15,12 @@ export default function ZappayDepositModal({ isOpen, onClose }: ZappayDepositMod
   const [amount, setAmount] = useState<string>('0.00')
   const [profileName, setProfileName] = useState('')
   const [methods, setMethods] = useState<any[]>([])
+  const [settings, setSettings] = useState<any>({})
 
   useEffect(() => {
     if (isOpen) {
       depositApi.getPaymentMethods().then(res => setMethods(res.data.data)).catch(() => {})
+      publicApi.getSettings().then(res => setSettings(res.data.data || {})).catch(() => {})
       setStep(1)
       setStatus('idle')
       setAmount('0.00')
@@ -283,6 +285,17 @@ export default function ZappayDepositModal({ isOpen, onClose }: ZappayDepositMod
                     </div>
                     <h3 className="text-white font-bold text-2xl">Verification Failed</h3>
                     <p className="text-secondary text-sm">We could not find a matching payment. If you already sent it, please wait a few minutes and check your history.</p>
+                    <div className="grid grid-cols-3 gap-2 mt-2 w-full">
+                      <a href={settings.telegram_url || process.env.NEXT_PUBLIC_TELEGRAM_URL || "https://t.me/vaultsweeps"} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-1.5 bg-[#2AC3FF]/10 text-[#2AC3FF] hover:bg-[#2AC3FF]/20 font-bold py-3 rounded-xl transition-all border border-[#2AC3FF]/20 text-sm">
+                        Telegram
+                      </a>
+                      <a href={settings.facebook_url || process.env.NEXT_PUBLIC_FACEBOOK_URL || "https://m.me/vaultsweeps"} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-1.5 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 font-bold py-3 rounded-xl transition-all border border-blue-500/20 text-sm">
+                        Messenger
+                      </a>
+                      <a href="mailto:supportvaultsweeps@gmail.com" className="flex items-center justify-center gap-1.5 bg-purple-500/10 text-purple-400 hover:bg-purple-500/20 font-bold py-3 rounded-xl transition-all border border-purple-500/20 text-sm">
+                        Email
+                      </a>
+                    </div>
                     <button onClick={onClose} className="w-full bg-surface hover:bg-surface-elevated text-white font-bold py-4 rounded-2xl transition-all border border-border-subtle mt-4">
                       Close
                     </button>

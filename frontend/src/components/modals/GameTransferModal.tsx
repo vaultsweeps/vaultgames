@@ -255,7 +255,7 @@ const GameTransferModal = React.memo(function GameTransferModal({
 
                 <div className="bg-surface rounded-2xl p-4 border border-border-subtle flex justify-between items-center">
                   <span className="text-muted text-sm">Cashouts range <strong className="text-white">from ${minCashout} to ${maxCashout}</strong></span>
-                  <span className="w-5 h-5 rounded-full bg-surface-elevated text-secondary flex items-center justify-center text-xs font-bold italic">i</span>
+                  <button onClick={() => window.open('/cashout-rules', '_blank')} className="w-5 h-5 rounded-full bg-surface-elevated text-secondary hover:text-white hover:bg-surface flex items-center justify-center text-xs font-bold italic transition-colors">i</button>
                 </div>
               </>
             )}
@@ -275,7 +275,7 @@ const GameTransferModal = React.memo(function GameTransferModal({
             {!noSession && type === 'cashout' && (
               <div className="bg-surface rounded-2xl p-4 border border-border-subtle flex justify-between items-center">
                 <span className="text-muted text-sm">Cashouts range <strong className="text-white">from ${minCashout} to ${maxCashout}</strong></span>
-                <span className="w-5 h-5 rounded-full bg-surface-elevated text-secondary flex items-center justify-center text-xs font-bold italic">i</span>
+                <button onClick={() => window.open('/cashout-rules', '_blank')} className="w-5 h-5 rounded-full bg-surface-elevated text-secondary hover:text-white hover:bg-surface flex items-center justify-center text-xs font-bold italic transition-colors">i</button>
               </div>
             )}
 

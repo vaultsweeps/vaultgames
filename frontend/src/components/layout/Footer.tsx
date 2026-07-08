@@ -1,6 +1,6 @@
 'use client'
 import Link from 'next/link'
-import { Zap, Send, Facebook, Twitter, Youtube, Instagram, MessageCircle } from 'lucide-react'
+import { Zap, Send, Facebook, Twitter, Youtube, Instagram, MessageCircle, Mail } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { publicApi } from '@/lib/api'
 
@@ -74,6 +74,11 @@ export default function Footer() {
                 className="flex items-center gap-3 glass rounded-lg px-4 py-3 text-sm text-secondary hover:text-neon-blue hover:border-neon-blue/30 border border-transparent transition-all">
                 <MessageCircle className="w-4 h-4 text-blue-600" />
                 Facebook Messenger
+              </a>
+              <a href="mailto:supportvaultsweeps@gmail.com"
+                className="flex items-center gap-3 glass rounded-lg px-4 py-3 text-sm text-secondary hover:text-neon-blue hover:border-neon-blue/30 border border-transparent transition-all">
+                <Mail className="w-4 h-4 text-purple-400" />
+                Email Support
               </a>
               <Link href="/dashboard/support"
                 className="flex items-center gap-3 glass rounded-lg px-4 py-3 text-sm text-secondary hover:text-neon-blue hover:border-neon-blue/30 border border-transparent transition-all">

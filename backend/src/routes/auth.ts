@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { body } from 'express-validator'
-import { register, login, getMe, verifyEmail, forgotPassword, resetPassword, logout, getBalance, checkUsername } from '../controllers/authController'
+import { register, login, getMe, verifyEmail, forgotPassword, resetPassword, logout, getBalance, checkUsername, dashboardInit } from '../controllers/authController'
 import { authenticate } from '../middleware/auth'
 import { validateRequest } from '../middleware/validate'
 
@@ -27,6 +27,7 @@ router.post('/login',
 
 router.get('/me', authenticate, getMe)
 router.get('/balance', authenticate, getBalance)
+router.get('/dashboard-init', authenticate, dashboardInit)
 router.get('/check-username', checkUsername)
 router.post('/verify-email/:token', verifyEmail)
 router.post('/forgot-password', [body('email').isEmail()], validateRequest, forgotPassword)

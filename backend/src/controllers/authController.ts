@@ -264,6 +264,45 @@ export const getBalance = asyncHandler(async (req: AuthRequest, res: Response) =
   res.json({ success: true, data: { balance } });
 })
 
+// GET /api/auth/dashboard-init?gameId=xxx
+// Bundles user + wallet balance + provider account into a single request to reduce waterfall
+export const dashboardInit = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const userId = req.user!.id
+  const gameId = req.query.gameId as string | undefined
+
+  const [userRes, balanceRes, providerUserRes] = await Promise.allSettled([
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, username: true, email: true, role: true, isVerified: true, isActive: true, isBanned: true, lastLogin: true, createdAt: true, profile: true }
+    }),
+    WalletService.getWalletBalance(userId),
+    gameId
+      ? (async () => {
+          const providerId = await ProviderFactory.getProviderIdForGame(gameId)
+          if (!providerId) return { isMaintenance: true }
+          return prisma.providerUser.findFirst({ where: { userId, providerId }, include: { provider: true } })
+        })()
+      : Promise.resolve(null)
+  ])
+
+  const user = userRes.status === 'fulfilled' ? userRes.value : null
+  const balance = balanceRes.status === 'fulfilled' ? balanceRes.value : 0
+  const providerUser = providerUserRes.status === 'fulfilled' ? providerUserRes.value : null
+
+  res.json({
+    success: true,
+    data: {
+      user,
+      balance,
+      providerAccount: providerUser
+        ? (providerUser as any).isMaintenance
+          ? { isMaintenance: true, hasAccount: false }
+          : { accountName: (providerUser as any).accountName, hasAccount: true, providerName: (providerUser as any).provider?.name || '' }
+        : { hasAccount: false }
+    }
+  })
+})
+
 // GET /api/auth/check-username?username=xxx  (public — no auth needed)
 export const checkUsername = asyncHandler(async (req: Request, res: Response) => {
   const username = (req.query.username as string || '').trim()

@@ -244,8 +244,13 @@ export const transferFunds = asyncHandler(async (req: AuthRequest, res: Response
     throw new AppError('Invalid transfer parameters', 400);
   }
 
-  const providerId = await ProviderFactory.getProviderIdForGame(gameId);
-  const providerUser = await prisma.providerUser.findFirst({ where: { userId, providerId } });
+  // Parallelize: get provider config (cached) AND look up user's game account at same time
+  const [providerId, walletBalanceForRecharge] = await Promise.all([
+    ProviderFactory.getProviderIdForGame(gameId),
+    type === 'recharge' ? WalletService.getWalletBalance(userId) : Promise.resolve(null)
+  ]);
+
+  const providerUser = await prisma.providerUser.findFirst({ where: { userId, providerId: providerId ?? '' } });
   
   if (!providerUser) {
     throw new AppError('No game account found. Please create an account first.', 404);
@@ -263,9 +268,8 @@ export const transferFunds = asyncHandler(async (req: AuthRequest, res: Response
 
   // 1. Check balances
   if (type === 'recharge') {
-    const walletBalance = await WalletService.getWalletBalance(userId);
-    if (walletBalance < amount) {
-      throw new AppError(`Not enough funds! Click on this message to deposit $${(amount - walletBalance).toFixed(2)}`, 400);
+    if (walletBalanceForRecharge !== null && walletBalanceForRecharge < amount) {
+      throw new AppError(`Not enough funds! Click on this message to deposit $${(amount - walletBalanceForRecharge).toFixed(2)}`, 400);
     }
   } else {
     // withdraw (cash out from game)
@@ -314,49 +318,49 @@ export const transferFunds = asyncHandler(async (req: AuthRequest, res: Response
 
   try {
     if (type === 'recharge') {
-      const user = await prisma.user.findUnique({ where: { id: userId } });
-      const firstRechargeCheck = await prisma.providerTransaction.findFirst({
-        where: { userId, type: 'recharge', status: 'success' }
-      });
+      // Parallelize user lookup + first-recharge check + all bonus definitions — all independent
+      const [user, firstRechargeCheck, welcomeBonusDef, depositBonusDef, referralBonusDef] = await Promise.all([
+        prisma.user.findUnique({ where: { id: userId }, select: { id: true, username: true, isVerified: true, referredById: true } }),
+        prisma.providerTransaction.findFirst({ where: { userId, type: 'recharge', status: 'success' } }),
+        prisma.bonus.findFirst({ where: { type: 'welcome' } }),
+        prisma.bonus.findFirst({ where: { type: 'deposit' } }),
+        prisma.bonus.findFirst({ where: { type: 'referral' } })
+      ]);
       const isFirstRecharge = !firstRechargeCheck;
 
       if (isFirstRecharge && user?.isVerified) {
         // 100% Signup Bonus
         bonusAmount = amount;
-        let bonusDef = await prisma.bonus.findFirst({ where: { type: 'welcome' } });
-        if (bonusDef) {
+        if (welcomeBonusDef) {
           try {
-            await prisma.bonusClaim.create({ data: { userId, bonusId: bonusDef.id, amount: bonusAmount } });
+            await prisma.bonusClaim.create({ data: { userId, bonusId: welcomeBonusDef.id, amount: bonusAmount } });
           } catch (e) {
             // Ignore unique constraint error if a previous failed recharge attempt already created this claim
           }
         }
         
-        // Referral Bonus logic for the referrer
-        if (user?.referredById) {
+        // Referral Bonus logic for the referrer — DB write awaited for durability, notification fire-and-forget
+        if (user?.referredById && referralBonusDef) {
           const refBonus = Math.min(amount * 0.5, 10);
-          let refBonusDef = await prisma.bonus.findFirst({ where: { type: 'referral' } });
-          if (refBonusDef) {
-            try {
-              await prisma.bonusClaim.create({ data: { userId: user.referredById, bonusId: refBonusDef.id, amount: refBonus } });
-              createNotification(user.referredById, {
-                title: 'Referral Bonus Received!',
-                message: `You just received $${refBonus.toFixed(2)} because your referred friend ${user.username} made their first transfer.`,
-                type: 'success',
-                link: '/dashboard/bonuses'
-              }).catch(e => logger.error('Failed to send notification: ' + e.message));
-            } catch (e) {
-              // Ignore unique constraint error
-            }
+          try {
+            await prisma.bonusClaim.create({ data: { userId: user.referredById, bonusId: referralBonusDef.id, amount: refBonus } });
+            // Fire-and-forget: notification delivery doesn't block the response
+            createNotification(user.referredById, {
+              title: 'Referral Bonus Received!',
+              message: `You just received $${refBonus.toFixed(2)} because your referred friend ${user.username} made their first transfer.`,
+              type: 'success',
+              link: '/dashboard/bonuses'
+            }).catch(e => logger.error('Failed to send notification: ' + e.message));
+          } catch (e) {
+            // Ignore unique constraint error
           }
         }
       } else {
         // 30% Regular Bonus
         bonusAmount = amount * 0.3;
-        let bonusDef = await prisma.bonus.findFirst({ where: { type: 'deposit' } });
-        if (bonusDef) {
+        if (depositBonusDef) {
           try {
-            await prisma.bonusClaim.create({ data: { userId, bonusId: bonusDef.id, amount: bonusAmount } });
+            await prisma.bonusClaim.create({ data: { userId, bonusId: depositBonusDef.id, amount: bonusAmount } });
           } catch (e) {
             // Ignore unique constraint error for recurring bonuses so transfer succeeds
           }
@@ -379,9 +383,8 @@ export const transferFunds = asyncHandler(async (req: AuthRequest, res: Response
     throw new AppError(`Transfer failed: ${err.message}`, 500);
   }
 
-  // 3. Record Transaction
-  // For cashouts: only record the creditedAmount so that only the allowed portion
-  // enters the wallet balance formula (totalGameWithdrawals). The voided amount never enters the books.
+  // 3. Record Transaction & invalidate wallet cache — both fire-and-forget after response
+  // We await the DB write to ensure durability, but cache invalidation is detached
   await prisma.providerTransaction.create({
     data: {
       providerId: providerUser.providerId,
@@ -393,7 +396,7 @@ export const transferFunds = asyncHandler(async (req: AuthRequest, res: Response
     }
   });
 
-  // Invalidate the wallet cache since funds were moved
+  // Fire-and-forget: cache invalidation doesn't need to block the response
   invalidateWalletCache(userId);
 
   // 4. Build response message
@@ -419,49 +422,47 @@ export const transferFunds = asyncHandler(async (req: AuthRequest, res: Response
 
 // GET /api/provider/accounts
 export const getAllProviderAccounts = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const startTotal = performance.now()
   const userId = req.user!.id
   
-  // get all games
-  const games = await prisma.game.findMany({ where: { isActive: true } })
+  // Fetch games + providerUsers in parallel
+  const [games, providerUsers] = await Promise.all([
+    prisma.game.findMany({ where: { isActive: true } }),
+    prisma.providerUser.findMany({ where: { userId }, include: { provider: true } })
+  ])
   
-  // get all provider users
-  const providerUsers = await prisma.providerUser.findMany({ 
-    where: { userId },
-    include: { provider: true }
-  })
+  // Pre-fetch all provider IDs for all games in parallel (hits cache after first call)
+  const gameProviderIds = await Promise.all(
+    games.map(g => ProviderFactory.getProviderIdForGame(g.id).catch(() => null))
+  )
   
-  // fetch balances for all provider users in parallel
+  // Fetch all live balances in parallel
   const balances: Record<string, number> = {}
   await Promise.all(providerUsers.map(async (pu) => {
     try {
       const pService = await ProviderFactory.getProviderById(pu.providerId)
-      if (pService) {
-        balances[pu.providerId] = await pService.getPlayerBalance(pu.providerUserId)
-      } else {
-        balances[pu.providerId] = 0
-      }
+      balances[pu.providerId] = pService ? await pService.getPlayerBalance(pu.providerUserId) : 0
     } catch {
       balances[pu.providerId] = 0
     }
   }))
 
-  const result = []
-  for (const game of games) {
-    const providerId = await ProviderFactory.getProviderIdForGame(game.id).catch(() => null)
-    
-    if (providerId) {
-      const pu = providerUsers.find(p => p.providerId === providerId)
-      result.push({
-        id: game.id,
-        name: game.name,
-        thumbnailUrl: game.thumbnailUrl,
-        accountName: pu ? pu.accountName : null,
-        balance: pu ? (balances[providerId] || 0) : 0,
-        hasAccount: !!pu
-      })
+  // Build result synchronously — no more per-game DB awaits
+  const result = games.map((game, idx) => {
+    const providerId = gameProviderIds[idx]
+    if (!providerId) return null
+    const pu = providerUsers.find(p => p.providerId === providerId)
+    return {
+      id: game.id,
+      name: game.name,
+      thumbnailUrl: game.thumbnailUrl,
+      accountName: pu ? pu.accountName : null,
+      balance: pu ? (balances[providerId] || 0) : 0,
+      hasAccount: !!pu
     }
-  }
+  }).filter(Boolean)
 
+  logger.info(`[getAllAccounts] Total Time: ${performance.now() - startTotal}ms`)
   res.json({ success: true, data: result })
 })
 

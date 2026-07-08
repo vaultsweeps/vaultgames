@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useForm } from 'react-hook-form'
 import toast from 'react-hot-toast'
-import { HelpCircle, Plus, MessageCircle, Send, ChevronRight, Clock, CheckCircle } from 'lucide-react'
+import { HelpCircle, Plus, MessageCircle, Send, ChevronRight, Clock, CheckCircle, Mail } from 'lucide-react'
 import { supportApi, publicApi } from '@/lib/api'
 import LiveChat from './LiveChat'
 
@@ -191,6 +191,16 @@ export default function SupportPage() {
             <h4 className="font-display font-bold text-white mb-2">Facebook Messenger</h4>
             <p className="text-muted text-sm mb-3">Chat with us on Facebook Messenger for quick support.</p>
             <span className="text-xs text-blue-400 flex items-center gap-1">Open Messenger <ChevronRight className="w-3 h-3" /></span>
+          </a>
+
+          <a href="mailto:supportvaultsweeps@gmail.com"
+            className="glass-card p-6 hover:border-purple-400/30 transition-all group">
+            <div className="w-12 h-12 bg-purple-500/10 border border-purple-500/20 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+              <Mail className="w-6 h-6 text-purple-400" />
+            </div>
+            <h4 className="font-display font-bold text-white mb-2">Email Support</h4>
+            <p className="text-muted text-sm mb-3">Send us an email for detailed inquiries. Response within 2 hours.</p>
+            <span className="text-xs text-purple-400 flex items-center gap-1">supportvaultsweeps@gmail.com <ChevronRight className="w-3 h-3" /></span>
           </a>
 
           <div className="glass-card p-6 sm:col-span-2">

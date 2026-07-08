@@ -367,6 +367,7 @@ model ActivityLog {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([userId, createdAt])
 }
 
 model FAQ {
@@ -482,6 +483,8 @@ model ProviderTransaction {
   user            User     @relation(fields: [userId], references: [id])
   
   @@index([userId, type, status])
+  @@index([providerId, userId, type, status])
+  @@index([userId, providerId, type, status, createdAt(sort: Desc)])
 }
 
 model PaymentWebhook {
