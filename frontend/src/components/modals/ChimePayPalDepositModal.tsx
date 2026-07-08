@@ -202,8 +202,6 @@ export default function ChimePayPalDepositModal({ isOpen, onClose, method }: Chi
                   </a>
                   <a 
                     href={currentConfig.linkUrl}
-                    target="_blank"
-                    rel="noreferrer"
                     className={`flex-[2] ${currentConfig.color} hover:opacity-90 text-white font-bold py-4 rounded-2xl transition-all text-center flex items-center justify-center`}
                   >
                     Open {currentConfig.name} to Pay
