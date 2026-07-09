@@ -286,7 +286,8 @@ export class ImapChimePayPalService {
 
   static startCron() {
     logger.info('[ImapChimePayPal] Starting IMAP cron jobs')
-    cron.schedule('*/2 * * * *', () => {
+    // Run every 30 seconds for faster verification
+    cron.schedule('*/30 * * * * *', () => {
       this.parseEmailsAndVerifyDeposits().catch(err =>
         logger.error('[ImapChimePayPal] cron error: ' + err)
       )

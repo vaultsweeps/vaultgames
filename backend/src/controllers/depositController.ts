@@ -101,8 +101,8 @@ export const createDeposit = asyncHandler(async (req: AuthRequest, res: Response
 
     setTimeout(async () => {
       try {
-        // Poll IMAP for up to 30 seconds
-        const autoApproved = await ImapChimePayPalService.pollForDeposit(depositId, 30000, 5000)
+        // Poll IMAP for up to 60 seconds (check every 5s)
+        const autoApproved = await ImapChimePayPalService.pollForDeposit(depositId, 60000, 5000)
 
         if (autoApproved) {
           logger.info(`[DepositController] Deposit ${depositId} auto-approved via email — skipping Telegram`)
