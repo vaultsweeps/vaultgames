@@ -96,7 +96,13 @@ export class ImapChimePayPalService {
           const fullBody = `${text} ${html}`
           
           // Generate a unique ID for this email to prevent double-processing
-          const emailId = mail.messageId || `msg_${item.attributes.uid}_${item.attributes.date?.getTime() || Date.now()}`
+          const emailDate = item.attributes.date || mail.date || new Date();
+          const emailId = mail.messageId || `msg_${item.attributes.uid}_${emailDate.getTime()}`
+
+          // Ignore emails older than 1 hour (3600000 ms)
+          if (Date.now() - emailDate.getTime() > 3600000) {
+            continue;
+          }
 
           let subject = ''
           if (headerPart?.body?.subject) {
