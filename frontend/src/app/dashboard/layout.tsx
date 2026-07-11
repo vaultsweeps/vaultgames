@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -58,6 +59,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return () => clearInterval(interval)
   }, [isAuthenticated])
 
+  // Show spinner only if there is no cached user at all (first load with no persisted state)
   if (!isAuthenticated && !user) return (
     <div className="min-h-screen bg-background flex items-center justify-center">
       <div className="w-8 h-8 border-2 border-neon-blue/30 border-t-neon-blue rounded-full animate-spin" />
@@ -69,7 +71,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Logo */}
       <div className="p-6 border-b border-border-subtle">
         <Link href="/" className="flex items-center gap-2">
-          <img src="/images/vault-sweeps-logo.png" alt="Vault Sweeps" className="h-10 w-auto object-contain drop-shadow-md" />
+          <Image src="/images/vault-sweeps-logo.png" alt="Vault Sweeps" width={160} height={40} className="h-10 w-auto object-contain drop-shadow-md" priority />
           <span className="font-display font-bold text-sm gradient-text">VAULT SWEEPS</span>
         </Link>
       </div>
