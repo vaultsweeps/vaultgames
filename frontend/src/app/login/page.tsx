@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { useForm } from 'react-hook-form'
@@ -51,7 +52,7 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-3 mb-4 group">
-            <img src="/images/vault-sweeps-logo.png" alt="Vault Sweeps" className="h-10 w-auto object-contain drop-shadow-md group-hover:scale-105 transition-transform" />
+            <Image src="/images/vault-sweeps-logo.png" alt="Vault Sweeps" width={160} height={40} className="h-10 w-auto object-contain drop-shadow-md group-hover:scale-105 transition-transform" priority />
             <span className="font-display font-bold text-xl gradient-text">VAULT SWEEPS</span>
           </Link>
           <h1 className="font-display font-bold text-3xl text-white mb-2">WELCOME BACK</h1>

@@ -35,46 +35,67 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const fetchTransactions = async () => {
+    let mounted = true;
+    
+    const fetchDashboardData = async () => {
+      setLoading(true);
       try {
-        const [depRes, withRes] = await Promise.all([
+        // Run all independent data fetches in parallel, avoiding waterfall
+        // Using allSettled ensures one failure doesn't crash everything else
+        const results = await Promise.allSettled([
           depositApi.getAll({ limit: 5 }),
           withdrawalApi.getAll({ limit: 5 })
-        ])
+        ]);
         
-        const deps = (depRes.data?.data || []).map((d: any) => ({
-          id: d.id,
-          type: 'deposit',
-          amount: d.amount,
-          status: d.status,
-          method: d.paymentMethod?.name || 'Unknown',
-          date: new Date(d.createdAt).toISOString().split('T')[0],
-          timestamp: new Date(d.createdAt).getTime()
-        }))
-        
-        const withs = (withRes.data?.data || []).map((w: any) => ({
-          id: w.id,
-          type: 'cashout',
-          amount: w.amount,
-          status: w.status,
-          method: w.paymentMethod?.name || 'Unknown',
-          date: new Date(w.createdAt).toISOString().split('T')[0],
-          timestamp: new Date(w.createdAt).getTime()
-        }))
+        if (!mounted) return;
+
+        let deps: any[] = [];
+        let withs: any[] = [];
+
+        // Safely extract deposit data if successful
+        if (results[0].status === 'fulfilled' && results[0].value.data?.data) {
+          deps = results[0].value.data.data.map((d: any) => ({
+            id: d.id,
+            type: 'deposit',
+            amount: d.amount,
+            status: d.status,
+            method: d.paymentMethod?.name || 'Unknown',
+            date: new Date(d.createdAt).toISOString().split('T')[0],
+            timestamp: new Date(d.createdAt).getTime()
+          }));
+        }
+
+        // Safely extract withdrawal data if successful
+        if (results[1].status === 'fulfilled' && results[1].value.data?.data) {
+          withs = results[1].value.data.data.map((w: any) => ({
+            id: w.id,
+            type: 'cashout',
+            amount: w.amount,
+            status: w.status,
+            method: w.paymentMethod?.name || 'Unknown',
+            date: new Date(w.createdAt).toISOString().split('T')[0],
+            timestamp: new Date(w.createdAt).getTime()
+          }));
+        }
         
         const combined = [...deps, ...withs]
           .sort((a, b) => b.timestamp - a.timestamp)
-          .slice(0, 5)
+          .slice(0, 5);
           
-        setTransactions(combined)
+        setTransactions(combined);
       } catch (err) {
-        console.error('Failed to fetch transactions', err)
+        console.error('Failed to fetch dashboard data', err);
       } finally {
-        setLoading(false)
+        if (mounted) setLoading(false);
       }
+    };
+    
+    if (user) {
+      fetchDashboardData();
     }
-    fetchTransactions()
-  }, [])
+    
+    return () => { mounted = false; };
+  }, [user]);
 
   return (
     <div className="space-y-8">

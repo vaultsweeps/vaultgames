@@ -5,7 +5,11 @@ import { Gamepad2, Download, Search, Star, Eye, RefreshCw, Bot, X, MessageCircle
 import toast from 'react-hot-toast'
 import Link from 'next/link'
 import { gamesApi, publicApi } from '@/lib/api'
-import PlayWithAgentModal from '@/components/modals/PlayWithAgentModal'
+import Image from 'next/image'
+import dynamic from 'next/dynamic'
+
+const PlayWithAgentModal = dynamic(() => import('@/components/modals/PlayWithAgentModal'), { ssr: false })
+
 
 const COLORS = [
   'from-blue-600/20 to-cyan-600/20',
@@ -43,6 +47,7 @@ export default function GamesPage() {
   const [downloading, setDownloading] = useState<string | null>(null)
   const [agentGame, setAgentGame] = useState<Game | null>(null)
   const [settings, setSettings] = useState<any>({})
+  const [visibleCount, setVisibleCount] = useState(12)
 
   const fetchGames = async () => {
     setLoading(true)
@@ -68,6 +73,18 @@ export default function GamesPage() {
     (category === 'All' || g.category === category) &&
     (g.name.toLowerCase().includes(search.toLowerCase()) || g.category.toLowerCase().includes(search.toLowerCase()))
   )
+
+  const visibleGames = filtered.slice(0, visibleCount)
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearch(e.target.value)
+    setVisibleCount(12)
+  }
+
+  const handleCategoryChange = (cat: string) => {
+    setCategory(cat)
+    setVisibleCount(12)
+  }
 
   const handleDownload = async (game: Game) => {
     setDownloading(game.id)
@@ -105,11 +122,11 @@ export default function GamesPage() {
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-          <input type="text" placeholder="Search games..." value={search} onChange={e => setSearch(e.target.value)} className="input-neon pl-10" />
+          <input type="text" placeholder="Search games..." value={search} onChange={handleSearchChange} className="input-neon pl-10" />
         </div>
         <div className="flex gap-2 flex-wrap">
           {categories.slice(0, 6).map(cat => (
-            <button key={cat} onClick={() => setCategory(cat)}
+            <button key={cat} onClick={() => handleCategoryChange(cat)}
               className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${category === cat ? 'bg-neon-blue/10 text-neon-blue border border-neon-blue/20' : 'glass text-secondary hover:text-white border border-border-strong'}`}>
               {cat}
             </button>
@@ -149,14 +166,14 @@ export default function GamesPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {filtered.map((game, i) => (
-            <motion.div key={game.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
+          {visibleGames.map((game, i) => (
+            <motion.div key={game.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: (i % 12) * 0.04 }}
               className="glass-card overflow-hidden group hover:-translate-y-1 transition-all">
               {/* Thumbnail */}
               <div className={`h-36 bg-gradient-to-br ${COLORS[i % COLORS.length]} relative overflow-hidden`}>
                 <div className="absolute inset-0 cyber-grid opacity-20" />
                 {game.thumbnailUrl ? (
-                  <img src={game.thumbnailUrl} alt={game.name} className="absolute inset-0 w-full h-full object-cover opacity-70 group-hover:opacity-90 transition-opacity" />
+                  <Image src={game.thumbnailUrl} alt={game.name} fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" className="object-cover opacity-70 group-hover:opacity-90 transition-opacity" />
                 ) : (
                   <div className="absolute inset-0 flex items-center justify-center">
                     <Gamepad2 className="w-12 h-12 text-white/20 group-hover:text-white/40 transition-colors" />
@@ -218,6 +235,18 @@ export default function GamesPage() {
         </div>
       )}
 
+      {/* Load More Button */}
+      {!loading && visibleCount < filtered.length && (
+        <div className="flex justify-center mt-8">
+          <button 
+            onClick={() => setVisibleCount(v => v + 12)}
+            className="glass px-6 py-2.5 rounded-xl text-sm font-medium text-secondary hover:text-white border border-border-strong transition-all hover:bg-white/5"
+          >
+            Load More Games
+          </button>
+        </div>
+      )}
+
       {/* Game Detail Modal */}
       {selectedGame && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setSelectedGame(null)}>
@@ -225,7 +254,7 @@ export default function GamesPage() {
             className="glass-card max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
             <div className={`h-40 bg-gradient-to-br from-blue-900/30 to-purple-900/30 rounded-xl mb-5 relative overflow-hidden`}>
               {selectedGame.thumbnailUrl
-                ? <img src={selectedGame.thumbnailUrl} alt={selectedGame.name} className="absolute inset-0 w-full h-full object-cover" />
+                ? <Image src={selectedGame.thumbnailUrl} alt={selectedGame.name} fill className="object-cover" />
                 : <div className="absolute inset-0 flex items-center justify-center"><Gamepad2 className="w-16 h-16 text-white/30" /></div>
               }
             </div>

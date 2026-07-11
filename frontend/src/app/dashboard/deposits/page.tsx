@@ -3,9 +3,11 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { CreditCard, Plus, History, Loader2, ChevronRight } from 'lucide-react'
-import { depositApi } from '@/lib/api'
-import ZappayDepositModal from '@/components/modals/ZappayDepositModal'
-import ChimePayPalDepositModal from '@/components/modals/ChimePayPalDepositModal'
+import { depositApi, publicApi } from '@/lib/api'
+import dynamic from 'next/dynamic'
+
+const ZappayDepositModal = dynamic(() => import('@/components/modals/ZappayDepositModal'), { ssr: false })
+const ChimePayPalDepositModal = dynamic(() => import('@/components/modals/ChimePayPalDepositModal'), { ssr: false })
 
 // Method icon/color map
 const METHOD_META: Record<string, { icon: string; color: string; desc: string }> = {

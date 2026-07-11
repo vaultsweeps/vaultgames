@@ -1,11 +1,12 @@
 'use client'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard, Users, CreditCard, ArrowUpCircle, Gamepad2, Gift,
-  HelpCircle, Image, Settings, Bell, LogOut, Menu, X, Zap,
+  HelpCircle, Image as ImageIcon, Settings, Bell, LogOut, Menu, X, Zap,
   ChevronRight, BarChart3, Wallet, FileText, Server
 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
@@ -18,7 +19,7 @@ const NAV_ITEMS = [
   { href: '/admin/withdrawals', icon: Wallet, label: 'Withdrawals' },
   { href: '/admin/games', icon: Gamepad2, label: 'Games' },
   { href: '/admin/bonuses', icon: Gift, label: 'Bonuses' },
-  { href: '/admin/banners', icon: Image, label: 'Banners' },
+  { href: '/admin/banners', icon: ImageIcon, label: 'Banners' },
   { href: '/admin/support', icon: HelpCircle, label: 'Support' },
   { href: '/admin/reports', icon: BarChart3, label: 'Reports' },
   { href: '/admin/providers', icon: Server, label: 'Providers' },
@@ -51,7 +52,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <div className="flex flex-col h-full">
       <div className="p-5 border-b border-border-subtle">
         <Link href="/" className="flex items-center gap-2">
-          <img src="/images/vault-sweeps-logo.png" alt="Vault Sweeps" className="h-10 w-auto object-contain drop-shadow-md" />
+          <Image src="/images/vault-sweeps-logo.png" alt="Vault Sweeps" width={160} height={40} className="h-10 w-auto object-contain drop-shadow-md" priority />
           <div>
             <span className="font-display font-bold text-sm text-white">VAULT SWEEPS</span>
             <span className="text-xs text-yellow-400 font-mono ml-1">ADMIN</span>

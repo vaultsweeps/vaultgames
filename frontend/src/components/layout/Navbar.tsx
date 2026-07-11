@@ -1,13 +1,16 @@
 'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Menu, X, Bell, ChevronDown, User, LogOut, Settings, LayoutDashboard, Moon, Sun, SunMoon, Wallet, Home, Gift, Crown } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useTheme } from '@/components/ThemeProvider'
-import WalletModal from '@/components/modals/WalletModal'
+import dynamic from 'next/dynamic'
 import { authApi, notificationsApi } from '@/lib/api'
+
+const WalletModal = dynamic(() => import('@/components/modals/WalletModal'), { ssr: false })
 
 const navLinks = [
   { href: '/', label: 'Home' },
@@ -29,19 +32,37 @@ export default function Navbar() {
   const [walletBalance, setWalletBalance] = useState<number>(0)
   const [unreadCount, setUnreadCount] = useState(0)
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      authApi.getBalance().then(res => {
-        if (res.data?.data?.balance !== undefined) {
-          setWalletBalance(res.data.data.balance)
-        }
-      }).catch(console.error)
+  const lastNotifFetch = useRef(0)
 
+  // Fetch balance once on auth, and again whenever wallet modal closes
+  useEffect(() => {
+    if (!isAuthenticated) return
+    authApi.getBalance().then(res => {
+      if (res.data?.data?.balance !== undefined) {
+        setWalletBalance(res.data.data.balance)
+      }
+    }).catch(() => {})
+  }, [isAuthenticated, walletOpen]) // walletOpen allows refresh after deposit/cashout
+
+  // Poll notifications every 30s, throttled — don't re-fetch on every route change
+  useEffect(() => {
+    if (!isAuthenticated) return
+
+    const fetchNotifications = () => {
+      const now = Date.now()
+      if (now - lastNotifFetch.current < 30000) return
       notificationsApi.getUnreadCount()
-        .then(res => setUnreadCount(res.data.data.count))
-        .catch(console.error)
+        .then(res => {
+          setUnreadCount(res.data.data.count)
+          lastNotifFetch.current = Date.now()
+        })
+        .catch(() => {})
     }
-  }, [isAuthenticated, walletOpen, pathname])
+
+    fetchNotifications()
+    const interval = setInterval(fetchNotifications, 30000)
+    return () => clearInterval(interval)
+  }, [isAuthenticated])
 
   useEffect(() => {
     setMounted(true)
@@ -59,7 +80,7 @@ export default function Navbar() {
         <div className="flex items-center justify-between">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-3 group">
-            <img src="/images/vault-sweeps-logo.png" alt="Vault Sweeps" className="h-10 w-auto object-contain drop-shadow-md group-hover:scale-105 transition-transform" />
+            <Image src="/images/vault-sweeps-logo.png" alt="Vault Sweeps" width={160} height={40} className="h-10 w-auto object-contain drop-shadow-md group-hover:scale-105 transition-transform" priority />
           </Link>
 
           {/* Desktop Nav */}
@@ -271,7 +292,7 @@ export default function Navbar() {
         {/* Games (Site Logo) */}
         <Link href="/games" className={`relative flex items-center justify-center transition-all ${pathname.includes('/games') ? 'opacity-100' : 'opacity-60 hover:opacity-90'}`}>
           <div className="w-9 h-9 rounded-full border border-white/15 flex items-center justify-center bg-black/60 overflow-hidden">
-            <img src="/images/vault-sweeps-logo.png" alt="Games" className="w-full h-full object-contain p-1" />
+            <Image src="/images/vault-sweeps-logo.png" alt="Games" width={36} height={36} className="w-full h-full object-contain p-1" />
           </div>
           {pathname.includes('/games') && <div className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 w-4 h-0.5 bg-neon-purple rounded-full shadow-[0_0_8px_rgba(168,85,247,0.9)]" />}
         </Link>

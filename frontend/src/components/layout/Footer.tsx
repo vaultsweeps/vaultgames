@@ -1,5 +1,6 @@
 'use client'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Send, Facebook, Twitter, Youtube, Instagram, MessageCircle, Mail } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { publicApi } from '@/lib/api'
@@ -21,8 +22,8 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
           {/* Brand */}
           <div>
-            <Link href="/" className="flex items-center gap-2 mb-4">
-              <img src="/images/vault-sweeps-logo.png" alt="Vault Sweeps" className="h-10 w-auto object-contain drop-shadow-md" />
+            <Link href="/" className="flex items-center gap-2 mb-4 group inline-block">
+              <Image src="/images/vault-sweeps-logo.png" alt="Vault Sweeps" width={160} height={40} className="h-10 w-auto object-contain drop-shadow-md group-hover:scale-105 transition-transform" />
               <span className="font-display font-bold text-lg gradient-text">VAULT SWEEPS</span>
             </Link>
             <p className="text-muted text-sm leading-relaxed mb-5">
