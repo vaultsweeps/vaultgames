@@ -8,6 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import toast from 'react-hot-toast'
 import { Eye, EyeOff, Zap, Lock, Mail, User, CheckCircle, XCircle, Loader2 } from 'lucide-react'
+import Image from 'next/image'
 import { useAuthStore } from '@/store/authStore'
 import apiClient from '@/lib/api'
 
@@ -115,7 +116,7 @@ export default function RegisterPage() {
         {/* Left - Perks */}
         <motion.div initial={{ opacity: 0, x: -30 }} animate={{ opacity: 1, x: 0 }} className="hidden lg:block">
           <Link href="/" className="inline-flex items-center gap-2 mb-8">
-            <img src="/images/vault-sweeps-logo.png" alt="Vault Sweeps" className="h-10 w-auto object-contain drop-shadow-md" />
+            <Image src="/images/vault-sweeps-logo.png" alt="Vault Sweeps" width={160} height={40} className="h-10 w-auto object-contain drop-shadow-md" priority />
             <span className="font-display font-bold text-xl gradient-text">VAULT SWEEPS</span>
           </Link>
           <h1 className="font-display font-black text-5xl text-white mb-4 leading-tight">JOIN THE<br /><span className="gradient-text">VAULT SWEEPS</span></h1>
@@ -156,7 +157,7 @@ export default function RegisterPage() {
           <div className="glass-card p-8">
             <div className="lg:hidden text-center mb-6">
               <Link href="/" className="inline-flex items-center gap-2 mb-2">
-                <img src="/images/vault-sweeps-logo.png" alt="Vault Sweeps" className="h-10 w-auto object-contain drop-shadow-md" />
+                <Image src="/images/vault-sweeps-logo.png" alt="Vault Sweeps" width={160} height={40} className="h-10 w-auto object-contain drop-shadow-md" priority />
                 <span className="font-display font-bold gradient-text">VAULT SWEEPS</span>
               </Link>
             </div>
