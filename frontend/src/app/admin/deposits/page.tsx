@@ -44,13 +44,14 @@ export default function AdminDepositsPage() {
     (d.user?.username.toLowerCase().includes(search.toLowerCase()) || d.id.includes(search) || (d.paymentReference && d.paymentReference.toLowerCase().includes(search.toLowerCase())) || d.user?.email.toLowerCase().includes(search.toLowerCase()))
   )
 
-  const handleAction = async (id: string, action: 'approve' | 'reject') => {
+  const handleAction = async (id: string, action: 'approve' | 'reject' | 'void') => {
     setProcessing(id)
     try {
       if (action === 'approve') await adminApi.approveDeposit(id, notes)
-      else await adminApi.rejectDeposit(id, notes)
+      else if (action === 'reject') await adminApi.rejectDeposit(id, notes)
+      else if (action === 'void') await adminApi.voidDeposit(id, notes)
       
-      toast.success(`Deposit ${action === 'approve' ? 'approved' : 'rejected'} successfully!`)
+      toast.success(`Deposit ${action === 'approve' ? 'approved' : action === 'reject' ? 'rejected' : 'voided'} successfully!`)
       await fetchDeposits()
       setSelected(null)
     } catch (err: any) {
@@ -189,6 +190,23 @@ export default function AdminDepositsPage() {
                   <button onClick={() => handleAction(selected.id, 'reject')} disabled={!!processing}
                     className="flex-1 py-2.5 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-sm font-medium hover:bg-red-500/20 transition-all disabled:opacity-50 flex items-center justify-center gap-2">
                     <XCircle className="w-4 h-4" /> Reject
+                  </button>
+                </div>
+              </>
+            )}
+            {selected.status === 'approved' && (
+              <>
+                <div className="mb-4">
+                  <label className="block text-xs text-secondary mb-2">Void Reason (Required)</label>
+                  <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} className="input-neon resize-none text-sm border-amber-500/30 focus:border-amber-500 focus:shadow-[0_0_10px_rgba(245,158,11,0.2)]" placeholder="Reason for voiding (e.g. wrong amount, fraudulent)..." />
+                </div>
+                <div className="flex gap-3">
+                  <button onClick={() => {
+                    if (!notes.trim()) { toast.error('Please provide a reason to void'); return; }
+                    handleAction(selected.id, 'void')
+                  }} disabled={!!processing}
+                    className="flex-1 py-2.5 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-400 text-sm font-medium hover:bg-amber-500/20 transition-all disabled:opacity-50 flex items-center justify-center gap-2">
+                    <XCircle className="w-4 h-4" /> Void Deposit (Deduct Balance)
                   </button>
                 </div>
               </>

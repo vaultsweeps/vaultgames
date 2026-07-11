@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { authenticate, requireAdmin } from '../middleware/auth'
 import {
   getDashboardStats, getUsers, banUser, suspendUser, verifyUser,
-  getAdminDeposits, approveDeposit, rejectDeposit,
+  getAdminDeposits, approveDeposit, rejectDeposit, voidDeposit,
   getAdminWithdrawals, approveWithdrawal, rejectWithdrawal, markWithdrawalPaid,
   getAdminGames, createGame, updateGame, deleteGame,
   getAdminBanners, createBanner, updateBanner, deleteBanner,
@@ -11,7 +11,7 @@ import {
   getAdminBonuses, createBonus, updateBonus, deleteBonus,
   getAdminEnhancedWithdrawals, exportEnhancedWithdrawalsCSV,
   adminApproveEnhancedWithdrawal, adminRejectEnhancedWithdrawal,
-  getUserDetails,
+  getUserDetails, voidUserBalance
 } from '../controllers/adminController'
 import {
   getProviders, createProvider, updateProvider, deleteProvider,
@@ -31,11 +31,13 @@ router.get('/users/:id', getUserDetails)
 router.patch('/users/:id/ban', banUser)
 router.patch('/users/:id/suspend', suspendUser)
 router.patch('/users/:id/verify', verifyUser)
+router.post('/users/:id/void-balance', voidUserBalance)
 
 // Deposits
 router.get('/deposits', getAdminDeposits)
 router.patch('/deposits/:id/approve', approveDeposit)
 router.patch('/deposits/:id/reject', rejectDeposit)
+router.patch('/deposits/:id/void', voidDeposit)
 
 // Withdrawals (legacy)
 router.get('/withdrawals', getAdminWithdrawals)

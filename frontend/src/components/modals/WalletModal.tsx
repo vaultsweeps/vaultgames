@@ -343,7 +343,6 @@ export default function WalletModal({ isOpen, onClose, balance }: WalletModalPro
         isOpen={cashoutMethod !== null}
         onClose={() => setCashoutMethod(null)}
         method={cashoutMethod as any}
-        balance={balance}
       />
       <ZappayDepositModal
         isOpen={depositMethod === 'zappay'}

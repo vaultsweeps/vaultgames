@@ -70,9 +70,13 @@ export const getMyReferralInfo = asyncHandler(async (req: AuthRequest, res: Resp
   // Build stats
   const totalReferrals = user.referrals.length
   const activeReferrals = user.referrals.filter((r: any) => r.deposits.length > 0).length
-  const totalEarnings = user.referrals.reduce((sum: number, r: any) => {
-    return sum + r.deposits.reduce((s: number, d: any) => s + d.amount * 0.05, 0) // 5% bonus
-  }, 0)
+  
+  // Calculate total earnings based on actual BonusClaims awarded to this user
+  const bonusClaims = await prisma.bonusClaim.aggregate({
+    where: { userId: userId, bonus: { type: 'referral' } },
+    _sum: { amount: true }
+  })
+  const totalEarnings = bonusClaims._sum.amount || 0
 
   const referralLink = `https://vaultsweeps.com/register?ref=${user.referralCode}`
 

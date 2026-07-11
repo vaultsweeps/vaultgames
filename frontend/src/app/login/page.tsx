@@ -7,11 +7,11 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import toast from 'react-hot-toast'
-import { Eye, EyeOff, Zap, Lock, Mail } from 'lucide-react'
+import { Eye, EyeOff, User, Lock } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 
 const schema = z.object({
-  email: z.string().email('Invalid email address'),
+  email: z.string().min(1, 'Email or username is required'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
 })
 
@@ -61,17 +61,18 @@ export default function LoginPage() {
         {/* Form card */}
         <div className="glass-card p-8">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-            {/* Email */}
+            {/* Email or Username */}
             <div>
-              <label className="block text-xs font-mono tracking-wider text-secondary uppercase mb-2">Email Address</label>
+              <label suppressHydrationWarning className="block text-xs font-mono tracking-wider text-secondary uppercase mb-2">Email or Username</label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
                 <input
                   {...register('email')}
-                  type="email"
-                  placeholder="your@email.com"
+                  type="text"
+                  placeholder="your@email.com or username"
                   className="input-neon"
                   style={{ paddingLeft: '2.5rem' }}
+                  autoComplete="username"
                 />
               </div>
               {errors.email && <p className="text-red-400 text-xs mt-1">{errors.email.message}</p>}
@@ -113,7 +114,7 @@ export default function LoginPage() {
 
           <div className="mt-6 pt-6 border-t border-border-subtle text-center">
             <p className="text-muted text-sm">
-              Don't have an account?{' '}
+              Don&apos;t have an account?{' '}
               <Link href="/register" className="text-neon-blue hover:underline font-medium">Create one free</Link>
             </p>
           </div>

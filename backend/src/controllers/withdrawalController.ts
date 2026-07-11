@@ -117,8 +117,8 @@ export const createManualWithdrawal = asyncHandler(async (req: AuthRequest, res:
 
   if (isNaN(numAmount) || numAmount <= 0) throw new AppError('Invalid amount', 400)
 
-  const balance = await WalletService.getWalletBalance(req.user!.id)
-  if (numAmount > balance) throw new AppError('Insufficient wallet balance', 400)
+  const balance = await WalletService.getWithdrawableBalance(req.user!.id)
+  if (numAmount > balance) throw new AppError('Insufficient cashable wallet balance', 400)
 
   let methodName = paymentMethodId
   if (paymentMethodId && paymentMethodId.length > 10) {

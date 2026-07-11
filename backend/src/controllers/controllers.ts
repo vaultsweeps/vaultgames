@@ -225,7 +225,7 @@ export const getPublicFeaturedGames = asyncHandler(async (_req: any, res: Respon
     return await prisma.game.findMany({
       where: { isActive: true, isFeatured: true },
       take: 12, orderBy: { downloadCount: 'desc' },
-      select: { id: true, name: true, category: true, version: true, downloadCount: true, thumbnailUrl: true, description: true, rating: true, isFeatured: true }
+      select: { id: true, name: true, category: true, version: true, downloadCount: true, thumbnailUrl: true, description: true, rating: true, isFeatured: true, providerId: true }
     })
   }, 60); // 60 seconds TTL
   res.json({ success: true, data: games })

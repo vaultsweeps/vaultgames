@@ -5,7 +5,8 @@ import { AuthRequest } from '../middleware/auth'
 import { createNotification } from '../services/notificationService'
 import { logger } from '../utils/logger'
 import { supabase } from '../utils/supabase'
-import { WalletService } from '../services/WalletService'
+import { WalletService, invalidateWalletCache } from '../services/WalletService'
+import { ReferralService } from '../services/ReferralService'
 import { redis, getCached } from '../lib/redis'
 
 // GET /api/admin/stats
@@ -188,6 +189,45 @@ export const getUserDetails = asyncHandler(async (req: AuthRequest, res: Respons
   });
 });
 
+export const voidUserBalance = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const id = req.params.id as string
+  const { amount, reason } = req.body
+
+  if (!amount || amount <= 0) {
+    throw new AppError('Valid amount is required', 400)
+  }
+
+  const user = await prisma.user.findUnique({ where: { id } })
+  if (!user) {
+    throw new AppError('User not found', 404)
+  }
+
+  // Check if user has enough balance
+  const currentBalance = await WalletService.getWalletBalance(user.id)
+  if (amount > currentBalance) {
+    throw new AppError('Amount exceeds user balance', 400)
+  }
+
+  // Create a manual void withdrawal to deduct the balance
+  const withdrawal = await prisma.withdrawal.create({
+    data: {
+      userId: user.id,
+      amount: parseFloat(amount),
+      currency: 'USD',
+      accountInfo: 'Admin Void',
+      status: 'paid', // Immediately marks it as paid to deduct balance
+      adminNotes: reason ? `Admin Void: ${reason}` : 'Admin Void',
+      processedBy: (req as any).user?.id,
+      processedAt: new Date()
+    }
+  })
+
+  // Invalidate the cache to immediately reflect new balance
+  invalidateWalletCache(user.id)
+
+  res.json({ success: true, message: 'Balance voided successfully', data: withdrawal })
+})
+
 // PATCH /api/admin/users/:id/ban
 export const banUser = asyncHandler(async (req: AuthRequest, res: Response) => {
   const id = req.params.id as string
@@ -265,6 +305,9 @@ export const approveDeposit = asyncHandler(async (req: AuthRequest, res: Respons
     data: { type: 'deposit_approved', entityId: id, userId: req.user!.id, amount: deposit.amount, status: 'approved' }
   })
 
+  // Process potential referral bonus
+  await ReferralService.processFirstDepositBonus(deposit.userId, deposit.amount)
+
   res.json({ success: true, message: 'Deposit approved successfully' })
 })
 
@@ -285,6 +328,35 @@ export const rejectDeposit = asyncHandler(async (req: AuthRequest, res: Response
   })
 
   res.json({ success: true, message: 'Deposit rejected' })
+})
+
+// PATCH /api/admin/deposits/:id/void
+export const voidDeposit = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const id = req.params.id as string
+  const { notes } = req.body
+
+  const deposit = await prisma.deposit.findUnique({ where: { id } })
+  if (!deposit) throw new AppError('Deposit not found', 404)
+  if (deposit.status !== 'approved') throw new AppError('Only approved deposits can be voided', 400)
+
+  const adminNotes = (deposit.notes || '') + '\nVoided: ' + (notes || 'No reason provided')
+  
+  await prisma.deposit.update({ where: { id }, data: { status: 'failed', notes: adminNotes } })
+
+  // Invalidate wallet cache
+  invalidateWalletCache(deposit.userId)
+
+  createNotification(deposit.userId, {
+    title: 'Deposit Voided',
+    message: `Your deposit of $${deposit.amount} was voided. Reason: ${notes || 'No reason provided'}. Contact support for details.`,
+    type: 'error', link: '/dashboard/deposits'
+  })
+
+  await prisma.transactionLog.create({
+    data: { type: 'deposit_voided', entityId: id, userId: req.user!.id, amount: deposit.amount, status: 'failed', metadata: { reason: notes } }
+  })
+
+  res.json({ success: true, message: 'Deposit voided successfully' })
 })
 
 // GET /api/admin/withdrawals

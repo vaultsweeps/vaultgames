@@ -5,6 +5,7 @@ import { PrismaClient } from '@prisma/client';
 import { supabase } from '../utils/supabase';
 import { logger } from '../utils/logger';
 import { createNotification } from './notificationService';
+import { invalidateWalletCache } from './WalletService';
 
 const prisma = new PrismaClient();
 
@@ -16,6 +17,15 @@ const REJECTION_REASONS = [
   'Identity verification required',
   'Suspicious activity detected',
   'Account under review',
+];
+
+const VOID_REASONS = [
+  'Wrong payment received',
+  'Fraudulent / Suspicious payment',
+  'Payment reversed by sender',
+  'Duplicate deposit detected',
+  'Auto-verified in error',
+  'Other — contact support',
 ];
 
 export class TelegramSupportBot {
@@ -46,6 +56,12 @@ export class TelegramSupportBot {
 
   public async start() {
     if (process.env.TELEGRAM_BOT_TOKEN) {
+      // Global error handler — prevents "Unhandled error while processing" crashes
+      // (e.g., stale callback_query IDs after server restart)
+      this.bot.catch((err: any) => {
+        logger.warn(`[TelegramBot] Suppressed bot error: ${err?.message || err}`);
+      });
+
       try {
         await this.bot.launch();
         logger.info('Telegram Support Bot started successfully.');
@@ -227,6 +243,7 @@ export class TelegramSupportBot {
             [
               { text: '✅ Approve', callback_data: `dep_approve_${deposit.id}` },
               { text: '❌ Reject',  callback_data: `dep_reject_${deposit.id}` },
+              { text: '🚫 Void',    callback_data: `dep_void_${deposit.id}` },
             ]
           ]
         }
@@ -269,7 +286,25 @@ export class TelegramSupportBot {
       `✨ Verified via Email`;
 
     try {
-      await this.bot.telegram.sendMessage(groupId, text);
+      const sent = await this.bot.telegram.sendMessage(groupId, text, {
+        reply_markup: {
+          inline_keyboard: [
+            [
+              { text: '🚫 Void (Deduct Balance)', callback_data: `dep_void_${deposit.id}` },
+            ]
+          ]
+        }
+      });
+
+      // Store message ID for later editing
+      prisma.deposit.update({
+        where: { id: deposit.id },
+        data: {
+          telegramMessageId: String(sent.message_id),
+          telegramChatId: String(sent.chat.id)
+        }
+      }).catch(e => logger.warn('Could not store Telegram message ID for auto-approved deposit:', e.message));
+
     } catch (e) {
       logger.error('Failed to send auto-approved Telegram notification', e)
     }
@@ -439,10 +474,17 @@ export class TelegramSupportBot {
     const data: string = ctx.callbackQuery?.data || '';
     if (!data) return;
 
+    // Helper: answer the callback query silently — Telegram has a ~10s timeout on these.
+    // After a server restart, queued callbacks arrive with stale IDs and answerCbQuery
+    // throws "400: query is too old". We swallow that error to prevent crashes.
+    const safeCbAnswer = (text: string) =>
+      ctx.answerCbQuery(text).catch(() => {/* stale query — ignore */});
+
+    try {
     // dep_approve_<depositId>
     if (data.startsWith('dep_approve_')) {
       const depositId = data.replace('dep_approve_', '');
-      await ctx.answerCbQuery('Processing approval...');
+      await safeCbAnswer('Processing approval...');
       await this.processDeposit(ctx, depositId, 'approve');
       return;
     }
@@ -450,15 +492,49 @@ export class TelegramSupportBot {
     // dep_reject_<depositId>
     if (data.startsWith('dep_reject_')) {
       const depositId = data.replace('dep_reject_', '');
-      await ctx.answerCbQuery('Processing rejection...');
+      await safeCbAnswer('Processing rejection...');
       await this.processDeposit(ctx, depositId, 'reject');
+      return;
+    }
+
+    // dep_void_<depositId> — show void reason picker
+    if (data.startsWith('dep_void_') && !data.startsWith('dep_void_reason_')) {
+      const depositId = data.replace('dep_void_', '');
+      await safeCbAnswer('Select void reason...');
+
+      const reasonButtons = VOID_REASONS.map(r => ([{
+        text: r,
+        callback_data: `dep_void_reason_${depositId}__${r}`
+      }]));
+
+      await ctx.reply(
+        `🚫 Select void reason for deposit \`${depositId.slice(0, 10)}...\`:`,
+        {
+          parse_mode: 'Markdown',
+          reply_markup: { inline_keyboard: reasonButtons }
+        }
+      );
+      return;
+    }
+
+    // dep_void_reason_<depositId>__<reason>
+    if (data.startsWith('dep_void_reason_')) {
+      const withoutPrefix = data.replace('dep_void_reason_', '');
+      const separatorIdx = withoutPrefix.indexOf('__');
+      if (separatorIdx === -1) return;
+
+      const depositId = withoutPrefix.substring(0, separatorIdx);
+      const reason = withoutPrefix.substring(separatorIdx + 2);
+
+      await safeCbAnswer('Voiding deposit...');
+      await this.processDepositVoid(ctx, depositId, reason);
       return;
     }
 
     // wd_approve_WD-1001
     if (data.startsWith('wd_approve_')) {
       const requestId = data.replace('wd_approve_', '');
-      await ctx.answerCbQuery('Processing approval...');
+      await safeCbAnswer('Processing approval...');
       await this.processWithdrawal(ctx, requestId, 'approve', null);
       return;
     }
@@ -466,7 +542,7 @@ export class TelegramSupportBot {
     // wd_reject_WD-1001 — show reason picker
     if (data.startsWith('wd_reject_')) {
       const requestId = data.replace('wd_reject_', '');
-      await ctx.answerCbQuery('Select rejection reason...');
+      await safeCbAnswer('Select rejection reason...');
 
       const reasonButtons = REJECTION_REASONS.map(r => ([{
         text: r,
@@ -494,9 +570,96 @@ export class TelegramSupportBot {
       const rawReason = withoutPrefix.substring(separatorIdx + 2);
       const reason = rawReason === 'NONE' ? null : rawReason;
 
-      await ctx.answerCbQuery('Processing rejection...');
+      await safeCbAnswer('Processing rejection...');
       await this.processWithdrawal(ctx, requestId, 'reject', reason);
       return;
+    }
+
+    } catch (e: any) {
+      // Log but don't crash — stale callback queries, network hiccups, etc.
+      logger.warn(`[TelegramBot] Callback query handler error (data="${data}"): ${e.message}`);
+    }
+  }
+
+  // ─── Void Deposit Processor ──────────────────────────────────────────────
+  private async processDepositVoid(ctx: any, depositId: string, reason: string) {
+    const agentName = ctx.from?.username ? `@${ctx.from.username}` : ctx.from?.first_name || 'Agent';
+
+    try {
+      const deposit = await prisma.deposit.findUnique({
+        where: { id: depositId },
+        include: { user: { select: { username: true, email: true } } }
+      });
+
+      if (!deposit) {
+        await ctx.reply(`⚠️ Deposit \`${depositId}\` not found.`, { parse_mode: 'Markdown' });
+        return;
+      }
+      if (deposit.status !== 'approved') {
+        await ctx.reply(`⚠️ Deposit is *${deposit.status}* — only *approved* deposits can be voided.`, { parse_mode: 'Markdown' });
+        return;
+      }
+
+      const adminNotes = (deposit.notes || '') + `\nVoided by ${agentName}: ${reason}`;
+      await prisma.deposit.update({
+        where: { id: depositId },
+        data: { status: 'failed', notes: adminNotes }
+      });
+
+      // Invalidate wallet cache so balance deduction is instant
+      invalidateWalletCache(deposit.userId);
+
+      // Notify user in-app
+      await createNotification(deposit.userId, {
+        title: '🚫 Deposit Voided',
+        message: `Your deposit of $${deposit.amount.toFixed(2)} has been voided. Reason: ${reason}. Contact support if you have questions.`,
+        type: 'error',
+        link: '/dashboard/deposits'
+      });
+
+      // Audit log
+      await prisma.transactionLog.create({
+        data: {
+          type: 'deposit_voided',
+          entityId: depositId,
+          userId: agentName,
+          amount: deposit.amount,
+          status: 'failed',
+          metadata: { reason, agentName }
+        }
+      }).catch(e => logger.error('TransactionLog error:', e));
+
+      // Edit original Telegram message
+      if (deposit.telegramMessageId && deposit.telegramChatId) {
+        const editedText =
+          `🚫 *Deposit Voided* by ${agentName}\n\n` +
+          `📋 Ref: \`${deposit.paymentReference}\`\n` +
+          `👤 User: ${deposit.user?.username || 'Unknown'} (${deposit.user?.email || 'N/A'})\n` +
+          `💵 Amount: *$${Number(deposit.amount).toFixed(2)}*\n` +
+          `📊 Status: Voided 🚫\n` +
+          `📝 Reason: ${reason}`;
+        try {
+          await this.bot.telegram.editMessageText(
+            deposit.telegramChatId,
+            Number(deposit.telegramMessageId),
+            undefined,
+            editedText,
+            { parse_mode: 'Markdown' }
+          );
+        } catch (e: any) {
+          logger.warn(`Could not edit Telegram deposit message: ${e.message}`);
+        }
+      }
+
+      await ctx.reply(
+        `🚫 Deposit \`${deposit.paymentReference}\` voided by ${agentName}\n📝 Reason: ${reason}`,
+        { parse_mode: 'Markdown' }
+      );
+
+      logger.info(`Deposit ${deposit.paymentReference} voided by ${agentName} — reason: ${reason}`);
+    } catch (e: any) {
+      logger.error(`Error voiding deposit ${depositId}:`, e);
+      await ctx.reply(`❌ Error voiding deposit. Please check the logs.`, { parse_mode: 'Markdown' });
     }
   }
 

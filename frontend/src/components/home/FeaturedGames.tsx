@@ -19,6 +19,7 @@ interface Game {
   thumbnailUrl: string | null
   isFeatured: boolean
   description: string
+  providerId: string | null
 }
 
 export default function FeaturedGames() {
@@ -75,9 +76,22 @@ export default function FeaturedGames() {
                   </div>
                 )}
               </div>
-              
               {/* Inner gradient for text readability */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+
+              {/* Badges */}
+              <div className="absolute top-3 left-3 right-3 flex justify-between items-start z-30 pointer-events-none">
+                {game.isFeatured && (
+                  <span className="text-[10px] font-mono font-bold text-neon-blue bg-neon-blue/10 border border-neon-blue/30 px-2 py-0.5 rounded-full backdrop-blur-sm shadow-lg">
+                    FEATURED
+                  </span>
+                )}
+                {!game.providerId && (
+                  <span className="ml-auto text-[10px] font-bold text-violet-200 bg-violet-600/40 border border-violet-500/40 px-2 py-0.5 rounded-full backdrop-blur-sm flex items-center gap-1 shadow-lg">
+                    🤖 Agent
+                  </span>
+                )}
+              </div>
 
               {/* Game info overlay */}
               <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-5 flex items-end justify-between z-10">

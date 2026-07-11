@@ -1,10 +1,11 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
-import { Gamepad2, Download, Search, Star, Eye, RefreshCw } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Gamepad2, Download, Search, Star, Eye, RefreshCw, Bot, X, MessageCircle, Send, Zap } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Link from 'next/link'
-import { gamesApi } from '@/lib/api'
+import { gamesApi, publicApi } from '@/lib/api'
+import PlayWithAgentModal from '@/components/modals/PlayWithAgentModal'
 
 const COLORS = [
   'from-blue-600/20 to-cyan-600/20',
@@ -29,8 +30,10 @@ interface Game {
   downloadUrl: string | null
   isFeatured: boolean
   isActive: boolean
+  providerId: string | null
 }
 
+// ─── Main Page ───────────────────────────────────────────────────────────────
 export default function GamesPage() {
   const [games, setGames] = useState<Game[]>([])
   const [loading, setLoading] = useState(true)
@@ -38,12 +41,18 @@ export default function GamesPage() {
   const [category, setCategory] = useState('All')
   const [selectedGame, setSelectedGame] = useState<Game | null>(null)
   const [downloading, setDownloading] = useState<string | null>(null)
+  const [agentGame, setAgentGame] = useState<Game | null>(null)
+  const [settings, setSettings] = useState<any>({})
 
   const fetchGames = async () => {
     setLoading(true)
     try {
-      const res = await gamesApi.getAll()
-      setGames(res.data.data || [])
+      const [gamesRes, settingsRes] = await Promise.all([
+        gamesApi.getAll(),
+        publicApi.getSettings().catch(() => ({ data: { data: {} } })),
+      ])
+      setGames(gamesRes.data.data || [])
+      setSettings(settingsRes.data.data || {})
     } catch {
       toast.error('Failed to load games')
     } finally {
@@ -53,7 +62,6 @@ export default function GamesPage() {
 
   useEffect(() => { fetchGames() }, [])
 
-  // Build dynamic category list from real data
   const categories = ['All', ...Array.from(new Set(games.map(g => g.category).filter(Boolean)))]
 
   const filtered = games.filter(g =>
@@ -78,6 +86,8 @@ export default function GamesPage() {
       setDownloading(null)
     }
   }
+
+  const hasProvider = (game: Game) => !!game.providerId
 
   return (
     <div className="space-y-6">
@@ -105,6 +115,18 @@ export default function GamesPage() {
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Legend */}
+      <div className="flex items-center gap-4 text-xs text-muted">
+        <span className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-neon-blue/70 inline-block" />
+          Online Play (Provider)
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-violet-400/70 inline-block" />
+          Agent-Assisted Play
+        </span>
       </div>
 
       {/* Games Grid */}
@@ -143,10 +165,16 @@ export default function GamesPage() {
                 {game.isFeatured && (
                   <span className="absolute top-2 left-2 text-xs font-mono text-neon-blue bg-neon-blue/10 border border-neon-blue/30 px-2 py-0.5 rounded-full">FEATURED</span>
                 )}
-                {game.category && (
-                  <span className="absolute top-2 right-2 text-xs text-secondary glass px-2 py-0.5 rounded-full border border-border-strong">{game.category}</span>
-                )}
+                {/* Provider badge */}
+                <span className={`absolute top-2 right-2 text-xs px-2 py-0.5 rounded-full border font-medium ${
+                  hasProvider(game)
+                    ? 'text-neon-blue glass border-neon-blue/20'
+                    : 'text-violet-300 bg-violet-500/10 border-violet-500/20'
+                }`}>
+                  {hasProvider(game) ? game.category : '🤖 Agent'}
+                </span>
               </div>
+
               {/* Info */}
               <div className="p-4">
                 <div className="flex items-start justify-between mb-1">
@@ -162,16 +190,27 @@ export default function GamesPage() {
                   <span className="flex items-center gap-1"><Download className="w-3 h-3" />{game.downloadCount > 999 ? `${(game.downloadCount/1000).toFixed(0)}K` : game.downloadCount}</span>
                   {game.version && <span className="font-mono text-neon-blue/50">v{game.version}</span>}
                 </div>
+
                 <div className="flex gap-2">
                   <Link href={`/games/${game.id}`} className="btn-neon flex-1 text-xs py-1.5 flex items-center justify-center gap-1">
                     <Eye className="w-3 h-3" /> Details
                   </Link>
-                  <button onClick={() => handleDownload(game)} disabled={downloading === game.id || !game.downloadUrl}
+                  <button
+                    onClick={() => handleDownload(game)}
+                    disabled={downloading === game.id || !game.downloadUrl}
                     className="btn-primary flex-1 text-xs py-1.5 flex items-center justify-center gap-1 disabled:opacity-50">
                     {downloading === game.id ? (
                       <div className="w-3 h-3 border border-white/30 border-t-white rounded-full animate-spin" />
                     ) : <><Download className="w-3 h-3" /> Get</>}
                   </button>
+                  {!hasProvider(game) && (
+                    <button
+                      onClick={() => setAgentGame(game)}
+                      className="flex-1 text-xs py-1.5 flex items-center justify-center gap-1 rounded-lg bg-violet-500/10 border border-violet-500/20 text-violet-300 hover:bg-violet-500/20 hover:border-violet-400/40 transition-all font-medium"
+                    >
+                      <Bot className="w-3 h-3" /> Play
+                    </button>
+                  )}
                 </div>
               </div>
             </motion.div>
@@ -197,17 +236,39 @@ export default function GamesPage() {
             <div className="flex gap-2 mb-4">
               {selectedGame.category && <span className="text-xs glass px-2 py-1 rounded-lg text-secondary border border-border-strong">{selectedGame.category}</span>}
               {selectedGame.version && <span className="text-xs text-neon-blue/70 font-mono glass px-2 py-1 rounded-lg border border-neon-blue/10">v{selectedGame.version}</span>}
+              {!hasProvider(selectedGame) && (
+                <span className="text-xs text-violet-300 bg-violet-500/10 border border-violet-500/20 px-2 py-1 rounded-lg flex items-center gap-1">
+                  <Bot className="w-3 h-3" /> Agent Play
+                </span>
+              )}
             </div>
             <p className="text-secondary text-sm leading-relaxed mb-5">{selectedGame.description || 'No description available.'}</p>
             <div className="flex gap-3">
-              <button onClick={() => handleDownload(selectedGame)} disabled={downloading === selectedGame.id || !selectedGame.downloadUrl}
-                className="btn-primary flex-1 py-3 text-sm flex items-center justify-center gap-2 disabled:opacity-50">
-                {downloading === selectedGame.id ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><Download className="w-4 h-4" /> Download Game</>}
-              </button>
+              <div className="flex-1 flex gap-2">
+                <button onClick={() => handleDownload(selectedGame)} disabled={downloading === selectedGame.id || !selectedGame.downloadUrl}
+                  className="btn-primary flex-1 py-3 text-sm flex items-center justify-center gap-2 disabled:opacity-50">
+                  {downloading === selectedGame.id ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><Download className="w-4 h-4" /> Download Game</>}
+                </button>
+                {!hasProvider(selectedGame) && (
+                  <button onClick={() => { setSelectedGame(null); setAgentGame(selectedGame); }}
+                    className="flex-1 py-3 text-sm flex items-center justify-center gap-2 rounded-xl bg-violet-500/10 border border-violet-500/30 text-violet-300 hover:bg-violet-500/20 transition-all font-medium">
+                    <Bot className="w-4 h-4" /> Play with Agent
+                  </button>
+                )}
+              </div>
               <button onClick={() => setSelectedGame(null)} className="glass px-5 py-3 rounded-xl text-secondary hover:text-white border border-border-strong transition-all text-sm">Close</button>
             </div>
           </motion.div>
         </div>
+      )}
+
+      {/* Play with Agent Modal */}
+      {agentGame && (
+        <PlayWithAgentModal
+          game={agentGame}
+          onClose={() => setAgentGame(null)}
+          settings={settings}
+        />
       )}
     </div>
   )

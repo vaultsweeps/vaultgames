@@ -1,0 +1,6 @@
+
+# Migration Data
+supabase-migration-backup/
+*.js
+!jest.config.js
+!next.config.js

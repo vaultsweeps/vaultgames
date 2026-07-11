@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Paperclip, CheckCircle, Clock, Shield, Zap } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { publicApi, withdrawalApi } from '@/lib/api'
+import { withdrawalApi, publicApi, authApi } from '@/lib/api'
 
 const TIMER_SECONDS = 10 * 60 // 10 minutes
 
@@ -231,22 +231,27 @@ function WithdrawalCountdown({ amount, title, settings, onClose, withdrawalId }:
 interface ManualCashoutModalProps {
   isOpen: boolean
   onClose: () => void
-  method: 'chime' | 'cashapp'
-  balance: number
+  method: 'cashapp' | 'chime'
 }
 
-export default function ManualCashoutModal({ isOpen, onClose, method, balance }: ManualCashoutModalProps) {
+export default function ManualCashoutModal({ isOpen, onClose, method }: ManualCashoutModalProps) {
   const [amount, setAmount] = useState<string>('0.00')
   const [tag, setTag] = useState('')
   const [qrFile, setQrFile] = useState<File | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
+  const [balance, setBalance] = useState(0)
+  const [withdrawable, setWithdrawable] = useState(0)
   const [withdrawalId, setWithdrawalId] = useState<string | null>(null)
   const [settings, setSettings] = useState<any>({})
 
   useEffect(() => {
     if (isOpen) {
-      publicApi.getSettings().then(res => setSettings(res.data.data)).catch(() => {})
+      publicApi.getSettings().then(r => setSettings(r.data.data)).catch(() => {})
+      authApi.getBalance().then(r => {
+        setBalance(r.data.data?.balance || 0)
+        setWithdrawable(r.data.data?.withdrawable ?? (r.data.data?.balance || 0))
+      }).catch(() => {})
     } else {
       // Reset state when modal closes so it starts fresh next time
       const t = setTimeout(() => {
@@ -268,7 +273,7 @@ export default function ManualCashoutModal({ isOpen, onClose, method, balance }:
   const tagLabel = isChime ? 'Your chime $tag' : 'Your cashapp $tag'
 
   const handlePercentage = (percent: number) => {
-    setAmount(((balance * percent) / 100).toFixed(2))
+    setAmount(((withdrawable * percent) / 100).toFixed(2))
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -280,7 +285,7 @@ export default function ManualCashoutModal({ isOpen, onClose, method, balance }:
   const handleSubmit = async () => {
     const numAmount = parseFloat(amount)
     if (!numAmount || numAmount <= 0) return toast.error('Please enter a valid amount')
-    if (numAmount > balance) return toast.error('Insufficient balance')
+    if (numAmount > withdrawable) return toast.error('Insufficient withdrawable balance')
     if (!tag.trim()) return toast.error(`Please enter your ${title} tag`)
 
     setIsSubmitting(true)
@@ -384,7 +389,7 @@ export default function ManualCashoutModal({ isOpen, onClose, method, balance }:
 
                   <div className="flex justify-between items-center py-2 border-b border-border-subtle">
                     <span className="text-secondary text-sm">Available balance</span>
-                    <span className="text-white font-bold text-sm">${balance.toFixed(2)}</span>
+                    <span className="text-white font-bold text-sm">${withdrawable.toFixed(2)}</span>
                   </div>
                 </div>
 

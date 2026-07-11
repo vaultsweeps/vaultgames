@@ -1,6 +1,17 @@
 import { ProviderService } from './ProviderService';
+import { FastApiProviderService } from './FastApiProviderService';
 import { ProviderAdapter } from './ProviderAdapter';
 import prisma from '../../lib/prisma';
+import { Provider } from '@prisma/client';
+
+function createProviderService(provider: Provider): ProviderAdapter {
+  const name = provider.name?.toLowerCase() || '';
+  if (name.includes('vblink') || name.includes('ultrapanda')) {
+    return new FastApiProviderService(provider);
+  }
+  return new ProviderService(provider);
+}
+
 
 interface CacheEntry<T> {
   data: T;
@@ -22,7 +33,7 @@ export class ProviderFactory {
       where: { status: true },
     });
     if (!provider) return null;
-    const service = new ProviderService(provider);
+    const service = createProviderService(provider);
     this.activeProviderCache = { data: service, timestamp: Date.now() };
     return service;
   }
@@ -33,7 +44,7 @@ export class ProviderFactory {
 
     const provider = await prisma.provider.findUnique({ where: { id } });
     if (!provider) return null;
-    const service = new ProviderService(provider);
+    const service = createProviderService(provider);
     this.providerCache.set(id, { data: service, timestamp: Date.now() });
     return service;
   }
@@ -51,7 +62,7 @@ export class ProviderFactory {
     });
     let service: ProviderAdapter | null = null;
     if (game?.provider && game.provider.status) {
-      service = new ProviderService(game.provider);
+      service = createProviderService(game.provider);
       this.providerCache.set(game.provider.id, { data: service, timestamp: Date.now() });
     }
     this.gameProviderCache.set(gameId, { data: service, timestamp: Date.now() });

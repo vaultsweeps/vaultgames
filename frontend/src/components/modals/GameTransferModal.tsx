@@ -16,6 +16,7 @@ interface GameTransferModalProps {
   startAmount: number
   onTransfer: (amount: number, type: 'recharge' | 'withdraw') => Promise<void>
   onChangeGame?: () => void
+  onRefresh?: () => Promise<void>
 }
 
 const presets = [
@@ -26,10 +27,11 @@ const presets = [
 ] as const
 
 const GameTransferModal = React.memo(function GameTransferModal({ 
-  isOpen, onClose, type, gameName, gameThumbnail, accountName, gameBalance, walletBalance, totalDeposited, startAmount, onTransfer, onChangeGame
+  isOpen, onClose, type, gameName, gameThumbnail, accountName, gameBalance, walletBalance, totalDeposited, startAmount, onTransfer, onChangeGame, onRefresh
 }: GameTransferModalProps) {
   const [amount, setAmount] = useState<string>('')
   const [loading, setLoading] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
 
   useEffect(() => {
     if (isOpen) {
@@ -147,9 +149,19 @@ const GameTransferModal = React.memo(function GameTransferModal({
                   </div>
                 </div>
               </div>
-              <button className="absolute right-4 top-10 text-muted hover:text-white transition-colors">
-                <RefreshCw className="w-4 h-4" />
-              </button>
+              {onRefresh && (
+                <button 
+                  onClick={async () => {
+                    setRefreshing(true)
+                    await onRefresh()
+                    setRefreshing(false)
+                  }}
+                  disabled={refreshing}
+                  className="absolute right-4 top-10 text-muted hover:text-white transition-colors disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
+                </button>
+              )}
             </div>
 
             {/* Input Section */}

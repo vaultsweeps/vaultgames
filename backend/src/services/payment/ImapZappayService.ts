@@ -5,6 +5,8 @@ import prisma from '../../lib/prisma'
 import { createNotification } from '../notificationService'
 import { sendDepositNotification } from '../emailService'
 import { TelegramService } from '../TelegramService'
+import { ReferralService } from '../ReferralService'
+import { invalidateWalletCache } from '../WalletService'
 
 export class ImapZappayService {
   static isRunning = false;
@@ -63,6 +65,12 @@ export class ImapZappayService {
 
         const mail = await simpleParser(all.body);
         const text = mail.text || '';
+        
+        // Strictly check last 15 minutes of mail (900000 ms)
+        const emailDate = item.attributes.date || mail.date || new Date();
+        if (Date.now() - emailDate.getTime() > 15 * 60 * 1000) {
+          continue;
+        }
 
         // Looking for: You have received X $ from Sender Name.
         // Transaction ID: TRF-123456
@@ -132,9 +140,12 @@ export class ImapZappayService {
             
             // Let's check WalletService or similar, or just Prisma update.
             // But we don't have user.balance in schema? Oh wait, balance is often calculated or stored. Let's look at prisma schema.
-            // Wait, user schema has no 'balance' field! Nexus Gaming computes balance or uses another table?
             // Usually, there is a WalletService. Let's just update deposit and rely on WalletService if we need to.
             // I'll call a quick check on WalletService methods below.
+            
+            invalidateWalletCache(match.userId)
+            
+            await ReferralService.processFirstDepositBonus(match.userId, match.amount)
           }
         }
       }
@@ -146,42 +157,12 @@ export class ImapZappayService {
     }
   }
 
-  static async failExpiredDeposits() {
-    try {
-      // Fail deposits older than 2 hours that are still pending
-      const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
-      const expired = await prisma.deposit.findMany({
-        where: {
-          status: 'pending',
-          paymentMethod: { code: 'zappay' },
-          createdAt: { lt: twoHoursAgo }
-        }
-      });
-
-      for (const d of expired) {
-        await prisma.deposit.update({
-          where: { id: d.id },
-          data: { status: 'failed', notes: d.notes + '\nFailed automatically: no payment received' }
-        });
-      }
-    } catch (err) {
-      console.error('[ImapZappayService] failExpiredDeposits error (DB may be unavailable):', err);
-    }
-  }
-
   static startCron() {
     console.log('[ImapZappayService] Starting IMAP cron jobs');
-    // Run every 2 minutes
-    cron.schedule('*/2 * * * *', () => {
+    // Run every 30 seconds for faster verification
+    cron.schedule('*/30 * * * * *', () => {
       this.parseEmailsAndVerifyDeposits().catch(err =>
         console.error('[ImapZappayService] parseEmailsAndVerifyDeposits cron error:', err)
-      );
-    });
-
-    // Run every 10 minutes for expired deposits
-    cron.schedule('*/10 * * * *', () => {
-      this.failExpiredDeposits().catch(err =>
-        console.error('[ImapZappayService] failExpiredDeposits cron error:', err)
       );
     });
   }

@@ -169,11 +169,13 @@ export const adminApi = {
   banUser: (id: string) => apiClient.patch(`/admin/users/${id}/ban`),
   verifyUser: (id: string) => apiClient.patch(`/admin/users/${id}/verify`),
   deleteUser: (id: string) => apiClient.delete(`/admin/users/${id}`),
+  voidUserBalance: (id: string, data: { amount: number, reason?: string }) => apiClient.post(`/admin/users/${id}/void-balance`, data),
 
   // Deposits
   getDeposits: (params?: object) => apiClient.get('/admin/deposits', { params }),
   approveDeposit: (id: string, notes?: string) => apiClient.patch(`/admin/deposits/${id}/approve`, { notes }),
   rejectDeposit: (id: string, notes?: string) => apiClient.patch(`/admin/deposits/${id}/reject`, { notes }),
+  voidDeposit: (id: string, notes?: string) => apiClient.patch(`/admin/deposits/${id}/void`, { notes }),
 
   // Withdrawals
   getWithdrawals: (params?: object) => apiClient.get('/admin/withdrawals', { params }),

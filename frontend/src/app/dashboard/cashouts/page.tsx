@@ -215,6 +215,7 @@ export default function CashoutsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [step, setStep]                 = useState<1 | 2 | 3>(1) // 1=method, 2=form, 3=timer
   const [balance, setBalance]           = useState(0)
+  const [withdrawable, setWithdrawable] = useState(0)
   const [withdrawalId, setWithdrawalId] = useState<string | null>(null)
   const [settings, setSettings]         = useState<any>({})
 
@@ -234,7 +235,10 @@ export default function CashoutsPage() {
   useEffect(() => {
     fetchHistory()
     publicApi.getSettings().then(r => setSettings(r.data.data)).catch(() => {})
-    authApi.getBalance().then(r => setBalance(r.data.data?.balance || 0)).catch(() => {})
+    authApi.getBalance().then(r => {
+      setBalance(r.data.data?.balance || 0)
+      setWithdrawable(r.data.data?.withdrawable ?? (r.data.data?.balance || 0))
+    }).catch(() => {})
     depositApi.getPaymentMethods()
       .then(r => setMethods(r.data.data || []))
       .catch(() => setMethods([]))
@@ -248,7 +252,7 @@ export default function CashoutsPage() {
   }
 
   const handlePercentage = (pct: number) => {
-    setAmount(((balance * pct) / 100).toFixed(2))
+    setAmount(((withdrawable * pct) / 100).toFixed(2))
   }
 
   const handleSelect = (m: any) => {
@@ -262,7 +266,7 @@ export default function CashoutsPage() {
   const handleSubmit = async () => {
     const numAmount = parseFloat(amount)
     if (!numAmount || numAmount <= 0) return toast.error('Please enter a valid amount')
-    if (numAmount > balance) return toast.error('Insufficient balance')
+    if (numAmount > withdrawable) return toast.error('Insufficient withdrawable balance')
 
     const fields = getFields(selectedMethod)
     const allFilled = fields.filter((f: any) => f.required).every((f: any) => fieldValues[f.name]?.trim())
@@ -448,7 +452,7 @@ export default function CashoutsPage() {
 
                       <div className="flex justify-between items-center py-2 border-b border-border-subtle">
                         <span className="text-secondary text-sm">Available balance</span>
-                        <span className="text-white font-bold text-sm">${balance.toFixed(2)}</span>
+                        <span className="text-white font-bold text-sm">${withdrawable.toFixed(2)}</span>
                       </div>
                     </div>
 

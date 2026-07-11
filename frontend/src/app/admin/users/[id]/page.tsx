@@ -11,6 +11,12 @@ export default function UserDetailsPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<any>(null)
+  
+  // Void Balance state
+  const [showVoidModal, setShowVoidModal] = useState(false)
+  const [voidAmount, setVoidAmount] = useState('')
+  const [voidReason, setVoidReason] = useState('')
+  const [voiding, setVoiding] = useState(false)
 
   useEffect(() => {
     if (id) {
@@ -30,6 +36,28 @@ export default function UserDetailsPage() {
       toast.error(err.response?.data?.message || 'Error loading details')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleVoidBalance = async () => {
+    const amount = parseFloat(voidAmount)
+    if (!amount || amount <= 0) return toast.error('Enter a valid amount to void')
+    if (amount > data.walletBalance) return toast.error('Cannot void more than the current balance')
+      
+    setVoiding(true)
+    try {
+      const res = await adminApi.voidUserBalance(id as string, { amount, reason: voidReason })
+      if (res.data.success) {
+        toast.success(`Successfully voided $${amount.toFixed(2)} from balance`)
+        setShowVoidModal(false)
+        setVoidAmount('')
+        setVoidReason('')
+        fetchDetails() // Refresh data
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to void balance')
+    } finally {
+      setVoiding(false)
     }
   }
 
@@ -74,6 +102,12 @@ export default function UserDetailsPage() {
             <h3 className="font-semibold text-sm">Central Wallet</h3>
           </div>
           <p className="text-3xl font-bold text-white">${walletBalance.toFixed(2)}</p>
+          <button 
+            onClick={() => setShowVoidModal(true)}
+            className="mt-3 text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 py-1.5 px-3 rounded transition-colors w-full"
+          >
+            Void Balance
+          </button>
         </div>
         
         <div className="glass-card p-5 border-t border-t-green-500/30">
@@ -175,24 +209,51 @@ export default function UserDetailsPage() {
                   {/* Combine and sort deposits and withdrawals */}
                   {[
                     ...(user.deposits?.map((d: any) => ({ ...d, type: 'Deposit' })) || []),
-                    ...(user.withdrawals?.map((w: any) => ({ ...w, type: 'Cashout' })) || [])
-                  ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 10).map((tx: any) => (
-                    <tr key={`${tx.type}-${tx.id}`} className="hover:bg-white/5 transition-colors">
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${tx.type === 'Deposit' ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
-                          {tx.type}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 font-medium text-white">${tx.amount}</td>
-                      <td className="px-4 py-3">{tx.paymentMethod?.name || 'Unknown'}</td>
-                      <td className="px-4 py-3">
-                        <span className={`capitalize ${tx.status === 'approved' || tx.status === 'paid' ? 'text-green-400' : tx.status === 'rejected' ? 'text-red-400' : 'text-yellow-400'}`}>
-                          {tx.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-slate-400">{new Date(tx.createdAt).toLocaleString()}</td>
-                    </tr>
-                  ))}
+                    ...(user.withdrawals?.map((w: any) => {
+                      const isVoid = w.accountInfo === 'Admin Void' || w.adminNotes?.startsWith('Admin Void')
+                      return { ...w, type: isVoid ? 'Admin Void' : 'Cashout' }
+                    }) || [])
+                  ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 15).map((tx: any) => {
+                    const isVoid = tx.type === 'Admin Void'
+                    const voidReason = tx.adminNotes?.replace(/^Admin Void:\s*/i, '').trim()
+                    return (
+                      <tr key={`${tx.type}-${tx.id}`} className={`hover:bg-white/5 transition-colors ${isVoid ? 'bg-orange-500/5' : ''}`}>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                            tx.type === 'Deposit' ? 'bg-green-500/10 text-green-400' :
+                            isVoid ? 'bg-orange-500/10 text-orange-400' :
+                            'bg-red-500/10 text-red-400'
+                          }`}>
+                            {tx.type}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 font-medium text-white">${tx.amount.toFixed(2)}</td>
+                        <td className="px-4 py-3">
+                          {isVoid ? (
+                            <div>
+                              <span className="text-orange-400 font-medium text-xs">Admin Void</span>
+                              {voidReason && (
+                                <p className="text-slate-500 text-xs mt-0.5 italic">"{voidReason}"</p>
+                              )}
+                            </div>
+                          ) : (
+                            tx.paymentMethod?.name || tx.accountInfo || 'Unknown'
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`capitalize text-xs font-medium ${
+                            isVoid ? 'text-orange-400' :
+                            tx.status === 'approved' || tx.status === 'paid' ? 'text-green-400' :
+                            tx.status === 'rejected' ? 'text-red-400' : 'text-yellow-400'
+                          }`}>
+                            {isVoid ? 'Voided' : tx.status}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-slate-400 text-xs">{new Date(tx.createdAt).toLocaleString()}</td>
+                      </tr>
+                    )
+                  })}
+
                   {(!user.deposits?.length && !user.withdrawals?.length) && (
                     <tr>
                       <td colSpan={5} className="px-4 py-8 text-center text-slate-500">No transactions found</td>
@@ -243,6 +304,63 @@ export default function UserDetailsPage() {
           </div>
         </div>
       </div>
+
+      {/* Void Balance Modal */}
+      {showVoidModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-[#15192b] border border-border-subtle rounded-2xl w-full max-w-sm overflow-hidden"
+          >
+            <div className="p-5 border-b border-border-subtle flex justify-between items-center bg-white/5">
+              <h3 className="font-bold text-white text-lg flex items-center gap-2">
+                <AlertCircle className="w-5 h-5 text-red-400" />
+                Void User Balance
+              </h3>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">Amount to Deduct ($)</label>
+                <input 
+                  type="number" 
+                  value={voidAmount}
+                  onChange={(e) => setVoidAmount(e.target.value)}
+                  placeholder="0.00"
+                  className="w-full bg-black/50 border border-border-subtle rounded-lg px-3 py-2 text-white outline-none focus:border-red-500"
+                />
+                <p className="text-xs text-slate-500 mt-1">Current balance: ${data.walletBalance.toFixed(2)}</p>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">Reason / Notes (Optional)</label>
+                <input 
+                  type="text" 
+                  value={voidReason}
+                  onChange={(e) => setVoidReason(e.target.value)}
+                  placeholder="e.g. Fraudulent deposit reversal"
+                  className="w-full bg-black/50 border border-border-subtle rounded-lg px-3 py-2 text-white outline-none focus:border-red-500"
+                />
+              </div>
+            </div>
+            <div className="p-4 border-t border-border-subtle bg-white/5 flex gap-2 justify-end">
+              <button 
+                onClick={() => setShowVoidModal(false)}
+                className="px-4 py-2 text-sm text-slate-300 hover:text-white transition-colors"
+                disabled={voiding}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleVoidBalance}
+                disabled={voiding || !voidAmount}
+                className="px-4 py-2 text-sm bg-red-600 hover:bg-red-500 text-white rounded-lg transition-colors disabled:opacity-50 font-medium"
+              >
+                {voiding ? 'Voiding...' : 'Confirm Void'}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   )
 }

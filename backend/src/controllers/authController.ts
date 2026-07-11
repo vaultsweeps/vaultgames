@@ -110,18 +110,25 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
 // POST /api/auth/login
 export const login = asyncHandler(async (req: Request, res: Response) => {
   const { email, password } = req.body
+  const identifier = (email || '').trim()
 
-  const user = await prisma.user.findUnique({
-    where: { email },
+  // Look up by email OR username (case-insensitive for username)
+  const user = await prisma.user.findFirst({
+    where: {
+      OR: [
+        { email: identifier },
+        { username: { equals: identifier, mode: 'insensitive' } }
+      ]
+    },
     include: { profile: true }
   })
 
-  if (!user) throw new AppError('Invalid email or password', 401)
+  if (!user) throw new AppError('Invalid credentials', 401)
   if (!user.isActive) throw new AppError('Account is suspended. Contact support.', 403)
   if (user.isBanned) throw new AppError('Account has been banned.', 403)
 
   const isMatch = await bcrypt.compare(password, user.password)
-  if (!isMatch) throw new AppError('Invalid email or password', 401)
+  if (!isMatch) throw new AppError('Invalid credentials', 401)
 
   // Update last login (async)
   prisma.user.update({
@@ -260,8 +267,8 @@ export const logout = asyncHandler(async (req: AuthRequest, res: Response) => {
 
 // GET /api/auth/balance
 export const getBalance = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const balance = await WalletService.getWalletBalance(req.user!.id);
-  res.json({ success: true, data: { balance } });
+  const balances = await WalletService.getBalances(req.user!.id);
+  res.json({ success: true, data: { balance: balances.displayBalance, withdrawable: balances.withdrawableBalance } });
 })
 
 // GET /api/auth/dashboard-init?gameId=xxx

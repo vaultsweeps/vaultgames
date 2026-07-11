@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useParams, useRouter } from 'next/navigation'
-import { Download, ArrowLeft, RefreshCw, Copy, Eye, EyeOff, PlusCircle, ArrowUpCircle, AlertCircle, Key, Info } from 'lucide-react'
+import { Download, ArrowLeft, RefreshCw, Copy, Eye, EyeOff, PlusCircle, ArrowUpCircle, AlertCircle, Key, Info, Bot, MessageCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Link from 'next/link'
 
@@ -12,6 +12,7 @@ import GameTransferModal from '@/components/modals/GameTransferModal'
 import ChooseGameModal from '@/components/modals/ChooseGameModal'
 import Loader from '@/components/ui/Loader'
 import { publicApi, gamesApi, providerApi, authApi } from '@/lib/api'
+import PlayWithAgentModal from '@/components/modals/PlayWithAgentModal'
 import Cookies from 'js-cookie'
 import { useAuthStore } from '@/store/authStore'
 
@@ -19,6 +20,7 @@ interface Game {
   id: string
   name: string
   thumbnailUrl: string | null
+  providerId: string | null
 }
 
 interface ProviderAccount {
@@ -53,6 +55,9 @@ export default function GameDetailsPage() {
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date())
   const [isRefreshing, setIsRefreshing] = useState(false)
   
+  const [settings, setSettings] = useState<any>({})
+  const [agentModalOpen, setAgentModalOpen] = useState(false)
+  
   const { isAuthenticated } = useAuthStore()
   const [accountFetched, setAccountFetched] = useState(false)
   // Start as true if a token cookie exists so we show a skeleton instead of "Get Access" during initial fetch
@@ -74,36 +79,48 @@ export default function GameDetailsPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch game details first for instant rendering
-        const gameRes = await publicApi.getGameDetails(id as string)
+        // Fetch game details and settings first
+        const [gameRes, settingsRes] = await Promise.all([
+          publicApi.getGameDetails(id as string),
+          publicApi.getSettings().catch(() => ({ data: { data: {} } }))
+        ])
         setGame(gameRes.data.data)
+        setSettings(settingsRes.data.data || {})
         setLoading(false) // Unblock UI immediately
 
         // Check cookie directly — more reliable than isAuthenticated on first render
         // because Zustand's persisted state may not be rehydrated yet.
         const token = Cookies.get('vaultsweeps_token')
         if (token) {
-          const results = await Promise.all([
-            providerApi.getAccount(id as string).catch(() => ({ data: { data: null } })),
-            providerApi.getTransactions(id as string).catch(() => ({ data: { data: [] } })),
-            authApi.getBalance().catch(() => ({ data: { data: { balance: 0 } } }))
-          ])
-          const [accRes, txRes, balRes] = results
+          if (gameRes.data.data.providerId) {
+            const results = await Promise.all([
+              providerApi.getAccount(id as string).catch(() => ({ data: { data: null } })),
+              providerApi.getTransactions(id as string).catch(() => ({ data: { data: [] } })),
+              authApi.getBalance().catch(() => ({ data: { data: { balance: 0 } } }))
+            ])
+            const [accRes, txRes, balRes] = results
 
-          if (accRes.data?.data) {
-            if (accRes.data.data.isMaintenance) {
-              setMaintenanceModalOpen(true)
-            } else {
-              setAccount(accRes.data.data)
+            if (accRes.data?.data) {
+              if (accRes.data.data.isMaintenance) {
+                setMaintenanceModalOpen(true)
+              } else {
+                setAccount(accRes.data.data)
+              }
             }
-          }
 
-          if (txRes.data?.data) {
-            setTransactions(txRes.data.data)
-          }
+            if (txRes.data?.data) {
+              setTransactions(txRes.data.data)
+            }
 
-          if (balRes.data?.data?.balance !== undefined) {
-            setWalletBalance(balRes.data.data.balance)
+            if (balRes.data?.data?.balance !== undefined) {
+              setWalletBalance(balRes.data.data.balance)
+            }
+          } else {
+            // Game has no provider, only fetch the wallet balance
+            const balRes = await authApi.getBalance().catch(() => ({ data: { data: { balance: 0 } } }))
+            if (balRes.data?.data?.balance !== undefined) {
+              setWalletBalance(balRes.data.data.balance)
+            }
           }
         }
 
@@ -133,27 +150,32 @@ export default function GameDetailsPage() {
 
     const refetch = async () => {
       try {
-        const [accRes, txRes, balRes] = await Promise.all([
-          providerApi.getAccount(id as string).catch(() => ({ data: { data: null } })),
-          providerApi.getTransactions(id as string).catch(() => ({ data: { data: [] } })),
-          authApi.getBalance().catch(() => ({ data: { data: { balance: 0 } } }))
-        ])
+        if (game?.providerId) {
+          const [accRes, txRes, balRes] = await Promise.all([
+            providerApi.getAccount(id as string).catch(() => ({ data: { data: null } })),
+            providerApi.getTransactions(id as string).catch(() => ({ data: { data: [] } })),
+            authApi.getBalance().catch(() => ({ data: { data: { balance: 0 } } }))
+          ])
 
-        if (accRes.data?.data) {
-          if (accRes.data.data.isMaintenance) {
-            setMaintenanceModalOpen(true)
-          } else {
-            setAccount(accRes.data.data)
+          if (accRes.data?.data) {
+            if (accRes.data.data.isMaintenance) {
+              setMaintenanceModalOpen(true)
+            } else {
+              setAccount(accRes.data.data)
+            }
           }
-        }
 
-        if (txRes.data?.data) setTransactions(txRes.data.data)
-        if (balRes.data?.data?.balance !== undefined) setWalletBalance(balRes.data.data.balance)
+          if (txRes.data?.data) setTransactions(txRes.data.data)
+          if (balRes.data?.data?.balance !== undefined) setWalletBalance(balRes.data.data.balance)
+        } else {
+          const balRes = await authApi.getBalance().catch(() => ({ data: { data: { balance: 0 } } }))
+          if (balRes.data?.data?.balance !== undefined) setWalletBalance(balRes.data.data.balance)
+        }
       } catch {}
     }
 
     refetch()
-  }, [isAuthenticated, accountFetched])
+  }, [isAuthenticated, accountFetched, game?.providerId])
 
 
   const handleDownload = async () => {
@@ -305,18 +327,31 @@ export default function GameDetailsPage() {
           </div>
           <div className="w-full sm:w-1/2 flex flex-col justify-center">
             <h2 className="text-white font-bold text-lg mb-3 truncate">{game.name}</h2>
-            <button 
-              onClick={handleDownload} 
-              disabled={downloading}
-              className="bg-[#2AC3FF] hover:bg-[#1CA0D9] text-white font-bold py-3 px-4 rounded-xl w-full flex items-center justify-center gap-2 transition-all disabled:opacity-70"
-            >
-              {downloading ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Download className="w-4 h-4" />}
-              Download
-            </button>
+            <div className="flex flex-col gap-2">
+              <button 
+                onClick={handleDownload} 
+                disabled={downloading}
+                className="bg-[#2AC3FF] hover:bg-[#1CA0D9] text-white font-bold py-3 px-4 rounded-xl w-full flex items-center justify-center gap-2 transition-all disabled:opacity-70"
+              >
+                {downloading ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Download className="w-4 h-4" />}
+                Download Game
+              </button>
+              
+              {!game.providerId && (
+                <button 
+                  onClick={() => setAgentModalOpen(true)}
+                  className="bg-violet-500 hover:bg-violet-600 text-white font-bold py-3 px-4 rounded-xl w-full flex items-center justify-center gap-2 transition-all"
+                >
+                  <Bot className="w-4 h-4" />
+                  Play with Agent
+                </button>
+              )}
+            </div>
           </div>
         </motion.div>
 
         {/* Balance Card */}
+        {game.providerId && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="bg-surface rounded-2xl p-5 shadow-lg border border-border-subtle">
           <div className="flex justify-between items-center mb-6">
             <div>
@@ -353,9 +388,10 @@ export default function GameDetailsPage() {
             </button>
           </div>
         </motion.div>
+        )}
 
         {/* Credentials Card */}
-        {accountLoading ? (
+        {game.providerId && (accountLoading ? (
           /* Skeleton shown while account data is loading — prevents flash of "Get Access" */
           <div className="bg-surface rounded-2xl p-5 shadow-lg border border-border-subtle space-y-3 animate-pulse">
             <div className="bg-surface-elevated rounded-xl p-4 flex justify-between items-center border border-border-subtle">
@@ -441,10 +477,10 @@ export default function GameDetailsPage() {
               </div>
             )}
           </motion.div>
-        )}
+        ))}
 
         {/* Transactions Card */}
-        {account?.hasAccount && (
+        {game.providerId && account?.hasAccount && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="bg-surface rounded-2xl p-5 shadow-lg border border-border-subtle">
             <div className="flex justify-between text-xs font-medium text-slate-500 mb-4 px-2">
               <span>ID</span>
@@ -476,6 +512,25 @@ export default function GameDetailsPage() {
           </motion.div>
         )}
 
+        {/* Play with Agent Info (If No Provider) */}
+        {!game.providerId && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-surface rounded-2xl p-6 shadow-lg border border-border-subtle flex flex-col items-center text-center">
+            <div className="w-16 h-16 rounded-full bg-violet-500/20 border border-violet-500/30 flex items-center justify-center mb-4">
+              <Bot className="w-8 h-8 text-violet-400" />
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2">Agent-Assisted Play</h3>
+            <p className="text-secondary text-sm mb-6 max-w-sm">
+              This game is played manually with one of our verified agents. We'll set up your account and handle your balance directly through chat.
+            </p>
+            <button 
+              onClick={() => setAgentModalOpen(true)}
+              className="bg-violet-500 hover:bg-violet-600 text-white font-bold py-3.5 px-8 rounded-xl flex items-center gap-2 transition-all shadow-lg shadow-violet-500/20"
+            >
+              <MessageCircle className="w-5 h-5" /> Contact Agent Now
+            </button>
+          </motion.div>
+        )}
+
       </div>
       
       <Footer />
@@ -493,6 +548,7 @@ export default function GameDetailsPage() {
           totalDeposited={account.totalDeposited || 0}
           startAmount={transactions.find(t => t.type === 'recharge' && t.status === 'success')?.amount || 5}
           onTransfer={handleTransfer}
+          onRefresh={handleRefreshBalance}
           onChangeGame={() => {
             setTransferModalOpen(false)
             setChooseGameOpen(true)
@@ -517,11 +573,30 @@ export default function GameDetailsPage() {
                 This game is currently under maintenance or being integrated. It will be available very soon!
               </p>
             </div>
-            <button onClick={() => setMaintenanceModalOpen(false)} className="w-full bg-surface-elevated hover:bg-surface-elevated border border-border-strong text-white font-bold py-3 rounded-xl transition-colors">
-              Got it
-            </button>
+            <div className="flex flex-col gap-3">
+              <button 
+                onClick={() => { setMaintenanceModalOpen(false); setAgentModalOpen(true); }} 
+                className="w-full bg-violet-500 hover:bg-violet-600 text-white font-bold py-3 rounded-xl transition-colors flex items-center justify-center gap-2 shadow-lg shadow-violet-500/20"
+              >
+                <Bot className="w-5 h-5" /> Play with Agent instead
+              </button>
+              <button 
+                onClick={() => setMaintenanceModalOpen(false)} 
+                className="w-full bg-surface-elevated hover:bg-surface-elevated border border-border-strong text-slate-300 font-medium py-3 rounded-xl transition-colors"
+              >
+                Close
+              </button>
+            </div>
           </motion.div>
         </div>
+      )}
+
+      {agentModalOpen && (
+        <PlayWithAgentModal
+          game={game}
+          onClose={() => setAgentModalOpen(false)}
+          settings={settings}
+        />
       )}
     </div>
   )

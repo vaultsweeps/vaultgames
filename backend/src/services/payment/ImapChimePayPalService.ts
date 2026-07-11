@@ -3,8 +3,9 @@ import { simpleParser } from 'mailparser'
 import cron from 'node-cron'
 import prisma from '../../lib/prisma'
 import { logger } from '../../utils/logger'
-import { invalidateWalletCache } from '../WalletService'
+import { WalletService, invalidateWalletCache } from '../WalletService'
 import { TelegramSupportBot } from '../TelegramSupportBot'
+import { ReferralService } from '../ReferralService'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 function normalize(s: string) {
@@ -99,8 +100,8 @@ export class ImapChimePayPalService {
           const emailDate = item.attributes.date || mail.date || new Date();
           const emailId = mail.messageId || `msg_${item.attributes.uid}_${emailDate.getTime()}`
 
-          // Ignore emails older than 1 hour (3600000 ms)
-          if (Date.now() - emailDate.getTime() > 3600000) {
+          // Strictly check last 15 minutes of mail (900000 ms)
+          if (Date.now() - emailDate.getTime() > 15 * 60 * 1000) {
             continue;
           }
 
@@ -212,6 +213,9 @@ export class ImapChimePayPalService {
           // Invalidate wallet cache (balance is computed from approved deposits)
           invalidateWalletCache(match.userId)
 
+          // Process potential referral bonus
+          await ReferralService.processFirstDepositBonus(match.userId, match.amount)
+
           // Transaction log
           await prisma.transactionLog.create({
             data: {
@@ -265,42 +269,12 @@ export class ImapChimePayPalService {
     return false
   }
 
-  static async failExpiredDeposits() {
-    try {
-      const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000)
-      const expired = await prisma.deposit.findMany({
-        where: {
-          status: 'pending',
-          paymentMethod: { code: { in: ['chime', 'paypal'] } },
-          createdAt: { lt: twoHoursAgo }
-        }
-      })
-
-      for (const d of expired) {
-        await prisma.deposit.update({
-          where: { id: d.id },
-          data: {
-            status: 'failed',
-            notes: (d.notes || '') + '\nFailed automatically: no payment received within 2h'
-          }
-        })
-      }
-    } catch (err) {
-      logger.error('[ImapChimePayPal] failExpiredDeposits error: ' + err)
-    }
-  }
-
   static startCron() {
     logger.info('[ImapChimePayPal] Starting IMAP cron jobs')
     // Run every 30 seconds for faster verification
     cron.schedule('*/30 * * * * *', () => {
       this.parseEmailsAndVerifyDeposits().catch(err =>
         logger.error('[ImapChimePayPal] cron error: ' + err)
-      )
-    })
-    cron.schedule('*/10 * * * *', () => {
-      this.failExpiredDeposits().catch(err =>
-        logger.error('[ImapChimePayPal] failExpired cron error: ' + err)
       )
     })
   }

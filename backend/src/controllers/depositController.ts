@@ -95,17 +95,24 @@ export const createDeposit = asyncHandler(async (req: AuthRequest, res: Response
       logger.error('[Telegram Deposit Notification Error] ' + (e?.message || e))
     }
   } else if (['chime', 'paypal'].includes(paymentMethod.code.toLowerCase())) {
-    // For Chime/PayPal: try auto-verification via IMAP first (30s window)
-    // Then fall back to Telegram notification only if email not received
     const depositId = deposit.id
 
+    // Send Telegram notification immediately for Chime/PayPal
+    try {
+      const bot = TelegramSupportBot.getInstance()
+      bot.sendDepositNotification(deposit, user).catch((e: any) => logger.error('Telegram notification failed: ' + e.message))
+    } catch (e: any) {
+      logger.error('[Telegram Deposit Notification Error] ' + (e?.message || e))
+    }
+
+    // For Chime/PayPal: try auto-verification via IMAP in background
     setTimeout(async () => {
       try {
         // Poll IMAP for up to 60 seconds (check every 5s)
         const autoApproved = await ImapChimePayPalService.pollForDeposit(depositId, 60000, 5000)
 
         if (autoApproved) {
-          logger.info(`[DepositController] Deposit ${depositId} auto-approved via email — skipping Telegram`)
+          logger.info(`[DepositController] Deposit ${depositId} auto-approved via email`)
           // Notify user of approval
           createNotification(deposit.userId, {
             title: 'Deposit Approved!',
@@ -113,19 +120,9 @@ export const createDeposit = asyncHandler(async (req: AuthRequest, res: Response
             type: 'success',
             link: '/dashboard/deposits'
           }).catch(() => {})
-        } else {
-          logger.info(`[DepositController] No email match for deposit ${depositId} — sending Telegram`)
-          // Send Telegram notification for manual review
-          const bot = TelegramSupportBot.getInstance()
-          await bot.sendDepositNotification(deposit, user)
         }
       } catch (e: any) {
         logger.error('[Chime/PayPal post-deposit handler] ' + (e?.message || e))
-        // Fallback: always send Telegram if something fails
-        try {
-          const bot = TelegramSupportBot.getInstance()
-          bot.sendDepositNotification(deposit, user).catch(() => {})
-        } catch {}
       }
     }, 2000) // Start polling 2 seconds after deposit creation
   } else {
