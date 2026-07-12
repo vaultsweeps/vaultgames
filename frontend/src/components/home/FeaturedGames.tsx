@@ -30,7 +30,8 @@ export default function FeaturedGames() {
     const fetchGames = async () => {
       try {
         const res = await publicApi.getFeaturedGames()
-        setGames(res.data.data)
+        const sortedGames = res.data.data.sort((a: Game, b: Game) => (b.providerId ? 1 : 0) - (a.providerId ? 1 : 0))
+        setGames(sortedGames)
       } catch (err) {
         console.error('Failed to fetch featured games', err)
       } finally {
