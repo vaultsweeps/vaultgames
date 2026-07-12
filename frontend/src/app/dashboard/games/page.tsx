@@ -72,7 +72,7 @@ export default function GamesPage() {
   const filtered = games.filter(g =>
     (category === 'All' || g.category === category) &&
     (g.name.toLowerCase().includes(search.toLowerCase()) || g.category.toLowerCase().includes(search.toLowerCase()))
-  )
+  ).sort((a, b) => (b.providerId ? 1 : 0) - (a.providerId ? 1 : 0))
 
   const visibleGames = filtered.slice(0, visibleCount)
 
