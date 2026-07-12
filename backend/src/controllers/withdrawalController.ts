@@ -10,12 +10,12 @@ import { logger } from '../utils/logger'
 // ─── Allowed payment methods ───────────────────────────────────────────────
 const ALLOWED_PAYMENT_METHODS = ['Cash App', 'Venmo', 'Zelle', 'Crypto', 'Bank Transfer', 'Chime', 'PayPal']
 
-// ─── Atomic Request ID generator via PostgreSQL sequence ──────────────────
-async function generateRequestId(): Promise<string> {
-  const result = await prisma.$queryRaw<Array<{ nextval: bigint }>>`
-    SELECT nextval('withdrawal_request_seq')
-  `
-  return `WD-${result[0].nextval}`
+// ─── Request ID generator (collision-safe, no DB sequence required) ────────
+function generateRequestId(): string {
+  const date = new Date()
+  const datePart = date.toISOString().slice(0, 10).replace(/-/g, '') // YYYYMMDD
+  const randomPart = Math.random().toString(36).substring(2, 10).toUpperCase() // 8 random chars
+  return `WD-${datePart}-${randomPart}`
 }
 
 // ─── GET /api/withdrawals ─────────────────────────────────────────────────
@@ -67,7 +67,7 @@ export const createWithdrawal = asyncHandler(async (req: AuthRequest, res: Respo
   if (amount < paymentMethod.minAmount) throw new AppError(`Minimum withdrawal for this method is $${paymentMethod.minAmount}`, 400)
   if (amount > paymentMethod.maxAmount) throw new AppError(`Maximum withdrawal is $${paymentMethod.maxAmount}`, 400)
 
-  const requestId = await generateRequestId()
+  const requestId = generateRequestId()
 
   const withdrawal = await prisma.withdrawal.create({
     data: { userId: req.user!.id, amount, currency, paymentMethodId, accountInfo, status: 'pending', requestId },
@@ -128,7 +128,7 @@ export const createManualWithdrawal = asyncHandler(async (req: AuthRequest, res:
     methodName = paymentMethodId === 'chime' ? 'Chime' : paymentMethodId === 'cashapp' ? 'CashApp' : paymentMethodId
   }
 
-  const requestId = await generateRequestId()
+  const requestId = generateRequestId()
 
   const withdrawal = await prisma.withdrawal.create({
     data: {
@@ -261,7 +261,7 @@ export const createEnhancedWithdrawal = asyncHandler(async (req: AuthRequest, re
   }
 
   // ── Generate atomic Request ID ──────────────────────────────
-  const requestId = await generateRequestId()
+  const requestId = generateRequestId()
 
   // ── Create withdrawal record ────────────────────────────────
   const withdrawal = await prisma.withdrawal.create({
