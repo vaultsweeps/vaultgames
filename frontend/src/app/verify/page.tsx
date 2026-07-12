@@ -30,7 +30,7 @@ export default function VerifyPage() {
     setIsSending(true)
     try {
       await authApi.resendVerification()
-      toast.success('Verification email sent! Please check your inbox.')
+      toast.success('Verification email sent! Please check your inbox and Spam folder.')
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Failed to send verification email.')
     } finally {
@@ -62,7 +62,8 @@ export default function VerifyPage() {
           
           <h1 className="text-2xl font-bold text-white mb-2">Welcome Bonus</h1>
           <p className="text-secondary">
-            Confirm your phone number and email address to receive bonus!
+            Confirm your phone number and email address to receive your bonus! <br/>
+            <span className="text-sm text-yellow-500/80 mt-1 inline-block">Note: Please check your Spam or Junk folder if you do not see the email.</span>
           </p>
         </div>
 
