@@ -403,7 +403,7 @@ export class TelegramSupportBot {
       `👤 User: ${user?.username || 'Unknown'} (${user?.email || 'N/A'})\n` +
       `💰 Amount: *$${Number(withdrawal.amount).toFixed(2)}*\n` +
       `💳 Method: ${withdrawal.paymentMethodStr || 'Unknown'}\n` +
-      `🏦 Account: \`${withdrawal.accountDetails || 'N/A'}\`\n` +
+      `🏦 Account: \`${withdrawal.accountDetails || withdrawal.accountInfo || 'N/A'}\`\n` +
       `📅 Created: ${createdAt}\n` +
       `📊 Status: Pending ⏳`;
 
@@ -449,7 +449,7 @@ export class TelegramSupportBot {
       `👤 User: ${withdrawal.user?.username || 'Unknown'} (${withdrawal.user?.email || 'N/A'})\n` +
       `💰 Amount: *$${Number(withdrawal.amount).toFixed(2)}*\n` +
       `💳 Method: ${withdrawal.paymentMethodStr || 'Unknown'}\n` +
-      `🏦 Account: \`${withdrawal.accountDetails || 'N/A'}\`\n` +
+      `🏦 Account: \`${withdrawal.accountDetails || withdrawal.accountInfo || 'N/A'}\`\n` +
       `📊 Status: ${statusText}\n` +
       (action === 'approved'
         ? `✅ Approved by: ${withdrawal.approvedBy || 'Admin'}`

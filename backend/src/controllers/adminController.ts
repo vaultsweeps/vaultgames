@@ -788,9 +788,18 @@ export const adminApproveEnhancedWithdrawal = asyncHandler(async (req: AuthReque
     link: '/dashboard/withdrawals'
   })
 
-  // Update Telegram message
+  // Update Telegram message — re-fetch full record so accountDetails/email are populated
+  const approveWithdrawalFull = await prisma.withdrawal.findUnique({
+    where: { id: updated.id },
+    select: {
+      id: true, requestId: true, amount: true, paymentMethodStr: true,
+      accountDetails: true, accountInfo: true, status: true,
+      telegramMessageId: true, telegramChatId: true, approvedBy: true,
+      user: { select: { username: true, email: true } }
+    }
+  })
   const bot = await import('../services/TelegramSupportBot').then(m => m.TelegramSupportBot.getInstance())
-  bot.editWithdrawalMessage(updated, 'approved').catch(e => logger.error('Telegram edit failed:', e))
+  bot.editWithdrawalMessage(approveWithdrawalFull, 'approved').catch(e => logger.error('Telegram edit failed:', e))
 
   // Audit log
   await prisma.transactionLog.create({
@@ -846,9 +855,18 @@ export const adminRejectEnhancedWithdrawal = asyncHandler(async (req: AuthReques
     link: '/dashboard/withdrawals'
   })
 
-  // Update Telegram message
+  // Update Telegram message — re-fetch full record so accountDetails/email are populated
+  const rejectWithdrawalFull = await prisma.withdrawal.findUnique({
+    where: { id: updated.id },
+    select: {
+      id: true, requestId: true, amount: true, paymentMethodStr: true,
+      accountDetails: true, accountInfo: true, status: true,
+      telegramMessageId: true, telegramChatId: true, rejectedBy: true, rejectionReason: true,
+      user: { select: { username: true, email: true } }
+    }
+  })
   const bot = await import('../services/TelegramSupportBot').then(m => m.TelegramSupportBot.getInstance())
-  bot.editWithdrawalMessage(updated, 'rejected', reason).catch(e => logger.error('Telegram edit failed:', e))
+  bot.editWithdrawalMessage(rejectWithdrawalFull, 'rejected', reason).catch(e => logger.error('Telegram edit failed:', e))
 
   // Audit log
   await prisma.transactionLog.create({
