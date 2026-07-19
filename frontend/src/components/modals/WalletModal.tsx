@@ -1,3 +1,4 @@
+'use client'
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, AlertCircle, ChevronDown, ChevronUp, ArrowDownLeft, ArrowUpRight } from 'lucide-react'
@@ -18,11 +19,11 @@ const paymentMethods = [
   { id: 'zappay',  name: 'Zappay',         icon: 'Z',  badge: 'Active',  color: 'bg-indigo-500' },
   { id: 'chime',   name: 'Chime',          icon: 'C',  badge: 'No fee',  color: 'bg-emerald-500' },
   { id: 'paypal',  name: 'PayPal',         icon: 'P',  badge: 'No fee',  color: 'bg-blue-500' },
+  { id: 'apple',   name: 'Apple Pay',      icon: '',   badge: '-5%',     color: 'bg-black',                soon: false, logoUrl: 'https://i.pinimg.com/originals/ae/85/92/ae859253f4141e38711d2c159a53649e.jpg' },
+  { id: 'card',    name: 'Debit Card',     icon: '💳', badge: '-10%',    color: 'bg-blue-600',             soon: false },
   { id: 'crypto',  name: 'Cryptocurrency', icon: '₿',  badge: '+15%',    tag: '+5', color: 'bg-orange-500',           soon: true },
   { id: 'cashapp', name: 'CashApp Pay',    icon: '$',  badge: 'No fee',  color: 'bg-green-500',            soon: true },
-  { id: 'apple',   name: 'Apple Pay',      icon: '',   badge: '-5%',     color: 'bg-slate-100 text-black',  soon: true },
   { id: 'google',  name: 'Google Pay',     icon: 'G',  badge: '-5%',     color: 'bg-white text-black',     soon: true },
-  { id: 'card',    name: 'Debit Card',     icon: '💳', badge: '-10%',    color: 'bg-blue-600',             soon: true },
 ]
 
 type TxItem = {
@@ -103,7 +104,7 @@ function TxRow({ tx }: { tx: TxItem }) {
 export default function WalletModal({ isOpen, onClose, balance }: WalletModalProps) {
   const [activeTab, setActiveTab] = useState<'deposit' | 'cashout' | 'history'>('deposit')
   const [cashoutMethod, setCashoutMethod] = useState<'chime' | 'cashapp' | null>(null)
-  const [depositMethod, setDepositMethod] = useState<'zappay' | 'chime' | 'paypal' | null>(null)
+  const [depositMethod, setDepositMethod] = useState<'zappay' | 'chime' | 'paypal' | 'apple' | 'card' | null>(null)
   const [history, setHistory] = useState<TxItem[]>([])
   const [historyLoading, setHistoryLoading] = useState(false)
 
@@ -218,7 +219,7 @@ export default function WalletModal({ isOpen, onClose, balance }: WalletModalPro
                           onClick={() => {
                             if (!method.soon) {
                               // Sub-modal opens at z-[300], above this overlay at z-[200]
-                              setDepositMethod(method.id as 'zappay' | 'chime' | 'paypal')
+                              setDepositMethod(method.id as any)
                             } else {
                               toast.error('This method is coming soon!')
                             }
@@ -227,8 +228,11 @@ export default function WalletModal({ isOpen, onClose, balance }: WalletModalPro
                             ${method.soon ? 'opacity-50 cursor-not-allowed hover:bg-surface' : 'hover:bg-surface-elevated hover:-translate-y-1'}`}
                         >
                           <div className="flex justify-between items-start mb-3">
-                            <div className={`w-8 h-8 rounded-full ${method.color} flex items-center justify-center font-bold text-sm shadow-lg`}>
-                              {method.icon}
+                            <div className={`w-8 h-8 rounded-full ${method.color} flex items-center justify-center font-bold text-sm shadow-lg overflow-hidden`}>
+                              {(method as any).logoUrl
+                                ? <img src={(method as any).logoUrl} alt={method.name} className="w-full h-full object-cover" />
+                                : method.icon
+                              }
                             </div>
                             {method.badge && !method.soon && (
                               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
@@ -345,8 +349,9 @@ export default function WalletModal({ isOpen, onClose, balance }: WalletModalPro
         method={cashoutMethod as any}
       />
       <ZappayDepositModal
-        isOpen={depositMethod === 'zappay'}
+        isOpen={depositMethod === 'zappay' || depositMethod === 'apple' || depositMethod === 'card'}
         onClose={() => setDepositMethod(null)}
+        method={depositMethod as any}
       />
       <ChimePayPalDepositModal
         isOpen={depositMethod === 'chime' || depositMethod === 'paypal'}

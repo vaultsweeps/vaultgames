@@ -31,7 +31,7 @@ export default function LoginPage() {
     try {
       await login(data.email, data.password)
       toast.success('Welcome back!')
-      router.push('/dashboard')
+      router.push('/')
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Invalid credentials. Please try again.')
     }
