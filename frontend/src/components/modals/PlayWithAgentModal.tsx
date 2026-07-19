@@ -1,4 +1,6 @@
 'use client'
+import { useAuthStore } from '@/store/authStore'
+import { getTelegramUrl } from '@/lib/telegram'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Bot, X, MessageCircle, Send, Zap } from 'lucide-react'
 
