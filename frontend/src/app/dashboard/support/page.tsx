@@ -1,4 +1,6 @@
 'use client'
+import { useAuthStore } from '@/store/authStore'
+import { getTelegramUrl } from '@/lib/telegram'
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useForm } from 'react-hook-form'
