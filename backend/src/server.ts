@@ -1,4 +1,4 @@
-﻿import express from 'express'
+import express from 'express'
 import cors from 'cors'
 import helmet from 'helmet'
 import morgan from 'morgan'
@@ -125,6 +125,7 @@ app.use('/api/admin', adminRoutes)
 app.use('/api/webhooks', webhookRoutes)
 app.use('/api/provider', providerRoutes)
 app.use('/api/referral', referralRoutes)
+app.use('/api/wheel', wheelRoutes)
 
 // 404 handler
 app.use('*', (req, res) => {
