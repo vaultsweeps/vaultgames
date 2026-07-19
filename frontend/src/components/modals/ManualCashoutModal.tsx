@@ -1,3 +1,4 @@
+'use client'
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Paperclip, CheckCircle, Clock, Shield, Zap } from 'lucide-react'

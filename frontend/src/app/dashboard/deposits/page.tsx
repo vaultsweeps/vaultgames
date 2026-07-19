@@ -10,13 +10,15 @@ const ZappayDepositModal = dynamic(() => import('@/components/modals/ZappayDepos
 const ChimePayPalDepositModal = dynamic(() => import('@/components/modals/ChimePayPalDepositModal'), { ssr: false })
 
 // Method icon/color map
-const METHOD_META: Record<string, { icon: string; color: string; desc: string }> = {
+const METHOD_META: Record<string, { icon: string; color: string; desc: string; logoUrl?: string }> = {
   cashapp: { icon: '💸', color: '#00D632', desc: 'Send via Cash App — fast & easy' },
   chime:   { icon: '🏦', color: '#00CFAA', desc: 'Deposit via Chime bank' },
   crypto:  { icon: '₿',  color: '#F7931A', desc: 'USDT (TRC20) or Bitcoin (BTC)' },
   bitcoin: { icon: '₿',  color: '#F7931A', desc: 'Bitcoin payments' },
   usdt:    { icon: '₮',  color: '#26A17B', desc: 'Tether stablecoin (TRC20)' },
   bank:    { icon: '🏛️', color: '#00D4FF', desc: 'Bank wire transfer' },
+  apple:   { icon: '', color: '#000000', desc: 'Apple Pay — tap & pay instantly', logoUrl: 'https://i.pinimg.com/originals/ae/85/92/ae859253f4141e38711d2c159a53649e.jpg' },
+  card:    { icon: '💳', color: '#2563EB', desc: 'Debit card — pay securely' },
   default: { icon: '💳', color: '#7B2FFF', desc: 'Digital payment' },
 }
 
@@ -48,7 +50,7 @@ export default function DepositsPage() {
   const [depositHistory, setDepositHistory] = useState<any[]>([])
   const [historyLoading, setHistoryLoading] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [showZappayModal, setShowZappayModal] = useState(false)
+  const [zappayMethod, setZappayMethod] = useState<'zappay'|'apple'|'card'|null>(null)
   const [chimePayPalMethod, setChimePayPalMethod] = useState<'chime'|'paypal'|null>(null)
 
   const fetchHistory = async () => {
@@ -144,14 +146,16 @@ export default function DepositsPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {methods
                     .sort((a, b) => {
-                      const aSoon = !['zappay', 'chime', 'paypal'].includes(a.code?.toLowerCase() || '') && !['zappay', 'chime', 'paypal'].includes(a.name?.toLowerCase() || '');
-                      const bSoon = !['zappay', 'chime', 'paypal'].includes(b.code?.toLowerCase() || '') && !['zappay', 'chime', 'paypal'].includes(b.name?.toLowerCase() || '');
+                      const allowedCodes = ['zappay', 'chime', 'paypal', 'apple', 'card'];
+                      const aSoon = !allowedCodes.includes(a.code?.toLowerCase() || '');
+                      const bSoon = !allowedCodes.includes(b.code?.toLowerCase() || '');
                       if (aSoon === bSoon) return 0;
                       return aSoon ? 1 : -1;
                     })
                     .map(m => {
                     const meta = getMeta(m.code)
-                    const isSoon = !['zappay', 'chime', 'paypal'].includes(m.code?.toLowerCase() || '') && !['zappay', 'chime', 'paypal'].includes(m.name?.toLowerCase() || '')
+                    const allowedCodes = ['zappay', 'chime', 'paypal', 'apple', 'card'];
+                    const isSoon = !allowedCodes.includes(m.code?.toLowerCase() || '');
                     return (
                       <button key={m.id}
                         onClick={() => { 
@@ -159,8 +163,12 @@ export default function DepositsPage() {
                             toast.error('This method is coming soon!')
                             return
                           }
-                          if (m.code === 'zappay') {
-                            setShowZappayModal(true)
+                          if (m.code === 'zappay' || m.name?.toLowerCase().includes('zappay')) {
+                            setZappayMethod('zappay')
+                          } else if (m.code === 'apple' || m.name?.toLowerCase().includes('apple')) {
+                            setZappayMethod('apple')
+                          } else if (m.code === 'card' || m.name?.toLowerCase().includes('card') || m.name?.toLowerCase().includes('debit')) {
+                            setZappayMethod('card')
                           } else if (['chime', 'paypal'].includes(m.code.toLowerCase())) {
                             setChimePayPalMethod(m.code.toLowerCase() as 'chime' | 'paypal')
                           } else {
@@ -170,9 +178,12 @@ export default function DepositsPage() {
                         }}
                         className={`glass-card p-5 text-left transition-all group flex flex-col gap-3 ${isSoon ? 'opacity-50 cursor-not-allowed hover:bg-white/5' : 'hover:-translate-y-1'}`}>
                         <div className="flex justify-between items-start">
-                          <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl"
+                          <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl overflow-hidden"
                             style={{ background: `${meta.color}20`, border: `1px solid ${meta.color}40` }}>
-                            {meta.icon}
+                            {(meta as any).logoUrl
+                               ? <img src={(meta as any).logoUrl} alt={m.name} className="w-full h-full object-cover rounded-2xl" />
+                               : meta.icon
+                             }
                           </div>
                           {isSoon && (
                             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-secondary border border-border-strong">
@@ -309,11 +320,12 @@ export default function DepositsPage() {
       )}
 
       <ZappayDepositModal 
-        isOpen={showZappayModal} 
+        isOpen={zappayMethod !== null} 
         onClose={() => {
-          setShowZappayModal(false)
+          setZappayMethod(null)
           fetchHistory()
         }} 
+        method={zappayMethod}
       />
       <ChimePayPalDepositModal
         isOpen={chimePayPalMethod !== null}

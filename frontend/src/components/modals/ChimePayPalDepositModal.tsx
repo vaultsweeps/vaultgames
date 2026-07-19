@@ -1,3 +1,4 @@
+'use client'
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, CheckCircle, ArrowRight, Copy } from 'lucide-react'
