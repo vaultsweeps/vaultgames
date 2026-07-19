@@ -173,7 +173,7 @@ export default function SupportPage() {
       {/* Contact */}
       {tab === 'contact' && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <a href={settings.telegram_url || process.env.NEXT_PUBLIC_TELEGRAM_URL || 'https://t.me/vaultsweeps'} target="_blank" rel="noopener noreferrer"
+          <a href={getTelegramUrl(settings.telegram_url || process.env.NEXT_PUBLIC_TELEGRAM_URL || "https://t.me/vaultsweeps", useAuthStore.getState().user)} target="_blank" rel="noopener noreferrer"
             className="glass-card p-6 hover:border-blue-400/30 transition-all group">
             <div className="w-12 h-12 bg-blue-500/10 border border-blue-500/20 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
               <Send className="w-6 h-6 text-blue-400" />

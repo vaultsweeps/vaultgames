@@ -104,7 +104,7 @@ function WithdrawalCountdown({
         <h2 className="text-white text-2xl font-bold mb-2">Payment Rejected</h2>
         <p className="text-secondary text-center text-sm mb-8">Your cashout of ${amount} could not be processed. Please contact support.</p>
         <div className="w-full max-w-xs space-y-3">
-          <a href={settings.telegram_url || '#'} target="_blank" rel="noreferrer"
+          <a href={getTelegramUrl(settings.telegram_url || "#", useAuthStore.getState().user)} target="_blank" rel="noreferrer"
             className="w-full block bg-[#2AC3FF] hover:bg-[#1CA0D9] text-white font-bold py-3.5 rounded-2xl transition-all text-center">
             Contact Support
           </a>
@@ -169,7 +169,7 @@ function WithdrawalCountdown({
       </div>
 
       <div className="w-full space-y-2">
-        <a href={settings.telegram_url || '#'} target="_blank" rel="noreferrer"
+        <a href={getTelegramUrl(settings.telegram_url || "#", useAuthStore.getState().user)} target="_blank" rel="noreferrer"
           className="w-full block bg-[#2AC3FF] hover:bg-[#1CA0D9] text-white font-bold py-3.5 rounded-2xl transition-all text-center text-sm">
           Track via Telegram Support
         </a>
