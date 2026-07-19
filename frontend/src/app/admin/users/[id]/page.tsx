@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import { adminApi } from '@/lib/api'
 import { useParams, useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
-import { ArrowLeft, Wallet, TrendingUp, TrendingDown, Gift, AlertCircle, Gamepad2, Ticket } from 'lucide-react'
+import { ArrowLeft, Wallet, TrendingUp, TrendingDown, Gift, AlertCircle, Gamepad2, Ticket, PlusCircle, Phone, Send, User } from 'lucide-react'
 
 export default function UserDetailsPage() {
   const { id } = useParams()
@@ -17,6 +17,12 @@ export default function UserDetailsPage() {
   const [voidAmount, setVoidAmount] = useState('')
   const [voidReason, setVoidReason] = useState('')
   const [voiding, setVoiding] = useState(false)
+
+  // Add Balance state
+  const [showAddModal, setShowAddModal] = useState(false)
+  const [addAmount, setAddAmount] = useState('')
+  const [addReason, setAddReason] = useState('')
+  const [adding, setAdding] = useState(false)
 
   useEffect(() => {
     if (id) {
@@ -52,12 +58,32 @@ export default function UserDetailsPage() {
         setShowVoidModal(false)
         setVoidAmount('')
         setVoidReason('')
-        fetchDetails() // Refresh data
+        fetchDetails()
       }
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to void balance')
     } finally {
       setVoiding(false)
+    }
+  }
+
+  const handleAddBalance = async () => {
+    const amount = parseFloat(addAmount)
+    if (!amount || amount <= 0) return toast.error('Enter a valid amount to add')
+    setAdding(true)
+    try {
+      const res = await adminApi.addUserBalance(id as string, { amount, reason: addReason })
+      if (res.data.success) {
+        toast.success(`Successfully added $${amount.toFixed(2)} to balance`)
+        setShowAddModal(false)
+        setAddAmount('')
+        setAddReason('')
+        fetchDetails()
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to add balance')
+    } finally {
+      setAdding(false)
     }
   }
 
@@ -102,12 +128,20 @@ export default function UserDetailsPage() {
             <h3 className="font-semibold text-sm">Central Wallet</h3>
           </div>
           <p className="text-3xl font-bold text-white">${walletBalance.toFixed(2)}</p>
-          <button 
-            onClick={() => setShowVoidModal(true)}
-            className="mt-3 text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 py-1.5 px-3 rounded transition-colors w-full"
-          >
-            Void Balance
-          </button>
+          <div className="mt-3 flex gap-2">
+            <button 
+              onClick={() => setShowAddModal(true)}
+              className="flex-1 text-xs bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 py-1.5 px-3 rounded transition-colors flex items-center justify-center gap-1"
+            >
+              <PlusCircle className="w-3 h-3" /> Add
+            </button>
+            <button 
+              onClick={() => setShowVoidModal(true)}
+              className="flex-1 text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 py-1.5 px-3 rounded transition-colors"
+            >
+              Void
+            </button>
+          </div>
         </div>
         
         <div className="glass-card p-5 border-t border-t-green-500/30">
@@ -143,6 +177,39 @@ export default function UserDetailsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column */}
         <div className="lg:col-span-1 space-y-6">
+          {/* Contact Info */}
+          <div className="glass-card p-5">
+            <h3 className="text-lg font-bold text-white mb-4">Contact Information</h3>
+            <div className="space-y-3">
+              <div className="flex items-start gap-3 py-2 border-b border-border-subtle">
+                <User className="w-4 h-4 text-muted mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-xs text-slate-400 mb-0.5">Full Name</p>
+                  <p className="text-white text-sm">{user.profile?.fullName || <span className="text-slate-600 italic">Not provided</span>}</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 py-2 border-b border-border-subtle">
+                <Phone className="w-4 h-4 text-muted mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-xs text-slate-400 mb-0.5">Phone Number</p>
+                  <p className="text-white text-sm">{user.profile?.phone || <span className="text-slate-600 italic">Not provided</span>}</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 py-2 border-b border-border-subtle">
+                <Send className="w-4 h-4 text-muted mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-xs text-slate-400 mb-0.5">Telegram</p>
+                  {user.profile?.telegramUsername ? (
+                    <a href={`https://t.me/${user.profile.telegramUsername.replace('@', '')}`} target="_blank" rel="noopener noreferrer"
+                      className="text-sky-400 hover:text-sky-300 text-sm transition-colors">
+                      @{user.profile.telegramUsername.replace('@', '')}
+                    </a>
+                  ) : <p className="text-slate-600 italic text-sm">Not provided</p>}
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Base Info */}
           <div className="glass-card p-5">
             <h3 className="text-lg font-bold text-white mb-4">Account Info</h3>
@@ -356,6 +423,72 @@ export default function UserDetailsPage() {
                 className="px-4 py-2 text-sm bg-red-600 hover:bg-red-500 text-white rounded-lg transition-colors disabled:opacity-50 font-medium"
               >
                 {voiding ? 'Voiding...' : 'Confirm Void'}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Add Balance Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-[#15192b] border border-emerald-500/30 rounded-2xl w-full max-w-sm overflow-hidden"
+          >
+            <div className="p-5 border-b border-border-subtle flex justify-between items-center bg-emerald-500/5">
+              <h3 className="font-bold text-white text-lg flex items-center gap-2">
+                <PlusCircle className="w-5 h-5 text-emerald-400" />
+                Add Balance to Wallet
+              </h3>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3">
+                <p className="text-xs text-emerald-400 font-medium">Current Balance</p>
+                <p className="text-white font-bold text-xl">${data.walletBalance.toFixed(2)}</p>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">Amount to Add ($)</label>
+                <input 
+                  type="number" 
+                  value={addAmount}
+                  onChange={(e) => setAddAmount(e.target.value)}
+                  placeholder="0.00"
+                  min="0.01"
+                  step="0.01"
+                  className="w-full bg-black/50 border border-border-subtle rounded-lg px-3 py-2 text-white outline-none focus:border-emerald-500"
+                />
+                {addAmount && parseFloat(addAmount) > 0 && (
+                  <p className="text-xs text-emerald-400 mt-1">New balance will be: ${(data.walletBalance + parseFloat(addAmount)).toFixed(2)}</p>
+                )}
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">Reason / Notes (Optional)</label>
+                <input 
+                  type="text" 
+                  value={addReason}
+                  onChange={(e) => setAddReason(e.target.value)}
+                  placeholder="e.g. Failed deposit #DEP-12345 reimbursement"
+                  className="w-full bg-black/50 border border-border-subtle rounded-lg px-3 py-2 text-white outline-none focus:border-emerald-500"
+                />
+              </div>
+            </div>
+            <div className="p-4 border-t border-border-subtle bg-white/5 flex gap-2 justify-end">
+              <button 
+                onClick={() => setShowAddModal(false)}
+                className="px-4 py-2 text-sm text-slate-300 hover:text-white transition-colors"
+                disabled={adding}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleAddBalance}
+                disabled={adding || !addAmount || parseFloat(addAmount) <= 0}
+                className="px-4 py-2 text-sm bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-colors disabled:opacity-50 font-medium flex items-center gap-2"
+              >
+                <PlusCircle className="w-4 h-4" />
+                {adding ? 'Adding...' : 'Add Balance'}
               </button>
             </div>
           </motion.div>

@@ -8,6 +8,7 @@ import { supabase } from '../utils/supabase'
 import { WalletService, invalidateWalletCache } from '../services/WalletService'
 import { ReferralService } from '../services/ReferralService'
 import { redis, getCached } from '../lib/redis'
+import * as XLSX from 'xlsx'
 
 // GET /api/admin/stats
 export const getDashboardStats = asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -109,7 +110,8 @@ export const getUsers = asyncHandler(async (req: AuthRequest, res: Response) => 
       select: {
         id: true, username: true, email: true, role: true, isVerified: true,
         isActive: true, isBanned: true, lastLogin: true, createdAt: true,
-        _count: { select: { deposits: true } }
+        _count: { select: { deposits: true } },
+        profile: { select: { fullName: true, phone: true, telegramUsername: true } }
       }
     }),
     prisma.user.count({ where })
@@ -119,6 +121,40 @@ export const getUsers = asyncHandler(async (req: AuthRequest, res: Response) => 
     success: true, data: users,
     pagination: { page: Number(page), limit: Number(limit), total, pages: Math.ceil(total / Number(limit)) }
   })
+})
+
+// GET /api/admin/users/export — Download all users as XLSX
+export const exportUsersXLS = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const users = await prisma.user.findMany({
+    where: { role: 'user' },
+    orderBy: { createdAt: 'desc' },
+    select: {
+      username: true, email: true, isVerified: true,
+      isActive: true, isBanned: true, lastLogin: true, createdAt: true,
+      profile: { select: { fullName: true, phone: true, telegramUsername: true } }
+    }
+  })
+
+  const rows = users.map(u => ({
+    Username: u.username,
+    Email: u.email,
+    'Full Name': u.profile?.fullName || '',
+    'Phone Number': u.profile?.phone || '',
+    'Telegram Username': u.profile?.telegramUsername || '',
+    Status: u.isBanned ? 'Banned' : u.isActive ? 'Active' : 'Suspended',
+    Verified: u.isVerified ? 'Yes' : 'No',
+    'Last Login': u.lastLogin ? new Date(u.lastLogin).toLocaleString() : 'Never',
+    'Joined Date': new Date(u.createdAt).toLocaleString()
+  }))
+
+  const wb = XLSX.utils.book_new()
+  const ws = XLSX.utils.json_to_sheet(rows)
+  XLSX.utils.book_append_sheet(wb, ws, 'Users')
+  const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' })
+
+  res.setHeader('Content-Disposition', `attachment; filename="users-${new Date().toISOString().slice(0,10)}.xlsx"`)
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+  res.send(buf)
 })
 
 // GET /api/admin/users/:id
@@ -226,6 +262,61 @@ export const voidUserBalance = asyncHandler(async (req: AuthRequest, res: Respon
   invalidateWalletCache(user.id)
 
   res.json({ success: true, message: 'Balance voided successfully', data: withdrawal })
+})
+
+// POST /api/admin/users/:id/add-balance
+export const addUserBalance = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const id = req.params.id as string
+  const { amount, reason } = req.body
+
+  if (!amount || amount <= 0) {
+    throw new AppError('Valid amount is required', 400)
+  }
+
+  const user = await prisma.user.findUnique({ where: { id } })
+  if (!user) throw new AppError('User not found', 404)
+
+  // Find or create a generic 'manual' payment method reference
+  let manualMethod = await prisma.paymentMethod.findFirst({ where: { code: 'manual' } })
+  if (!manualMethod) {
+    manualMethod = await prisma.paymentMethod.create({
+      data: {
+        name: 'Manual Credit',
+        code: 'manual',
+        type: 'wallet',
+        minAmount: 0,
+        maxAmount: 999999,
+        isActive: true
+      }
+    })
+  }
+
+  // Create an approved deposit to credit the balance
+  const deposit = await prisma.deposit.create({
+    data: {
+      userId: user.id,
+      amount: parseFloat(amount),
+      currency: 'USD',
+      paymentMethodId: manualMethod.id,
+      status: 'approved',
+      notes: reason ? `Admin Manual Credit: ${reason}` : 'Admin Manual Credit',
+      approvedBy: (req as any).user?.id,
+      approvedAt: new Date()
+    }
+  })
+
+  // Notify user
+  await createNotification(user.id, {
+    title: 'Balance Added',
+    message: `$${parseFloat(amount).toFixed(2)} has been added to your wallet by admin.`,
+    type: 'success'
+  })
+
+  // Invalidate cache so balance updates immediately
+  invalidateWalletCache(user.id)
+
+  const newBalance = await WalletService.getWalletBalance(user.id)
+  res.json({ success: true, message: 'Balance added successfully', data: { deposit, newBalance } })
 })
 
 // PATCH /api/admin/users/:id/ban

@@ -11,7 +11,7 @@ import {
   getAdminBonuses, createBonus, updateBonus, deleteBonus,
   getAdminEnhancedWithdrawals, exportEnhancedWithdrawalsCSV,
   adminApproveEnhancedWithdrawal, adminRejectEnhancedWithdrawal,
-  getUserDetails, voidUserBalance
+  getUserDetails, voidUserBalance, addUserBalance, exportUsersXLS
 } from '../controllers/adminController'
 import {
   getProviders, createProvider, updateProvider, deleteProvider,
@@ -26,12 +26,14 @@ router.use(authenticate, requireAdmin)
 router.get('/stats', getDashboardStats)
 
 // Users
+router.get('/users/export', exportUsersXLS)
 router.get('/users', getUsers)
 router.get('/users/:id', getUserDetails)
 router.patch('/users/:id/ban', banUser)
 router.patch('/users/:id/suspend', suspendUser)
 router.patch('/users/:id/verify', verifyUser)
 router.post('/users/:id/void-balance', voidUserBalance)
+router.post('/users/:id/add-balance', addUserBalance)
 
 // Deposits
 router.get('/deposits', getAdminDeposits)
