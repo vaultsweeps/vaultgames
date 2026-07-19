@@ -50,8 +50,8 @@ export default function WheelPage() {
           <div className="flex-1 space-y-8 text-center lg:text-left">
             <div>
               <h1 className="text-5xl lg:text-7xl font-black text-white tracking-tight drop-shadow-lg mb-4">
-                SPIN THE <br className="hidden lg:block" />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-indigo-400">WHEEL</span>
+                DAILY <br className="hidden lg:block" />
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-indigo-400">SPIN</span>
               </h1>
               <p className="text-lg text-slate-300 max-w-md mx-auto lg:mx-0">
                 Get prizes every day in the win-win lottery wheel of luck! Win cash bonuses and percentage matches on your recent deposits.
