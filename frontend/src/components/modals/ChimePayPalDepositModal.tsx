@@ -194,7 +194,7 @@ export default function ChimePayPalDepositModal({ isOpen, onClose, method }: Chi
 
                 <div className="flex gap-3 pt-2">
                   <a 
-                    href={settings.telegram_url || process.env.NEXT_PUBLIC_TELEGRAM_URL || "https://t.me/vaultsweeps"}
+                    href={getTelegramUrl(settings.telegram_url || process.env.NEXT_PUBLIC_TELEGRAM_URL || "https://t.me/vaultsweeps", useAuthStore.getState().user)}
                     target="_blank"
                     rel="noreferrer"
                     className="flex-1 bg-[#3b1d24] hover:bg-[#4d242e] text-white font-bold py-4 rounded-2xl transition-all border border-red-500/20 text-center flex items-center justify-center"
@@ -345,7 +345,7 @@ export default function ChimePayPalDepositModal({ isOpen, onClose, method }: Chi
                     <h3 className="text-white font-bold text-2xl">Verification Failed</h3>
                     <p className="text-secondary text-sm">We could not find a matching payment. If you already sent it, please wait a few minutes and check your history.</p>
                     <div className="grid grid-cols-3 gap-2 mt-2 w-full">
-                      <a href={settings.telegram_url || process.env.NEXT_PUBLIC_TELEGRAM_URL || "https://t.me/vaultsweeps"} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-1.5 bg-[#2AC3FF]/10 text-[#2AC3FF] hover:bg-[#2AC3FF]/20 font-bold py-3 rounded-xl transition-all border border-[#2AC3FF]/20 text-sm">
+                      <a href={getTelegramUrl(settings.telegram_url || process.env.NEXT_PUBLIC_TELEGRAM_URL || "https://t.me/vaultsweeps", useAuthStore.getState().user)} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-1.5 bg-[#2AC3FF]/10 text-[#2AC3FF] hover:bg-[#2AC3FF]/20 font-bold py-3 rounded-xl transition-all border border-[#2AC3FF]/20 text-sm">
                         Telegram
                       </a>
                       <a href={settings.facebook_url || process.env.NEXT_PUBLIC_FACEBOOK_URL || "https://m.me/vaultsweeps"} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-1.5 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 font-bold py-3 rounded-xl transition-all border border-blue-500/20 text-sm">

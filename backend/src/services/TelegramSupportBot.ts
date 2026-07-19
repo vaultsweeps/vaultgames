@@ -73,8 +73,37 @@ export class TelegramSupportBot {
 
   // ─── Listeners ──────────────────────────────────────────────────────────
   private setupListeners() {
+    // /start command (User linking)
+    this.bot.start(async (ctx) => {
+      if (ctx.chat.type !== 'private') return;
+      
+      const payload = ctx.message.text.split(' ')[1];
+      if (payload) {
+        try {
+          const user = await prisma.user.findUnique({ where: { id: payload } });
+          if (user) {
+            const telegramUsername = ctx.from.username ? `@${ctx.from.username}` : null;
+            await prisma.userProfile.update({
+              where: { userId: user.id },
+              data: { telegramUsername }
+            });
+            await ctx.reply('✅ Your Telegram account has been successfully linked to your website profile! How can we help you today?');
+          } else {
+            await ctx.reply('❌ Invalid link code. How can we help you today?');
+          }
+        } catch (err) {
+          logger.error('Error linking telegram account', err);
+          await ctx.reply('👋 Welcome to support! How can we help you today?');
+        }
+      } else {
+        await ctx.reply('👋 Welcome to support! How can we help you today?');
+      }
+    });
+
     // Text messages
     this.bot.on(message('text'), async (ctx, next) => {
+      if (ctx.message.text.startsWith('/')) return next(); // Skip commands
+
       if (ctx.chat.id.toString() === this.groupId) {
         return this.handleGroupMessage(ctx);
       }

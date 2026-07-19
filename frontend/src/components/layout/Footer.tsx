@@ -4,11 +4,14 @@ import Image from 'next/image'
 import { Send, Facebook, Twitter, Youtube, Instagram, MessageCircle, Mail } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { publicApi } from '@/lib/api'
+import { useAuthStore } from '@/store/authStore'
+import { getTelegramUrl } from '@/lib/telegram'
 
 export default function Footer() {
   const [year, setYear] = useState<number | null>(null)
   const [settings, setSettings] = useState<any>({})
   const [mounted, setMounted] = useState(false)
+  const { user } = useAuthStore()
 
   useEffect(() => {
     setYear(new Date().getFullYear())
@@ -32,7 +35,7 @@ export default function Footer() {
             {mounted && (
             <div className="flex gap-3">
               {[
-                { icon: Send, href: settings.telegram_url || process.env.NEXT_PUBLIC_TELEGRAM_URL || '#', color: 'hover:text-blue-400' },
+                { icon: Send, href: getTelegramUrl(settings.telegram_url || process.env.NEXT_PUBLIC_TELEGRAM_URL || 'https://t.me/vaultsweeps', user), color: 'hover:text-blue-400' },
                 { icon: Facebook, href: settings.facebook_url || process.env.NEXT_PUBLIC_FACEBOOK_URL || '#', color: 'hover:text-blue-600' },
                 { icon: Twitter, href: '#', color: 'hover:text-sky-400' },
                 { icon: Youtube, href: '#', color: 'hover:text-red-500' },
@@ -72,7 +75,7 @@ export default function Footer() {
             <h4 className="font-display text-xs tracking-widest text-neon-blue uppercase mb-4">Contact Us</h4>
             {mounted ? (
             <div className="space-y-3">
-              <a href={settings.telegram_url || process.env.NEXT_PUBLIC_TELEGRAM_URL || '#'} target="_blank" rel="noopener noreferrer"
+              <a href={getTelegramUrl(settings.telegram_url || process.env.NEXT_PUBLIC_TELEGRAM_URL || 'https://t.me/vaultsweeps', user)} target="_blank" rel="noopener noreferrer"
                 className="flex items-center gap-3 glass rounded-lg px-4 py-3 text-sm text-secondary hover:text-neon-blue hover:border-neon-blue/30 border border-transparent transition-all">
                 <Send className="w-4 h-4 text-blue-400" />
                 Telegram Support
