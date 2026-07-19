@@ -369,7 +369,7 @@ const GameTransferModal = React.memo(function GameTransferModal({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 30 }}
               transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-              className="relative z-10 w-full max-w-lg bg-[#0F0F17] border border-[#2AC3FF]/20 rounded-3xl overflow-hidden shadow-2xl shadow-black/80"
+              className="relative z-10 w-full max-w-lg bg-[#0F0F17] border border-[#2AC3FF]/20 rounded-3xl overflow-hidden shadow-2xl shadow-black/80 max-h-[95vh] overflow-y-auto flex flex-col"
             >
               {/* Glow header */}
               <div className="relative bg-gradient-to-br from-[#1a1a2e] via-[#16213e] to-[#0F0F17] p-6 border-b border-white/5">
