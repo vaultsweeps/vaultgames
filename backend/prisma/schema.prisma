@@ -47,6 +47,7 @@ enum BonusType {
   referral
   vip
   seasonal
+  wheel
 }
 
 enum PaymentMethodType {
