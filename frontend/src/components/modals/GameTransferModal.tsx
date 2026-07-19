@@ -1,3 +1,4 @@
+'use client'
 import React from 'react';
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -32,6 +33,7 @@ const GameTransferModal = React.memo(function GameTransferModal({
   const [amount, setAmount] = useState<string>('')
   const [loading, setLoading] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
+  const [showCashoutRules, setShowCashoutRules] = useState(false)
 
   useEffect(() => {
     if (isOpen) {
@@ -267,7 +269,7 @@ const GameTransferModal = React.memo(function GameTransferModal({
 
                 <div className="bg-surface rounded-2xl p-4 border border-border-subtle flex justify-between items-center">
                   <span className="text-muted text-sm">Cashouts range <strong className="text-white">from ${minCashout} to ${maxCashout}</strong></span>
-                  <button onClick={() => window.open('/cashout-rules', '_blank')} className="w-5 h-5 rounded-full bg-surface-elevated text-secondary hover:text-white hover:bg-surface flex items-center justify-center text-xs font-bold italic transition-colors">i</button>
+                  <button onClick={() => setShowCashoutRules(true)} className="w-5 h-5 rounded-full bg-surface-elevated text-secondary hover:text-neon-blue hover:bg-neon-blue/10 flex items-center justify-center text-xs font-bold italic transition-colors border border-border-strong">i</button>
                 </div>
               </>
             )}
@@ -287,7 +289,7 @@ const GameTransferModal = React.memo(function GameTransferModal({
             {!noSession && type === 'cashout' && (
               <div className="bg-surface rounded-2xl p-4 border border-border-subtle flex justify-between items-center">
                 <span className="text-muted text-sm">Cashouts range <strong className="text-white">from ${minCashout} to ${maxCashout}</strong></span>
-                <button onClick={() => window.open('/cashout-rules', '_blank')} className="w-5 h-5 rounded-full bg-surface-elevated text-secondary hover:text-white hover:bg-surface flex items-center justify-center text-xs font-bold italic transition-colors">i</button>
+                <button onClick={() => setShowCashoutRules(true)} className="w-5 h-5 rounded-full bg-surface-elevated text-secondary hover:text-neon-blue hover:bg-neon-blue/10 flex items-center justify-center text-xs font-bold italic transition-colors border border-border-strong">i</button>
               </div>
             )}
 
@@ -350,6 +352,107 @@ const GameTransferModal = React.memo(function GameTransferModal({
           </div>
         </motion.div>
       </div>
+
+      {/* Cashout Rules Popup */}
+      <AnimatePresence>
+        {showCashoutRules && (
+          <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowCashoutRules(false)}
+              className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 30 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 30 }}
+              transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+              className="relative z-10 w-full max-w-lg bg-[#0F0F17] border border-[#2AC3FF]/20 rounded-3xl overflow-hidden shadow-2xl shadow-black/80"
+            >
+              {/* Glow header */}
+              <div className="relative bg-gradient-to-br from-[#1a1a2e] via-[#16213e] to-[#0F0F17] p-6 border-b border-white/5">
+                <div className="absolute inset-0 bg-[#2AC3FF]/5 pointer-events-none" />
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[#2AC3FF] text-xs font-mono tracking-[0.3em] uppercase mb-1">Vault Sweeps</p>
+                    <h3 className="text-white font-display font-bold text-2xl tracking-wide">
+                      CASHOUT <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#2AC3FF] to-[#7B2FFF]">LIMITS</span>
+                    </h3>
+                  </div>
+                  <button
+                    onClick={() => setShowCashoutRules(false)}
+                    className="w-9 h-9 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-secondary hover:text-white transition-all"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-6 space-y-4">
+                {/* Table */}
+                <div className="rounded-2xl overflow-hidden border border-white/10">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-[#2AC3FF]/10">
+                        {['DEPOSIT', 'MINIMUM', 'MAXIMUM'].map(h => (
+                          <th key={h} className="text-left px-4 py-3 text-[#2AC3FF] font-mono text-xs tracking-widest font-bold">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {[
+                        { deposit: '$5',       min: '$50',  max: '$50'   },
+                        { deposit: '$6–$9',    min: '$50',  max: '$100'  },
+                        { deposit: '$10–$15',  min: '$50',  max: 'X15'   },
+                        { deposit: '$16–$25',  min: 'X3',   max: 'X15'   },
+                        { deposit: '$26–$35',  min: 'X3',   max: 'X15'   },
+                        { deposit: '$36–$50',  min: 'X3',   max: 'X15'   },
+                        { deposit: '$50+',     min: 'X3',   max: '$1000' },
+                      ].map((row, i) => (
+                        <tr key={i} className={`${i % 2 === 0 ? 'bg-white/[0.02]' : 'bg-transparent'} hover:bg-[#2AC3FF]/5 transition-colors`}>
+                          <td className="px-4 py-3 text-white font-semibold">{row.deposit}</td>
+                          <td className="px-4 py-3 text-emerald-400 font-mono font-bold">{row.min}</td>
+                          <td className="px-4 py-3 text-[#2AC3FF] font-mono font-bold">{row.max}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Footer info */}
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="flex-1 bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3">
+                    <p className="text-emerald-400 text-xs font-mono font-bold uppercase tracking-wider mb-1">Minimum Deposit</p>
+                    <p className="text-white font-bold text-lg">$5</p>
+                  </div>
+                  <div className="flex-1 bg-[#2AC3FF]/10 border border-[#2AC3FF]/20 rounded-xl p-3">
+                    <p className="text-[#2AC3FF] text-xs font-mono font-bold uppercase tracking-wider mb-1">Max Cashout / Day</p>
+                    <p className="text-white font-bold text-lg">$1,000</p>
+                  </div>
+                </div>
+
+                {/* Note */}
+                <div className="flex items-start gap-3 bg-amber-500/10 border border-amber-500/20 rounded-xl p-4">
+                  <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                  <p className="text-amber-200 text-xs leading-relaxed">
+                    <span className="font-bold text-amber-400">NOTE: </span>
+                    Winnings above the maximum limit are voided by the system. Multipliers (X3, X15) are calculated based on your total deposited amount.
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => setShowCashoutRules(false)}
+                  className="w-full bg-[#2AC3FF] hover:bg-[#1CA0D9] text-white font-bold py-3 rounded-xl transition-all text-sm"
+                >
+                  Got it!
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </AnimatePresence>
   )
 })

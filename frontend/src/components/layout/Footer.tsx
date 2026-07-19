@@ -104,9 +104,15 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="mt-12 pt-6 border-t border-border-subtle flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-xs text-slate-600" suppressHydrationWarning>© {year ?? ''} Vault Sweeps. All rights reserved.</p>
-          <div className="flex gap-6">
+        <div className="mt-12 pt-6 border-t border-border-subtle flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex flex-col items-center md:items-start gap-1">
+            <p className="text-xs text-slate-600" suppressHydrationWarning>© {year ?? ''} Vault Sweeps. All rights reserved.</p>
+            <p className="text-[10px] text-slate-500 flex items-center gap-1">
+              <span className="w-4 h-4 rounded-full border border-slate-500 flex items-center justify-center font-bold text-[8px]">18+</span>
+              You must be at least 18 years old to use this platform. Please play responsibly.
+            </p>
+          </div>
+          <div className="flex flex-wrap justify-center gap-4 md:gap-6">
             {[['#', 'Privacy Policy'], ['#', 'Terms of Service'], ['#', 'Cookie Policy']].map(([href, label]) => (
               <Link key={label} href={href} className="text-xs text-slate-600 hover:text-secondary transition-colors">{label}</Link>
             ))}

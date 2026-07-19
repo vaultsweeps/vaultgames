@@ -1,4 +1,4 @@
-import express from 'express'
+﻿import express from 'express'
 import cors from 'cors'
 import helmet from 'helmet'
 import morgan from 'morgan'
@@ -140,11 +140,13 @@ import { ImapChimePayPalService } from './services/payment/ImapChimePayPalServic
 
 // Start server
 app.listen(PORT, () => {
-  logger.info(`🚀 Vault Sweeps API running on port ${PORT}`)
-  logger.info(`📱 Environment: ${process.env.NODE_ENV || 'development'}`)
+  logger.info(`ðš€ Vault Sweeps API running on port ${PORT}`)
+  logger.info(`ð“± Environment: ${process.env.NODE_ENV || 'development'}`)
   TelegramSupportBot.getInstance().start()
   ImapZappayService.startCron()
   ImapChimePayPalService.startCron()
 })
 
 export default app
+
+

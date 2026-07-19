@@ -189,7 +189,7 @@ export default function HomePageClient() {
       </section>
 
       {/* Floating contact buttons */}
-      <div className="fixed bottom-6 right-6 z-40 flex flex-col gap-3">
+      <div className="fixed bottom-24 right-4 lg:bottom-6 lg:right-6 z-40 flex flex-col gap-3">
         <a href={settings.telegram_url || process.env.NEXT_PUBLIC_TELEGRAM_URL || '#'} target="_blank" rel="noopener noreferrer"
           className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform hover:shadow-blue-500/40"
           title="Telegram Support">

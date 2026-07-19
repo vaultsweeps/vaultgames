@@ -11,6 +11,7 @@ import dynamic from 'next/dynamic'
 import { authApi, notificationsApi } from '@/lib/api'
 
 const WalletModal = dynamic(() => import('@/components/modals/WalletModal'), { ssr: false })
+const AuthModal = dynamic(() => import('@/components/modals/AuthModal'), { ssr: false })
 
 const navLinks = [
   { href: '/', label: 'Home' },
@@ -31,6 +32,9 @@ export default function Navbar() {
   const [walletOpen, setWalletOpen] = useState(false)
   const [walletBalance, setWalletBalance] = useState<number>(0)
   const [unreadCount, setUnreadCount] = useState(0)
+
+  const [authModalOpen, setAuthModalOpen] = useState(false)
+  const [authModalView, setAuthModalView] = useState<'login' | 'register'>('login')
 
   const lastNotifFetch = useRef(0)
 
@@ -177,12 +181,12 @@ export default function Navbar() {
               </>
             ) : (
               <>
-                <Link href="/login" className="px-4 py-2 text-sm text-secondary hover:text-white transition-colors font-medium">
-                  Login
-                </Link>
-                <Link href="/register" className="btn-primary text-xs py-2.5 px-5">
-                  Join Now
-                </Link>
+                <button onClick={() => { setAuthModalView('login'); setAuthModalOpen(true); }} className="px-4 py-2 text-sm text-secondary hover:text-white transition-colors font-medium">
+                  Sign In
+                </button>
+                <button onClick={() => { setAuthModalView('register'); setAuthModalOpen(true); }} className="btn-primary text-xs py-2.5 px-5">
+                  Sign Up
+                </button>
               </>
             )}
           </div>
@@ -232,6 +236,17 @@ export default function Navbar() {
                 </Link>
               </>
             )}
+
+            {!isAuthenticated && (
+              <div className="flex items-center gap-1.5 ml-1">
+                <button onClick={() => { setAuthModalView('login'); setAuthModalOpen(true); }} className="px-3 py-1.5 text-xs text-secondary hover:text-white transition-colors font-medium border border-border-strong rounded-lg bg-surface hover:bg-surface-elevated">
+                  Sign In
+                </button>
+                <button onClick={() => { setAuthModalView('register'); setAuthModalOpen(true); }} className="btn-primary text-xs py-1.5 px-3">
+                  Sign Up
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -268,8 +283,8 @@ export default function Navbar() {
                   </>
                 ) : (
                   <>
-                    <Link href="/login" onClick={() => setMobileOpen(false)} className="btn-neon text-center text-xs py-2.5">Login</Link>
-                    <Link href="/register" onClick={() => setMobileOpen(false)} className="btn-primary text-center text-xs py-2.5">Join Now</Link>
+                    <button onClick={() => { setMobileOpen(false); setAuthModalView('login'); setAuthModalOpen(true); }} className="btn-neon text-center text-xs py-2.5 w-full">Sign In</button>
+                    <button onClick={() => { setMobileOpen(false); setAuthModalView('register'); setAuthModalOpen(true); }} className="btn-primary text-center text-xs py-2.5 w-full">Sign Up</button>
                   </>
                 )}
               </div>
@@ -319,7 +334,8 @@ export default function Navbar() {
       </button>
     </div>
 
-    <WalletModal isOpen={walletOpen} onClose={() => setWalletOpen(false)} balance={walletBalance} />
+      <WalletModal isOpen={walletOpen} onClose={() => setWalletOpen(false)} balance={walletBalance} />
+      <AuthModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} initialView={authModalView} />
     </>
   )
 }

@@ -1,3 +1,4 @@
+'use client'
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, CheckCircle, ArrowRight } from 'lucide-react'
@@ -7,9 +8,16 @@ import { depositApi, publicApi } from '@/lib/api'
 interface ZappayDepositModalProps {
   isOpen: boolean
   onClose: () => void
+  method?: 'zappay' | 'apple' | 'card' | null
 }
 
-export default function ZappayDepositModal({ isOpen, onClose }: ZappayDepositModalProps) {
+export default function ZappayDepositModal({ isOpen, onClose, method = 'zappay' }: ZappayDepositModalProps) {
+  const getTitle = () => {
+    if (method === 'apple') return 'Apple Pay'
+    if (method === 'card') return 'Debit Card'
+    return 'Zappay'
+  }
+  const title = getTitle()
   const [step, setStep] = useState(1) // 1: Pay, 2: Details, 3: Status
   const [status, setStatus] = useState<'idle' | 'verifying' | 'success' | 'failed' | 'timeout'>('idle')
   const [amount, setAmount] = useState<string>('0.00')
@@ -124,9 +132,9 @@ export default function ZappayDepositModal({ isOpen, onClose }: ZappayDepositMod
           {/* Header */}
           <div className="p-6 pb-4 flex justify-between items-start">
             <div>
-              <h2 className="text-white font-bold text-2xl mb-1">Zappay</h2>
+              <h2 className="text-white font-bold text-2xl mb-1">{title}</h2>
               {step === 1 ? (
-                <p className="text-secondary text-sm">First, send your payment via Zappay</p>
+                <p className="text-secondary text-sm">First, send your payment via {title}</p>
               ) : (
                 <p className="text-secondary text-sm">Provide your payment details for verification</p>
               )}
@@ -144,17 +152,17 @@ export default function ZappayDepositModal({ isOpen, onClose }: ZappayDepositMod
                     <ArrowRight className="w-6 h-6 text-[#2AC3FF]" />
                   </div>
                   <p className="text-sm text-secondary leading-relaxed">
-                    To start, you must send the money via Zappay. Once you've completed the transfer, you will receive a Profile Name/Sender Name.
+                    To start, you must send the money via {title}. Once you've completed the transfer, you will receive a Profile Name/Sender Name.
                   </p>
                 </div>
 
                 <a 
-                  href="https://app.myzappay.com/pay/vegaswera"
+                  href="https://app.myzappay.com/en/pay/vegaswera"
                   target="_blank"
                   rel="noreferrer"
                   className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-4 rounded-2xl transition-all text-center flex items-center justify-center w-full"
                 >
-                  Open Zappay to Pay
+                  Click here to pay
                 </a>
 
                 <div className="flex gap-3 pt-2">
@@ -223,7 +231,7 @@ export default function ZappayDepositModal({ isOpen, onClose }: ZappayDepositMod
                 </div>
 
                 <div className="space-y-2">
-                  <p className="text-secondary text-sm">Sender Zappay Profile Name</p>
+                  <p className="text-secondary text-sm">Sender {title} Profile Name</p>
                   <div className="bg-surface rounded-2xl p-4 border border-border-subtle flex items-center relative">
                     <input 
                       type="text"
@@ -261,7 +269,7 @@ export default function ZappayDepositModal({ isOpen, onClose }: ZappayDepositMod
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
                     <div className="w-16 h-16 rounded-full border-4 border-[#2AC3FF]/30 border-t-[#2AC3FF] animate-spin mx-auto"></div>
                     <h3 className="text-white font-bold text-xl">Verifying Payment...</h3>
-                    <p className="text-secondary text-sm">We are checking our Zappay inbox for your payment of <span className="text-white font-bold">${amount}</span> from <span className="text-white font-bold">{profileName}</span>. This may take up to 60 seconds.</p>
+                    <p className="text-secondary text-sm">We are checking our {title} inbox for your payment of <span className="text-white font-bold">${amount}</span> from <span className="text-white font-bold">{profileName}</span>. This may take up to 60 seconds.</p>
                   </motion.div>
                 )}
 

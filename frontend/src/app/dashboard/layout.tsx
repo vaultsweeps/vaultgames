@@ -31,9 +31,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   useEffect(() => {
     fetchMe().then(() => {
-      if (!isAuthenticated) router.push('/login')
+      // Read fresh state from store after fetchMe resolves (avoids stale closure)
+      const { isAuthenticated: freshAuth } = useAuthStore.getState()
+      if (!freshAuth) router.push('/login')
     })
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const lastFetch = useRef(0)
 

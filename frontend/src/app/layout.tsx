@@ -4,6 +4,7 @@ import { Toaster } from 'react-hot-toast'
 import '@/styles/globals.css'
 import { ThemeProvider } from '@/components/ThemeProvider'
 import NavigationLoader from '@/components/ui/NavigationLoader'
+import FrustrationDetector from '@/components/ui/FrustrationDetector'
 
 export const metadata: Metadata = {
   title: 'Vault Sweeps — Premium Gaming Platform',
@@ -43,6 +44,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Suspense fallback={null}>
             <NavigationLoader />
           </Suspense>
+          <FrustrationDetector />
           <div className="scan-line" />
           {children}
           <Toaster
