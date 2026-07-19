@@ -10,6 +10,7 @@ type UserProfile = {
   fullName?: string
   phone?: string
   telegramUsername?: string
+  telegramId?: string
 }
 
 type User = {
