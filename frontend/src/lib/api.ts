@@ -170,6 +170,8 @@ export const adminApi = {
   verifyUser: (id: string) => apiClient.patch(`/admin/users/${id}/verify`),
   deleteUser: (id: string) => apiClient.delete(`/admin/users/${id}`),
   voidUserBalance: (id: string, data: { amount: number, reason?: string }) => apiClient.post(`/admin/users/${id}/void-balance`, data),
+  addUserBalance: (id: string, data: { amount: number, reason?: string }) => apiClient.post(`/admin/users/${id}/add-balance`, data),
+  exportUsersXLS: () => apiClient.get('/admin/users/export', { responseType: 'blob' }),
 
   // Deposits
   getDeposits: (params?: object) => apiClient.get('/admin/deposits', { params }),
