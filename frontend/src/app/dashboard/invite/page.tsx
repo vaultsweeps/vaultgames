@@ -253,7 +253,7 @@ export default function InvitePage() {
                     {[
                       { step: '01', text: 'Share your invite link or code with friends' },
                       { step: '02', text: 'They sign up at vaultsweeps.com using your code' },
-                      { step: '03', text: 'You earn 5% bonus on every deposit they make' },
+                      { step: '03', text: "You earn a bonus up to $10 on your referral's first deposit" },
                       { step: '04', text: 'No limit — keep referring, keep earning!' },
                     ].map(item => (
                       <div key={item.step} className="flex items-start gap-3">

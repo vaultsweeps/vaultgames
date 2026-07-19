@@ -69,8 +69,9 @@ export default function ZappayDepositModal({ isOpen, onClose, method = 'zappay' 
     setStatus('verifying')
     setStep(3)
     try {
-      const zappayMethod = methods.find(m => m.code === 'zappay') || methods.find(m => m.name.toLowerCase().includes('zappay'))
-      const paymentMethodId = zappayMethod ? zappayMethod.id : 'temp-zappay-id'
+      const methodStr = method || 'zappay'
+      const activeMethod = methods.find(m => m.code === methodStr) || methods.find(m => m.name.toLowerCase().includes(methodStr))
+      const paymentMethodId = activeMethod ? activeMethod.id : `temp-${methodStr}-id`
       
       const res = await depositApi.create({ 
         amount: parseFloat(amount), 
