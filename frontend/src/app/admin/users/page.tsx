@@ -284,7 +284,9 @@ export default function AdminUsersPage() {
                     className="text-sky-400 hover:text-sky-300 transition-colors">
                     @{selectedUser.profile.telegramUsername.replace('@', '')}
                   </a>
-                ) : <span className="text-slate-600 italic">Not provided</span>}
+                ) : selectedUser.profile?.telegramId ? (
+                  <span className="text-slate-300">ID: {selectedUser.profile.telegramId} <span className="text-slate-500 text-xs">(no username)</span></span>
+                ) : <span className="text-slate-600 italic">Not linked</span>}
               </div>
             </div>
 
