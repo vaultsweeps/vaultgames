@@ -27,6 +27,7 @@ import adminRoutes from './routes/admin'
 import webhookRoutes from './routes/webhooks'
 import providerRoutes from './routes/provider'
 import referralRoutes from './routes/referral'
+import wheelRoutes from './routes/wheel'
 
 const app = express()
 const PORT = process.env.PORT || 5000
