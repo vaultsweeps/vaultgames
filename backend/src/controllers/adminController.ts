@@ -111,7 +111,7 @@ export const getUsers = asyncHandler(async (req: AuthRequest, res: Response) => 
         id: true, username: true, email: true, role: true, isVerified: true,
         isActive: true, isBanned: true, lastLogin: true, createdAt: true,
         _count: { select: { deposits: true } },
-        profile: { select: { fullName: true, phone: true, telegramUsername: true } }
+        profile: { select: { fullName: true, phone: true, telegramUsername: true, telegramId: true } }
       }
     }),
     prisma.user.count({ where })
@@ -131,7 +131,7 @@ export const exportUsersXLS = asyncHandler(async (req: AuthRequest, res: Respons
     select: {
       username: true, email: true, isVerified: true,
       isActive: true, isBanned: true, lastLogin: true, createdAt: true,
-      profile: { select: { fullName: true, phone: true, telegramUsername: true } }
+      profile: { select: { fullName: true, phone: true, telegramUsername: true, telegramId: true } }
     }
   })
 
@@ -141,6 +141,7 @@ export const exportUsersXLS = asyncHandler(async (req: AuthRequest, res: Respons
     'Full Name': u.profile?.fullName || '',
     'Phone Number': u.profile?.phone || '',
     'Telegram Username': u.profile?.telegramUsername || '',
+    'Telegram ID': (u.profile as any)?.telegramId || '',
     Status: u.isBanned ? 'Banned' : u.isActive ? 'Active' : 'Suspended',
     Verified: u.isVerified ? 'Yes' : 'No',
     'Last Login': u.lastLogin ? new Date(u.lastLogin).toLocaleString() : 'Never',

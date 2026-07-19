@@ -83,20 +83,32 @@ export class TelegramSupportBot {
           const user = await prisma.user.findUnique({ where: { id: payload } });
           if (user) {
             const telegramUsername = ctx.from.username ? `@${ctx.from.username}` : null;
-            await prisma.userProfile.update({
+            const telegramId = ctx.from.id.toString();
+            // Telegram phone is only available if user explicitly shares it; ctx.from does not expose it
+            // but we store the Telegram user ID so admin can look them up
+            await prisma.userProfile.upsert({
               where: { userId: user.id },
-              data: { telegramUsername }
+              update: {
+                telegramUsername,
+                telegramId,
+              },
+              create: {
+                userId: user.id,
+                telegramUsername,
+                telegramId,
+              },
             });
+            logger.info(`[TelegramBot] Linked Telegram ${telegramId}${telegramUsername ? ` (${telegramUsername})` : ''} to user ${user.id}`);
             await ctx.reply('✅ Your Telegram account has been successfully linked to your website profile! How can we help you today?');
           } else {
-            await ctx.reply('❌ Invalid link code. How can we help you today?');
+            await ctx.reply('❌ Invalid link code. Please contact support for assistance.');
           }
         } catch (err) {
           logger.error('Error linking telegram account', err);
           await ctx.reply('👋 Welcome to support! How can we help you today?');
         }
       } else {
-        await ctx.reply('👋 Welcome to support! How can we help you today?');
+        await ctx.reply('👋 Welcome to Vault Sweeps support! How can we help you today?');
       }
     });
 
@@ -141,6 +153,22 @@ export class TelegramSupportBot {
     let conversation: any = null;
     try {
       conversation = await SupportService.getOrCreateTelegramConversation(telegramUserId, name, telegramUsername);
+
+      // If this telegram user is linked to a website account, keep their profile updated
+      try {
+        const linked = await prisma.userProfile.findFirst({
+          where: { telegramId: telegramUserId }
+        });
+        if (linked) {
+          await prisma.userProfile.update({
+            where: { id: linked.id },
+            data: {
+              telegramUsername: telegramUsername ? `@${telegramUsername}` : linked.telegramUsername,
+            }
+          });
+        }
+      } catch (_) { /* non-critical */ }
+
 
       if (!conversation.telegram_thread_id) {
         const topicName = `${conversation.conversation_id} - Telegram ${name}`;
