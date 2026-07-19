@@ -2,9 +2,12 @@
 import { useEffect, useRef } from 'react'
 import toast from 'react-hot-toast'
 import { HelpCircle } from 'lucide-react'
+import { getTelegramUrl } from '@/lib/telegram'
+import { useAuthStore } from '@/store/authStore'
 
 export default function FrustrationDetector() {
   const clickTimes = useRef<number[]>([])
+  const { user } = useAuthStore()
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -51,7 +54,7 @@ export default function FrustrationDetector() {
               <button
                 onClick={() => {
                   toast.dismiss(t.id)
-                  window.open(process.env.NEXT_PUBLIC_TELEGRAM_URL || 'https://t.me/vaultsweeps', '_blank')
+                  window.open(getTelegramUrl(process.env.NEXT_PUBLIC_TELEGRAM_URL || 'https://t.me/vaultsweeps', user), '_blank')
                 }}
                 className="w-full flex-1 flex flex-row sm:flex-col items-center justify-center gap-1.5 sm:gap-1 text-sm font-bold text-[#00D4FF] hover:text-white hover:bg-[#00D4FF]/10 transition-colors border-r sm:border-r-0 sm:border-b border-border-strong py-4 sm:py-0"
               >

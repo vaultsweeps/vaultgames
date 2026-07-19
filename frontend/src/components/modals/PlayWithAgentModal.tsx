@@ -17,7 +17,7 @@ export default function PlayWithAgentModal({
   onClose: () => void
   settings: any
 }) {
-  const telegramUrl = settings?.telegram_url || process.env.NEXT_PUBLIC_TELEGRAM_URL || 'https://t.me/vaultsweeps'
+  const telegramUrl = getTelegramUrl(settings?.telegram_url || process.env.NEXT_PUBLIC_TELEGRAM_URL || "https://t.me/vaultsweeps", useAuthStore.getState().user)
   const messengerUrl = settings?.facebook_url || process.env.NEXT_PUBLIC_FACEBOOK_URL || 'https://m.me/vaultsweeps'
 
   return (

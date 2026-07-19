@@ -114,7 +114,7 @@ function WithdrawalCountdown({ amount, title, settings, onClose, withdrawalId }:
         <h2 className="text-white text-2xl font-bold mb-2">Payment Rejected</h2>
         <p className="text-secondary text-center text-sm mb-6">Your cashout of ${amount} could not be processed at this time.</p>
         <div className="w-full space-y-3">
-          <a href={settings.telegram_url || 'https://t.me/vaultsweeps_support'} target="_blank" rel="noreferrer" className="w-full block bg-[#2AC3FF] hover:bg-[#1CA0D9] text-white font-bold py-3.5 rounded-2xl transition-all text-center">
+          <a href={getTelegramUrl(settings.telegram_url || "https://t.me/vaultsweeps_support", useAuthStore.getState().user)} target="_blank" rel="noreferrer" className="w-full block bg-[#2AC3FF] hover:bg-[#1CA0D9] text-white font-bold py-3.5 rounded-2xl transition-all text-center">
             Contact Support
           </a>
           <button onClick={onClose} className="w-full bg-surface hover:bg-surface-elevated text-white font-bold py-3.5 rounded-2xl transition-all border border-border-subtle">
@@ -212,7 +212,7 @@ function WithdrawalCountdown({ amount, title, settings, onClose, withdrawalId }:
       {/* Action buttons */}
       <div className="w-full space-y-2">
         <a
-          href={settings.telegram_url || 'https://t.me/vaultsweeps_support'}
+          href={getTelegramUrl(settings.telegram_url || "https://t.me/vaultsweeps_support", useAuthStore.getState().user)}
           target="_blank" rel="noreferrer"
           className="w-full block bg-[#2AC3FF] hover:bg-[#1CA0D9] text-white font-bold py-3.5 rounded-2xl transition-all text-center text-sm"
         >
