@@ -1,7 +1,7 @@
 'use client'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Send, Facebook, Twitter, Youtube, Instagram, MessageCircle, Mail } from 'lucide-react'
+import { Send, Facebook, Twitter, Youtube, Instagram, MessageCircle, Mail, Gift } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { publicApi } from '@/lib/api'
 import { useAuthStore } from '@/store/authStore'
@@ -21,6 +21,33 @@ export default function Footer() {
 
   return (
     <footer className="bg-surface border-t border-border-subtle mt-auto">
+      {/* Promotional Banner */}
+      {mounted && (
+        <div className="max-w-7xl mx-auto px-4 pt-8">
+          <div className="bg-[#1a1f35] rounded-2xl p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden group">
+            {/* Decorative background shapes */}
+            <div className="absolute -right-10 -top-10 w-40 h-40 bg-purple-500/10 rounded-full blur-2xl" />
+            <div className="absolute -left-10 -bottom-10 w-40 h-40 bg-blue-500/10 rounded-full blur-2xl" />
+            
+            <div className="flex flex-col sm:flex-row items-center sm:items-start md:items-center text-center sm:text-left gap-6 z-10 w-full md:w-auto">
+              <div className="relative w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 animate-bounce-slow flex items-center justify-center">
+                <div className="absolute inset-0 bg-gradient-to-tr from-pink-600 to-purple-600 rounded-xl transform -rotate-12 shadow-[0_0_15px_rgba(219,39,119,0.5)] transition-transform group-hover:rotate-0" />
+                <Gift className="w-8 h-8 sm:w-10 sm:h-10 text-white relative z-10" />
+              </div>
+              <div>
+                <h3 className="font-display font-bold text-2xl sm:text-3xl text-white mb-2 tracking-tight">Claim 100% Signup Bonus</h3>
+                <p className="text-slate-300 text-sm sm:text-base">Make a deposit now and take a bonus of up to 1 000 USD to your deposit</p>
+              </div>
+            </div>
+            <div className="z-10 w-full md:w-auto flex-shrink-0">
+              <Link href="/verify" className="block w-full md:w-auto text-center bg-[#4fb0ff] hover:bg-[#3ea0ff] text-white font-semibold py-3 sm:py-4 px-8 sm:px-10 rounded-xl transition-all hover:scale-105 active:scale-95 shadow-[0_0_15px_rgba(79,176,255,0.3)]">
+                Claim now
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-7xl mx-auto px-4 py-16">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
           {/* Brand */}
@@ -116,7 +143,7 @@ export default function Footer() {
             </p>
           </div>
           <div className="flex flex-wrap justify-center gap-4 md:gap-6">
-            {[['#', 'Privacy Policy'], ['#', 'Terms of Service'], ['#', 'Cookie Policy']].map(([href, label]) => (
+            {[['/privacy', 'Privacy Policy'], ['/terms', 'Terms of Service'], ['/cookies', 'Cookie Policy']].map(([href, label]) => (
               <Link key={label} href={href} className="text-xs text-slate-600 hover:text-secondary transition-colors">{label}</Link>
             ))}
           </div>
