@@ -49,7 +49,11 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
       password: hashedPassword,
       verifyToken,
       referredById,
-      profile: { create: {} }
+      profile: { 
+        create: {
+          telegramUsername: req.body.telegramUsername ? (req.body.telegramUsername.startsWith('@') ? req.body.telegramUsername : `@${req.body.telegramUsername}`) : null
+        } 
+      }
     },
     select: { id: true, username: true, email: true, role: true, isVerified: true, createdAt: true }
   })

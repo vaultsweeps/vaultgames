@@ -112,9 +112,9 @@ export class TelegramSupportBot {
       }
     });
 
-    // Text messages
-    this.bot.on(message('text'), async (ctx, next) => {
-      if (ctx.message.text.startsWith('/')) return next(); // Skip commands
+    // Text and media messages
+    this.bot.on('message', async (ctx, next) => {
+      if ('text' in ctx.message && ctx.message.text.startsWith('/')) return next(); // Skip commands
 
       if (ctx.chat.id.toString() === this.groupId) {
         return this.handleGroupMessage(ctx);
@@ -148,25 +148,42 @@ export class TelegramSupportBot {
     const telegramUserId = ctx.from.id.toString();
     const name = ctx.from.first_name || 'User';
     const telegramUsername = ctx.from.username || null;
-    const text = ctx.message.text;
+    let text = '[Media/Attachment]';
+    let phone: string | null = null;
+
+    if ('text' in ctx.message) text = ctx.message.text;
+    else if ('caption' in ctx.message) text = ctx.message.caption;
+    else if ('contact' in ctx.message) {
+      phone = ctx.message.contact.phone_number;
+      text = `[Shared Contact: ${phone}]`;
+    }
 
     let conversation: any = null;
     try {
       conversation = await SupportService.getOrCreateTelegramConversation(telegramUserId, name, telegramUsername);
 
-      // If this telegram user is linked to a website account, keep their profile updated
+      // Fire and forget profile sync to save latency
       try {
-        const linked = await prisma.userProfile.findFirst({
-          where: { telegramId: telegramUserId }
-        });
-        if (linked) {
-          await prisma.userProfile.update({
-            where: { id: linked.id },
-            data: {
-              telegramUsername: telegramUsername ? `@${telegramUsername}` : linked.telegramUsername,
-            }
-          });
+        const orConditions: any[] = [{ telegramId: telegramUserId }];
+        if (telegramUsername) {
+          orConditions.push({ telegramUsername: { equals: `@${telegramUsername.replace('@', '')}`, mode: 'insensitive' } });
+          orConditions.push({ telegramUsername: { equals: telegramUsername.replace('@', ''), mode: 'insensitive' } });
         }
+
+        prisma.userProfile.findFirst({
+          where: { OR: orConditions }
+        }).then(linked => {
+          if (linked) {
+            prisma.userProfile.update({
+              where: { id: linked.id },
+              data: {
+                telegramUsername: telegramUsername ? `@${telegramUsername.replace('@', '')}` : linked.telegramUsername,
+                telegramPhone: phone ? phone : linked.telegramPhone,
+                telegramId: telegramUserId
+              }
+            }).catch(() => {});
+          }
+        }).catch(() => {});
       } catch (_) { /* non-critical */ }
 
 
@@ -177,16 +194,17 @@ export class TelegramSupportBot {
 
         await ctx.telegram.sendMessage(
           this.groupId,
-          `📩 New Telegram User\nConversation: ${conversation.conversation_id}\nTelegram User: ${name}${telegramUsername ? ` (@${telegramUsername})` : ''}\nTelegram ID: ${telegramUserId}`,
+          `📩 New Telegram User\nConversation: ${conversation.conversation_id}\nTelegram User: ${name}${telegramUsername ? ` (@${telegramUsername})` : ''}\nTelegram ID: ${telegramUserId}${phone ? `\nPhone: ${phone}` : ''}`,
           { message_thread_id: topic.message_thread_id }
         );
       }
 
-      await SupportService.saveMessage(conversation.id, 'user', text);
-
-      await ctx.telegram.sendMessage(this.groupId, `User: ${text}`, {
-        message_thread_id: Number(conversation.telegram_thread_id)
-      });
+      await Promise.all([
+        SupportService.saveMessage(conversation.id, 'user', text),
+        ctx.telegram.copyMessage(this.groupId, ctx.chat.id, ctx.message.message_id, {
+          message_thread_id: Number(conversation.telegram_thread_id)
+        })
+      ]);
     } catch (e: any) {
       if (e.description && e.description.includes('message thread not found')) {
         try {
@@ -197,13 +215,16 @@ export class TelegramSupportBot {
           
           await ctx.telegram.sendMessage(
             this.groupId,
-            `📩 New Telegram User (Recreated)\nConversation: ${conversation.conversation_id}\nTelegram User: ${name}${telegramUsername ? ` (@${telegramUsername})` : ''}\nTelegram ID: ${telegramUserId}`,
+            `📩 New Telegram User (Recreated)\nConversation: ${conversation.conversation_id}\nTelegram User: ${name}${telegramUsername ? ` (@${telegramUsername})` : ''}\nTelegram ID: ${telegramUserId}${phone ? `\nPhone: ${phone}` : ''}`,
             { message_thread_id: topic.message_thread_id }
           );
 
-          await ctx.telegram.sendMessage(this.groupId, `User: ${text}`, {
-            message_thread_id: Number(conversation.telegram_thread_id)
-          });
+          await Promise.all([
+            SupportService.saveMessage(conversation.id, 'user', text),
+            ctx.telegram.copyMessage(this.groupId, ctx.chat.id, ctx.message.message_id, {
+              message_thread_id: Number(conversation.telegram_thread_id)
+            })
+          ]);
           return; // Success after recreation
         } catch (retryError: any) {
           logger.error('Error recreating topic', retryError);
@@ -223,17 +244,25 @@ export class TelegramSupportBot {
     if (ctx.message.text?.startsWith('/')) return;
 
     const threadId = ctx.message.message_thread_id.toString();
-    const text = ctx.message.text;
+    let text = '[Media/Attachment]';
+    if ('text' in ctx.message) text = ctx.message.text;
+    else if ('caption' in ctx.message) text = ctx.message.caption;
 
     try {
       const conversation = await SupportService.getConversationByThreadId(threadId);
       if (!conversation) return;
 
-      await SupportService.saveMessage(conversation.id, 'agent', text);
+      const promises: Promise<any>[] = [
+        SupportService.saveMessage(conversation.id, 'agent', text)
+      ];
 
       if (conversation.source === 'telegram' && conversation.telegram_user_id) {
-        await ctx.telegram.sendMessage(conversation.telegram_user_id, text);
+        promises.push(
+          ctx.telegram.copyMessage(conversation.telegram_user_id, ctx.chat.id, ctx.message.message_id)
+        );
       }
+      
+      await Promise.all(promises);
     } catch (e) {
       logger.error('Error handling group message', e);
     }
@@ -257,9 +286,19 @@ export class TelegramSupportBot {
         );
       }
 
-      await this.bot.telegram.sendMessage(this.groupId, `User: ${text}`, {
-        message_thread_id: Number(threadId)
-      });
+      const promises: Promise<any>[] = [
+        SupportService.saveMessage(conversation.id, 'user', text)
+      ];
+
+      if (threadId) {
+        promises.push(
+          this.bot.telegram.sendMessage(this.groupId, `User: ${text}`, {
+            message_thread_id: Number(threadId)
+          })
+        );
+      }
+
+      await Promise.all(promises);
     } catch (e) {
       logger.error('Error forwarding website message to Telegram', e);
     }

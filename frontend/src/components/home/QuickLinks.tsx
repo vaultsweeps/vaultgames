@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Crown, RotateCw, Gem, Users, Wrench, X } from 'lucide-react'
 
-const MAINTENANCE_KEYS = ['VIP Club']
+const MAINTENANCE_KEYS = ['VIP Club', 'Daily Spin']
 
 const LINKS = [
   {
@@ -18,7 +18,7 @@ const LINKS = [
   {
     title: 'Daily Spin',
     icon: RotateCw,
-    href: '/dashboard/wheel',
+    href: '#',
     gradient: 'from-[#4facfe] to-[#00f2fe]',
     shadowColor: 'rgba(79, 172, 254, 0.4)',
     iconColor: 'text-blue-100',

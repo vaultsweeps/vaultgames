@@ -22,6 +22,7 @@ const loginSchema = z.object({
 const registerSchema = z.object({
   email: z.string().email('Invalid email address'),
   username: z.string().min(3, 'Username must be at least 3 characters').max(20, 'Username too long').regex(/^[a-zA-Z0-9_]+$/, 'Only letters, numbers, underscores'),
+  telegramUsername: z.string().optional(),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   terms: z.literal(true, { errorMap: () => ({ message: 'You must accept the terms' }) })
 })
@@ -165,6 +166,11 @@ export default function AuthModal({ isOpen, onClose, initialView = 'login' }: Au
                     <div>
                       <input {...registerReg('username')} type="text" placeholder="Username" className="w-full bg-[#13131A] border border-transparent focus:border-neon-blue/50 rounded-xl px-4 py-3.5 text-sm text-white placeholder-muted focus:outline-none transition-all" />
                       {regErrors.username && <p className="text-red-400 text-xs mt-1 px-1">{regErrors.username.message as string}</p>}
+                    </div>
+
+                    <div>
+                      <input {...registerReg('telegramUsername')} type="text" placeholder="Telegram Username (Optional)" className="w-full bg-[#13131A] border border-transparent focus:border-neon-blue/50 rounded-xl px-4 py-3.5 text-sm text-white placeholder-muted focus:outline-none transition-all" />
+                      {regErrors.telegramUsername && <p className="text-red-400 text-xs mt-1 px-1">{regErrors.telegramUsername.message as string}</p>}
                     </div>
 
                     <div>

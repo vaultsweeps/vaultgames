@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { publicApi } from '@/lib/api'
 
@@ -60,94 +60,93 @@ export default function HeroSlider() {
   return (
     <section className="pt-6 pb-4 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
       <div className="relative w-full h-[280px] sm:h-[320px] lg:h-[360px] rounded-[2rem] overflow-hidden shadow-[0_0_40px_rgba(123,47,255,0.15)] group bg-surface">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={slide.id}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.5 }}
-            className={`absolute inset-0 bg-gradient-to-r ${slide.gradient}`}
-          >
-            {/* subtle overlay */}
-            <div className="absolute inset-0 bg-black/10 mix-blend-overlay"></div>
-            
-            <div className="relative z-10 flex h-full items-center">
-              <div className="w-2/3 lg:w-1/2 p-6 sm:p-10 lg:p-12 text-left z-20">
-                <motion.h1 
-                  initial={{ y: 20, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ delay: 0.1 }}
-                  className="text-3xl sm:text-5xl lg:text-6xl font-black text-white leading-tight mb-2 tracking-tight drop-shadow-md"
-                >
-                  {slide.title}
-                </motion.h1>
-                <motion.p 
-                  initial={{ y: 20, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ delay: 0.2 }}
-                  className="text-base sm:text-xl font-bold text-white mb-2 drop-shadow-md"
-                >
-                  {slide.subtitle}
-                </motion.p>
-                <motion.p 
-                  initial={{ y: 20, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ delay: 0.3 }}
-                  className="text-xs sm:text-sm text-white/90 mb-6 max-w-xs sm:max-w-sm drop-shadow-md"
-                >
-                  {slide.description}
-                </motion.p>
-                
-                <motion.div
-                  initial={{ y: 20, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ delay: 0.4 }}
-                >
-                  <Link href={slide.ctaLink} className="inline-block bg-[#3eb8ff] hover:bg-[#2b90ce] text-white font-bold py-2.5 px-6 sm:py-3 sm:px-8 rounded-xl sm:rounded-2xl transition-transform hover:scale-105 active:scale-95 shadow-[0_4px_14px_0_rgba(62,184,255,0.39)] text-sm sm:text-base">
-                    {slide.ctaText}
-                  </Link>
-                </motion.div>
-              </div>
-
-              {/* 3D Girl Image (Right side) */}
-              <motion.div 
-                initial={{ x: 50, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                transition={{ duration: 0.8, type: "spring", bounce: 0.4 }}
-                className="absolute right-0 bottom-0 top-0 w-[55%] lg:w-[50%] z-10 flex items-end justify-end pointer-events-none"
+        <div
+          key={slide.id}
+          className={`absolute inset-0 bg-gradient-to-r ${slide.gradient} transition-all duration-500`}
+        >
+          {/* subtle overlay */}
+          <div className="absolute inset-0 bg-black/10 mix-blend-overlay"></div>
+          
+          <div className="relative z-10 flex h-full items-center">
+            <div className="w-2/3 lg:w-1/2 p-6 sm:p-10 lg:p-12 text-left z-20">
+              <motion.h1 
+                key={`title-${slide.id}`}
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.1 }}
+                className="text-3xl sm:text-5xl lg:text-6xl font-black text-white leading-tight mb-2 tracking-tight drop-shadow-md"
               >
-                <style jsx>{`
-                  @keyframes eyeBlink {
-                    0%, 90%, 100% { filter: brightness(1); transform: scaleY(1); }
-                    95% { filter: brightness(0.95); transform: scaleY(0.98); }
-                  }
-                  .animate-character {
-                    animation: eyeBlink 5s infinite ease-in-out;
-                  }
-                `}</style>
-                {/* Simulated realistic subtle floating animation for the character */}
-                <motion.img 
-                  animate={{ 
-                    y: [0, -5, 0],
-                  }}
-                  transition={{ 
-                    duration: 6, 
-                    repeat: Infinity, 
-                    ease: "easeInOut" 
-                  }}
-                  style={!slide.isTransparent ? {
-                    WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 20%)',
-                    maskImage: 'linear-gradient(to right, transparent 0%, black 20%)'
-                  } : {}}
-                  src={slide.imageUrl} 
-                  alt="Promo character"
-                  className={`h-full w-full object-[center_15%] animate-character ${slide.isTransparent ? 'object-contain drop-shadow-2xl translate-y-[2%]' : 'object-cover'}`} 
-                />
+                {slide.title}
+              </motion.h1>
+              <motion.p 
+                key={`subtitle-${slide.id}`}
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.2 }}
+                className="text-base sm:text-xl font-bold text-white mb-2 drop-shadow-md"
+              >
+                {slide.subtitle}
+              </motion.p>
+              <motion.p 
+                key={`desc-${slide.id}`}
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.3 }}
+                className="text-xs sm:text-sm text-white/90 mb-6 max-w-xs sm:max-w-sm drop-shadow-md"
+              >
+                {slide.description}
+              </motion.p>
+              
+              <motion.div
+                key={`cta-${slide.id}`}
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.4 }}
+              >
+                <Link href={slide.ctaLink} className="inline-block bg-[#3eb8ff] hover:bg-[#2b90ce] text-white font-bold py-2.5 px-6 sm:py-3 sm:px-8 rounded-xl sm:rounded-2xl transition-transform hover:scale-105 active:scale-95 shadow-[0_4px_14px_0_rgba(62,184,255,0.39)] text-sm sm:text-base">
+                  {slide.ctaText}
+                </Link>
               </motion.div>
             </div>
-          </motion.div>
-        </AnimatePresence>
+
+            {/* 3D Girl Image (Right side) */}
+            <motion.div 
+              key={`img-${slide.id}`}
+              initial={{ x: 50, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={{ duration: 0.8, type: "spring", bounce: 0.4 }}
+              className="absolute right-0 bottom-0 top-0 w-[55%] lg:w-[50%] z-10 flex items-end justify-end pointer-events-none"
+            >
+              <style jsx>{`
+                @keyframes eyeBlink {
+                  0%, 90%, 100% { filter: brightness(1); transform: scaleY(1); }
+                  95% { filter: brightness(0.95); transform: scaleY(0.98); }
+                }
+                .animate-character {
+                  animation: eyeBlink 5s infinite ease-in-out;
+                }
+              `}</style>
+              {/* Simulated realistic subtle floating animation for the character */}
+              <motion.img 
+                animate={{ 
+                  y: [0, -5, 0],
+                }}
+                transition={{ 
+                  duration: 6, 
+                  repeat: Infinity, 
+                  ease: "easeInOut" 
+                }}
+                style={!slide.isTransparent ? {
+                  WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 20%)',
+                  maskImage: 'linear-gradient(to right, transparent 0%, black 20%)'
+                } : {}}
+                src={slide.imageUrl} 
+                alt="Promo character"
+                className={`h-full w-full object-[center_15%] animate-character ${slide.isTransparent ? 'object-contain drop-shadow-2xl translate-y-[2%]' : 'object-cover'}`} 
+              />
+            </motion.div>
+          </div>
+        </div>
 
         {/* Slide indicators */}
         <div className="absolute bottom-6 left-6 sm:left-10 lg:left-12 z-30 flex items-center gap-2">
