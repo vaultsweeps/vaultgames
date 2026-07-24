@@ -17,7 +17,6 @@ const NAV_ITEMS = [
   { href: '/dashboard/cashouts', icon: ArrowUpCircle, label: 'Cashouts' },
   { href: '/dashboard/games', icon: Gamepad2, label: 'Games' },
   { href: '/dashboard/bonuses', icon: Gift, label: 'Bonuses' },
-  { href: '/dashboard/wheel', icon: Zap, label: 'Daily Spin' },
   { href: '/dashboard/invite', icon: Users2, label: 'Invite & Earn' },
   { href: '/dashboard/support', icon: HelpCircle, label: 'Support' },
   { href: '/dashboard/profile', icon: User, label: 'Profile' },

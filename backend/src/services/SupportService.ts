@@ -42,20 +42,18 @@ export class SupportService {
           conversation_id: convId,
           telegram_user_id: telegramUserId,
           source: 'telegram',
-          status: 'open'
+          status: 'open',
+          telegram_username: telegramUsername || null
         }
       });
+    } else if (telegramUsername && conversation.telegram_username !== telegramUsername) {
+      // Update username if it has changed (fire and forget)
+      prisma.conversation.update({
+        where: { id: conversation.id },
+        data: { telegram_username: telegramUsername }
+      }).catch(() => {});
     }
 
-    // Use raw SQL to update the telegram_username to completely bypass Prisma Client validation 
-    // This prevents crashes on the live server if the Prisma Client hasn't been regenerated yet.
-    if (telegramUsername) {
-      try {
-        await prisma.$executeRaw`UPDATE "Conversation" SET telegram_username = ${telegramUsername} WHERE id = ${conversation.id}`;
-      } catch (e) {
-        // Ignore errors if column doesn't exist yet
-      }
-    }
     return conversation;
   }
 
@@ -75,19 +73,21 @@ export class SupportService {
       }
     });
 
-    // Broadcast to Supabase Realtime
+    // Broadcast to Supabase Realtime (fire and forget to reduce latency)
     try {
       if (supabase) {
-        await supabase.from('messages').insert({
+        supabase.from('messages').insert({
           id: msg.id,
           conversation_id: msg.conversation_id,
           sender_type: msg.sender_type,
           message: msg.message,
           created_at: msg.created_at.toISOString()
+        }).then(({ error }) => {
+          if (error) console.error('Supabase broadcast error:', error);
         });
       }
     } catch (e) {
-      console.error('Supabase broadcast failed', e);
+      console.error('Supabase broadcast setup failed', e);
     }
 
     return msg;
