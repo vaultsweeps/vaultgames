@@ -218,7 +218,7 @@ export default function Navbar() {
                   className="flex items-center gap-1 bg-[#2AC3FF]/10 border border-[#2AC3FF]/20 text-[#2AC3FF] rounded-full px-2.5 py-1 text-xs font-bold"
                 >
                   <Wallet className="w-3.5 h-3.5" />
-                  <span>${walletBalance.toFixed(2)}</span>
+                  <span>${balance.toFixed(2)}</span>
                 </button>
 
                 {/* Bell */}
