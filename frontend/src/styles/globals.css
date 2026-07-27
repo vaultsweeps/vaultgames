@@ -44,6 +44,30 @@
   --bg-surface-elevated: #111111;
 }
 
+/* Light mode overrides — ensure readability when .dark class is absent */
+:root:not(.dark) .glass-card {
+  box-shadow: 0 4px 24px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.8);
+  border-color: rgba(0,0,0,0.12);
+}
+:root:not(.dark) .glass {
+  border-color: rgba(0,0,0,0.12);
+}
+/* Navbar in light mode: use white bg when scrolled */
+:root:not(.dark) nav {
+  --nav-bg: rgba(255,255,255,0.95);
+}
+/* btn-neon readable in light */
+:root:not(.dark) .btn-neon {
+  background: linear-gradient(135deg, rgba(0,212,255,0.1), rgba(123,47,255,0.1));
+}
+/* Sign In btn on light */
+:root:not(.dark) .btn-signin-liquid {
+  background: linear-gradient(135deg, rgba(0,212,255,0.08), rgba(123,47,255,0.12), rgba(0,212,255,0.08));
+  background-size: 200% 200%;
+  border-color: rgba(0,212,255,0.35);
+  color: var(--text-primary);
+}
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 html { scroll-behavior: smooth; }
@@ -287,3 +311,178 @@ body {
 /* Light mode: scan-line less aggressive */
 :root .scan-line { opacity: 0.12; }
 .dark .scan-line { opacity: 0.3; }
+
+/* --- Liquid & Beam Auth Buttons --- */
+.btn-liquid {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  border-radius: 12px;
+  font-family: 'Orbitron', monospace;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.btn-liquid:hover {
+  transform: translateY(-1px);
+}
+
+.btn-liquid-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+@keyframes liquidSheen {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 100% 50%; }
+}
+
+/* Sign In Button (Liquid) */
+.btn-signin-liquid {
+  background: linear-gradient(135deg, rgba(0, 212, 255, 0.05), rgba(123, 47, 255, 0.1), rgba(0, 212, 255, 0.05));
+  background-size: 200% 200%;
+  animation: liquidSheen 6s ease-in-out infinite alternate;
+  color: var(--text-primary);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05), 0 0 20px -4px rgba(0, 212, 255, 0.3);
+  border: 1px solid rgba(0, 212, 255, 0.2);
+}
+
+.btn-signin-liquid:hover {
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.1), 0 0 20px -2px rgba(0, 212, 255, 0.5);
+}
+
+/* Sign Up Button (Beam + Liquid) */
+.btn-signup-beam {
+  background: transparent;
+  border: none;
+  box-shadow: 0 0 20px -4px var(--neon-purple);
+}
+
+.btn-signup-beam:hover {
+  box-shadow: 0 0 25px 0px var(--neon-purple);
+}
+
+.btn-signup-beam::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 140px; height: 140px;
+  margin: -70px 0 0 -70px;
+  background: radial-gradient(circle, #e6f4ff 0%, #38bdf8 30%, transparent 70%);
+  offset-path: rect(0 100% 100% 0 round 12px);
+  animation: beamLoop 3s linear infinite;
+  z-index: -2;
+}
+
+.btn-signup-beam::after {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--neon-blue), var(--neon-purple), var(--neon-blue));
+  background-size: 200% 200%;
+  animation: liquidSheen 6s ease-in-out infinite alternate;
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.3);
+  z-index: -1;
+}
+
+.btn-signup-beam .btn-liquid-content {
+  color: #fff;
+  font-weight: 700;
+}
+
+@keyframes beamLoop {
+  0% { offset-distance: 0%; }
+  100% { offset-distance: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-signin-liquid, .btn-signup-beam::before, .btn-signup-beam::after {
+    animation: none;
+  }
+}
+
+/* --- Signal Icon Circular Beam --- */
+.btn-signal-beam {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Beam: bright radial light that orbits the circle perimeter */
+.btn-signal-beam::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 56px; height: 56px;
+  margin: -28px 0 0 -28px;
+  background: radial-gradient(circle, #e6f4ff 0%, #38bdf8 25%, #3a76f0 50%, transparent 70%);
+  /* Circle path: for a 48×48 button, center=(24,24), radius=23 */
+  offset-path: path('M 47 24 A 23 23 0 1 1 46.999 24');
+  animation: signalBeam 2s linear infinite;
+  z-index: -2;
+}
+
+/* Inner fill: solid gradient circle that masks the glow to a thin border ring */
+.btn-signal-beam::after {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border-radius: 50%;
+  background: var(--background);
+  z-index: -1;
+}
+
+/* --- Signal Rectangular Beam --- */
+.btn-signal-beam-rect {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  background: transparent !important;
+  border: none !important;
+}
+
+.btn-signal-beam-rect::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 140px; height: 140px;
+  margin: -70px 0 0 -70px;
+  background: radial-gradient(circle, #e6f4ff 0%, #38bdf8 30%, transparent 70%);
+  offset-path: rect(0 100% 100% 0 round 16px);
+  animation: beamLoop 3s linear infinite;
+  z-index: -2;
+}
+
+.btn-signal-beam-rect::after {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border-radius: 14px; /* Slightly less than 16px outer */
+  background: #3a76f0;
+  transition: background-color 0.3s ease;
+  z-index: -1;
+}
+
+.btn-signal-beam-rect:hover::after {
+  background: #2563eb;
+}
+
+@keyframes signalBeam {
+  0%   { offset-distance: 0%; }
+  100% { offset-distance: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-signal-beam::before { animation: none; }
+}
+
+

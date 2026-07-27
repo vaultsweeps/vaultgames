@@ -7,6 +7,7 @@ import { useForm } from 'react-hook-form'
 import toast from 'react-hot-toast'
 import { HelpCircle, Plus, MessageCircle, Send, ChevronRight, Clock, CheckCircle, Mail } from 'lucide-react'
 import { supportApi, publicApi } from '@/lib/api'
+import { getSignalUrl } from '@/lib/signal'
 import LiveChat from './LiveChat'
 
 const CATEGORIES = ['General', 'Deposits', 'Cashouts', 'Games', 'Bonuses', 'Technical', 'Account', 'Other']
@@ -25,10 +26,15 @@ export default function SupportPage() {
   const [tickets, setTickets] = useState<any[]>([])
   const [ticketsLoading, setTicketsLoading] = useState(true)
   const [settings, setSettings] = useState<any>({})
+  const [signalUrl, setSignalUrl] = useState('')
   const { register, handleSubmit, reset, formState: { errors } } = useForm()
 
   useEffect(() => {
     publicApi.getSettings().then(res => setSettings(res.data.data || {})).catch(() => {})
+    setSignalUrl(getSignalUrl())
+    // Refresh signal URL every minute in case the shift changes while the page is open
+    const t = setInterval(() => setSignalUrl(getSignalUrl()), 60_000)
+    return () => clearInterval(t)
   }, [])
 
   const fetchTickets = async () => {
@@ -175,13 +181,36 @@ export default function SupportPage() {
       {/* Contact */}
       {tab === 'contact' && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Signal – FIRST and fastest */}
+          <a href={signalUrl} target="_blank" rel="noopener noreferrer"
+            className="glass-card p-6 hover:border-[#3a76f0]/40 transition-all group relative overflow-hidden">
+            {/* Subtle beam hint on the card border */}
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform" style={{ background: 'rgba(58,118,240,0.12)', border: '1px solid rgba(58,118,240,0.3)' }}>
+              <svg viewBox="0 0 48 48" className="w-7 h-7" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="24" cy="24" r="20" fill="#3a76f0"/>
+                <path d="M24 12a12 12 0 1 0 7.39 21.39l3.14 1.06-1.06-3.14A12 12 0 0 0 24 12z" fill="white"/>
+                <path d="M19 23h10M19 27h6" stroke="#3a76f0" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+            </div>
+            <h4 className="font-display font-bold text-primary mb-1">Signal Support</h4>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-full" style={{ background: 'rgba(58,118,240,0.15)', color: '#3a76f0', border: '1px solid rgba(58,118,240,0.3)' }}>
+                <span className="w-1.5 h-1.5 rounded-full bg-[#3a76f0] animate-pulse inline-block"></span>
+                {signalUrl.includes('Vaulter') ? 'Day Shift  4 AM – 4 PM' : 'Night Shift  4 PM – 4 AM'}
+              </span>
+              <span className="inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">⚡ Fastest</span>
+            </div>
+            <p className="text-muted text-sm mb-3">Encrypted, secure messaging. Auto-routes to the active shift agent based on your local time.</p>
+            <span className="text-xs flex items-center gap-1" style={{ color: '#3a76f0' }}>Open Signal <ChevronRight className="w-3 h-3" /></span>
+          </a>
+
           <a href={getTelegramUrl(settings.telegram_url || process.env.NEXT_PUBLIC_TELEGRAM_URL || "https://t.me/vaultsweeps", useAuthStore.getState().user)} target="_blank" rel="noopener noreferrer"
             className="glass-card p-6 hover:border-blue-400/30 transition-all group">
             <div className="w-12 h-12 bg-blue-500/10 border border-blue-500/20 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
               <Send className="w-6 h-6 text-blue-400" />
             </div>
-            <h4 className="font-display font-bold text-white mb-2">Telegram Support</h4>
-            <p className="text-muted text-sm mb-3">Fastest response via Telegram. Our team is online 24/7.</p>
+            <h4 className="font-display font-bold text-primary mb-2">Telegram Support</h4>
+            <p className="text-muted text-sm mb-3">Quick response via Telegram. Our team is online 24/7.</p>
             <span className="text-xs text-blue-400 flex items-center gap-1">Open Telegram <ChevronRight className="w-3 h-3" /></span>
           </a>
 
@@ -190,7 +219,7 @@ export default function SupportPage() {
             <div className="w-12 h-12 bg-blue-600/10 border border-blue-600/20 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
               <MessageCircle className="w-6 h-6 text-blue-600" />
             </div>
-            <h4 className="font-display font-bold text-white mb-2">Facebook Messenger</h4>
+            <h4 className="font-display font-bold text-primary mb-2">Facebook Messenger</h4>
             <p className="text-muted text-sm mb-3">Chat with us on Facebook Messenger for quick support.</p>
             <span className="text-xs text-blue-400 flex items-center gap-1">Open Messenger <ChevronRight className="w-3 h-3" /></span>
           </a>
@@ -211,7 +240,7 @@ export default function SupportPage() {
               <h4 className="font-display font-bold text-white">Response Times</h4>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              {[['Telegram', '< 5 min', '#00D4FF'], ['Messenger', '< 15 min', '#1877F2'], ['Email', '< 2 hours', '#7B2FFF'], ['Ticket', '< 24 hours', '#00FFC8']].map(([ch, time, color]) => (
+          {[['Telegram', '< 5 min', '#00D4FF'], ['Signal', '< 10 min', '#3a76f0'], ['Messenger', '< 15 min', '#1877F2'], ['Email', '< 2 hours', '#7B2FFF'], ['Ticket', '< 24 hours', '#00FFC8']].map(([ch, time, color]) => (
                 <div key={ch} className="glass rounded-lg p-3 text-center">
                   <p className="text-xs text-muted mb-1">{ch}</p>
                   <p className="text-sm font-medium" style={{ color }}>{time}</p>

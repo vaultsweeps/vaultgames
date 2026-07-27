@@ -78,7 +78,7 @@ export default function Navbar() {
   return (
     <>
     <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-      isScrolled ? 'bg-black/95 backdrop-blur-md border-b border-white/10 py-3 shadow-lg shadow-black/50' : 'bg-transparent py-5'
+      isScrolled ? 'bg-background/95 backdrop-blur-md border-b border-border-strong py-3 shadow-lg shadow-black/20' : 'bg-transparent py-5'
     }`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between">
@@ -181,11 +181,11 @@ export default function Navbar() {
               </>
             ) : (
               <>
-                <button onClick={() => { setAuthModalView('login'); setAuthModalOpen(true); }} className="px-4 py-2 text-sm text-secondary hover:text-white transition-colors font-medium">
-                  Sign In
+                <button onClick={() => { setAuthModalView('login'); setAuthModalOpen(true); }} className="btn-liquid btn-signin-liquid text-sm py-2 px-5">
+                  <span className="btn-liquid-content">Sign In</span>
                 </button>
-                <button onClick={() => { setAuthModalView('register'); setAuthModalOpen(true); }} className="btn-primary text-xs py-2.5 px-5">
-                  Sign Up
+                <button onClick={() => { setAuthModalView('register'); setAuthModalOpen(true); }} className="btn-liquid btn-signup-beam text-sm py-2 px-6">
+                  <span className="btn-liquid-content">Sign Up</span>
                 </button>
               </>
             )}
@@ -238,12 +238,12 @@ export default function Navbar() {
             )}
 
             {!isAuthenticated && (
-              <div className="flex items-center gap-1.5 ml-1">
-                <button onClick={() => { setAuthModalView('login'); setAuthModalOpen(true); }} className="px-3 py-1.5 text-xs text-secondary hover:text-white transition-colors font-medium border border-border-strong rounded-lg bg-surface hover:bg-surface-elevated">
-                  Sign In
+              <div className="flex items-center gap-2 ml-1">
+                <button onClick={() => { setAuthModalView('login'); setAuthModalOpen(true); }} className="btn-liquid btn-signin-liquid text-xs py-1.5 px-3">
+                  <span className="btn-liquid-content">Sign In</span>
                 </button>
-                <button onClick={() => { setAuthModalView('register'); setAuthModalOpen(true); }} className="btn-primary text-xs py-1.5 px-3">
-                  Sign Up
+                <button onClick={() => { setAuthModalView('register'); setAuthModalOpen(true); }} className="btn-liquid btn-signup-beam text-xs py-1.5 px-4">
+                  <span className="btn-liquid-content">Sign Up</span>
                 </button>
               </div>
             )}
@@ -283,8 +283,12 @@ export default function Navbar() {
                   </>
                 ) : (
                   <>
-                    <button onClick={() => { setMobileOpen(false); setAuthModalView('login'); setAuthModalOpen(true); }} className="btn-neon text-center text-xs py-2.5 w-full">Sign In</button>
-                    <button onClick={() => { setMobileOpen(false); setAuthModalView('register'); setAuthModalOpen(true); }} className="btn-primary text-center text-xs py-2.5 w-full">Sign Up</button>
+                    <button onClick={() => { setMobileOpen(false); setAuthModalView('login'); setAuthModalOpen(true); }} className="btn-liquid btn-signin-liquid text-xs py-2.5 w-full">
+                      <span className="btn-liquid-content">Sign In</span>
+                    </button>
+                    <button onClick={() => { setMobileOpen(false); setAuthModalView('register'); setAuthModalOpen(true); }} className="btn-liquid btn-signup-beam text-xs py-2.5 w-full">
+                      <span className="btn-liquid-content">Sign Up</span>
+                    </button>
                   </>
                 )}
               </div>
