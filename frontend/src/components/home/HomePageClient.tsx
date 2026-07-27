@@ -5,6 +5,7 @@ import { Gift, Shield, Zap, Headphones, ChevronDown, Send, MessageCircle, Star, 
 import { useState, useEffect } from 'react'
 import { publicApi } from '@/lib/api'
 import { useAuthStore } from '@/store/authStore'
+import { getSignalUrl } from '@/lib/signal'
 
 const FEATURES = [
   { icon: Shield, title: 'Enterprise Security', desc: 'Bank-grade encryption and multi-layer security protecting your account 24/7.', color: '#00D4FF' },
@@ -39,7 +40,7 @@ function FAQItem({ q, a }: { q: string; a: string }) {
   return (
     <div className="glass-card overflow-hidden">
       <button className="w-full flex items-center justify-between px-6 py-4 text-left" onClick={() => setOpen(!open)}>
-        <span className="font-medium text-white text-sm">{q}</span>
+        <span className="font-medium text-primary text-sm">{q}</span>
         <ChevronDown className={`w-4 h-4 text-secondary transition-transform flex-shrink-0 ml-4 ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
@@ -53,10 +54,13 @@ export default function HomePageClient() {
   const [bonuses, setBonuses] = useState<any[]>([])
   const [settings, setSettings] = useState<any>({})
   const [mounted, setMounted] = useState(false)
+  const [signalUrl, setSignalUrl] = useState('')
   const isAuthenticated = useAuthStore(state => state.isAuthenticated)
 
   useEffect(() => {
     setMounted(true)
+    setSignalUrl(getSignalUrl())
+    const t = setInterval(() => setSignalUrl(getSignalUrl()), 60_000)
     publicApi.getBonuses()
       .then(res => setBonuses((res.data.data || []).slice(0, 4)))
       .catch(() => {})
@@ -64,6 +68,8 @@ export default function HomePageClient() {
     publicApi.getSettings()
       .then(res => setSettings(res.data.data || {}))
       .catch(() => {})
+
+    return () => clearInterval(t)
   }, [])
 
   return (
@@ -74,7 +80,7 @@ export default function HomePageClient() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-16">
             <p className="font-mono text-xs tracking-[0.3em] text-neon-blue uppercase mb-3">Why Us</p>
-            <h2 className="font-display font-bold text-4xl sm:text-5xl text-white">WHY <span className="gradient-text">VAULT SWEEPS</span></h2>
+            <h2 className="font-display font-bold text-4xl sm:text-5xl text-primary">WHY <span className="gradient-text">VAULT SWEEPS</span></h2>
           </motion.div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {FEATURES.map((f, i) => (
@@ -82,7 +88,7 @@ export default function HomePageClient() {
                 <div className="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center group-hover:scale-110 transition-transform" style={{ background: `${f.color}15`, border: `1px solid ${f.color}30` }}>
                   <f.icon className="w-6 h-6" style={{ color: f.color }} />
                 </div>
-                <h3 className="font-display text-sm font-bold text-white mb-2">{f.title}</h3>
+                <h3 className="font-display text-sm font-bold text-primary mb-2">{f.title}</h3>
                 <p className="text-muted text-xs leading-relaxed">{f.desc}</p>
               </motion.div>
             ))}
@@ -96,7 +102,7 @@ export default function HomePageClient() {
           <div className="flex items-end justify-between mb-12">
             <motion.div initial={{ opacity: 0, x: -30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}>
               <p className="font-mono text-xs tracking-[0.3em] text-neon-blue uppercase mb-3">Promotions</p>
-              <h2 className="font-display font-bold text-4xl sm:text-5xl text-white">HOT <span className="gradient-text">BONUSES</span></h2>
+              <h2 className="font-display font-bold text-4xl sm:text-5xl text-primary">HOT <span className="gradient-text">BONUSES</span></h2>
             </motion.div>
             <Link href="/bonuses" className="btn-neon text-xs flex items-center gap-2">View All <ChevronRight className="w-3 h-3" /></Link>
           </div>
@@ -110,9 +116,9 @@ export default function HomePageClient() {
                   <div className="absolute top-0 left-0 right-0 h-0.5" style={{ background: `linear-gradient(90deg, transparent, ${color}, transparent)` }} />
                   <div className="text-xs font-mono mb-3 px-2 py-0.5 rounded-full inline-block" style={{ color, background: `${color}15`, border: `1px solid ${color}30` }}>{badge}</div>
                   <div className="font-display font-black text-4xl mb-2" style={{ color }}>{amountDisplay}</div>
-                  <h3 className="font-display text-sm font-bold text-white mb-2">{b.title}</h3>
+                  <h3 className="font-display text-sm font-bold text-primary mb-2">{b.title}</h3>
                   <p className="text-muted text-xs mb-3">{b.description || b.requirements}</p>
-                  {b.minDeposit && <p className="text-xs text-slate-600 flex items-center gap-1"><Check className="w-3 h-3" />Min deposit ${b.minDeposit}</p>}
+                  {b.minDeposit && <p className="text-xs text-secondary flex items-center gap-1"><Check className="w-3 h-3" />Min deposit ${b.minDeposit}</p>}
                 </motion.div>
               )
             }) : (
@@ -135,7 +141,7 @@ export default function HomePageClient() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-12">
             <p className="font-mono text-xs tracking-[0.3em] text-neon-blue uppercase mb-3">Community</p>
-            <h2 className="font-display font-bold text-4xl text-white">PLAYER <span className="gradient-text">REVIEWS</span></h2>
+            <h2 className="font-display font-bold text-4xl text-primary">PLAYER <span className="gradient-text">REVIEWS</span></h2>
           </motion.div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {TESTIMONIALS.map((t, i) => (
@@ -144,7 +150,7 @@ export default function HomePageClient() {
                 <p className="text-secondary text-sm leading-relaxed mb-4">"{t.text}"</p>
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-gradient-to-br from-neon-blue to-neon-purple flex items-center justify-center text-white text-xs font-bold">{t.name.charAt(0)}</div>
-                  <div><p className="text-white text-sm font-medium">{t.name}</p><p className="text-muted text-xs">{t.role}</p></div>
+                  <div><p className="text-primary text-sm font-medium">{t.name}</p><p className="text-muted text-xs">{t.role}</p></div>
                 </div>
               </motion.div>
             ))}
@@ -157,7 +163,7 @@ export default function HomePageClient() {
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-12">
             <p className="font-mono text-xs tracking-[0.3em] text-neon-blue uppercase mb-3">Help</p>
-            <h2 className="font-display font-bold text-4xl text-white">FREQUENTLY <span className="gradient-text">ASKED</span></h2>
+            <h2 className="font-display font-bold text-4xl text-primary">FREQUENTLY <span className="gradient-text">ASKED</span></h2>
           </motion.div>
           <div className="space-y-3">
             {FAQS.map((faq, i) => <FAQItem key={i} q={faq.q} a={faq.a} />)}
@@ -173,7 +179,7 @@ export default function HomePageClient() {
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-neon-blue/5 rounded-full blur-3xl" />
             <div className="relative z-10">
               <p className="font-mono text-xs tracking-[0.3em] text-neon-blue uppercase mb-3">Ready to play?</p>
-              <h2 className="font-display font-black text-5xl text-white mb-4">JOIN <span className="gradient-text">VAULT SWEEPS</span> TODAY</h2>
+              <h2 className="font-display font-black text-5xl text-primary mb-4">JOIN <span className="gradient-text">VAULT SWEEPS</span> TODAY</h2>
               <p className="text-secondary text-lg mb-8 max-w-xl mx-auto">Start your gaming journey with the best bonuses, fastest withdrawals, and premium games.</p>
               <div className="flex flex-wrap justify-center gap-4">
                 {mounted && isAuthenticated ? (
@@ -190,6 +196,21 @@ export default function HomePageClient() {
 
       {/* Floating contact buttons */}
       <div className="fixed bottom-24 right-4 lg:bottom-6 lg:right-6 z-40 flex flex-col gap-3">
+        {/* Signal – FIRST: fastest, auto-routes by time of day */}
+        {signalUrl && (
+          <a href={signalUrl} target="_blank" rel="noopener noreferrer"
+            className="btn-signal-beam w-12 h-12 rounded-full flex items-center justify-center shadow-lg shadow-[#3a76f0]/40 hover:scale-110 transition-transform relative"
+            title={signalUrl.includes('Vaulter') ? 'Signal (Day Shift 4 AM–4 PM)' : 'Signal (Night Shift 4 PM–4 AM)'}>
+            <svg viewBox="0 0 48 48" className="w-6 h-6 relative z-10" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M24 12a12 12 0 1 0 7.39 21.39l3.14 1.06-1.06-3.14A12 12 0 0 0 24 12z" fill="white"/>
+              <path d="M19 23h10M19 27h6" stroke="#3a76f0" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+            {/* Live shift badge */}
+            <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[8px] font-bold text-white flex items-center justify-center z-10" style={{ background: signalUrl.includes('Vaulter') ? '#f59e0b' : '#6366f1' }}>
+              {signalUrl.includes('Vaulter') ? 'D' : 'N'}
+            </span>
+          </a>
+        )}
         <a href={settings.telegram_url || process.env.NEXT_PUBLIC_TELEGRAM_URL || '#'} target="_blank" rel="noopener noreferrer"
           className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform hover:shadow-blue-500/40"
           title="Telegram Support">

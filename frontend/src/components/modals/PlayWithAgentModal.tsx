@@ -1,8 +1,10 @@
 'use client'
 import { useAuthStore } from '@/store/authStore'
 import { getTelegramUrl } from '@/lib/telegram'
+import { getSignalUrl } from '@/lib/signal'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Bot, X, MessageCircle, Send, Zap } from 'lucide-react'
+import { useEffect, useState } from 'react'
 
 interface Game {
   id: string
@@ -21,6 +23,13 @@ export default function PlayWithAgentModal({
 }) {
   const telegramUrl = getTelegramUrl(settings?.telegram_url || process.env.NEXT_PUBLIC_TELEGRAM_URL || "https://t.me/vaultsweeps", useAuthStore.getState().user)
   const messengerUrl = settings?.facebook_url || process.env.NEXT_PUBLIC_FACEBOOK_URL || 'https://m.me/vaultsweeps'
+  const [signalUrl, setSignalUrl] = useState('')
+
+  useEffect(() => {
+    setSignalUrl(getSignalUrl())
+    const t = setInterval(() => setSignalUrl(getSignalUrl()), 60_000)
+    return () => clearInterval(t)
+  }, [])
 
   return (
     <AnimatePresence>
@@ -68,11 +77,42 @@ export default function PlayWithAgentModal({
                 <p className="text-white text-sm font-semibold">How it works</p>
               </div>
               <p className="text-secondary text-sm leading-relaxed">
-                This game is played directly with one of our live agents. Contact us via <span className="text-white font-medium">Telegram</span> or <span className="text-white font-medium">Messenger</span>, mention the game name, and an agent will set up your session immediately.
+                This game is played directly with one of our live agents. Contact us via <span className="text-white font-medium">Signal</span>, <span className="text-white font-medium">Telegram</span> or <span className="text-white font-medium">Messenger</span>, mention the game name, and an agent will set up your session immediately.
               </p>
             </div>
 
             <p className="text-center text-xs text-muted">Choose your preferred platform to get started:</p>
+
+            {/* Signal */}
+            {signalUrl && (
+              <a
+                href={`${signalUrl}?text=I%20want%20to%20play%20${encodeURIComponent(game.name)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-4 p-4 rounded-2xl border border-[#3a76f0]/20 bg-[#3a76f0]/5 hover:bg-[#3a76f0]/10 hover:border-[#3a76f0]/40 transition-all group"
+              >
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform relative overflow-hidden">
+                  <div className="absolute inset-0 bg-[#3a76f0]/10" />
+                  <svg viewBox="0 0 48 48" className="w-6 h-6 relative z-10" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="24" cy="24" r="20" fill="#3a76f0"/>
+                    <path d="M24 12a12 12 0 1 0 7.39 21.39l3.14 1.06-1.06-3.14A12 12 0 0 0 24 12z" fill="white"/>
+                    <path d="M19 23h10M19 27h6" stroke="#3a76f0" strokeWidth="2" strokeLinecap="round"/>
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="text-white font-semibold text-sm">Signal</p>
+                    <span className="inline-flex items-center gap-1 text-[9px] font-mono px-1.5 py-0.5 rounded text-white" style={{ background: signalUrl.includes('Vaulter') ? '#f59e0b' : '#6366f1' }}>
+                      {signalUrl.includes('Vaulter') ? 'DAY' : 'NIGHT'}
+                    </span>
+                  </div>
+                  <p className="text-secondary text-xs">Fastest response · Usually &lt; 2 min</p>
+                </div>
+                <span className="text-xs font-bold text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded-full border border-emerald-400/20">
+                  ⚡ Fastest
+                </span>
+              </a>
+            )}
 
             {/* Telegram */}
             <a
@@ -86,11 +126,8 @@ export default function PlayWithAgentModal({
               </div>
               <div className="flex-1">
                 <p className="text-white font-semibold text-sm">Telegram</p>
-                <p className="text-secondary text-xs">Fastest response · Usually &lt; 5 min</p>
+                <p className="text-secondary text-xs">Usually &lt; 5 min</p>
               </div>
-              <span className="text-xs font-bold text-[#2AABEE] bg-[#2AABEE]/10 px-2 py-1 rounded-full">
-                Recommended
-              </span>
             </a>
 
             {/* Messenger */}

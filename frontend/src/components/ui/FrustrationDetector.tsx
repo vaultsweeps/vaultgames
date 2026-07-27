@@ -1,13 +1,21 @@
 'use client'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
 import { HelpCircle } from 'lucide-react'
 import { getTelegramUrl } from '@/lib/telegram'
+import { getSignalUrl } from '@/lib/signal'
 import { useAuthStore } from '@/store/authStore'
 
 export default function FrustrationDetector() {
   const clickTimes = useRef<number[]>([])
   const { user } = useAuthStore()
+  const [signalUrl, setSignalUrl] = useState('')
+
+  useEffect(() => {
+    setSignalUrl(getSignalUrl())
+    const t = setInterval(() => setSignalUrl(getSignalUrl()), 60_000)
+    return () => clearInterval(t)
+  }, [])
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -51,14 +59,33 @@ export default function FrustrationDetector() {
             </div>
             
             <div className="flex sm:flex-col border-t sm:border-t-0 sm:border-l border-border-strong bg-[#0B0B11] sm:w-32 relative z-10">
+              {signalUrl && (
+                <button
+                  onClick={() => {
+                    toast.dismiss(t.id)
+                    window.open(signalUrl, '_blank')
+                  }}
+                  className="w-full flex-1 flex flex-row sm:flex-col items-center justify-center gap-1.5 sm:gap-1 text-sm font-bold text-[#3a76f0] hover:text-white hover:bg-[#3a76f0]/10 transition-colors border-r sm:border-r-0 sm:border-b border-border-strong py-4 sm:py-0 relative overflow-hidden group"
+                >
+                  <div className="absolute inset-0 bg-[#3a76f0]/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <span className="flex items-center gap-1 relative z-10">
+                    <svg viewBox="0 0 48 48" className="w-4 h-4" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <circle cx="24" cy="24" r="20" fill="currentColor"/>
+                      <path d="M24 12a12 12 0 1 0 7.39 21.39l3.14 1.06-1.06-3.14A12 12 0 0 0 24 12z" fill="white"/>
+                      <path d="M19 23h10M19 27h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                    </svg>
+                    Signal
+                  </span>
+                </button>
+              )}
               <button
                 onClick={() => {
                   toast.dismiss(t.id)
                   window.open(getTelegramUrl(process.env.NEXT_PUBLIC_TELEGRAM_URL || 'https://t.me/vaultsweeps', user), '_blank')
                 }}
-                className="w-full flex-1 flex flex-row sm:flex-col items-center justify-center gap-1.5 sm:gap-1 text-sm font-bold text-[#00D4FF] hover:text-white hover:bg-[#00D4FF]/10 transition-colors border-r sm:border-r-0 sm:border-b border-border-strong py-4 sm:py-0"
+                className="w-full flex-1 flex flex-row sm:flex-col items-center justify-center gap-1.5 sm:gap-1 text-xs font-bold text-[#00D4FF] hover:text-white hover:bg-[#00D4FF]/10 transition-colors border-r sm:border-r-0 sm:border-b border-border-strong py-4 sm:py-0"
               >
-                <span>Live Chat</span>
+                <span>Telegram</span>
               </button>
               <button
                 onClick={() => toast.dismiss(t.id)}
