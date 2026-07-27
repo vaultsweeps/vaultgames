@@ -477,6 +477,9 @@ export class TelegramSupportBot {
         { parse_mode: 'Markdown' }
       );
 
+      // Invalidate cache so balance updates instantly
+      invalidateWalletCache(deposit.userId);
+
       logger.info(`Deposit ${deposit.paymentReference} ${action}d by ${agentName}`);
     } catch (e: any) {
       logger.error(`Error processing deposit ${depositId}:`, e);
@@ -752,6 +755,9 @@ export class TelegramSupportBot {
         { parse_mode: 'Markdown' }
       );
 
+      // Invalidate cache so balance updates instantly
+      invalidateWalletCache(deposit.userId);
+
       logger.info(`Deposit ${deposit.paymentReference} voided by ${agentName} — reason: ${reason}`);
     } catch (e: any) {
       logger.error(`Error voiding deposit ${depositId}:`, e);
@@ -849,6 +855,9 @@ export class TelegramSupportBot {
           metadata: { requestId, agentName, reason }
         }
       }).catch(e => logger.error('TransactionLog error:', e));
+
+      // Invalidate cache so balance updates instantly
+      invalidateWalletCache(updated.userId);
 
       // Reply in Telegram
       const responseText = action === 'approve'
