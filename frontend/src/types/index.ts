@@ -24,6 +24,7 @@ export interface UserProfile {
 export interface AuthState {
   user: User | null
   token: string | null
+  balance: number
   isLoading: boolean
   isAuthenticated: boolean
 }
