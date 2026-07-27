@@ -9,8 +9,10 @@ interface AuthStore extends AuthState {
   register: (data: object) => Promise<void>
   logout: () => void
   fetchMe: () => Promise<void>
+  fetchBalance: () => Promise<void>
   setUser: (user: User) => void
   setToken: (token: string) => void
+  setBalance: (balance: number) => void
 }
 
 export const useAuthStore = create<AuthStore>()(
@@ -18,6 +20,7 @@ export const useAuthStore = create<AuthStore>()(
     (set, get) => ({
       user: null,
       token: null,
+      balance: 0,
       isLoading: false,
       isAuthenticated: false,
 
@@ -60,16 +63,28 @@ export const useAuthStore = create<AuthStore>()(
           set({ user: response.data.data, isAuthenticated: true, token })
         } catch {
           Cookies.remove('vaultsweeps_token')
-          set({ user: null, token: null, isAuthenticated: false })
+          set({ user: null, token: null, isAuthenticated: false, balance: 0 })
         }
+      },
+
+      fetchBalance: async () => {
+        const token = Cookies.get('vaultsweeps_token')
+        if (!token) return
+        try {
+          const response = await authApi.getBalance()
+          if (response.data?.data?.balance !== undefined) {
+            set({ balance: response.data.data.balance })
+          }
+        } catch {}
       },
 
       setUser: (user: User) => set({ user }),
       setToken: (token: string) => set({ token }),
+      setBalance: (balance: number) => set({ balance }),
     }),
     {
       name: 'vaultsweeps-auth',
-      partialize: (state) => ({ token: state.token, user: state.user, isAuthenticated: state.isAuthenticated })
+      partialize: (state) => ({ token: state.token, user: state.user, isAuthenticated: state.isAuthenticated, balance: state.balance })
     }
   )
 )
