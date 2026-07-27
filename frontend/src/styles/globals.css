@@ -411,34 +411,30 @@ body {
 /* --- Signal Icon Circular Beam --- */
 .btn-signal-beam {
   position: relative;
-  overflow: hidden;
   isolation: isolate;
-  background: transparent !important;
+  background: #3a76f0 !important;   /* Solid blue fill */
   border: none !important;
+  border-radius: 50%;
 }
 
-/* Beam: bright radial light that orbits the circle perimeter */
+/* The spinning beam */
 .btn-signal-beam::before {
   content: '';
   position: absolute;
-  top: 0; left: 0;
-  width: 56px; height: 56px;
-  margin: -28px 0 0 -28px;
-  background: radial-gradient(circle, #e6f4ff 0%, #38bdf8 25%, #3a76f0 50%, transparent 70%);
-  /* Circle path: for a 48×48 button, center=(24,24), radius=23 */
-  offset-path: path('M 47 24 A 23 23 0 1 1 46.999 24');
-  animation: signalBeam 2s linear infinite;
-  z-index: -2;
+  inset: -2.5px; /* Thicken the beam line outside the button */
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, transparent 60%, rgba(56, 189, 248, 0.5) 80%, #ffffff 100%);
+  animation: signalSpin 2s linear infinite;
+  z-index: -1;
 }
 
-/* Inner fill: solid gradient circle that masks the glow to a thin border ring */
-.btn-signal-beam::after {
-  content: '';
-  position: absolute;
-  inset: 2px;
-  border-radius: 50%;
-  background: var(--background);
-  z-index: -1;
+@keyframes signalSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-signal-beam::before { animation: none; }
 }
 
 /* --- Signal Rectangular Beam --- */
@@ -476,13 +472,6 @@ body {
   background: #2563eb;
 }
 
-@keyframes signalBeam {
-  0%   { offset-distance: 0%; }
-  100% { offset-distance: 100%; }
-}
 
-@media (prefers-reduced-motion: reduce) {
-  .btn-signal-beam::before { animation: none; }
-}
 
 
