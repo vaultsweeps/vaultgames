@@ -45,7 +45,7 @@ export default function Navbar() {
     
     fetchBalance()
     
-    const balanceInterval = setInterval(fetchBalance, 10000)
+    const balanceInterval = setInterval(fetchBalance, 2000)
     return () => clearInterval(balanceInterval)
   }, [isAuthenticated, walletOpen, fetchBalance]) // walletOpen allows immediate refresh after modal closes
 
