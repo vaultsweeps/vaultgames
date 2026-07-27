@@ -203,7 +203,7 @@ export default function HomePageClient() {
             title={signalUrl.includes('Vaulter') ? 'Signal (Day Shift 4 AM–4 PM)' : 'Signal (Night Shift 4 PM–4 AM)'}>
             <svg viewBox="0 0 48 48" className="w-6 h-6 relative z-10" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M24 12a12 12 0 1 0 7.39 21.39l3.14 1.06-1.06-3.14A12 12 0 0 0 24 12z" fill="white"/>
-              <path d="M19 23h10M19 27h6" stroke="#3a76f0" strokeWidth="2" strokeLinecap="round"/>
+              <path d="M19 23h10M19 27h6" stroke="white" strokeWidth="2" strokeLinecap="round"/>
             </svg>
             {/* Live shift badge */}
             <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[8px] font-bold text-white flex items-center justify-center z-10" style={{ background: signalUrl.includes('Vaulter') ? '#f59e0b' : '#6366f1' }}>
