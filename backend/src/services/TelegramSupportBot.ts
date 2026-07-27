@@ -413,7 +413,10 @@ export class TelegramSupportBot {
     try {
       const deposit = await prisma.deposit.findUnique({
         where: { id: depositId },
-        include: { user: { select: { username: true, email: true } } }
+        include: {
+          user: { select: { username: true, email: true } },
+          paymentMethod: { select: { name: true, code: true } }
+        }
       });
 
       if (!deposit) {
@@ -438,24 +441,32 @@ export class TelegramSupportBot {
         }
       });
 
-      // Notify user in-app
-      await createNotification(deposit.userId, {
+      // Fire cache invalidation immediately (non-blocking) — user sees balance update ASAP
+      invalidateWalletCache(deposit.userId);
+
+      // Run notification + Telegram message edit concurrently for fastest response
+      const notificationPromise = createNotification(deposit.userId, {
         title: action === 'approve' ? '✅ Deposit Approved!' : '❌ Deposit Failed',
         message: action === 'approve'
           ? `Your deposit of $${deposit.amount.toFixed(2)} has been approved and added to your balance.`
           : `Your deposit of $${deposit.amount.toFixed(2)} was rejected. Reason: No payment received. Contact support if needed.`,
         type: action === 'approve' ? 'success' : 'error',
         link: '/dashboard/deposits'
-      });
+      }).catch((e: any) => logger.warn('Notification error:', e.message));
 
-      // Edit original Telegram message
-      if (updatedDeposit.telegramMessageId && updatedDeposit.telegramChatId) {
+      // Edit original Telegram message — remove buttons, add sender + method
+      const editPromise = (async () => {
+        if (!updatedDeposit.telegramMessageId || !updatedDeposit.telegramChatId) return;
         const emoji = action === 'approve' ? '✅' : '❌';
+        const methodName = deposit.paymentMethod?.name || deposit.paymentMethod?.code || 'Unknown';
+        const senderName = deposit.notes?.trim() || 'Not provided';
         const editedText =
           `${emoji} *Deposit ${action === 'approve' ? 'Approved' : 'Rejected'}* by ${agentName}\n\n` +
           `📋 Ref: \`${deposit.paymentReference}\`\n` +
           `👤 User: ${deposit.user?.username || 'Unknown'} (${deposit.user?.email || 'N/A'})\n` +
-          `💵 Amount: *$${Number(deposit.amount).toFixed(2)}*\n` +
+          `💰 Amount: *$${Number(deposit.amount).toFixed(2)}*\n` +
+          `💳 Method: ${methodName}\n` +
+          `🙍 Sender: ${senderName}\n` +
           `📊 Status: ${action === 'approve' ? 'Approved ✅' : 'Rejected ❌'}`;
         try {
           await this.bot.telegram.editMessageText(
@@ -463,22 +474,24 @@ export class TelegramSupportBot {
             Number(updatedDeposit.telegramMessageId),
             undefined,
             editedText,
-            { parse_mode: 'Markdown' }
+            { parse_mode: 'Markdown', reply_markup: { inline_keyboard: [] } }
           );
         } catch (e: any) {
           logger.warn(`Could not edit Telegram deposit message: ${e.message}`);
         }
-      }
+      })();
 
-      await ctx.reply(
-        action === 'approve'
-          ? `✅ Deposit \`${deposit.paymentReference}\` approved by ${agentName}`
-          : `❌ Deposit \`${deposit.paymentReference}\` rejected by ${agentName}`,
-        { parse_mode: 'Markdown' }
-      );
-
-      // Invalidate cache so balance updates instantly
-      invalidateWalletCache(deposit.userId);
+      // Reply to admin in Telegram + wait for edit concurrently
+      await Promise.all([
+        ctx.reply(
+          action === 'approve'
+            ? `✅ Deposit \`${deposit.paymentReference}\` approved by ${agentName}`
+            : `❌ Deposit \`${deposit.paymentReference}\` rejected by ${agentName}`,
+          { parse_mode: 'Markdown' }
+        ),
+        notificationPromise,
+        editPromise,
+      ]);
 
       logger.info(`Deposit ${deposit.paymentReference} ${action}d by ${agentName}`);
     } catch (e: any) {
@@ -831,40 +844,37 @@ export class TelegramSupportBot {
           );
       }
 
-      // Notify user in-app
-      await createNotification(updated.userId, {
-        title: action === 'approve' ? '✅ Withdrawal Approved!' : '❌ Withdrawal Rejected',
-        message: action === 'approve'
-          ? `Your withdrawal request ${requestId} for $${updated.amount.toFixed(2)} has been approved.`
-          : `Your withdrawal request ${requestId} for $${updated.amount.toFixed(2)} was rejected.${reason ? ` Reason: ${reason}` : ''} Contact support for help.`,
-        type: action === 'approve' ? 'success' : 'error',
-        link: '/dashboard/withdrawals'
-      });
-
-      // Edit original Telegram message
-      await this.editWithdrawalMessage(updated, action === 'approve' ? 'approved' : 'rejected', reason);
-
-      // Audit log
-      await prisma.transactionLog.create({
-        data: {
-          type: `withdrawal_${action}d`,
-          entityId: updated.id,
-          userId: agentName,
-          amount: updated.amount,
-          status: updated.status,
-          metadata: { requestId, agentName, reason }
-        }
-      }).catch(e => logger.error('TransactionLog error:', e));
-
-      // Invalidate cache so balance updates instantly
+      // Fire cache invalidation immediately — balance updates on website ASAP
       invalidateWalletCache(updated.userId);
 
-      // Reply in Telegram
+      // Run all side-effects concurrently — reply + notification + edit + audit log
       const responseText = action === 'approve'
         ? `✅ *${requestId}* approved by ${agentName}`
         : `❌ *${requestId}* rejected by ${agentName}${reason ? `\n📝 Reason: ${reason}` : ''}`;
 
-      await ctx.reply(responseText, { parse_mode: 'Markdown' });
+      await Promise.all([
+        ctx.reply(responseText, { parse_mode: 'Markdown' }),
+        createNotification(updated.userId, {
+          title: action === 'approve' ? '✅ Withdrawal Approved!' : '❌ Withdrawal Rejected',
+          message: action === 'approve'
+            ? `Your withdrawal request ${requestId} for $${updated.amount.toFixed(2)} has been approved.`
+            : `Your withdrawal request ${requestId} for $${updated.amount.toFixed(2)} was rejected.${reason ? ` Reason: ${reason}` : ''} Contact support for help.`,
+          type: action === 'approve' ? 'success' : 'error',
+          link: '/dashboard/withdrawals'
+        }).catch((e: any) => logger.warn('Notification error:', e.message)),
+        this.editWithdrawalMessage(updated, action === 'approve' ? 'approved' : 'rejected', reason),
+        prisma.transactionLog.create({
+          data: {
+            type: `withdrawal_${action}d`,
+            entityId: updated.id,
+            userId: agentName,
+            amount: updated.amount,
+            status: updated.status,
+            metadata: { requestId, agentName, reason }
+          }
+        }).catch((e: any) => logger.error('TransactionLog error:', e)),
+      ]);
+
       logger.info(`Withdrawal ${requestId} ${action}d by ${agentName}`);
 
     } catch (e: any) {
