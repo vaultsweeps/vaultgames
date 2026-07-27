@@ -146,7 +146,7 @@ export default function DepositsPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {methods
                     .sort((a, b) => {
-                      const workingCodes = ['chime', 'paypal', 'zappay', 'apple', 'card'];
+                      const workingCodes = ['chime', 'paypal'];
                       const aSoon = !workingCodes.includes(a.code?.toLowerCase() || '');
                       const bSoon = !workingCodes.includes(b.code?.toLowerCase() || '');
                       if (aSoon === bSoon) return 0;
@@ -154,7 +154,7 @@ export default function DepositsPage() {
                     })
                     .map(m => {
                     const meta = getMeta(m.code)
-                    const workingCodes = ['chime', 'paypal', 'zappay', 'apple', 'card'];
+                    const workingCodes = ['chime', 'paypal'];
                     const isSoon = !workingCodes.includes(m.code?.toLowerCase() || '');
                     return (
                       <button key={m.id}
