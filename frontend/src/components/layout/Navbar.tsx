@@ -25,12 +25,11 @@ export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
-  const { user, isAuthenticated, logout } = useAuthStore()
+  const { user, isAuthenticated, logout, balance, fetchBalance } = useAuthStore()
   const { theme, setTheme } = useTheme()
   const pathname = usePathname()
   
   const [walletOpen, setWalletOpen] = useState(false)
-  const [walletBalance, setWalletBalance] = useState<number>(0)
   const [unreadCount, setUnreadCount] = useState(0)
 
   const [authModalOpen, setAuthModalOpen] = useState(false)
@@ -39,14 +38,16 @@ export default function Navbar() {
   const lastNotifFetch = useRef(0)
 
   // Fetch balance once on auth, and again whenever wallet modal closes
+  // We also set up a 10-second polling interval so if an admin approves a deposit in Telegram,
+  // the balance updates instantly for the logged-in user.
   useEffect(() => {
     if (!isAuthenticated) return
-    authApi.getBalance().then(res => {
-      if (res.data?.data?.balance !== undefined) {
-        setWalletBalance(res.data.data.balance)
-      }
-    }).catch(() => {})
-  }, [isAuthenticated, walletOpen]) // walletOpen allows refresh after deposit/cashout
+    
+    fetchBalance()
+    
+    const balanceInterval = setInterval(fetchBalance, 10000)
+    return () => clearInterval(balanceInterval)
+  }, [isAuthenticated, walletOpen, fetchBalance]) // walletOpen allows immediate refresh after modal closes
 
   // Poll notifications every 30s, throttled — don't re-fetch on every route change
   useEffect(() => {
@@ -128,7 +129,7 @@ export default function Navbar() {
                   className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#2AC3FF]/10 text-[#2AC3FF] hover:bg-[#2AC3FF]/20 transition-colors border border-[#2AC3FF]/20"
                 >
                   <Wallet className="w-4 h-4" />
-                  <span className="font-bold text-sm">${walletBalance.toFixed(2)}</span>
+                    <span className="font-bold text-white text-[15px] sm:text-base">${balance.toFixed(2)}</span>
                 </button>
                 <Link href="/dashboard" className="btn-neon text-xs py-2 px-4 flex items-center gap-2">
                   <LayoutDashboard className="w-3.5 h-3.5" /> Dashboard
