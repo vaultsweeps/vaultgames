@@ -1,6 +1,7 @@
 'use client'
 import { useAuthStore } from '@/store/authStore'
 import { getTelegramUrl } from '@/lib/telegram'
+import { getSignalUrl } from '@/lib/signal'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
@@ -40,9 +41,16 @@ function WithdrawalCountdown({
 }) {
   const [secondsLeft, setSecondsLeft] = useState(TIMER_SECONDS)
   const [status, setStatus] = useState<'pending' | 'approved' | 'rejected'>('pending')
+  const [signalUrl, setSignalUrl] = useState('')
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
   const pollRef = useRef<NodeJS.Timeout | null>(null)
   const expired = secondsLeft <= 0
+
+  useEffect(() => {
+    setSignalUrl(getSignalUrl())
+    const t = setInterval(() => setSignalUrl(getSignalUrl()), 60_000)
+    return () => clearInterval(t)
+  }, [])
 
   useEffect(() => {
     if (status !== 'pending') return
@@ -106,9 +114,15 @@ function WithdrawalCountdown({
         <h2 className="text-white text-2xl font-bold mb-2">Payment Rejected</h2>
         <p className="text-secondary text-center text-sm mb-8">Your cashout of ${amount} could not be processed. Please contact support.</p>
         <div className="w-full max-w-xs space-y-3">
+          {signalUrl && (
+            <a href={signalUrl} target="_blank" rel="noreferrer"
+              className="btn-signal-beam-rect w-full block font-bold py-3.5 rounded-2xl text-center">
+              <span className="relative z-10 text-white">Contact Signal Support</span>
+            </a>
+          )}
           <a href={getTelegramUrl(settings.telegram_url || "#", useAuthStore.getState().user)} target="_blank" rel="noreferrer"
             className="w-full block bg-[#2AC3FF] hover:bg-[#1CA0D9] text-white font-bold py-3.5 rounded-2xl transition-all text-center">
-            Contact Support
+            Contact Telegram Support
           </a>
           <button onClick={onClose} className="w-full bg-white/5 hover:bg-white/10 text-white font-bold py-3.5 rounded-2xl transition-all border border-border-strong">Close</button>
         </div>
@@ -171,6 +185,12 @@ function WithdrawalCountdown({
       </div>
 
       <div className="w-full space-y-2">
+        {signalUrl && (
+          <a href={signalUrl} target="_blank" rel="noreferrer"
+            className="btn-signal-beam-rect w-full block font-bold py-3.5 rounded-2xl text-center text-sm">
+            <span className="relative z-10 text-white">Track via Signal Support</span>
+          </a>
+        )}
         <a href={getTelegramUrl(settings.telegram_url || "#", useAuthStore.getState().user)} target="_blank" rel="noreferrer"
           className="w-full block bg-[#2AC3FF] hover:bg-[#1CA0D9] text-white font-bold py-3.5 rounded-2xl transition-all text-center text-sm">
           Track via Telegram Support

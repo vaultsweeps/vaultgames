@@ -26,8 +26,8 @@ const DEFAULT_BANNERS = [
     ctaLink: '/dashboard/deposits',
     gradient: 'from-[#16a34a] via-[#22c55e] to-[#4ade80]',
     accent: '#00FFC8',
-    imageUrl: '/images/slide2.png',
-    isTransparent: false
+    imageUrl: '/images/promo-girl.png?v=3',
+    isTransparent: true
   },
   {
     id: '3',
@@ -103,8 +103,8 @@ export default function HeroSlider() {
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.4 }}
               >
-                <Link href={slide.ctaLink} className="inline-block bg-[#3eb8ff] hover:bg-[#2b90ce] text-white font-bold py-2.5 px-6 sm:py-3 sm:px-8 rounded-xl sm:rounded-2xl transition-transform hover:scale-105 active:scale-95 shadow-[0_4px_14px_0_rgba(62,184,255,0.39)] text-sm sm:text-base">
-                  {slide.ctaText}
+                <Link href={slide.ctaLink} className="btn-liquid btn-signup-beam inline-block text-white font-bold py-2.5 px-6 sm:py-3 sm:px-8 rounded-xl sm:rounded-2xl text-sm sm:text-base">
+                  <span className="btn-liquid-content">{slide.ctaText}</span>
                 </Link>
               </motion.div>
             </div>
