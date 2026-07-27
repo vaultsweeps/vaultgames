@@ -339,7 +339,7 @@ export default function Navbar() {
       </button>
     </div>
 
-      <WalletModal isOpen={walletOpen} onClose={() => setWalletOpen(false)} balance={walletBalance} />
+      <WalletModal isOpen={walletOpen} onClose={() => setWalletOpen(false)} balance={balance} />
       <AuthModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} initialView={authModalView} />
     </>
   )
