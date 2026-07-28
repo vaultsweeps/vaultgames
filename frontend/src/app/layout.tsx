@@ -5,6 +5,11 @@ import '@/styles/globals.css'
 import { ThemeProvider } from '@/components/ThemeProvider'
 import NavigationLoader from '@/components/ui/NavigationLoader'
 import FrustrationDetector from '@/components/ui/FrustrationDetector'
+import { Orbitron, Inter, JetBrains_Mono } from 'next/font/google'
+
+const orbitron = Orbitron({ subsets: ['latin'], weight: ['400', '500', '600', '700', '800', '900'], variable: '--font-orbitron', display: 'swap' })
+const inter = Inter({ subsets: ['latin'], weight: ['300', '400', '500', '600', '700'], variable: '--font-inter', display: 'swap' })
+const jetbrains = JetBrains_Mono({ subsets: ['latin'], weight: ['400', '500'], variable: '--font-jetbrains', display: 'swap' })
 
 export const metadata: Metadata = {
   title: 'Vault Sweeps — Premium Gaming Platform',
@@ -33,12 +38,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
       </head>
-      <body className="bg-background text-primary antialiased transition-colors duration-300" suppressHydrationWarning>
+      <body className={`bg-background text-primary antialiased transition-colors duration-300 ${orbitron.variable} ${inter.variable} ${jetbrains.variable}`} suppressHydrationWarning>
         <ThemeProvider>
           {/* Global navigation progress loader — shown on every route change */}
           <Suspense fallback={null}>

@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { ChevronRight, Gamepad2 } from 'lucide-react'
+import Image from 'next/image'
 import Loader from '@/components/ui/Loader'
 
 import { publicApi } from '@/lib/api'
@@ -70,7 +71,7 @@ export default function FeaturedGames() {
               {/* Game thumbnail */}
               <div className={`absolute inset-0 bg-gradient-to-br ${COLORS[i % COLORS.length]}`}>
                 {game.thumbnailUrl ? (
-                  <img src={game.thumbnailUrl} alt={game.name} className="w-full h-full object-cover opacity-90 group-hover:opacity-100 group-hover:scale-110 transition-all duration-500" />
+                  <Image src={game.thumbnailUrl} alt={game.name} fill sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw" className="object-cover opacity-90 group-hover:opacity-100 group-hover:scale-110 transition-all duration-500" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
                     <Gamepad2 className="w-16 h-16 text-white/20 group-hover:text-white/40 transition-all duration-300" />

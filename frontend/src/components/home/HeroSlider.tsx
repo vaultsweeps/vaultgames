@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
+import Image from 'next/image'
 import { publicApi } from '@/lib/api'
 
 const DEFAULT_BANNERS = [
@@ -127,7 +128,7 @@ export default function HeroSlider() {
                 }
               `}</style>
               {/* Simulated realistic subtle floating animation for the character */}
-              <motion.img 
+              <motion.div
                 animate={{ 
                   y: [0, -5, 0],
                 }}
@@ -136,14 +137,21 @@ export default function HeroSlider() {
                   repeat: Infinity, 
                   ease: "easeInOut" 
                 }}
+                className={`relative h-full w-full object-[center_15%] animate-character ${slide.isTransparent ? 'drop-shadow-2xl translate-y-[2%]' : ''}`}
                 style={!slide.isTransparent ? {
                   WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 20%)',
                   maskImage: 'linear-gradient(to right, transparent 0%, black 20%)'
                 } : {}}
-                src={slide.imageUrl} 
-                alt="Promo character"
-                className={`h-full w-full object-[center_15%] animate-character ${slide.isTransparent ? 'object-contain drop-shadow-2xl translate-y-[2%]' : 'object-cover'}`} 
-              />
+              >
+                <Image
+                  src={slide.imageUrl} 
+                  alt="Promo character"
+                  fill
+                  priority={current === 0}
+                  sizes="(max-width: 1024px) 55vw, 50vw"
+                  className={`${slide.isTransparent ? 'object-contain' : 'object-cover'}`}
+                />
+              </motion.div>
             </motion.div>
           </div>
         </div>

@@ -37,9 +37,9 @@ module.exports = {
         }
       },
       fontFamily: {
-        display: ['Orbitron', 'monospace'],
-        body: ['Inter', 'sans-serif'],
-        mono: ['JetBrains Mono', 'monospace'],
+        display: ['var(--font-orbitron)', 'Orbitron', 'monospace'],
+        body: ['var(--font-inter)', 'Inter', 'sans-serif'],
+        mono: ['var(--font-jetbrains)', 'JetBrains Mono', 'monospace'],
       },
       animation: {
         'glow-pulse': 'glowPulse 2s ease-in-out infinite',
