@@ -58,7 +58,7 @@ export default function Footer() {
           {/* Brand */}
           <div>
             <Link href="/" className="flex items-center gap-2 mb-4 group inline-block">
-              <Image src="/images/vault-sweeps-logo.png" alt="Vault Sweeps" width={160} height={40} className="h-10 w-auto object-contain drop-shadow-md group-hover:scale-105 transition-transform" />
+              <Image src="/images/vault-sweeps-logo.png" alt="Vault Sweeps" width={551} height={488} className="h-10 w-auto object-contain drop-shadow-md group-hover:scale-105 transition-transform" />
               <span className="font-display font-bold text-lg gradient-text">VAULT SWEEPS</span>
             </Link>
             <p className="text-secondary text-sm leading-relaxed mb-5">

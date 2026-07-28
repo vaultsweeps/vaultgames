@@ -76,10 +76,10 @@ export default function FeaturedGames() {
                   <Image
                     src={game.thumbnailUrl}
                     alt={game.name}
-                    fill
+                    width={400}
+                    height={400}
                     unoptimized={game.thumbnailUrl.startsWith('http')}
-                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
-                    className="object-cover opacity-90 group-hover:opacity-100 group-hover:scale-110 transition-all duration-500"
+                    className="w-full h-full object-cover opacity-90 group-hover:opacity-100 group-hover:scale-110 transition-all duration-500"
                     onError={() => setImgErrors(prev => ({ ...prev, [game.id]: true }))}
                   />
                 ) : (
