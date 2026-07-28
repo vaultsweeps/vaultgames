@@ -61,20 +61,20 @@ export default function Footer() {
               <Image src="/images/vault-sweeps-logo.png" alt="Vault Sweeps" width={160} height={40} className="h-10 w-auto object-contain drop-shadow-md group-hover:scale-105 transition-transform" />
               <span className="font-display font-bold text-lg gradient-text">VAULT SWEEPS</span>
             </Link>
-            <p className="text-muted text-sm leading-relaxed mb-5">
+            <p className="text-secondary text-sm leading-relaxed mb-5">
               {settings.site_description || 'The ultimate gaming destination. Join millions of players and experience the future of gaming.'}
             </p>
             {mounted && (
             <div className="flex gap-3">
               {[
-                { icon: Send, href: getTelegramUrl(settings.telegram_url || process.env.NEXT_PUBLIC_TELEGRAM_URL || 'https://t.me/vaultsweeps', user), color: 'hover:text-blue-400' },
-                { icon: Facebook, href: settings.facebook_url || process.env.NEXT_PUBLIC_FACEBOOK_URL || '#', color: 'hover:text-blue-600' },
-                { icon: Twitter, href: '#', color: 'hover:text-sky-400' },
-                { icon: Youtube, href: '#', color: 'hover:text-red-500' },
-                { icon: Instagram, href: '#', color: 'hover:text-pink-500' },
+                { icon: Send, href: getTelegramUrl(settings.telegram_url || process.env.NEXT_PUBLIC_TELEGRAM_URL || 'https://t.me/vaultsweeps', user), color: 'hover:text-blue-400', label: 'Telegram' },
+                { icon: Facebook, href: settings.facebook_url || process.env.NEXT_PUBLIC_FACEBOOK_URL || '#', color: 'hover:text-blue-600', label: 'Facebook' },
+                { icon: Twitter, href: '#', color: 'hover:text-sky-400', label: 'Twitter' },
+                { icon: Youtube, href: '#', color: 'hover:text-red-500', label: 'YouTube' },
+                { icon: Instagram, href: '#', color: 'hover:text-pink-500', label: 'Instagram' },
               ].map((s, i) => (
-                <a key={i} href={s.href} target="_blank" rel="noopener noreferrer"
-                  className={`w-9 h-9 glass rounded-lg flex items-center justify-center text-muted ${s.color} transition-all hover:scale-110`}>
+                <a key={i} href={s.href} target="_blank" rel="noopener noreferrer" aria-label={s.label}
+                  className={`w-9 h-9 glass rounded-lg flex items-center justify-center text-secondary ${s.color} transition-all hover:scale-110`}>
                   <s.icon className="w-4 h-4" />
                 </a>
               ))}
@@ -87,7 +87,7 @@ export default function Footer() {
             <h4 className="font-display text-xs tracking-widest text-neon-blue uppercase mb-4">Navigation</h4>
             <ul className="space-y-2">
               {[['/', 'Home'], ['/games', 'Games'], ['/bonuses', 'Bonuses'], ['/cashout-rules', 'Cashout Rules'], ['/about', 'About Us'], ['/contact', 'Contact Us']].map(([href, label]) => (
-                <li key={href}><Link href={href} className="text-sm text-muted hover:text-white transition-colors">{label}</Link></li>
+                <li key={href}><Link href={href} className="text-sm text-secondary hover:text-white transition-colors">{label}</Link></li>
               ))}
             </ul>
           </div>
@@ -97,7 +97,7 @@ export default function Footer() {
             <h4 className="font-display text-xs tracking-widest text-neon-blue uppercase mb-4">Account</h4>
             <ul className="space-y-2">
               {[['/register', 'Register'], ['/login', 'Login'], ['/dashboard', 'Dashboard'], ['/dashboard/deposits', 'Deposits'], ['/dashboard/support', 'Support']].map(([href, label]) => (
-                <li key={href}><Link href={href} className="text-sm text-muted hover:text-white transition-colors">{label}</Link></li>
+                <li key={href}><Link href={href} className="text-sm text-secondary hover:text-white transition-colors">{label}</Link></li>
               ))}
             </ul>
           </div>
@@ -154,15 +154,15 @@ export default function Footer() {
 
         <div className="mt-12 pt-6 border-t border-border-subtle flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex flex-col items-center md:items-start gap-1">
-            <p className="text-xs text-slate-600" suppressHydrationWarning>© {year ?? ''} Vault Sweeps. All rights reserved.</p>
-            <p className="text-[10px] text-slate-500 flex items-center gap-1">
-              <span className="w-4 h-4 rounded-full border border-slate-500 flex items-center justify-center font-bold text-[8px]">18+</span>
+            <p className="text-xs text-slate-400" suppressHydrationWarning>© {year ?? ''} Vault Sweeps. All rights reserved.</p>
+            <p className="text-[10px] text-slate-400 flex items-center gap-1">
+              <span className="w-4 h-4 rounded-full border border-slate-400 flex items-center justify-center font-bold text-[8px]">18+</span>
               You must be at least 18 years old to use this platform. Please play responsibly.
             </p>
           </div>
           <div className="flex flex-wrap justify-center gap-4 md:gap-6">
             {[['/privacy', 'Privacy Policy'], ['/terms', 'Terms of Service'], ['/cookies', 'Cookie Policy']].map(([href, label]) => (
-              <Link key={label} href={href} className="text-xs text-slate-600 hover:text-secondary transition-colors">{label}</Link>
+              <Link key={label} href={href} className="text-xs text-slate-400 hover:text-white transition-colors">{label}</Link>
             ))}
           </div>
         </div>

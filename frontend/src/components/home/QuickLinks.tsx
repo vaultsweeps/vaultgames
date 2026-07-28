@@ -58,7 +58,7 @@ export default function QuickLinks() {
       <section className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto py-4">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
           {LINKS.map((link, i) => (
-            <Link href={link.href} key={i} onClick={(e) => handleClick(e, link.title)}>
+            <Link href={link.href} key={i} onClick={(e) => handleClick(e, link.title)} aria-label={link.title}>
               <motion.div
                 whileHover={{ y: -4, scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
@@ -103,6 +103,7 @@ export default function QuickLinks() {
               <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-orange-500 via-yellow-400 to-orange-500" />
 
               <button
+                aria-label="Close maintenance popup"
                 onClick={() => setShowMaintenance(false)}
                 className="absolute top-4 right-4 text-muted hover:text-white transition-colors"
               >

@@ -162,6 +162,7 @@ export default function HeroSlider() {
             <button
               key={i}
               onClick={() => setCurrent(i)}
+              aria-label={`Go to slide ${i + 1}`}
               className={`transition-all duration-300 rounded-full h-1 ${
                 i === current ? 'w-8 bg-yellow-400' : 'w-4 bg-white/30 hover:bg-white/60'
               }`}
