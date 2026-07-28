@@ -39,9 +39,9 @@ function FAQItem({ q, a }: { q: string; a: string }) {
   const [open, setOpen] = useState(false)
   return (
     <div className="glass-card overflow-hidden">
-      <button className="w-full flex items-center justify-between px-6 py-4 text-left" onClick={() => setOpen(!open)}>
+      <button aria-expanded={open} aria-controls="faq-answer" className="w-full flex items-center justify-between px-6 py-4 text-left" onClick={() => setOpen(!open)}>
         <span className="font-medium text-primary text-sm">{q}</span>
-        <ChevronDown className={`w-4 h-4 text-secondary transition-transform flex-shrink-0 ml-4 ${open ? 'rotate-180' : ''}`} />
+        <ChevronDown className={`w-4 h-4 text-secondary transition-transform flex-shrink-0 ml-4 ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
       </button>
       {open && (
         <div className="px-6 pb-4 text-secondary text-sm leading-relaxed border-t border-border-subtle pt-4">{a}</div>
@@ -199,9 +199,10 @@ export default function HomePageClient() {
         {/* Signal – FIRST: fastest, auto-routes by time of day */}
         {signalUrl && (
           <a href={signalUrl} target="_blank" rel="noopener noreferrer"
+            aria-label="Signal Support"
             className="btn-signal-beam w-12 h-12 rounded-full flex items-center justify-center shadow-lg shadow-[#3a76f0]/40 hover:scale-110 transition-transform relative"
             title={signalUrl.includes('Vaulter') ? 'Signal (Day Shift 4 AM–4 PM)' : 'Signal (Night Shift 4 PM–4 AM)'}>
-            <svg viewBox="0 0 48 48" className="w-6 h-6 relative z-10" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <svg viewBox="0 0 48 48" className="w-6 h-6 relative z-10" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
               <path d="M24 12a12 12 0 1 0 7.39 21.39l3.14 1.06-1.06-3.14A12 12 0 0 0 24 12z" fill="white"/>
               <path d="M19 23h10M19 27h6" stroke="white" strokeWidth="2" strokeLinecap="round"/>
             </svg>
@@ -212,14 +213,16 @@ export default function HomePageClient() {
           </a>
         )}
         <a href={settings.telegram_url || process.env.NEXT_PUBLIC_TELEGRAM_URL || '#'} target="_blank" rel="noopener noreferrer"
+          aria-label="Telegram Support"
           className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform hover:shadow-blue-500/40"
           title="Telegram Support">
-          <Send className="w-5 h-5 text-white" />
+          <Send className="w-5 h-5 text-white" aria-hidden="true" />
         </a>
         <a href={settings.facebook_url || process.env.NEXT_PUBLIC_FACEBOOK_URL || '#'} target="_blank" rel="noopener noreferrer"
+          aria-label="Facebook Messenger Support"
           className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform hover:shadow-blue-600/40"
           title="Facebook Messenger">
-          <MessageCircle className="w-5 h-5 text-white" />
+          <MessageCircle className="w-5 h-5 text-white" aria-hidden="true" />
         </a>
       </div>
     </>
