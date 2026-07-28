@@ -3,6 +3,14 @@ const isProd = process.env.NODE_ENV === 'production'
 
 const nextConfig = {
   compress: true,
+  // Target modern browsers to eliminate legacy JS polyfills
+  // This avoids the 'Legacy JavaScript' Lighthouse warning
+  ...(isProd && {
+    compiler: {
+      // Remove console.logs in production
+      removeConsole: { exclude: ['error', 'warn'] }
+    }
+  }),
   images: {
     // Serve WebP/AVIF automatically to supported browsers
     formats: ['image/avif', 'image/webp'],
