@@ -84,7 +84,7 @@ export default function HomePageClient() {
           </motion.div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {FEATURES.map((f, i) => (
-              <motion.div key={i} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }} whileHover={{ y: -5 }} className="glass-card p-6 text-center group">
+              <motion.div key={i} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }} whileHover={{ y: -5 }} style={{ willChange: 'transform' }} className="glass-card p-6 text-center group">
                 <div className="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center group-hover:scale-110 transition-transform" style={{ background: `${f.color}15`, border: `1px solid ${f.color}30` }}>
                   <f.icon className="w-6 h-6" style={{ color: f.color }} />
                 </div>
@@ -112,7 +112,7 @@ export default function HomePageClient() {
               const badge = TYPE_BADGE[b.type] || b.type?.toUpperCase()
               const amountDisplay = b.percentage ? `${b.percentage}%` : b.amount ? `$${b.amount}` : 'CUSTOM'
               return (
-                <motion.div key={b.id} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }} whileHover={{ y: -5 }} className="glass-card p-6 relative overflow-hidden group">
+                <motion.div key={b.id} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }} whileHover={{ y: -5 }} style={{ willChange: 'transform' }} className="glass-card p-6 relative overflow-hidden group">
                   <div className="absolute top-0 left-0 right-0 h-0.5" style={{ background: `linear-gradient(90deg, transparent, ${color}, transparent)` }} />
                   <div className="text-xs font-mono mb-3 px-2 py-0.5 rounded-full inline-block" style={{ color, background: `${color}15`, border: `1px solid ${color}30` }}>{badge}</div>
                   <div className="font-display font-black text-4xl mb-2" style={{ color }}>{amountDisplay}</div>
