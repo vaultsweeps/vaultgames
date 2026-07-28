@@ -52,7 +52,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <div className="flex flex-col h-full">
       <div className="p-5 border-b border-border-subtle">
         <Link href="/" className="flex items-center gap-2">
-          <Image src="/images/vault-sweeps-logo.png" alt="Vault Sweeps" width={160} height={40} className="h-10 w-auto object-contain drop-shadow-md" priority />
+          <Image src="/images/vault-sweeps-logo.png" alt="Vault Sweeps" width={551} height={488} className="h-10 w-auto object-contain drop-shadow-md" priority />
           <div>
             <span className="font-display font-bold text-sm text-white">VAULT SWEEPS</span>
             <span className="text-xs text-yellow-400 font-mono ml-1">ADMIN</span>
