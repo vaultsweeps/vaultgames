@@ -38,6 +38,8 @@ export default function CashMethodsBanner() {
           <img 
             src="/images/promo-girl.png" 
             alt="Promo Girl" 
+            width={600}
+            height={800}
             className="object-contain object-bottom right-0 h-full drop-shadow-2xl"
           />
         </div>

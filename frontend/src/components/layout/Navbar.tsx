@@ -87,7 +87,7 @@ export default function Navbar() {
         <div className="flex items-center justify-between">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-3 group">
-            <Image src="/images/vault-sweeps-logo.png" alt="Vault Sweeps" width={160} height={40} className="h-10 w-auto object-contain drop-shadow-md group-hover:scale-105 transition-transform" priority />
+            <Image src="/images/vault-sweeps-logo.png" alt="Vault Sweeps" width={551} height={488} className="h-10 w-auto object-contain drop-shadow-md group-hover:scale-105 transition-transform" priority />
           </Link>
 
           {/* Desktop Nav */}

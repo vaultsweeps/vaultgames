@@ -73,7 +73,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Logo */}
       <div className="p-6 border-b border-border-subtle">
         <Link href="/" className="flex items-center gap-2">
-          <Image src="/images/vault-sweeps-logo.png" alt="Vault Sweeps" width={160} height={40} className="h-10 w-auto object-contain drop-shadow-md" priority />
+          <Image src="/images/vault-sweeps-logo.png" alt="Vault Sweeps" width={551} height={488} className="h-10 w-auto object-contain drop-shadow-md" priority />
           <span className="font-display font-bold text-sm gradient-text">VAULT SWEEPS</span>
         </Link>
       </div>

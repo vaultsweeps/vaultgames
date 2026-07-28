@@ -148,10 +148,10 @@ export default function HeroSlider() {
                 <Image
                   src={slide.imageUrl} 
                   alt="Promo character"
-                  fill
+                  width={600}
+                  height={800}
                   priority={current === 0}
-                  sizes="(max-width: 1024px) 55vw, 50vw"
-                  className={`${slide.isTransparent ? 'object-contain' : 'object-cover'}`}
+                  className={`w-full h-full ${slide.isTransparent ? 'object-contain' : 'object-cover'}`}
                 />
               </motion.div>
             </motion.div>
