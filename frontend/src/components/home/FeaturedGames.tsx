@@ -64,6 +64,7 @@ export default function FeaturedGames() {
               viewport={{ once: true }}
               transition={{ delay: Math.min(i * 0.05, 0.5) }}
               whileHover={{ y: -5, scale: 1.02 }}
+              style={{ willChange: 'transform' }}
               className="relative aspect-square rounded-[1.5rem] sm:rounded-[2rem] overflow-hidden group cursor-pointer shadow-lg bg-surface"
             >
               <Link href={`/games/${game.id}`} className="absolute inset-0 z-20" aria-label={game.name}></Link>

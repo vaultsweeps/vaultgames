@@ -116,6 +116,7 @@ export default function HeroSlider() {
               initial={{ x: 50, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
               transition={{ duration: 0.8, type: "spring", bounce: 0.4 }}
+              style={{ willChange: 'transform, opacity' }}
               className="absolute right-0 bottom-0 top-0 w-[55%] lg:w-[50%] z-10 flex items-end justify-end pointer-events-none"
             >
               <style jsx>{`
@@ -139,9 +140,10 @@ export default function HeroSlider() {
                 }}
                 className={`relative h-full w-full object-[center_15%] animate-character ${slide.isTransparent ? 'drop-shadow-2xl translate-y-[2%]' : ''}`}
                 style={!slide.isTransparent ? {
+                  willChange: 'transform',
                   WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 20%)',
                   maskImage: 'linear-gradient(to right, transparent 0%, black 20%)'
-                } : {}}
+                } : { willChange: 'transform' }}
               >
                 <Image
                   src={slide.imageUrl} 
