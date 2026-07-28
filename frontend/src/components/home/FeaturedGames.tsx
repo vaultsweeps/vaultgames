@@ -26,6 +26,7 @@ interface Game {
 export default function FeaturedGames() {
   const [games, setGames] = useState<Game[]>([])
   const [loading, setLoading] = useState(true)
+  const [imgErrors, setImgErrors] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     const fetchGames = async () => {
@@ -71,8 +72,16 @@ export default function FeaturedGames() {
               
               {/* Game thumbnail */}
               <div className={`absolute inset-0 bg-gradient-to-br ${COLORS[i % COLORS.length]}`}>
-                {game.thumbnailUrl ? (
-                  <Image src={game.thumbnailUrl} alt={game.name} fill sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw" className="object-cover opacity-90 group-hover:opacity-100 group-hover:scale-110 transition-all duration-500" />
+                {game.thumbnailUrl && !imgErrors[game.id] ? (
+                  <Image
+                    src={game.thumbnailUrl}
+                    alt={game.name}
+                    fill
+                    unoptimized={game.thumbnailUrl.startsWith('http')}
+                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+                    className="object-cover opacity-90 group-hover:opacity-100 group-hover:scale-110 transition-all duration-500"
+                    onError={() => setImgErrors(prev => ({ ...prev, [game.id]: true }))}
+                  />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
                     <Gamepad2 className="w-16 h-16 text-white/20 group-hover:text-white/40 transition-all duration-300" />
