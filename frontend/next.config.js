@@ -62,10 +62,48 @@ const nextConfig = {
         ],
       },
       {
-        // API responses - no caching
+        // Private routes - completely block indexing
+        source: '/dashboard/:path*',
+        headers: [
+          { key: 'X-Robots-Tag', value: 'noindex, nofollow' }
+        ],
+      },
+      {
+        source: '/admin/:path*',
+        headers: [
+          { key: 'X-Robots-Tag', value: 'noindex, nofollow' }
+        ],
+      },
+      {
+        source: '/login',
+        headers: [
+          { key: 'X-Robots-Tag', value: 'noindex, nofollow' }
+        ],
+      },
+      {
+        source: '/register',
+        headers: [
+          { key: 'X-Robots-Tag', value: 'noindex, nofollow' }
+        ],
+      },
+      {
+        source: '/reset-password/:path*',
+        headers: [
+          { key: 'X-Robots-Tag', value: 'noindex, nofollow' }
+        ],
+      },
+      {
+        source: '/forgot-password',
+        headers: [
+          { key: 'X-Robots-Tag', value: 'noindex, nofollow' }
+        ],
+      },
+      {
+        // API responses - no caching and no indexing
         source: '/api/:path*',
         headers: [
-          { key: 'Cache-Control', value: 'no-store, max-age=0' }
+          { key: 'Cache-Control', value: 'no-store, max-age=0' },
+          { key: 'X-Robots-Tag', value: 'noindex, nofollow' }
         ],
       },
     ]
