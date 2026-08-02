@@ -22,7 +22,6 @@ export const metadata: Metadata = {
     locale: 'en_US',
   },
   twitter: { card: 'summary_large_image' },
-  themeColor: '#00D4FF',
   icons: {
     icon: [
       { url: '/favicon.ico', sizes: '32x32', type: 'image/x-icon' },

@@ -51,7 +51,7 @@ export default function DepositsPage() {
   const [historyLoading, setHistoryLoading] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [zappayMethod, setZappayMethod] = useState<'zappay'|'apple'|'card'|null>(null)
-  const [chimePayPalMethod, setChimePayPalMethod] = useState<'chime'|'paypal'|null>(null)
+  const [chimePayPalMethod, setChimePayPalMethod] = useState<'chime'|'paypal'|'cashapp'|null>(null)
 
   const fetchHistory = async () => {
     setHistoryLoading(true)
@@ -146,7 +146,7 @@ export default function DepositsPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {methods
                     .sort((a, b) => {
-                      const workingCodes = ['chime', 'paypal'];
+                      const workingCodes = ['chime', 'paypal', 'cashapp'];
                       const aSoon = !workingCodes.includes(a.code?.toLowerCase() || '');
                       const bSoon = !workingCodes.includes(b.code?.toLowerCase() || '');
                       if (aSoon === bSoon) return 0;
@@ -154,7 +154,7 @@ export default function DepositsPage() {
                     })
                     .map(m => {
                     const meta = getMeta(m.code)
-                    const workingCodes = ['chime', 'paypal'];
+                    const workingCodes = ['chime', 'paypal', 'cashapp'];
                     const isSoon = !workingCodes.includes(m.code?.toLowerCase() || '');
                     return (
                       <button key={m.id}
@@ -169,8 +169,8 @@ export default function DepositsPage() {
                             setZappayMethod('apple')
                           } else if (m.code === 'card' || m.name?.toLowerCase().includes('card') || m.name?.toLowerCase().includes('debit')) {
                             setZappayMethod('card')
-                          } else if (['chime', 'paypal'].includes(m.code.toLowerCase())) {
-                            setChimePayPalMethod(m.code.toLowerCase() as 'chime' | 'paypal')
+                          } else if (['chime', 'paypal', 'cashapp'].includes(m.code.toLowerCase())) {
+                            setChimePayPalMethod(m.code.toLowerCase() as 'chime' | 'paypal' | 'cashapp')
                           } else {
                             setSelectedMethod(m); 
                             setStep(2) 

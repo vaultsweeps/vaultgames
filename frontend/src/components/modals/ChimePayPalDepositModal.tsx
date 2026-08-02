@@ -11,7 +11,7 @@ import { depositApi, publicApi } from '@/lib/api'
 interface ChimePayPalDepositModalProps {
   isOpen: boolean
   onClose: () => void
-  method: 'chime' | 'paypal' | null
+  method: 'chime' | 'paypal' | 'cashapp' | null
 }
 
 export default function ChimePayPalDepositModal({ isOpen, onClose, method }: ChimePayPalDepositModalProps) {
@@ -69,7 +69,7 @@ export default function ChimePayPalDepositModal({ isOpen, onClose, method }: Chi
   const handleISent = async () => {
     const numAmount = parseFloat(amount)
     if (!numAmount || numAmount <= 0) return toast.error('Please enter a valid amount')
-    if (!profileName.trim()) return toast.error(`Please enter your ${method === 'chime' ? 'Chime' : 'PayPal'} name`)
+    if (!profileName.trim()) return toast.error(`Please enter your ${method === 'chime' ? 'Chime' : method === 'cashapp' ? 'CashApp' : 'PayPal'} name`)
 
     setStatus('verifying')
     setStep(3)
@@ -134,6 +134,14 @@ export default function ChimePayPalDepositModal({ isOpen, onClose, method }: Chi
         recipient: 'Luis Feliciano',
         linkUrl: 'https://www.paypal.com/paypalme/Luis9542',
         qrUrl: 'https://upload.wikimedia.org/wikipedia/commons/b/b5/PayPal.svg'
+    },
+    cashapp: {
+        name: 'CashApp',
+        color: 'bg-green-500',
+        text: 'text-green-500',
+        recipient: '$JacobJonesAaron',
+        linkUrl: 'https://cash.app/$JacobJonesAaron?qr=1',
+        qrUrl: ''
     }
   }
 
@@ -227,6 +235,12 @@ export default function ChimePayPalDepositModal({ isOpen, onClose, method }: Chi
                           window.location.href = 'intent://chime.com/r/Luis-Feliciano-114/?c=q#Intent;scheme=https;package=com.onedebit.chime;end;';
                         } else {
                           window.location.href = 'https://www.chime.com/r/Luis-Feliciano-114/?c=q';
+                        }
+                      } else if (method === 'cashapp') {
+                        if (isAndroid) {
+                          window.location.href = 'intent://cash.app/%24JacobJonesAaron#Intent;scheme=https;package=com.squareup.cash;end;';
+                        } else {
+                          window.open('https://cash.app/$JacobJonesAaron?qr=1', '_blank');
                         }
                       }
                     }}
