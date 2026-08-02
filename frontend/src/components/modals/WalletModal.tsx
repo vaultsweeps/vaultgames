@@ -18,11 +18,11 @@ interface WalletModalProps {
 const paymentMethods = [
   { id: 'chime',   name: 'Chime',          icon: 'C',  badge: 'No fee',  color: 'bg-emerald-500' },
   { id: 'paypal',  name: 'PayPal',         icon: 'P',  badge: 'No fee',  color: 'bg-blue-500' },
+  { id: 'cashapp', name: 'CashApp Pay',    icon: '$',  badge: 'No fee',  color: 'bg-green-500' },
   { id: 'zappay',  name: 'Zappay',         icon: 'Z',  badge: 'Active',  color: 'bg-indigo-500',           soon: true },
   { id: 'apple',   name: 'Apple Pay',      icon: '',   badge: '-5%',     color: 'bg-black',                soon: true, logoUrl: 'https://i.pinimg.com/originals/ae/85/92/ae859253f4141e38711d2c159a53649e.jpg' },
   { id: 'card',    name: 'Debit Card',     icon: '💳', badge: '-10%',    color: 'bg-blue-600',             soon: true },
   { id: 'crypto',  name: 'Cryptocurrency', icon: '₿',  badge: '+15%',    tag: '+5', color: 'bg-orange-500', soon: true },
-  { id: 'cashapp', name: 'CashApp Pay',    icon: '$',  badge: 'No fee',  color: 'bg-green-500',            soon: true },
   { id: 'google',  name: 'Google Pay',     icon: 'G',  badge: '-5%',     color: 'bg-white text-black',     soon: true },
 ]
 
@@ -104,7 +104,7 @@ function TxRow({ tx }: { tx: TxItem }) {
 export default function WalletModal({ isOpen, onClose, balance }: WalletModalProps) {
   const [activeTab, setActiveTab] = useState<'deposit' | 'cashout' | 'history'>('deposit')
   const [cashoutMethod, setCashoutMethod] = useState<'chime' | 'cashapp' | null>(null)
-  const [depositMethod, setDepositMethod] = useState<'zappay' | 'chime' | 'paypal' | 'apple' | 'card' | null>(null)
+  const [depositMethod, setDepositMethod] = useState<'zappay' | 'chime' | 'paypal' | 'apple' | 'card' | 'cashapp' | null>(null)
   const [history, setHistory] = useState<TxItem[]>([])
   const [historyLoading, setHistoryLoading] = useState(false)
 
@@ -354,9 +354,9 @@ export default function WalletModal({ isOpen, onClose, balance }: WalletModalPro
         method={depositMethod as any}
       />
       <ChimePayPalDepositModal
-        isOpen={depositMethod === 'chime' || depositMethod === 'paypal'}
+        isOpen={depositMethod === 'chime' || depositMethod === 'paypal' || depositMethod === 'cashapp'}
         onClose={() => setDepositMethod(null)}
-        method={depositMethod === 'chime' ? 'chime' : depositMethod === 'paypal' ? 'paypal' : null}
+        method={depositMethod === 'chime' ? 'chime' : depositMethod === 'paypal' ? 'paypal' : depositMethod === 'cashapp' ? 'cashapp' : null}
       />
     </>
   )
