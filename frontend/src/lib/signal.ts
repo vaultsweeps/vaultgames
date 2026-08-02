@@ -17,7 +17,7 @@ export interface SignalContact {
 }
 
 const DAY_CONTACT: SignalContact = {
-  url: 'https://signal.me/#p/Vaulter.39',   // ⚠️ Replace with real link from Signal app
+  url: 'https://signal.me/#eu/au6dPpVS-N7QTtN4UkMb0YzDNXrNNG6YekyojfUVF7r2k3oZix9D1Jb4Mi2mhDlv',
   username: 'Vaulter.39',
 }
 

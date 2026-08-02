@@ -62,6 +62,23 @@ async function main() {
 
   await prisma.paymentMethod.create({
     data: {
+      name: 'PayPal',
+      code: 'paypal',
+      type: 'bank',
+      isActive: true,
+      minAmount: 10,
+      maxAmount: 10000,
+      feePercent: 0,
+      iconUrl: 'https://upload.wikimedia.org/wikipedia/commons/b/b5/PayPal.svg',
+      instructions: 'Send to our PayPal email. Include your username in the note.',
+      fields: JSON.stringify([
+        { name: 'accountInfo', label: 'Your PayPal Email', type: 'text', required: true, placeholder: 'you@email.com' }
+      ])
+    }
+  })
+
+  await prisma.paymentMethod.create({
+    data: {
       name: 'Zappay',
       code: 'zappay',
       type: 'bank',
