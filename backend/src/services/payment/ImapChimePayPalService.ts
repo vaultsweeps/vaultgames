@@ -12,6 +12,28 @@ function normalize(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim()
 }
 
+// ─── Trusted sender domains ─────────────────────────────────────────────────
+// Only emails actually originating from these domains are eligible for
+// auto-approval — prevents anyone who can send mail to the monitored inbox
+// from forging a "payment received" notification and self-approving a deposit.
+const DEFAULT_TRUSTED_DOMAINS: Record<'chime' | 'paypal', string[]> = {
+  chime: ['chime.com'],
+  paypal: ['paypal.com'],
+}
+
+function trustedDomainsFor(method: 'chime' | 'paypal'): string[] {
+  const envKey = method === 'chime' ? 'CHIME_SENDER_DOMAINS' : 'PAYPAL_SENDER_DOMAINS'
+  const fromEnv = process.env[envKey]
+  if (fromEnv) return fromEnv.split(',').map(d => d.trim().toLowerCase()).filter(Boolean)
+  return DEFAULT_TRUSTED_DOMAINS[method]
+}
+
+function senderIsTrusted(fromAddress: string, method: 'chime' | 'paypal'): boolean {
+  const domain = fromAddress.split('@')[1]?.toLowerCase().trim()
+  if (!domain) return false
+  return trustedDomainsFor(method).some(trusted => domain === trusted || domain.endsWith(`.${trusted}`))
+}
+
 /** Returns true when first name and first letter of last name match */
 function namesMatch(emailName: string, profileName: string): boolean {
   const emailTokens = normalize(emailName).split(' ').filter(Boolean)
@@ -40,14 +62,19 @@ export class ImapChimePayPalService {
   static async connect() {
     const config = {
       imap: {
-        user: 'luisfeliciano7812@gmail.com',
-        password: 'qezdijyvlvowehim',
+        user: process.env.IMAP_USER || '',
+        password: process.env.IMAP_PASSWORD || '',
         host: 'imap.gmail.com',
         port: 993,
         tls: true,
         tlsOptions: { rejectUnauthorized: false },
         authTimeout: 10000
       }
+    }
+
+    if (!config.imap.user || !config.imap.password) {
+      logger.warn('[ImapChimePayPal] Missing IMAP credentials. Skipping connection.')
+      return null
     }
 
     try {
@@ -163,6 +190,16 @@ export class ImapChimePayPalService {
           }
 
           if (!amount || !senderName || !paymentMethod) continue
+
+          // Only trust the amount/sender extracted from this email if it actually
+          // came from the payment provider's own domain — otherwise anyone who
+          // can send mail to this inbox could forge a "payment received" notice
+          // and self-approve a deposit.
+          const fromAddress = mail.from?.value?.[0]?.address || ''
+          if (!senderIsTrusted(fromAddress, paymentMethod)) {
+            logger.warn(`[ImapChimePayPal] Ignoring email from untrusted sender "${fromAddress}" claiming a ${paymentMethod} payment of $${amount}`)
+            continue
+          }
 
           // Check if we already processed this exact email
           const alreadyProcessed = await prisma.deposit.findFirst({

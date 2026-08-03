@@ -8,6 +8,18 @@ import { TelegramService } from '../TelegramService'
 import { ReferralService } from '../ReferralService'
 import { invalidateWalletCache } from '../WalletService'
 
+// Only emails actually originating from the payment provider's own domain are
+// eligible for auto-approval — prevents anyone who can send mail to the
+// monitored inbox from forging a "payment received" notice and self-approving
+// a deposit. Override via env if Zappay's real notification domain differs.
+function senderIsTrusted(fromAddress: string): boolean {
+  const domain = fromAddress.split('@')[1]?.toLowerCase().trim()
+  if (!domain) return false
+  const trusted = (process.env.ZAPPAY_SENDER_DOMAINS || 'zappay.com')
+    .split(',').map(d => d.trim().toLowerCase()).filter(Boolean)
+  return trusted.some(t => domain === t || domain.endsWith(`.${t}`))
+}
+
 export class ImapZappayService {
   static isRunning = false;
 
@@ -83,6 +95,12 @@ export class ImapZappayService {
           const txnId = txnMatch ? txnMatch[1].trim() : null;
 
           if (!amountStr || !senderName) continue;
+
+          const fromAddress = mail.from?.value?.[0]?.address || '';
+          if (!senderIsTrusted(fromAddress)) {
+            console.warn(`[ImapZappayService] Ignoring email from untrusted sender "${fromAddress}" claiming a payment of $${amountStr}`);
+            continue;
+          }
 
           const amount = parseFloat(amountStr);
 

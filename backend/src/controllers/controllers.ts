@@ -1,10 +1,10 @@
 import { Response } from 'express'
 import { asyncHandler, AppError } from '../middleware/errorHandler'
-import { AuthRequest } from '../middleware/auth'
+import { AuthRequest, evictAuthCache } from '../middleware/auth'
 import prisma from '../lib/prisma';
 import { TelegramService } from '../services/TelegramService';
 
-import { getCached } from '../lib/redis';
+import { getCached, revokeTokensIssuedBefore } from '../lib/redis';
 
 // ─── GAMES ────────────────────────────────────────────────────────────────────
 export const getGames = asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -185,6 +185,10 @@ export const changePassword = asyncHandler(async (req: AuthRequest, res: Respons
 
   const hashed = await bcrypt.hash(newPassword, 12)
   await prisma.user.update({ where: { id: user.id }, data: { password: hashed } })
+
+  // Invalidate any other outstanding tokens now that the password has changed
+  await revokeTokensIssuedBefore(user.id)
+  evictAuthCache(user.id)
 
   // Sync password with provider
   try {

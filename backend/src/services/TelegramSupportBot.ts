@@ -6,6 +6,7 @@ import { supabase } from '../utils/supabase';
 import { logger } from '../utils/logger';
 import { createNotification } from './notificationService';
 import { invalidateWalletCache } from './WalletService';
+import { resolveTelegramLinkToken } from '../lib/redis';
 
 const prisma = new PrismaClient();
 
@@ -18,6 +19,16 @@ const REJECTION_REASONS = [
   'Suspicious activity detected',
   'Account under review',
 ];
+
+// Escapes Telegram legacy-Markdown metacharacters in user-controlled text
+// (deposit "sender name" notes, withdrawal account details, usernames, etc.)
+// before interpolating it into a `parse_mode: 'Markdown'` message. Without
+// this, a user could embed `[label](https://evil.example)` or stray
+// `*_\`` characters into fields that end up in admin-facing approval
+// messages, rendering as a real clickable link or breaking formatting.
+function escMd(s: any): string {
+  return String(s ?? '').replace(/([_*`\[\]])/g, '\\$1')
+}
 
 const VOID_REASONS = [
   'Wrong payment received',
@@ -45,6 +56,20 @@ export class TelegramSupportBot {
 
     this.bot = new Telegraf(token);
     this.setupListeners();
+  }
+
+  // Optional, opt-in second layer of authorization for money-moving actions
+  // (approve/reject/void). By default, anyone who is a member of the staff
+  // group can act — set TELEGRAM_STAFF_USER_IDS (comma-separated Telegram
+  // user IDs) to additionally require the sender be on that list. Left
+  // unconfigured, behavior is unchanged from before (group membership only),
+  // so this can't lock anyone out by surprise.
+  private isAuthorizedStaff(ctx: any): boolean {
+    const allowlist = (process.env.TELEGRAM_STAFF_USER_IDS || '')
+      .split(',').map(s => s.trim()).filter(Boolean);
+    if (allowlist.length === 0) return true;
+    const fromId = ctx.from?.id?.toString();
+    return !!fromId && allowlist.includes(fromId);
   }
 
   public static getInstance(): TelegramSupportBot {
@@ -80,7 +105,12 @@ export class TelegramSupportBot {
       const payload = ctx.message.text.split(' ')[1];
       if (payload) {
         try {
-          const user = await prisma.user.findUnique({ where: { id: payload } });
+          // The payload is a short-lived, single-use link token (not a raw
+          // user ID) — see lib/redis.ts createTelegramLinkToken/resolveTelegramLinkToken.
+          // This prevents anyone who merely learns a victim's user ID from
+          // DMing the bot and hijacking their Telegram account link.
+          const userId = await resolveTelegramLinkToken(payload);
+          const user = userId ? await prisma.user.findUnique({ where: { id: userId } }) : null;
           if (user) {
             const telegramUsername = ctx.from.username ? `@${ctx.from.username}` : null;
             const telegramId = ctx.from.id.toString();
@@ -125,20 +155,27 @@ export class TelegramSupportBot {
       return next();
     });
 
-    // Inline button callbacks
+    // Inline button callbacks — approve/reject/void deposits & withdrawals.
+    // Must be restricted to the staff group the same way the /approve and
+    // /reject text commands already are; otherwise a callback delivered from
+    // any other chat the bot is a member of would be actioned unchecked.
     this.bot.on('callback_query', async (ctx) => {
+      if (ctx.chat?.id.toString() !== this.groupId) return;
+      if (!this.isAuthorizedStaff(ctx)) return;
       await this.handleCallbackQuery(ctx);
     });
 
     // /approve command
     this.bot.command('approve', async (ctx) => {
       if (ctx.chat.id.toString() !== this.groupId) return;
+      if (!this.isAuthorizedStaff(ctx)) return;
       await this.handleWithdrawalCommand(ctx, 'approve');
     });
 
     // /reject command
     this.bot.command('reject', async (ctx) => {
       if (ctx.chat.id.toString() !== this.groupId) return;
+      if (!this.isAuthorizedStaff(ctx)) return;
       await this.handleWithdrawalCommand(ctx, 'reject');
     });
   }
@@ -458,12 +495,12 @@ export class TelegramSupportBot {
       const editPromise = (async () => {
         if (!updatedDeposit.telegramMessageId || !updatedDeposit.telegramChatId) return;
         const emoji = action === 'approve' ? '✅' : '❌';
-        const methodName = deposit.paymentMethod?.name || deposit.paymentMethod?.code || 'Unknown';
-        const senderName = deposit.notes?.trim() || 'Not provided';
+        const methodName = escMd(deposit.paymentMethod?.name || deposit.paymentMethod?.code || 'Unknown');
+        const senderName = escMd(deposit.notes?.trim() || 'Not provided');
         const editedText =
-          `${emoji} *Deposit ${action === 'approve' ? 'Approved' : 'Rejected'}* by ${agentName}\n\n` +
+          `${emoji} *Deposit ${action === 'approve' ? 'Approved' : 'Rejected'}* by ${escMd(agentName)}\n\n` +
           `📋 Ref: \`${deposit.paymentReference}\`\n` +
-          `👤 User: ${deposit.user?.username || 'Unknown'} (${deposit.user?.email || 'N/A'})\n` +
+          `👤 User: ${escMd(deposit.user?.username || 'Unknown')} (${escMd(deposit.user?.email || 'N/A')})\n` +
           `💰 Amount: *$${Number(deposit.amount).toFixed(2)}*\n` +
           `💳 Method: ${methodName}\n` +
           `🙍 Sender: ${senderName}\n` +
@@ -512,10 +549,10 @@ export class TelegramSupportBot {
     const text =
       `🔔 *New Withdrawal Request*\n\n` +
       `📋 Request ID: \`${withdrawal.requestId}\`\n` +
-      `👤 User: ${user?.username || 'Unknown'} (${user?.email || 'N/A'})\n` +
+      `👤 User: ${escMd(user?.username || 'Unknown')} (${escMd(user?.email || 'N/A')})\n` +
       `💰 Amount: *$${Number(withdrawal.amount).toFixed(2)}*\n` +
-      `💳 Method: ${withdrawal.paymentMethodStr || 'Unknown'}\n` +
-      `🏦 Account: \`${withdrawal.accountDetails || withdrawal.accountInfo || 'N/A'}\`\n` +
+      `💳 Method: ${escMd(withdrawal.paymentMethodStr || 'Unknown')}\n` +
+      `🏦 Account: \`${escMd(withdrawal.accountDetails || withdrawal.accountInfo || 'N/A')}\`\n` +
       `📅 Created: ${createdAt}\n` +
       `📊 Status: Pending ⏳`;
 
@@ -558,14 +595,14 @@ export class TelegramSupportBot {
     const newText =
       `${emoji} *Withdrawal ${action === 'approved' ? 'Approved' : 'Rejected'}*\n\n` +
       `📋 Request ID: \`${withdrawal.requestId}\`\n` +
-      `👤 User: ${withdrawal.user?.username || 'Unknown'} (${withdrawal.user?.email || 'N/A'})\n` +
+      `👤 User: ${escMd(withdrawal.user?.username || 'Unknown')} (${escMd(withdrawal.user?.email || 'N/A')})\n` +
       `💰 Amount: *$${Number(withdrawal.amount).toFixed(2)}*\n` +
-      `💳 Method: ${withdrawal.paymentMethodStr || 'Unknown'}\n` +
-      `🏦 Account: \`${withdrawal.accountDetails || withdrawal.accountInfo || 'N/A'}\`\n` +
+      `💳 Method: ${escMd(withdrawal.paymentMethodStr || 'Unknown')}\n` +
+      `🏦 Account: \`${escMd(withdrawal.accountDetails || withdrawal.accountInfo || 'N/A')}\`\n` +
       `📊 Status: ${statusText}\n` +
       (action === 'approved'
-        ? `✅ Approved by: ${withdrawal.approvedBy || 'Admin'}`
-        : `❌ Rejected by: ${withdrawal.rejectedBy || 'Admin'}${reason ? `\n📝 Reason: ${reason}` : ''}`);
+        ? `✅ Approved by: ${escMd(withdrawal.approvedBy || 'Admin')}`
+        : `❌ Rejected by: ${escMd(withdrawal.rejectedBy || 'Admin')}${reason ? `\n📝 Reason: ${escMd(reason)}` : ''}`);
 
     try {
       await this.bot.telegram.editMessageText(
@@ -746,7 +783,7 @@ export class TelegramSupportBot {
         const editedText =
           `🚫 *Deposit Voided* by ${agentName}\n\n` +
           `📋 Ref: \`${deposit.paymentReference}\`\n` +
-          `👤 User: ${deposit.user?.username || 'Unknown'} (${deposit.user?.email || 'N/A'})\n` +
+          `👤 User: ${escMd(deposit.user?.username || 'Unknown')} (${escMd(deposit.user?.email || 'N/A')})\n` +
           `💵 Amount: *$${Number(deposit.amount).toFixed(2)}*\n` +
           `📊 Status: Voided 🚫\n` +
           `📝 Reason: ${reason}`;

@@ -36,7 +36,10 @@ export default function AdminProvidersPage() {
   useEffect(() => { fetchProviders() }, [])
 
   const openEdit = (provider: any) => {
-    setEditing({ ...provider })
+    // The API never returns the real secretKey (only a masked preview) — start
+    // the field blank so we don't accidentally resubmit the preview string as
+    // if it were a real secret. Leaving it blank on save keeps the existing key.
+    setEditing({ ...provider, secretKey: '' })
     setIsNew(false)
     setSelectedGameIds((provider.games || []).map((g: Game) => g.id))
   }
@@ -54,7 +57,7 @@ export default function AdminProvidersPage() {
   }
 
   const handleSave = async () => {
-    if (!editing?.name || !editing?.apiBaseUrl || !editing?.agentId || !editing?.secretKey) {
+    if (!editing?.name || !editing?.apiBaseUrl || !editing?.agentId || (isNew && !editing?.secretKey)) {
       return toast.error('Name, Base URL, Agent ID, and Secret Key are required')
     }
     setSaving(true)
@@ -212,8 +215,8 @@ export default function AdminProvidersPage() {
                   <input type="text" placeholder="11" value={editing.agentId} onChange={e => setEditing((p: any) => ({ ...p, agentId: e.target.value }))} className="input-neon" />
                 </div>
                 <div>
-                  <label className="block text-xs font-mono tracking-wider text-secondary uppercase mb-2">Secret Key * {!isNew && '(blank = keep current)'}</label>
-                  <input type="password" placeholder="••••••••" value={editing.secretKey || ''} onChange={e => setEditing((p: any) => ({ ...p, secretKey: e.target.value }))} className="input-neon" />
+                  <label className="block text-xs font-mono tracking-wider text-secondary uppercase mb-2">Secret Key {isNew ? '*' : '(blank = keep current)'}</label>
+                  <input type="password" placeholder={!isNew && editing.secretKeyPreview ? editing.secretKeyPreview : '••••••••'} value={editing.secretKey || ''} onChange={e => setEditing((p: any) => ({ ...p, secretKey: e.target.value }))} className="input-neon" />
                 </div>
                 <div>
                   <label className="block text-xs font-mono tracking-wider text-secondary uppercase mb-2">Timeout (ms)</label>

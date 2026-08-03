@@ -3,12 +3,20 @@ import prisma from '../lib/prisma'
 import { asyncHandler, AppError } from '../middleware/errorHandler'
 import { ProviderService } from '../services/provider/ProviderService'
 
+// The raw secretKey (used to sign requests to the provider's real-money API)
+// should never round-trip back to the browser — only a short preview so the
+// admin can tell providers apart, never the value needed to forge requests.
+function maskProvider<T extends { secretKey: string }>(provider: T) {
+  const { secretKey, ...rest } = provider
+  return { ...rest, secretKeyPreview: secretKey ? `••••${secretKey.slice(-4)}` : null }
+}
+
 export const getProviders = asyncHandler(async (req: Request, res: Response) => {
   const providers = await prisma.provider.findMany({
     orderBy: { createdAt: 'desc' },
     include: { games: { select: { id: true, name: true, thumbnailUrl: true } } }
   })
-  res.json({ success: true, data: providers })
+  res.json({ success: true, data: providers.map(maskProvider) })
 })
 
 export const createProvider = asyncHandler(async (req: Request, res: Response) => {
@@ -16,7 +24,7 @@ export const createProvider = asyncHandler(async (req: Request, res: Response) =
   const provider = await prisma.provider.create({
     data: { name, apiBaseUrl, agentId, secretKey, logo, requestTimeout: Number(requestTimeout), retryCount: Number(retryCount), endpoints: endpoints || {} }
   })
-  res.status(201).json({ success: true, data: provider })
+  res.status(201).json({ success: true, data: maskProvider(provider) })
 })
 
 export const updateProvider = asyncHandler(async (req: Request, res: Response) => {
@@ -32,7 +40,7 @@ export const updateProvider = asyncHandler(async (req: Request, res: Response) =
     where: { id: id as string },
     data
   })
-  res.json({ success: true, data: provider })
+  res.json({ success: true, data: maskProvider(provider) })
 })
 
 export const deleteProvider = asyncHandler(async (req: Request, res: Response) => {
@@ -94,5 +102,5 @@ export const assignGamesToProvider = asyncHandler(async (req: Request, res: Resp
     where: { id: id as string },
     include: { games: { select: { id: true, name: true } } }
   })
-  res.json({ success: true, data: updated })
+  res.json({ success: true, data: updated ? maskProvider(updated) : null })
 })

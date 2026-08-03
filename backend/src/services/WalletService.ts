@@ -59,6 +59,35 @@ export class WalletService {
     }, WALLET_CACHE_TTL);
   }
 
+  /**
+   * Same computation as getBalances, but bypasses the Redis cache and accepts
+   * a Prisma transaction client so it can be called from inside a
+   * Serializable transaction to get a race-safe read of the current balance
+   * (used right before debiting funds, e.g. withdrawal creation).
+   */
+  static async getBalancesRaw(userId: string, client: Pick<typeof prisma, 'deposit' | 'withdrawal' | 'providerTransaction' | 'bonusClaim'> = prisma) {
+    const [deposits, withdrawals, gameRecharges, gameWithdrawals, referralBonuses] = await Promise.all([
+      client.deposit.aggregate({ where: { userId, status: 'approved' }, _sum: { amount: true } }),
+      client.withdrawal.aggregate({ where: { userId, status: { in: ['pending', 'approved', 'paid'] } }, _sum: { amount: true } }),
+      client.providerTransaction.aggregate({ where: { userId, type: 'recharge', status: 'success' }, _sum: { amount: true } }),
+      client.providerTransaction.aggregate({ where: { userId, type: 'withdraw', status: 'success' }, _sum: { amount: true } }),
+      client.bonusClaim.aggregate({ where: { userId, bonus: { type: 'referral' } }, _sum: { amount: true } })
+    ]);
+
+    const totalDeposited = deposits._sum.amount || 0;
+    const totalWithdrawn = withdrawals._sum.amount || 0;
+    const totalGameRecharges = gameRecharges._sum.amount || 0;
+    const totalGameWithdrawals = gameWithdrawals._sum.amount || 0;
+    const totalReferralBonus = referralBonuses._sum.amount || 0;
+
+    const totalWalletBalance = totalDeposited + totalGameWithdrawals + totalReferralBonus - totalWithdrawn - totalGameRecharges;
+    const displayBalance = Math.max(0, totalWalletBalance);
+    const remainingBonus = Math.min(totalReferralBonus, displayBalance);
+    const withdrawableBalance = Math.max(0, displayBalance - remainingBonus);
+
+    return { displayBalance, withdrawableBalance, remainingBonus };
+  }
+
   static async getReferralBonusBalance(userId: string): Promise<number> {
     const balances = await this.getBalances(userId);
     return balances.remainingBonus;
