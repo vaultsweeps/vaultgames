@@ -1,7 +1,7 @@
 import { MetadataRoute } from 'next'
 
 const BASE_URL = 'https://vaultsweeps.com'
-const API_URL = process.env.NEXT_PUBLIC_API_URL || (process.env.NODE_ENV === 'production' ? 'https://nexsus-c053.onrender.com/api' : 'http://localhost:5000/api')
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.vaultsweeps.com/api'
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Base static routes - strictly public marketing pages
