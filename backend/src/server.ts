@@ -82,7 +82,7 @@ const limiter = rateLimit({
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 2000, // Increased from 20 to allow testing
+  max: 20, // Strict limit for production authentication
   message: { success: false, message: 'Too many authentication attempts.' },
 })
 
