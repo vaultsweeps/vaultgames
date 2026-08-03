@@ -1,4 +1,5 @@
 import { Response } from 'express'
+import { Prisma } from '@prisma/client'
 import prisma from '../lib/prisma'
 import { asyncHandler, AppError } from '../middleware/errorHandler'
 import { AuthRequest } from '../middleware/auth'
@@ -6,6 +7,13 @@ import { createNotification } from '../services/notificationService'
 import { WalletService, invalidateWalletCache } from '../services/WalletService'
 import { TelegramService } from '../services/TelegramService'
 import { logger } from '../utils/logger'
+
+// Serializable transactions abort with a P2034 error when two concurrent
+// requests would otherwise both read the same pre-debit balance and both
+// pass the sufficiency check (classic withdrawal double-spend race).
+function isSerializationFailure(err: any): boolean {
+  return err?.code === 'P2034'
+}
 
 // ─── Allowed payment methods ───────────────────────────────────────────────
 const ALLOWED_PAYMENT_METHODS = ['Cash App', 'Venmo', 'Zelle', 'Crypto', 'Bank Transfer', 'Chime', 'PayPal']
@@ -49,19 +57,6 @@ export const createWithdrawal = asyncHandler(async (req: AuthRequest, res: Respo
 
   if (amount < 1) throw new AppError('Minimum withdrawal is $1', 400)
 
-  // Referral bonuses are non-withdrawable — only the real cash balance can be cashed out
-  const withdrawableBalance = await WalletService.getWithdrawableBalance(req.user!.id)
-  if (amount > withdrawableBalance) {
-    const referralBalance = await WalletService.getReferralBonusBalance(req.user!.id)
-    if (referralBalance > 0) {
-      throw new AppError(
-        `Insufficient cashable balance. Your balance includes $${referralBalance.toFixed(2)} in referral bonuses which can only be added to your game balance, not cashed out. Cashable balance: $${Math.max(0, withdrawableBalance).toFixed(2)}`,
-        400
-      )
-    }
-    throw new AppError(`Insufficient balance. Your cashable balance is $${Math.max(0, withdrawableBalance).toFixed(2)}`, 400)
-  }
-
   const paymentMethod = await prisma.paymentMethod.findUnique({ where: { id: paymentMethodId, isActive: true } })
   if (!paymentMethod) throw new AppError('Invalid payment method', 400)
   if (amount < paymentMethod.minAmount) throw new AppError(`Minimum withdrawal for this method is $${paymentMethod.minAmount}`, 400)
@@ -69,10 +64,32 @@ export const createWithdrawal = asyncHandler(async (req: AuthRequest, res: Respo
 
   const requestId = generateRequestId()
 
-  const withdrawal = await prisma.withdrawal.create({
-    data: { userId: req.user!.id, amount, currency, paymentMethodId, accountInfo, status: 'pending', requestId },
-    include: { paymentMethod: true }
-  })
+  let withdrawal
+  try {
+    withdrawal = await prisma.$transaction(async (tx) => {
+      // Referral bonuses are non-withdrawable — only the real cash balance can be cashed out
+      const { withdrawableBalance, remainingBonus } = await WalletService.getBalancesRaw(req.user!.id, tx as any)
+      if (amount > withdrawableBalance) {
+        if (remainingBonus > 0) {
+          throw new AppError(
+            `Insufficient cashable balance. Your balance includes $${remainingBonus.toFixed(2)} in referral bonuses which can only be added to your game balance, not cashed out. Cashable balance: $${Math.max(0, withdrawableBalance).toFixed(2)}`,
+            400
+          )
+        }
+        throw new AppError(`Insufficient balance. Your cashable balance is $${Math.max(0, withdrawableBalance).toFixed(2)}`, 400)
+      }
+
+      return tx.withdrawal.create({
+        data: { userId: req.user!.id, amount, currency, paymentMethodId, accountInfo, status: 'pending', requestId },
+        include: { paymentMethod: true }
+      })
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
+  } catch (err) {
+    if (isSerializationFailure(err)) {
+      throw new AppError('Another request is already in progress. Please try again.', 409)
+    }
+    throw err
+  }
 
   invalidateWalletCache(req.user!.id)
 
@@ -117,9 +134,6 @@ export const createManualWithdrawal = asyncHandler(async (req: AuthRequest, res:
 
   if (isNaN(numAmount) || numAmount <= 0) throw new AppError('Invalid amount', 400)
 
-  const balance = await WalletService.getWithdrawableBalance(req.user!.id)
-  if (numAmount > balance) throw new AppError('Insufficient cashable wallet balance', 400)
-
   let methodName = paymentMethodId
   if (paymentMethodId && paymentMethodId.length > 10) {
     const pm = await prisma.paymentMethod.findUnique({ where: { id: paymentMethodId } })
@@ -130,19 +144,32 @@ export const createManualWithdrawal = asyncHandler(async (req: AuthRequest, res:
 
   const requestId = generateRequestId()
 
-  const withdrawal = await prisma.withdrawal.create({
-    data: {
-      userId: req.user!.id,
-      amount: numAmount,
-      currency: 'USD',
-      paymentMethodId: paymentMethodId && paymentMethodId.length > 10 ? paymentMethodId : null,
-      accountInfo: accountInfo || 'Manual request',
-      status: 'pending',
-      adminNotes: methodName,
-      requestId,
-      paymentMethodStr: methodName
+  let withdrawal
+  try {
+    withdrawal = await prisma.$transaction(async (tx) => {
+      const { withdrawableBalance } = await WalletService.getBalancesRaw(req.user!.id, tx as any)
+      if (numAmount > withdrawableBalance) throw new AppError('Insufficient cashable wallet balance', 400)
+
+      return tx.withdrawal.create({
+        data: {
+          userId: req.user!.id,
+          amount: numAmount,
+          currency: 'USD',
+          paymentMethodId: paymentMethodId && paymentMethodId.length > 10 ? paymentMethodId : null,
+          accountInfo: accountInfo || 'Manual request',
+          status: 'pending',
+          adminNotes: methodName,
+          requestId,
+          paymentMethodStr: methodName
+        }
+      })
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
+  } catch (err) {
+    if (isSerializationFailure(err)) {
+      throw new AppError('Another request is already in progress. Please try again.', 409)
     }
-  })
+    throw err
+  }
 
   invalidateWalletCache(req.user!.id)
 
@@ -235,48 +262,57 @@ export const createEnhancedWithdrawal = asyncHandler(async (req: AuthRequest, re
 
   const userId = req.user!.id
 
-  // ── Check user balance ──────────────────────────────────────
-  const currentBalance = await WalletService.getWalletBalance(userId)
-  if (numAmount > currentBalance) {
-    throw new AppError(
-      `Insufficient balance. Your current balance is $${currentBalance.toFixed(2)}, but you requested $${numAmount.toFixed(2)}.`,
-      400
-    )
-  }
-
-  // ── Check for pending duplicate (same user + same method + amount within 5 min) ─
-  const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000)
-  const duplicate = await prisma.withdrawal.findFirst({
-    where: {
-      userId,
-      requestId: { not: null },
-      paymentMethodStr: paymentMethod,
-      amount: numAmount,
-      status: 'pending',
-      createdAt: { gte: fiveMinutesAgo }
-    }
-  })
-  if (duplicate) {
-    throw new AppError(`Duplicate submission detected. Request ${duplicate.requestId} is already pending.`, 409)
-  }
-
   // ── Generate atomic Request ID ──────────────────────────────
   const requestId = generateRequestId()
 
-  // ── Create withdrawal record ────────────────────────────────
-  const withdrawal = await prisma.withdrawal.create({
-    data: {
-      userId,
-      amount: numAmount,
-      currency: 'USD',
-      accountInfo: String(accountDetails).trim(),
-      status: 'pending',
-      locked: false,
-      requestId,
-      paymentMethodStr: paymentMethod,
-      accountDetails: String(accountDetails).trim(),
+  // ── Check balance, duplicate, and create atomically ─────────
+  let withdrawal
+  try {
+    withdrawal = await prisma.$transaction(async (tx) => {
+      const { displayBalance } = await WalletService.getBalancesRaw(userId, tx as any)
+      if (numAmount > displayBalance) {
+        throw new AppError(
+          `Insufficient balance. Your current balance is $${displayBalance.toFixed(2)}, but you requested $${numAmount.toFixed(2)}.`,
+          400
+        )
+      }
+
+      // ── Check for pending duplicate (same user + same method + amount within 5 min) ─
+      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000)
+      const duplicate = await tx.withdrawal.findFirst({
+        where: {
+          userId,
+          requestId: { not: null },
+          paymentMethodStr: paymentMethod,
+          amount: numAmount,
+          status: 'pending',
+          createdAt: { gte: fiveMinutesAgo }
+        }
+      })
+      if (duplicate) {
+        throw new AppError(`Duplicate submission detected. Request ${duplicate.requestId} is already pending.`, 409)
+      }
+
+      return tx.withdrawal.create({
+        data: {
+          userId,
+          amount: numAmount,
+          currency: 'USD',
+          accountInfo: String(accountDetails).trim(),
+          status: 'pending',
+          locked: false,
+          requestId,
+          paymentMethodStr: paymentMethod,
+          accountDetails: String(accountDetails).trim(),
+        }
+      })
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
+  } catch (err) {
+    if (isSerializationFailure(err)) {
+      throw new AppError('Another request is already in progress. Please try again.', 409)
     }
-  })
+    throw err
+  }
 
   // ── Fetch user info for notifications ──────────────────────
   const user = await prisma.user.findUnique({

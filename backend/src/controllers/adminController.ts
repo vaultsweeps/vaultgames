@@ -166,11 +166,22 @@ export const getUserDetails = asyncHandler(async (req: AuthRequest, res: Respons
 
   const user = await prisma.user.findUnique({
     where: { id },
-    include: {
+    // `select` rather than a bare top-level `include` — otherwise Prisma
+    // returns every scalar column by default, including `password` (the
+    // bcrypt hash) and the live `verifyToken`/`resetToken` values, straight
+    // into an admin-facing JSON response.
+    select: {
+      id: true, username: true, email: true, role: true, isVerified: true,
+      isActive: true, isBanned: true, lastLogin: true, createdAt: true, updatedAt: true,
+      referralCode: true, promoCode: true, referredById: true,
       profile: true,
       providerUsers: {
-        include: {
-          provider: true
+        // Only the provider's display name is ever shown here — never its
+        // apiBaseUrl/agentId/secretKey (the credentials used to sign
+        // requests to the provider's real-money API).
+        select: {
+          id: true, providerId: true, providerUserId: true, accountName: true, createdAt: true,
+          provider: { select: { name: true } }
         }
       },
       deposits: {
@@ -609,15 +620,37 @@ export const getAdminBanners = asyncHandler(async (req: AuthRequest, res: Respon
   res.json({ success: true, data: banners })
 })
 
+// Only these fields are ever settable via the API — prevents a request body
+// from also smuggling in `id`, `createdAt`, or other fields outside the
+// intended banner shape via a raw req.body spread into Prisma.
+function pickBannerFields(body: any) {
+  const { title, subtitle, imageUrl, videoUrl, ctaText, ctaLink, order, isActive, startsAt, endsAt } = body
+  const data: any = {}
+  if (title !== undefined) data.title = String(title)
+  if (subtitle !== undefined) data.subtitle = subtitle ? String(subtitle) : null
+  if (imageUrl !== undefined) data.imageUrl = String(imageUrl)
+  if (videoUrl !== undefined) data.videoUrl = videoUrl ? String(videoUrl) : null
+  if (ctaText !== undefined) data.ctaText = ctaText ? String(ctaText) : null
+  if (ctaLink !== undefined) data.ctaLink = ctaLink ? String(ctaLink) : null
+  if (order !== undefined) data.order = parseInt(String(order), 10) || 0
+  if (isActive !== undefined) data.isActive = isActive === 'false' || isActive === false ? false : true
+  if (startsAt !== undefined) data.startsAt = startsAt ? new Date(startsAt) : null
+  if (endsAt !== undefined) data.endsAt = endsAt ? new Date(endsAt) : null
+  return data
+}
+
 export const createBanner = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const banner = await prisma.banner.create({ data: req.body })
+  const data = pickBannerFields(req.body)
+  if (!data.title || !data.imageUrl) throw new AppError('title and imageUrl are required', 400)
+  const banner = await prisma.banner.create({ data })
   // Invalidate banner cache
   redis?.del('public:banners').catch(() => {})
   res.status(201).json({ success: true, data: banner, message: 'Banner created' })
 })
 
 export const updateBanner = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const banner = await prisma.banner.update({ where: { id: req.params.id as string }, data: req.body })
+  const data = pickBannerFields(req.body)
+  const banner = await prisma.banner.update({ where: { id: req.params.id as string }, data })
   // Invalidate banner cache
   redis?.del('public:banners').catch(() => {})
   res.json({ success: true, data: banner })

@@ -53,9 +53,17 @@ export const errorHandler = (err: any, req: Request, res: Response, next: NextFu
     logger.error(`${req.method} ${req.path} - ${statusCode}: ${message}`, { stack: err.stack })
   }
 
+  // For unexpected (non-operational) 5xx errors, don't leak the raw error
+  // message to the client in production — it may contain internal details
+  // (file paths, DB/library internals) that weren't written with users in mind.
+  const clientMessage =
+    statusCode >= 500 && !err.isOperational && process.env.NODE_ENV === 'production'
+      ? 'Internal server error'
+      : message
+
   res.status(statusCode).json({
     success: false,
-    message,
+    message: clientMessage,
     ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
   })
 }

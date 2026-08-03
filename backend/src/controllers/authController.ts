@@ -3,11 +3,12 @@ import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
 import prisma from '../lib/prisma'
 import { asyncHandler, AppError } from '../middleware/errorHandler'
-import { generateToken } from '../middleware/auth'
+import { generateToken, evictAuthCache } from '../middleware/auth'
 import { sendVerificationEmail, sendPasswordResetEmail, sendWelcomeEmail } from '../services/emailService'
 import { AuthRequest } from '../middleware/auth'
 import { ProviderFactory } from '../services/provider/ProviderFactory'
 import { WalletService } from '../services/WalletService'
+import { revokeTokensIssuedBefore, markEmailVerifyTokenIssued, isEmailVerifyTokenValid, clearEmailVerifyToken, createTelegramLinkToken } from '../lib/redis'
 
 
 
@@ -59,6 +60,7 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
   })
 
   // Send verification email asynchronously so it doesn't block registration
+  markEmailVerifyTokenIssued(verifyToken).catch(() => {})
   sendVerificationEmail(email, username, verifyToken).catch((e) => {
     console.error('Email send error:', e)
   })
@@ -127,7 +129,13 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     include: { profile: true }
   })
 
-  if (!user) throw new AppError('Invalid credentials', 401)
+  if (!user) {
+    // Run a dummy hash comparison so a non-existent account doesn't return
+    // measurably faster than a wrong-password attempt on a real account —
+    // otherwise response timing alone leaks whether an email/username exists.
+    await bcrypt.compare(password, '$2a$10$CwTycUXWue0Thq9StjUM0uJ8Q1TOTf9k6dQ1jJ0m5x8n9c5x8n9c5')
+    throw new AppError('Invalid credentials', 401)
+  }
   if (!user.isActive) throw new AppError('Account is suspended. Contact support.', 403)
   if (user.isBanned) throw new AppError('Account has been banned.', 403)
 
@@ -173,7 +181,8 @@ export const getMe = asyncHandler(async (req: AuthRequest, res: Response) => {
   })
 
   if (!user) throw new AppError('User not found', 404)
-  res.json({ success: true, data: user })
+  const telegramLinkToken = await createTelegramLinkToken(user.id)
+  res.json({ success: true, data: { ...user, telegramLinkToken } })
 })
 
 // POST /api/auth/verify-email/:token
@@ -182,11 +191,15 @@ export const verifyEmail = asyncHandler(async (req: Request, res: Response) => {
 
   const user = await prisma.user.findFirst({ where: { verifyToken: token as string } })
   if (!user) throw new AppError('Invalid or expired verification link', 400)
+  if (!(await isEmailVerifyTokenValid(token as string))) {
+    throw new AppError('Invalid or expired verification link', 400)
+  }
 
   await prisma.user.update({
     where: { id: user.id },
     data: { isVerified: true, verifyToken: null }
   })
+  clearEmailVerifyToken(token as string).catch(() => {})
 
   try { await sendWelcomeEmail(user.email, user.username) } catch {}
 
@@ -241,6 +254,12 @@ export const resetPassword = asyncHandler(async (req: Request, res: Response) =>
     data: { password: hashedPassword, resetToken: null, resetExpiry: null }
   })
 
+  // A password reset should invalidate any JWTs issued before this moment —
+  // otherwise a token stolen prior to the reset keeps working for its full
+  // remaining lifetime even after the user has "secured" their account.
+  await revokeTokensIssuedBefore(user.id)
+  evictAuthCache(user.id)
+
   // Sync password with provider (async)
   try {
     const providerUser = await prisma.providerUser.findFirst({ where: { userId: user.id } })
@@ -262,6 +281,12 @@ export const resetPassword = asyncHandler(async (req: Request, res: Response) =>
 // POST /api/auth/logout
 export const logout = asyncHandler(async (req: AuthRequest, res: Response) => {
   if (req.user?.id) {
+    // Invalidate the token being used for this request (and any other
+    // outstanding tokens for this user) so logout actually terminates the
+    // session server-side instead of only clearing client-side state.
+    await revokeTokensIssuedBefore(req.user.id)
+    evictAuthCache(req.user.id)
+
     await prisma.activityLog.create({
       data: { userId: req.user.id, action: 'logout', ip: req.ip }
     }).catch(() => {})
@@ -299,11 +324,12 @@ export const dashboardInit = asyncHandler(async (req: AuthRequest, res: Response
   const user = userRes.status === 'fulfilled' ? userRes.value : null
   const balance = balanceRes.status === 'fulfilled' ? balanceRes.value : 0
   const providerUser = providerUserRes.status === 'fulfilled' ? providerUserRes.value : null
+  const telegramLinkToken = user ? await createTelegramLinkToken(user.id) : null
 
   res.json({
     success: true,
     data: {
-      user,
+      user: user ? { ...user, telegramLinkToken } : user,
       balance,
       providerAccount: providerUser
         ? (providerUser as any).isMaintenance

@@ -84,7 +84,12 @@ export const useAuthStore = create<AuthStore>()(
     }),
     {
       name: 'vaultsweeps-auth',
-      partialize: (state) => ({ token: state.token, user: state.user, isAuthenticated: state.isAuthenticated, balance: state.balance })
+      // The token itself is intentionally excluded from persisted storage —
+      // it already lives in the `vaultsweeps_token` cookie (which is what
+      // api.ts actually reads on every request), so persisting a second copy
+      // to localStorage only doubles the JWT's exposure surface without
+      // being read back by anything.
+      partialize: (state) => ({ user: state.user, isAuthenticated: state.isAuthenticated, balance: state.balance })
     }
   )
 )
