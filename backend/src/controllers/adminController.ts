@@ -8,6 +8,7 @@ import { supabase } from '../utils/supabase'
 import { WalletService, invalidateWalletCache } from '../services/WalletService'
 import { ReferralService } from '../services/ReferralService'
 import { redis, getCached } from '../lib/redis'
+import { ProviderFactory } from '../services/provider/ProviderFactory'
 import * as XLSX from 'xlsx'
 
 // GET /api/admin/stats
@@ -196,6 +197,25 @@ export const getUserDetails = asyncHandler(async (req: AuthRequest, res: Respons
 
   if (!user) throw new AppError('User not found', 404);
 
+  // Fetch balances for provider users
+  const providerUsersWithBalance = await Promise.all(
+    user.providerUsers.map(async (pu) => {
+      let balance = 0;
+      try {
+        const providerService = await ProviderFactory.getProviderById(pu.providerId);
+        balance = await providerService.getPlayerBalance(pu.accountName);
+      } catch (e) {
+        console.error(`Failed to fetch balance for ${pu.accountName}:`, e);
+      }
+      return { ...pu, balance };
+    })
+  );
+
+  const userWithBalances = {
+    ...user,
+    providerUsers: providerUsersWithBalance
+  };
+
   // Aggregate stats
   const totalDepositsData = await prisma.deposit.aggregate({
     where: { userId: id, status: 'approved' },
@@ -214,7 +234,7 @@ export const getUserDetails = asyncHandler(async (req: AuthRequest, res: Respons
   res.json({
     success: true,
     data: {
-      user,
+      user: userWithBalances,
       walletBalance,
       stats: {
         totalDeposited: totalDepositsData._sum.amount || 0,

@@ -244,6 +244,9 @@ export default function UserDetailsPage() {
                   <div key={pu.id} className="p-3 bg-white/5 rounded-lg border border-border-subtle">
                     <div className="flex justify-between items-center mb-1">
                       <span className="font-semibold text-white">{pu.provider.name}</span>
+                      {pu.balance !== undefined && (
+                        <span className="text-emerald-400 font-bold">${pu.balance.toFixed(2)}</span>
+                      )}
                     </div>
                     <div className="text-sm text-slate-400">In-game username: <span className="text-neon-blue">{pu.accountName}</span></div>
                     <div className="text-xs text-slate-500 mt-1 text-right">Added {new Date(pu.createdAt).toLocaleDateString()}</div>
