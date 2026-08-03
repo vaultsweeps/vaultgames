@@ -13,16 +13,24 @@ router.post('/payment', async (req: Request, res: Response) => {
     const signature = req.headers['x-webhook-signature'] as string
     const secret = process.env.WEBHOOK_SECRET || ''
 
-    // Verify webhook signature
-    if (secret) {
-      const expected = crypto
-        .createHmac('sha256', secret)
-        .update(JSON.stringify(req.body))
-        .digest('hex')
+    // Verify webhook signature (fail closed if secret isn't configured)
+    if (!secret) {
+      console.error('WEBHOOK_SECRET is not configured — rejecting webhook request')
+      return res.status(500).json({ success: false, message: 'Webhook not configured' })
+    }
 
-      if (signature !== `sha256=${expected}`) {
-        return res.status(401).json({ success: false, message: 'Invalid signature' })
-      }
+    const expected = crypto
+      .createHmac('sha256', secret)
+      .update(JSON.stringify(req.body))
+      .digest('hex')
+
+    const expectedBuf = Buffer.from(`sha256=${expected}`)
+    const signatureBuf = Buffer.from(signature || '')
+    if (
+      expectedBuf.length !== signatureBuf.length ||
+      !crypto.timingSafeEqual(expectedBuf, signatureBuf)
+    ) {
+      return res.status(401).json({ success: false, message: 'Invalid signature' })
     }
 
     const { event, data } = req.body
@@ -84,9 +92,48 @@ router.post('/payment', async (req: Request, res: Response) => {
   }
 })
 
-// Crypto payment webhook (e.g. Coinbase Commerce, NOWPayments)
+// NOWPayments IPN signature verification: HMAC-SHA512 over the payload with
+// object keys sorted recursively (per NOWPayments IPN docs), compared to the
+// `x-nowpayments-sig` header.
+function sortObjectKeys(obj: any): any {
+  if (Array.isArray(obj)) return obj.map(sortObjectKeys)
+  if (obj && typeof obj === 'object') {
+    return Object.keys(obj)
+      .sort()
+      .reduce((acc: any, key) => {
+        acc[key] = sortObjectKeys(obj[key])
+        return acc
+      }, {})
+  }
+  return obj
+}
+
+function verifyNowPaymentsSignature(payload: any, signature: string | undefined): boolean {
+  const secret = process.env.NOWPAYMENTS_IPN_SECRET
+  if (!secret || !signature) return false
+
+  const sortedPayload = JSON.stringify(sortObjectKeys(payload))
+  const expected = crypto.createHmac('sha512', secret).update(sortedPayload).digest('hex')
+
+  const expectedBuf = Buffer.from(expected)
+  const signatureBuf = Buffer.from(signature)
+  return expectedBuf.length === signatureBuf.length && crypto.timingSafeEqual(expectedBuf, signatureBuf)
+}
+
+// Crypto payment webhook (NOWPayments)
 router.post('/crypto', async (req: Request, res: Response) => {
   try {
+    const signature = req.headers['x-nowpayments-sig'] as string | undefined
+
+    if (!process.env.NOWPAYMENTS_IPN_SECRET) {
+      console.error('NOWPAYMENTS_IPN_SECRET is not configured — rejecting crypto webhook request')
+      return res.status(500).json({ success: false, message: 'Webhook not configured' })
+    }
+
+    if (!verifyNowPaymentsSignature(req.body, signature)) {
+      return res.status(401).json({ success: false, message: 'Invalid signature' })
+    }
+
     const { order_id, payment_status, pay_amount, price_amount, actually_paid } = req.body
 
     // NOWPayments example

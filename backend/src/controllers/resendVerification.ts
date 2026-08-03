@@ -4,6 +4,7 @@ import prisma from '../lib/prisma'
 import { asyncHandler, AppError } from '../middleware/errorHandler'
 import { sendVerificationEmail } from '../services/emailService'
 import { AuthRequest } from '../middleware/auth'
+import { markEmailVerifyTokenIssued } from '../lib/redis'
 
 export const resendVerification = asyncHandler(async (req: AuthRequest, res: Response) => {
   const userId = req.user?.id
@@ -21,6 +22,9 @@ export const resendVerification = asyncHandler(async (req: AuthRequest, res: Res
       data: { verifyToken }
     })
   }
+
+  // Refresh the token's validity window on every resend
+  await markEmailVerifyTokenIssued(verifyToken)
 
   await sendVerificationEmail(user.email, user.username, verifyToken)
 

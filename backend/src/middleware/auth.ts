@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express'
 import jwt from 'jsonwebtoken'
 import prisma from '../lib/prisma';
+import { getTokensRevokedBefore } from '../lib/redis';
 
 export interface AuthRequest extends Request {
   user?: { id: string; role: string; email: string }
@@ -9,7 +10,7 @@ export interface AuthRequest extends Request {
 // ─── In-memory auth cache (30-second TTL) ────────────────────────────────────
 // Prevents repeated DB lookups for the same user when multiple parallel API
 // calls arrive in the same short window (e.g. 3 parallel fetches on page load).
-type CachedAuthUser = { id: string; role: string; email: string; isActive: boolean; isBanned: boolean; expiresAt: number }
+type CachedAuthUser = { id: string; role: string; email: string; isActive: boolean; isBanned: boolean; revokedBefore: number | null; expiresAt: number }
 const authCache = new Map<string, CachedAuthUser>()
 const AUTH_CACHE_TTL = 30_000 // 30 seconds
 
@@ -20,11 +21,11 @@ function getCachedAuthUser(id: string): CachedAuthUser | null {
   return cached
 }
 
-function setCachedAuthUser(user: { id: string; role: string; email: string; isActive: boolean; isBanned: boolean }) {
+function setCachedAuthUser(user: { id: string; role: string; email: string; isActive: boolean; isBanned: boolean; revokedBefore: number | null }) {
   authCache.set(user.id, { ...user, expiresAt: Date.now() + AUTH_CACHE_TTL })
 }
 
-// Evict user from auth cache (call after banning/suspending a user)
+// Evict user from auth cache (call after banning/suspending a user, logout, or password change)
 export function evictAuthCache(userId: string) {
   authCache.delete(userId)
 }
@@ -37,24 +38,33 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
     }
 
     const token = authHeader.split(' ')[1]
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { id: string; role: string; email: string }
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!, { algorithms: ['HS256'] }) as { id: string; role: string; email: string; iat: number }
 
     // Layer 1: in-memory cache — avoids DB on repeated requests within 30s
     let user = getCachedAuthUser(decoded.id)
 
     if (!user) {
-      // Layer 2: DB lookup (only when cache is cold)
-      const dbUser = await prisma.user.findUnique({
-        where: { id: decoded.id },
-        select: { id: true, role: true, email: true, isActive: true, isBanned: true }
-      })
+      // Layer 2: DB + revocation-record lookup (only when cache is cold)
+      const [dbUser, revokedBefore] = await Promise.all([
+        prisma.user.findUnique({
+          where: { id: decoded.id },
+          select: { id: true, role: true, email: true, isActive: true, isBanned: true }
+        }),
+        getTokensRevokedBefore(decoded.id)
+      ])
       if (!dbUser) return res.status(401).json({ success: false, message: 'User not found' })
-      setCachedAuthUser(dbUser)
+      setCachedAuthUser({ ...dbUser, revokedBefore })
       user = getCachedAuthUser(decoded.id)!
     }
 
     if (!user.isActive) return res.status(403).json({ success: false, message: 'Account is suspended' })
     if (user.isBanned) return res.status(403).json({ success: false, message: 'Account is banned' })
+
+    // Tokens issued before a logout / password reset are no longer valid,
+    // even if they haven't hit their natural expiry yet.
+    if (user.revokedBefore && decoded.iat * 1000 < user.revokedBefore) {
+      return res.status(401).json({ success: false, message: 'Session expired, please login again' })
+    }
 
     req.user = { id: user.id, role: user.role, email: user.email }
     next()

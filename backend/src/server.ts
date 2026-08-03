@@ -94,6 +94,14 @@ app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 app.use(compression())
 
+// Redact one-time secret tokens (password reset / email verification) out of
+// the URL before it's written to any access log — these tokens are otherwise
+// long-lived-enough and sensitive enough that persisting them in log files
+// is an unnecessary secondary exposure path.
+morgan.token('url', (req: express.Request) =>
+  (req.originalUrl || req.url || '').replace(/(reset-password|verify-email)\/[^/?]+/gi, '$1/[REDACTED]')
+)
+
 // Logging
 if (process.env.NODE_ENV !== 'production') {
   app.use(morgan('dev'))

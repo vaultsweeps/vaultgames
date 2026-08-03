@@ -4,6 +4,15 @@ import fs from 'fs'
 import prisma from '../lib/prisma'
 import { logger } from '../utils/logger'
 
+// Escapes Telegram legacy-Markdown metacharacters in user-controlled text
+// before interpolating it into a `parse_mode: 'Markdown'` message — without
+// this, a support-ticket subject/message (fully free text) could embed
+// `[label](https://evil.example)` and render as a real clickable link in the
+// admin-facing Telegram notification.
+function escMd(s: any): string {
+  return String(s ?? '').replace(/([_*`\[\]])/g, '\\$1')
+}
+
 export class TelegramService {
   static async sendManualCashoutRequest(data: {
     amount: number
@@ -88,12 +97,12 @@ export class TelegramService {
   static async sendSupportTicketNotification(username: string, subject: string, message: string, priority: string) {
     const text = `
 🚨 *New Support Ticket* 🚨
-*User:* ${username}
-*Priority:* ${priority.toUpperCase()}
-*Subject:* ${subject}
+*User:* ${escMd(username)}
+*Priority:* ${escMd(priority.toUpperCase())}
+*Subject:* ${escMd(subject)}
 
 *Message:*
-${message}
+${escMd(message)}
     `;
     return this.sendTextMessage(text);
   }
@@ -109,12 +118,12 @@ ${message}
 
     const text = `
 💸 *New Withdrawal Request* 💸
-${requestId ? `📋 *Request ID:* \`${requestId}\`\n` : ''}*User:* ${username} (${email})
+${requestId ? `📋 *Request ID:* \`${requestId}\`\n` : ''}*User:* ${escMd(username)} (${escMd(email)})
 *Amount:* $${amount.toFixed(2)}
-*Method:* ${method}
+*Method:* ${escMd(method)}
 
 *Account Info:*
-${accountInfo}
+${escMd(accountInfo)}
     `.trim();
 
     try {
@@ -157,10 +166,10 @@ ${accountInfo}
   static async sendDepositNotification(username: string, email: string, amount: number, method: string, txRef: string) {
     const text = `
 💰 *New Deposit Created* 💰
-*User:* ${username} (${email})
+*User:* ${escMd(username)} (${escMd(email)})
 *Amount:* $${amount.toFixed(2)}
-*Method:* ${method}
-*Ref:* ${txRef}
+*Method:* ${escMd(method)}
+*Ref:* ${escMd(txRef)}
     `;
     return this.sendTextMessage(text);
   }

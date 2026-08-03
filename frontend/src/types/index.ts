@@ -9,6 +9,7 @@ export interface User {
   isBanned: boolean
   createdAt: string
   profile?: UserProfile
+  telegramLinkToken?: string | null
 }
 
 export interface UserProfile {

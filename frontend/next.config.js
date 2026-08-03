@@ -50,6 +50,37 @@ const nextConfig = {
   async headers() {
     return [
       {
+        // Baseline security headers on every response.
+        source: '/:path*',
+        headers: [
+          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains' },
+          {
+            // Report-Only: browsers log violations to the console but never
+            // block anything, so this can't break the app. It's a starting
+            // point for eventually graduating to an enforcing policy once
+            // violation reports confirm the source list is complete —
+            // fonts are self-hosted via next/font, but framer-motion/gsap
+            // inline styles and the Next.js runtime bootstrap script need
+            // 'unsafe-inline' until this is upgraded to a nonce-based policy.
+            key: 'Content-Security-Policy-Report-Only',
+            value: [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+              "style-src 'self' 'unsafe-inline'",
+              "img-src 'self' data: https:",
+              "font-src 'self' data:",
+              "connect-src 'self' https: wss:",
+              "frame-ancestors 'self'",
+              "object-src 'none'",
+              "base-uri 'self'",
+            ].join('; '),
+          },
+        ],
+      },
+      {
         source: '/images/:path*',
         headers: [
           { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }
