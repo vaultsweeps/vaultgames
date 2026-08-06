@@ -2,6 +2,7 @@ import { Request, Response } from 'express'
 import prisma from '../lib/prisma'
 import { asyncHandler, AppError } from '../middleware/errorHandler'
 import { ProviderService } from '../services/provider/ProviderService'
+import { createProviderService } from '../services/provider/ProviderFactory'
 
 // The raw secretKey (used to sign requests to the provider's real-money API)
 // should never round-trip back to the browser — only a short preview so the
@@ -52,7 +53,7 @@ export const testConnection = asyncHandler(async (req: Request, res: Response) =
   const provider = await prisma.provider.findUnique({ where: { id: req.params.id as string } })
   if (!provider) throw new AppError('Provider not found', 404)
   
-  const service = new ProviderService(provider)
+  const service = createProviderService(provider)
   try {
     const balance = await service.getAgentBalance()
     res.json({ success: true, message: 'Connection successful', data: { balance } })
