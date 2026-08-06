@@ -1,13 +1,17 @@
 import { ProviderService } from './ProviderService';
 import { FastApiProviderService } from './FastApiProviderService';
+import { OrionstarProviderService } from './OrionstarProviderService';
 import { ProviderAdapter } from './ProviderAdapter';
 import prisma from '../../lib/prisma';
 import { Provider } from '@prisma/client';
 
-function createProviderService(provider: Provider): ProviderAdapter {
+export function createProviderService(provider: Provider): ProviderAdapter {
   const name = provider.name?.toLowerCase() || '';
-  if (name.includes('vblink') || name.includes('ultrapanda') || name.includes('orionstar') || name.includes('orion star')) {
+  if (name.includes('vblink') || name.includes('ultrapanda')) {
     return new FastApiProviderService(provider);
+  }
+  if (name.includes('orionstar') || name.includes('orion star')) {
+    return new OrionstarProviderService(provider);
   }
   return new ProviderService(provider);
 }
