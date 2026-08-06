@@ -80,14 +80,7 @@ const limiter = rateLimit({
   legacyHeaders: false,
 })
 
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100, // Allow up to 100 auth attempts per 15-minute window
-  message: { success: false, message: 'Too many authentication attempts.' },
-})
-
 app.use('/api/', limiter)
-app.use('/api/auth/', authLimiter)
 
 // Body parsing
 app.use(express.json({ limit: '10mb' }))
