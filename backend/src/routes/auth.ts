@@ -3,6 +3,7 @@ import { body } from 'express-validator'
 import { register, login, getMe, verifyEmail, forgotPassword, resetPassword, logout, getBalance, checkUsername, dashboardInit } from '../controllers/authController'
 import { authenticate } from '../middleware/auth'
 import { validateRequest } from '../middleware/validate'
+import { authLimiter } from '../middleware/rateLimiter'
 
 const router = Router()
 
@@ -13,6 +14,7 @@ router.post('/register',
     body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
   ],
   validateRequest,
+  authLimiter,
   register
 )
 
@@ -22,6 +24,7 @@ router.post('/login',
     body('password').notEmpty(),
   ],
   validateRequest,
+  authLimiter,
   login
 )
 
@@ -30,8 +33,9 @@ router.get('/balance', authenticate, getBalance)
 router.get('/dashboard-init', authenticate, dashboardInit)
 router.get('/check-username', checkUsername)
 router.post('/verify-email/:token', verifyEmail)
-router.post('/forgot-password', [body('email').isEmail()], validateRequest, forgotPassword)
+router.post('/forgot-password', authLimiter, [body('email').isEmail()], validateRequest, forgotPassword)
 router.post('/reset-password/:token',
+  authLimiter,
   [body('password').isLength({ min: 8 })],
   validateRequest,
   resetPassword
