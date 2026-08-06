@@ -6,7 +6,7 @@ import { Provider } from '@prisma/client';
 
 function createProviderService(provider: Provider): ProviderAdapter {
   const name = provider.name?.toLowerCase() || '';
-  if (name.includes('vblink') || name.includes('ultrapanda')) {
+  if (name.includes('vblink') || name.includes('ultrapanda') || name.includes('orionstar') || name.includes('orion star')) {
     return new FastApiProviderService(provider);
   }
   return new ProviderService(provider);
