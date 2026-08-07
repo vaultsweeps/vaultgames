@@ -57,3 +57,6 @@ coverage/
 
 # Prisma
 backend/prisma/*.db
+
+*.sql
+
