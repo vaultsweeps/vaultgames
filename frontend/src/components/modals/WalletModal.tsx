@@ -4,9 +4,10 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { X, AlertCircle, ChevronDown, ChevronUp, ArrowDownLeft, ArrowUpRight } from 'lucide-react'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
-import ManualCashoutModal from './ManualCashoutModal'
-import ZappayDepositModal from './ZappayDepositModal'
-import ChimePayPalDepositModal from './ChimePayPalDepositModal'
+import dynamic from 'next/dynamic'
+const ManualCashoutModal = dynamic(() => import('./ManualCashoutModal'), { ssr: false })
+const ZappayDepositModal = dynamic(() => import('./ZappayDepositModal'), { ssr: false })
+const ChimePayPalDepositModal = dynamic(() => import('./ChimePayPalDepositModal'), { ssr: false })
 import { depositApi, withdrawalApi } from '@/lib/api'
 
 interface WalletModalProps {
