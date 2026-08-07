@@ -45,14 +45,6 @@ const nextConfig = {
     NEXT_PUBLIC_TELEGRAM_URL: process.env.NEXT_PUBLIC_TELEGRAM_URL || 'https://t.me/nexusgaming',
     NEXT_PUBLIC_FACEBOOK_URL: process.env.NEXT_PUBLIC_FACEBOOK_URL || 'https://m.me/nexusgaming'
   },
-  async rewrites() {
-    return [
-      {
-        source: '/api/:path*',
-        destination: 'https://api.vaultsweeps.com/api/:path*' // Proxy to VPS backend via SSL subdomain
-      }
-    ]
-  },
   // Remove X-Powered-By header for security
   poweredByHeader: false,
   async headers() {
