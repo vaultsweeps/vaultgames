@@ -32,7 +32,7 @@ export default function Footer() {
       toast.success(res.data.message || 'Coupon claimed!')
       setCouponCode('')
       // Update balance globally if possible, or force reload
-      useAuthStore.getState().fetchUser()
+      useAuthStore.getState().fetchMe()
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to claim coupon')
     } finally {
