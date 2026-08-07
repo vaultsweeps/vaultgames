@@ -49,7 +49,7 @@ const nextConfig = {
     return [
       {
         source: '/api/:path*',
-        destination: 'http://162.0.214.206:5000/api/:path*' // Proxy to VPS backend
+        destination: 'http://162.0.214.206/api/:path*' // Proxy to VPS backend via Nginx
       }
     ]
   },
