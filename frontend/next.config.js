@@ -49,7 +49,7 @@ const nextConfig = {
     return [
       {
         source: '/api/:path*',
-        destination: 'http://162.0.214.206/api/:path*' // Proxy to VPS backend via Nginx
+        destination: 'https://api.vaultsweeps.com/api/:path*' // Proxy to VPS backend via SSL subdomain
       }
     ]
   },
