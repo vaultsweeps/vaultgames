@@ -197,6 +197,12 @@ export const adminApi = {
   updateBonus: (id: string, data: object) => apiClient.put(`/admin/bonuses/${id}`, data),
   deleteBonus: (id: string) => apiClient.delete(`/admin/bonuses/${id}`),
 
+  // Coupons
+  getCoupons: (params?: object) => apiClient.get('/admin/coupons', { params }),
+  createCoupon: (data: object) => apiClient.post('/admin/coupons', data),
+  updateCoupon: (id: string, data: object) => apiClient.put(`/admin/coupons/${id}`, data),
+  deleteCoupon: (id: string) => apiClient.delete(`/admin/coupons/${id}`),
+
   // Banners
   getBanners: (params?: object) => apiClient.get('/admin/banners', { params }),
   createBanner: (data: object | FormData) => apiClient.post('/admin/banners', data, {

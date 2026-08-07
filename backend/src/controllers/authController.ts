@@ -14,7 +14,7 @@ import { revokeTokensIssuedBefore, markEmailVerifyTokenIssued, isEmailVerifyToke
 
 // POST /api/auth/register
 export const register = asyncHandler(async (req: Request, res: Response) => {
-  const { username, email, password, referralCode } = req.body
+  const { username, email, password, referralCode, couponCode } = req.body
 
   // Check existing
   const existing = await prisma.user.findFirst({
@@ -23,6 +23,16 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
   if (existing) {
     if (existing.email === email) throw new AppError('Email already registered', 409)
     throw new AppError('Username already taken', 409)
+  }
+
+  // Check coupon before creating user
+  let coupon = null
+  if (couponCode) {
+    coupon = await prisma.coupon.findUnique({ where: { code: couponCode } })
+    if (!coupon) throw new AppError('Invalid coupon code', 400)
+    if (!coupon.isActive) throw new AppError('Coupon code is inactive', 400)
+    if (coupon.expiresAt && coupon.expiresAt < new Date()) throw new AppError('Coupon code has expired', 400)
+    if (coupon.usageLimit !== null && coupon.usedCount >= coupon.usageLimit) throw new AppError('Coupon code usage limit reached', 400)
   }
 
   const hashedPassword = await bcrypt.hash(password, 10)
@@ -58,6 +68,44 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
     },
     select: { id: true, username: true, email: true, role: true, isVerified: true, createdAt: true }
   })
+
+  // Process coupon if present
+  if (coupon) {
+    await prisma.$transaction([
+      prisma.couponUsage.create({
+        data: {
+          couponId: coupon.id,
+          userId: user.id
+        }
+      }),
+      prisma.coupon.update({
+        where: { id: coupon.id },
+        data: { usedCount: { increment: 1 } }
+      })
+    ])
+
+    // Find or create freeplay bonus definition
+    let freeplayBonus = await prisma.bonus.findFirst({ where: { type: 'freeplay' } })
+    if (!freeplayBonus) {
+      freeplayBonus = await prisma.bonus.create({
+        data: {
+          title: 'Freeplay Coupon Bonus',
+          description: 'Bonus granted from freeplay coupon',
+          type: 'freeplay',
+          requirements: 'None',
+          terms: 'Cannot be cashed out directly.'
+        }
+      })
+    }
+
+    await prisma.bonusClaim.create({
+      data: {
+        userId: user.id,
+        bonusId: freeplayBonus.id,
+        amount: coupon.amount
+      }
+    })
+  }
 
   // Send verification email asynchronously so it doesn't block registration
   markEmailVerifyTokenIssued(verifyToken).catch(() => {})

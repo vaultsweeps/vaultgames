@@ -11,7 +11,8 @@ import {
   getAdminBonuses, createBonus, updateBonus, deleteBonus,
   getAdminEnhancedWithdrawals, exportEnhancedWithdrawalsCSV,
   adminApproveEnhancedWithdrawal, adminRejectEnhancedWithdrawal,
-  getUserDetails, voidUserBalance, addUserBalance, exportUsersXLS
+  getUserDetails, voidUserBalance, addUserBalance, exportUsersXLS,
+  getCoupons, createCoupon, updateCoupon, deleteCoupon
 } from '../controllers/adminController'
 import {
   getProviders, createProvider, updateProvider, deleteProvider,
@@ -89,5 +90,11 @@ router.post('/providers/:id/test', testConnection)
 router.put('/providers/:id/games', assignGamesToProvider)
 router.get('/provider-logs', getProviderLogs)
 router.get('/provider-transactions', getProviderTransactions)
+
+// Coupons
+router.get('/coupons', getCoupons)
+router.post('/coupons', createCoupon)
+router.put('/coupons/:id', updateCoupon)
+router.delete('/coupons/:id', deleteCoupon)
 
 export default router

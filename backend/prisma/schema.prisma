@@ -47,6 +47,8 @@ enum BonusType {
   referral
   vip
   seasonal
+  wheel
+  freeplay
 }
 
 enum PaymentMethodType {
@@ -101,6 +103,7 @@ model User {
   providerUsers ProviderUser[]
   providerTransactions ProviderTransaction[]
   conversations Conversation[]
+  couponUsages  CouponUsage[]
 }
 
 model UserProfile {
@@ -550,4 +553,30 @@ model Message {
   conversation    Conversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
 
   @@index([conversation_id])
+}
+
+model Coupon {
+  id         String        @id @default(cuid())
+  code       String        @unique
+  amount     Float         @default(3)
+  isActive   Boolean       @default(true)
+  expiresAt  DateTime?
+  usageLimit Int?          // How many times total this coupon can be used
+  usedCount  Int           @default(0)
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  usages     CouponUsage[]
+}
+
+model CouponUsage {
+  id        String   @id @default(cuid())
+  couponId  String
+  userId    String
+  createdAt DateTime @default(now())
+
+  coupon    Coupon   @relation(fields: [couponId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([couponId, userId])
 }

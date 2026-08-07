@@ -19,6 +19,7 @@ const NAV_ITEMS = [
   { href: '/admin/withdrawals', icon: Wallet, label: 'Withdrawals' },
   { href: '/admin/games', icon: Gamepad2, label: 'Games' },
   { href: '/admin/bonuses', icon: Gift, label: 'Bonuses' },
+  { href: '/admin/coupons', icon: Gift, label: 'Coupons' },
   { href: '/admin/banners', icon: ImageIcon, label: 'Banners' },
   { href: '/admin/support', icon: HelpCircle, label: 'Support' },
   { href: '/admin/reports', icon: BarChart3, label: 'Reports' },
