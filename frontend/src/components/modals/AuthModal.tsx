@@ -24,6 +24,7 @@ const registerSchema = z.object({
   username: z.string().min(3, 'Username must be at least 3 characters').max(20, 'Username too long').regex(/^[a-zA-Z0-9_]+$/, 'Only letters, numbers, underscores'),
   telegramUsername: z.string().optional(),
   password: z.string().min(8, 'Password must be at least 8 characters'),
+  couponCode: z.string().optional(),
   terms: z.literal(true, { errorMap: () => ({ message: 'You must accept the terms' }) })
 })
 
@@ -64,6 +65,7 @@ export default function AuthModal({ isOpen, onClose, initialView = 'login' }: Au
         email: data.email,
         username: data.username,
         password: data.password,
+        couponCode: data.couponCode,
       })
       await login(data.email, data.password)
       toast.success('Registration successful! Welcome to Vault Sweeps!')
@@ -181,6 +183,11 @@ export default function AuthModal({ isOpen, onClose, initialView = 'login' }: Au
                         </button>
                       </div>
                       {regErrors.password && <p className="text-red-400 text-xs mt-1 px-1">{regErrors.password.message as string}</p>}
+                    </div>
+
+                    <div>
+                      <input {...registerReg('couponCode')} type="text" placeholder="Coupon Code (Optional)" className="w-full bg-[#13131A] border border-transparent focus:border-neon-blue/50 rounded-xl px-4 py-3.5 text-sm text-white placeholder-muted focus:outline-none transition-all uppercase" />
+                      {regErrors.couponCode && <p className="text-red-400 text-xs mt-1 px-1">{regErrors.couponCode.message as string}</p>}
                     </div>
 
                     <label className="flex items-start gap-3 mt-4 mb-4 cursor-pointer">
