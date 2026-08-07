@@ -2,7 +2,7 @@ import { Response } from 'express'
 import prisma from '../lib/prisma'
 import { asyncHandler, AppError } from '../middleware/errorHandler'
 import { AuthRequest } from '../middleware/auth'
-import { WalletService, invalidateWalletCache } from '../services/WalletService'
+import { invalidateWalletCache } from '../services/WalletService'
 
 export const claimCoupon = asyncHandler(async (req: AuthRequest, res: Response) => {
   const { code } = req.body
@@ -74,8 +74,7 @@ export const claimCoupon = asyncHandler(async (req: AuthRequest, res: Response) 
     })
   })
   
-  // Update wallet outside transaction to avoid deadlocks
-  await WalletService.addFreeplayBalance(userId, coupon.amount, `Coupon code claimed: ${coupon.code}`)
+  // Invalidate wallet cache so next balance fetch is fresh
   await invalidateWalletCache(userId)
 
   res.json({
