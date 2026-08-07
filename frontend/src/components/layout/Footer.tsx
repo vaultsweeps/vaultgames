@@ -1,9 +1,10 @@
 'use client'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Send, Facebook, Twitter, Youtube, Instagram, MessageCircle, Mail, Gift } from 'lucide-react'
+import { Send, Facebook, Twitter, Youtube, Instagram, MessageCircle, Mail, Gift, Tag, Loader2 } from 'lucide-react'
 import { useState, useEffect } from 'react'
-import { publicApi } from '@/lib/api'
+import { publicApi, userApi } from '@/lib/api'
+import toast from 'react-hot-toast'
 import { useAuthStore } from '@/store/authStore'
 import { getTelegramUrl } from '@/lib/telegram'
 import { getSignalUrl } from '@/lib/signal'
@@ -13,7 +14,31 @@ export default function Footer() {
   const [settings, setSettings] = useState<any>({})
   const [mounted, setMounted] = useState(false)
   const [signalUrl, setSignalUrl] = useState('')
+  const [couponCode, setCouponCode] = useState('')
+  const [claiming, setClaiming] = useState(false)
   const { user } = useAuthStore()
+
+  const handleClaimCoupon = async () => {
+    if (!user) {
+      toast.error('Please login or register to claim coupons')
+      // Let AuthModal handle it via UI navigation if needed, or redirect
+      return
+    }
+    if (!couponCode) return toast.error('Enter a coupon code')
+    
+    setClaiming(true)
+    try {
+      const res = await userApi.claimCoupon({ code: couponCode })
+      toast.success(res.data.message || 'Coupon claimed!')
+      setCouponCode('')
+      // Update balance globally if possible, or force reload
+      useAuthStore.getState().fetchUser()
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to claim coupon')
+    } finally {
+      setClaiming(false)
+    }
+  }
 
   useEffect(() => {
     setYear(new Date().getFullYear())
@@ -48,6 +73,40 @@ export default function Footer() {
               <Link href="/verify" className="block w-full md:w-auto text-center bg-[#4fb0ff] hover:bg-[#3ea0ff] text-white font-semibold py-3 sm:py-4 px-8 sm:px-10 rounded-xl transition-all hover:scale-105 active:scale-95 shadow-[0_0_15px_rgba(79,176,255,0.3)]">
                 Claim now
               </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Coupon Claim Banner */}
+      {mounted && (
+        <div className="max-w-7xl mx-auto px-4 pt-4 pb-8">
+          <div className="bg-[#13131a]/80 backdrop-blur-sm border border-[#00D4FF]/20 rounded-2xl p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden">
+            <div className="flex flex-col sm:flex-row items-center sm:items-start md:items-center text-center sm:text-left gap-6 z-10 w-full md:w-auto">
+              <div className="relative w-14 h-14 sm:w-16 sm:h-16 flex-shrink-0 flex items-center justify-center">
+                <div className="absolute inset-0 bg-gradient-to-tr from-[#00D4FF] to-blue-600 rounded-xl transform rotate-6 shadow-[0_0_15px_rgba(0,212,255,0.3)]" />
+                <Tag className="w-7 h-7 sm:w-8 sm:h-8 text-white relative z-10" />
+              </div>
+              <div>
+                <h3 className="font-display font-bold text-xl sm:text-2xl text-white mb-1 tracking-tight">Have a Coupon Code?</h3>
+                <p className="text-slate-400 text-sm">Enter it below to claim your freeplay balance.</p>
+              </div>
+            </div>
+            <div className="z-10 w-full md:w-auto flex-shrink-0 flex gap-2">
+              <input 
+                type="text" 
+                value={couponCode}
+                onChange={e => setCouponCode(e.target.value.toUpperCase())}
+                placeholder="ENTER CODE" 
+                className="w-full md:w-64 bg-black/40 border border-white/10 focus:border-[#00D4FF]/50 rounded-xl px-4 py-3 sm:py-4 text-sm text-white placeholder-slate-500 focus:outline-none transition-all uppercase font-bold tracking-wider"
+              />
+              <button 
+                onClick={handleClaimCoupon}
+                disabled={claiming || !couponCode}
+                className="flex-shrink-0 bg-gradient-to-r from-[#00D4FF] to-blue-600 hover:from-blue-500 hover:to-[#00D4FF] text-white font-bold py-3 sm:py-4 px-6 sm:px-8 rounded-xl transition-all shadow-[0_0_15px_rgba(0,212,255,0.3)] hover:shadow-[0_0_20px_rgba(0,212,255,0.5)] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-[120px]"
+              >
+                {claiming ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Claim'}
+              </button>
             </div>
           </div>
         </div>
