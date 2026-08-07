@@ -1031,3 +1031,67 @@ export const verifyUser = asyncHandler(async (req: AuthRequest, res: Response) =
 
 
 
+
+// ==========================================
+// COUPON MANAGEMENT
+// ==========================================
+
+export const getCoupons = asyncHandler(async (req: Request, res: Response) => {
+  const coupons = await prisma.coupon.findMany({
+    orderBy: { createdAt: 'desc' }
+  })
+  res.json({ success: true, coupons })
+})
+
+export const createCoupon = asyncHandler(async (req: Request, res: Response) => {
+  const { code, amount, usageLimit, expiresAt, isActive } = req.body
+
+  if (!code) throw new AppError('Coupon code is required', 400)
+
+  const existing = await prisma.coupon.findUnique({ where: { code } })
+  if (existing) throw new AppError('Coupon code already exists', 400)
+
+  const coupon = await prisma.coupon.create({
+    data: {
+      code: code.toUpperCase(),
+      amount: amount || 3,
+      usageLimit: usageLimit || null,
+      expiresAt: expiresAt ? new Date(expiresAt) : null,
+      isActive: isActive !== undefined ? isActive : true
+    }
+  })
+
+  res.status(201).json({ success: true, coupon })
+})
+
+export const updateCoupon = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params
+  const { code, amount, usageLimit, expiresAt, isActive } = req.body
+
+  const existing = await prisma.coupon.findUnique({ where: { id } })
+  if (!existing) throw new AppError('Coupon not found', 404)
+
+  const coupon = await prisma.coupon.update({
+    where: { id },
+    data: {
+      code: code?.toUpperCase(),
+      amount,
+      usageLimit,
+      expiresAt: expiresAt === null ? null : (expiresAt ? new Date(expiresAt) : undefined),
+      isActive
+    }
+  })
+
+  res.json({ success: true, coupon })
+})
+
+export const deleteCoupon = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params
+  
+  const existing = await prisma.coupon.findUnique({ where: { id } })
+  if (!existing) throw new AppError('Coupon not found', 404)
+
+  await prisma.coupon.delete({ where: { id } })
+
+  res.json({ success: true, message: 'Coupon deleted successfully' })
+})
