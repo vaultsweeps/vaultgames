@@ -1036,14 +1036,14 @@ export const verifyUser = asyncHandler(async (req: AuthRequest, res: Response) =
 // COUPON MANAGEMENT
 // ==========================================
 
-export const getCoupons = asyncHandler(async (req: Request, res: Response) => {
+export const getCoupons = asyncHandler(async (req: AuthRequest, res: Response) => {
   const coupons = await prisma.coupon.findMany({
     orderBy: { createdAt: 'desc' }
   })
   res.json({ success: true, coupons })
 })
 
-export const createCoupon = asyncHandler(async (req: Request, res: Response) => {
+export const createCoupon = asyncHandler(async (req: AuthRequest, res: Response) => {
   const { code, amount, usageLimit, expiresAt, isActive } = req.body
 
   if (!code) throw new AppError('Coupon code is required', 400)
@@ -1064,8 +1064,8 @@ export const createCoupon = asyncHandler(async (req: Request, res: Response) => 
   res.status(201).json({ success: true, coupon })
 })
 
-export const updateCoupon = asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params
+export const updateCoupon = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const id = req.params.id as string
   const { code, amount, usageLimit, expiresAt, isActive } = req.body
 
   const existing = await prisma.coupon.findUnique({ where: { id } })
@@ -1085,8 +1085,8 @@ export const updateCoupon = asyncHandler(async (req: Request, res: Response) => 
   res.json({ success: true, coupon })
 })
 
-export const deleteCoupon = asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params
+export const deleteCoupon = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const id = req.params.id as string
   
   const existing = await prisma.coupon.findUnique({ where: { id } })
   if (!existing) throw new AppError('Coupon not found', 404)
