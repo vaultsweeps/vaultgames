@@ -101,22 +101,22 @@ export default function AdminCouponsPage() {
             <div className="space-y-4">
               <div>
                 <label className="block text-xs font-medium text-secondary mb-1">Coupon Code (Uppercase)</label>
-                <input type="text" value={editing.code} onChange={e => setEditing({ ...editing, code: e.target.value.toUpperCase() })} className="input-field uppercase" placeholder="e.g. WELCOME2026" />
+                <input type="text" value={editing.code} onChange={e => setEditing({ ...editing, code: e.target.value.toUpperCase() })} className="input-neon uppercase" placeholder="e.g. WELCOME2026" />
               </div>
               
               <div>
                 <label className="block text-xs font-medium text-secondary mb-1">Amount (Freeplay)</label>
-                <input type="number" step="0.01" value={editing.amount} onChange={e => setEditing({ ...editing, amount: e.target.value })} className="input-field" placeholder="3.00" />
+                <input type="number" step="0.01" value={editing.amount} onChange={e => setEditing({ ...editing, amount: e.target.value })} className="input-neon" placeholder="3.00" />
               </div>
 
               <div>
                 <label className="block text-xs font-medium text-secondary mb-1">Usage Limit (Leave empty for unlimited uses, or 1 for single-use)</label>
-                <input type="number" value={editing.usageLimit || ''} onChange={e => setEditing({ ...editing, usageLimit: e.target.value })} className="input-field" placeholder="e.g. 100" />
+                <input type="number" value={editing.usageLimit || ''} onChange={e => setEditing({ ...editing, usageLimit: e.target.value })} className="input-neon" placeholder="e.g. 100" />
               </div>
               
               <div>
                 <label className="block text-xs font-medium text-secondary mb-1">Expires At (Optional)</label>
-                <input type="datetime-local" value={editing.expiresAt ? new Date(editing.expiresAt).toISOString().slice(0, 16) : ''} onChange={e => setEditing({ ...editing, expiresAt: e.target.value })} className="input-field" />
+                <input type="datetime-local" value={editing.expiresAt ? new Date(editing.expiresAt).toISOString().slice(0, 16) : ''} onChange={e => setEditing({ ...editing, expiresAt: e.target.value })} className="input-neon" />
               </div>
 
               <div className="flex items-center gap-2">
