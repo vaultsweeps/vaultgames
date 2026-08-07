@@ -17,6 +17,7 @@ const schema = z.object({
   email: z.string().email('Invalid email address'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   confirmPassword: z.string(),
+  couponCode: z.string().optional(),
 }).refine(data => data.password === data.confirmPassword, { message: 'Passwords do not match', path: ['confirmPassword'] })
 
 type RegisterForm = z.infer<typeof schema>
@@ -85,7 +86,7 @@ export default function RegisterPage() {
       return
     }
     try {
-      await registerUser({ username: data.username, email: data.email, password: data.password, referralCode })
+      await registerUser({ username: data.username, email: data.email, password: data.password, referralCode, couponCode: data.couponCode })
       setRegistered(true)
       toast.success('Account created! Please verify your email.')
     } catch (err: any) {
@@ -263,6 +264,15 @@ export default function RegisterPage() {
                   <input {...register('confirmPassword')} type="password" placeholder="••••••••" className="input-neon" style={{ paddingLeft: '2.5rem' }} />
                 </div>
                 {errors.confirmPassword && <p className="text-red-400 text-xs mt-1">{errors.confirmPassword.message}</p>}
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono tracking-wider text-secondary uppercase mb-2">Coupon Code (Optional)</label>
+                <div className="relative">
+                  <Zap className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
+                  <input {...register('couponCode')} type="text" placeholder="Enter code for freeplay" className="input-neon uppercase" style={{ paddingLeft: '2.5rem' }} />
+                </div>
+                {errors.couponCode && <p className="text-red-400 text-xs mt-1">{errors.couponCode.message}</p>}
               </div>
 
               <p className="text-xs text-slate-600 leading-relaxed">
