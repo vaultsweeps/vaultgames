@@ -259,6 +259,11 @@ export const enhancedWithdrawalApi = {
     apiClient.get('/withdrawals/enhanced', { params }),
 }
 
+// ─── User Specific APIs ──────────────────────────────────────────
+export const userApi = {
+  claimCoupon: (data: { code: string }) => apiClient.post('/user/coupons/claim', data),
+}
+
 // ─── Referral & Promo APIs ───────────────────────────────────────────────────
 export const referralApi = {
   getMyInfo: () => apiClient.get('/referral/me'),
