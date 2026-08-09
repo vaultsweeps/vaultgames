@@ -110,7 +110,14 @@ export const createDeposit = asyncHandler(async (req: AuthRequest, res: Response
       })
     } catch (err: any) {
       logger.error(`[DepositController] NOWPayments payment creation failed: ${err?.message || err}`)
-      throw new AppError('Failed to generate crypto payment address', 500)
+      
+      let errorMsg = 'Failed to generate crypto payment address'
+      // Extract specific NOWPayments error if available (e.g., minimum amount errors)
+      if (err?.response?.data?.message) {
+        errorMsg = err.response.data.message
+      }
+      
+      throw new AppError(errorMsg, 400)
     }
   } else if (paymentMethod.code.toUpperCase() === 'ZAPPAY') {
     // Generate Zappay URL

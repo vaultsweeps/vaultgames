@@ -8,16 +8,16 @@ export default function CashMethodsBanner() {
         {/* Left Content */}
         <div className="relative z-10 p-8 md:p-12 lg:pl-16 md:w-1/2">
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-black text-white mb-2 uppercase tracking-tighter" style={{ fontFamily: "'Inter', sans-serif" }}>
-            CASH METHODS
+            DEPOSITS
           </h2>
           <p className="text-xl md:text-2xl font-bold text-white mb-3 tracking-tight">
             Make deposits your way
           </p>
           <p className="text-sm md:text-base text-white/90 mb-8 max-w-md font-medium leading-relaxed">
-            Make deposits through any cash deposit method that is convenient for you!
+            Deposit instantly via Crypto (BTC, USDT, ETH) or cash methods (CashApp, PayPal, Chime).
           </p>
           <Link 
-            href="/dashboard/wallet" 
+            href="/dashboard/deposits" 
             className="inline-block bg-[#3bbdf8] hover:bg-[#20a9e8] text-white font-bold py-3.5 px-8 rounded-2xl transition-all shadow-lg hover:shadow-[#3bbdf8]/50 hover:-translate-y-1"
           >
             Make Deposit
