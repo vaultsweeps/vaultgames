@@ -1,10 +1,11 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
-import { CreditCard, Plus, History, Loader2, ChevronRight } from 'lucide-react'
+import { CreditCard, Plus, History, Loader2, ChevronRight, ExternalLink } from 'lucide-react'
 import { depositApi, publicApi } from '@/lib/api'
 import dynamic from 'next/dynamic'
+import { useSearchParams } from 'next/navigation'
 
 const ZappayDepositModal = dynamic(() => import('@/components/modals/ZappayDepositModal'), { ssr: false })
 const ChimePayPalDepositModal = dynamic(() => import('@/components/modals/ChimePayPalDepositModal'), { ssr: false })
@@ -13,7 +14,7 @@ const ChimePayPalDepositModal = dynamic(() => import('@/components/modals/ChimeP
 const METHOD_META: Record<string, { icon: string; color: string; desc: string; logoUrl?: string }> = {
   cashapp: { icon: '💸', color: '#00D632', desc: 'Send via Cash App — fast & easy' },
   chime:   { icon: '🏦', color: '#00CFAA', desc: 'Deposit via Chime bank' },
-  crypto:  { icon: '₿',  color: '#F7931A', desc: 'USDT (TRC20) or Bitcoin (BTC)' },
+  crypto:  { icon: '₿',  color: '#F7931A', desc: 'USDT, BTC, ETH & 100+ cryptocurrencies' },
   bitcoin: { icon: '₿',  color: '#F7931A', desc: 'Bitcoin payments' },
   usdt:    { icon: '₮',  color: '#26A17B', desc: 'Tether stablecoin (TRC20)' },
   bank:    { icon: '🏛️', color: '#00D4FF', desc: 'Bank wire transfer' },
@@ -40,7 +41,7 @@ function StatusBadge({ status }: { status: string }) {
   )
 }
 
-export default function DepositsPage() {
+function DepositsContent() {
   const [tab, setTab] = useState<'new' | 'history'>('new')
   const [methods, setMethods] = useState<any[]>([])
   const [loadingMethods, setLoadingMethods] = useState(true)
@@ -52,6 +53,8 @@ export default function DepositsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [zappayMethod, setZappayMethod] = useState<'zappay'|'apple'|'card'|null>(null)
   const [chimePayPalMethod, setChimePayPalMethod] = useState<'chime'|'paypal'|'cashapp'|null>(null)
+  const [cryptoPaymentUrl, setCryptoPaymentUrl] = useState<string | null>(null)
+  const searchParams = useSearchParams()
 
   const fetchHistory = async () => {
     setHistoryLoading(true)
@@ -62,6 +65,17 @@ export default function DepositsPage() {
       setHistoryLoading(false)
     }
   }
+
+  // Handle NOWPayments return URL params
+  useEffect(() => {
+    const payment = searchParams.get('payment')
+    if (payment === 'success') {
+      toast.success('Payment submitted! Waiting for blockchain confirmation...')
+      setTab('history')
+    } else if (payment === 'cancelled') {
+      toast.error('Payment was cancelled. You can try again.')
+    }
+  }, [])
 
   useEffect(() => {
     setHistoryLoading(true)
@@ -88,7 +102,17 @@ export default function DepositsPage() {
     if (amount > selectedMethod.maxAmount) return toast.error(`Maximum deposit is $${selectedMethod.maxAmount}`)
     setIsSubmitting(true)
     try {
-      await depositApi.create({ amount, paymentMethodId: selectedMethod.id })
+      const res = await depositApi.create({ amount, paymentMethodId: selectedMethod.id })
+      const { paymentUrl } = res.data.data || {}
+
+      // Crypto via NOWPayments — redirect user to hosted payment page
+      if (paymentUrl && selectedMethod.code?.toLowerCase() === 'crypto') {
+        toast.success('Redirecting to payment page...')
+        await fetchHistory()
+        window.location.href = paymentUrl
+        return
+      }
+
       setStep(3)
       await fetchHistory()
       toast.success('Deposit request created!')
@@ -146,7 +170,7 @@ export default function DepositsPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {methods
                     .sort((a, b) => {
-                      const workingCodes = ['chime', 'paypal', 'cashapp'];
+                      const workingCodes = ['chime', 'paypal', 'cashapp', 'crypto'];
                       const aSoon = !workingCodes.includes(a.code?.toLowerCase() || '');
                       const bSoon = !workingCodes.includes(b.code?.toLowerCase() || '');
                       if (aSoon === bSoon) return 0;
@@ -154,7 +178,7 @@ export default function DepositsPage() {
                     })
                     .map(m => {
                     const meta = getMeta(m.code)
-                    const workingCodes = ['chime', 'paypal', 'cashapp'];
+                    const workingCodes = ['chime', 'paypal', 'cashapp', 'crypto'];
                     const isSoon = !workingCodes.includes(m.code?.toLowerCase() || '');
                     return (
                       <button key={m.id}
@@ -336,5 +360,13 @@ export default function DepositsPage() {
         method={chimePayPalMethod}
       />
     </div>
+  )
+}
+
+export default function DepositsPage() {
+  return (
+    <Suspense fallback={<div className="space-y-6 max-w-4xl"><div className="h-8 w-32 bg-white/5 rounded animate-pulse" /></div>}>
+      <DepositsContent />
+    </Suspense>
   )
 }

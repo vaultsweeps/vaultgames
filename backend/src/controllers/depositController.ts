@@ -6,6 +6,7 @@ import { asyncHandler, AppError } from '../middleware/errorHandler'
 import { AuthRequest } from '../middleware/auth'
 import { createNotification } from '../services/notificationService'
 import { ZappayService } from '../services/payment/ZappayService'
+import { NowPaymentsService } from '../services/payment/NowPaymentsService'
 import { TelegramService } from '../services/TelegramService'
 import { TelegramSupportBot } from '../services/TelegramSupportBot'
 import { sendAdminZappayNotification } from '../services/emailService'
@@ -73,8 +74,36 @@ export const createDeposit = asyncHandler(async (req: AuthRequest, res: Response
 
   let paymentUrl: string | null = null
   const user = deposit.user
-  
-  if (paymentMethod.code.toUpperCase() === 'ZAPPAY') {
+
+  if (paymentMethod.code.toLowerCase() === 'crypto') {
+    // NOWPayments — create hosted invoice and return redirect URL
+    try {
+      const frontendUrl = process.env.FRONTEND_URL || 'https://vaultsweeps.com'
+      const successUrl = `${frontendUrl}/dashboard/deposits?payment=success&ref=${paymentReference}`
+      const cancelUrl = `${frontendUrl}/dashboard/deposits?payment=cancelled`
+
+      const invoice = await NowPaymentsService.createInvoice(
+        amount,
+        paymentReference,
+        `VaultSweeps Deposit — ${paymentReference}`,
+        successUrl,
+        cancelUrl
+      )
+
+      paymentUrl = invoice.invoice_url
+
+      // Store the invoice ID for webhook correlation
+      await prisma.deposit.update({
+        where: { id: deposit.id },
+        data: { webhookData: { nowpayments_invoice_id: invoice.id } }
+      })
+
+      logger.info(`[DepositController] NOWPayments invoice created for deposit ${deposit.id}: ${invoice.id}`)
+    } catch (err: any) {
+      // Don't fail the deposit creation — admin can process manually
+      logger.error(`[DepositController] NOWPayments invoice creation failed: ${err?.message || err}`)
+    }
+  } else if (paymentMethod.code.toUpperCase() === 'ZAPPAY') {
     // Generate Zappay URL
     const returnUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/dashboard/deposits?status=pending`
     paymentUrl = ZappayService.createPaymentRequest(amount, paymentReference, returnUrl)
