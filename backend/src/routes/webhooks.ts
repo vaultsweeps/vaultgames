@@ -120,38 +120,123 @@ function verifyNowPaymentsSignature(payload: any, signature: string | undefined)
   return expectedBuf.length === signatureBuf.length && crypto.timingSafeEqual(expectedBuf, signatureBuf)
 }
 
-// Crypto payment webhook (NOWPayments)
+// Crypto payment webhook (NOWPayments IPN)
 router.post('/crypto', async (req: Request, res: Response) => {
+  // Log raw webhook immediately so we never lose it
+  let webhookLog: any = null
+  try {
+    webhookLog = await prisma.paymentWebhook.create({
+      data: { provider: 'nowpayments', payload: req.body, status: 'received' }
+    })
+  } catch (logErr) {
+    console.error('[NOWPayments Webhook] Failed to create webhook log:', logErr)
+  }
+
   try {
     const signature = req.headers['x-nowpayments-sig'] as string | undefined
 
     if (!process.env.NOWPAYMENTS_IPN_SECRET) {
-      console.error('NOWPAYMENTS_IPN_SECRET is not configured — rejecting crypto webhook request')
+      console.error('NOWPAYMENTS_IPN_SECRET is not configured — rejecting crypto webhook')
+      if (webhookLog) await prisma.paymentWebhook.update({ where: { id: webhookLog.id }, data: { status: 'failed', error: 'IPN secret not configured' } }).catch(() => {})
       return res.status(500).json({ success: false, message: 'Webhook not configured' })
     }
 
     if (!verifyNowPaymentsSignature(req.body, signature)) {
+      if (webhookLog) await prisma.paymentWebhook.update({ where: { id: webhookLog.id }, data: { status: 'failed', error: 'Invalid signature' } }).catch(() => {})
       return res.status(401).json({ success: false, message: 'Invalid signature' })
     }
 
-    const { order_id, payment_status, pay_amount, price_amount, actually_paid } = req.body
+    const {
+      order_id,
+      payment_id,
+      payment_status,
+      price_amount,
+      actually_paid,
+      pay_currency,
+    } = req.body
 
-    // NOWPayments example
+    console.log(`[NOWPayments IPN] order_id=${order_id} payment_status=${payment_status} payment_id=${payment_id}`)
+
+    const deposit = await prisma.deposit.findFirst({
+      where: { paymentReference: order_id },
+      include: { user: true }
+    })
+
+    if (!deposit) {
+      if (webhookLog) await prisma.paymentWebhook.update({ where: { id: webhookLog.id }, data: { status: 'ignored', error: `Deposit not found for order_id: ${order_id}` } }).catch(() => {})
+      return res.json({ success: true, message: 'Order not found — ignored' })
+    }
+
+    // finished / confirmed → approve deposit
     if (payment_status === 'finished' || payment_status === 'confirmed') {
-      const deposit = await prisma.deposit.findFirst({ where: { paymentReference: order_id } })
-      if (deposit && deposit.status === 'pending') {
+      if (deposit.status !== 'pending') {
+        if (webhookLog) await prisma.paymentWebhook.update({ where: { id: webhookLog.id }, data: { status: 'ignored', error: `Deposit already in state: ${deposit.status}` } }).catch(() => {})
+        return res.json({ success: true, message: 'Already processed' })
+      }
+
+      await prisma.$transaction([
+        prisma.deposit.update({
+          where: { id: deposit.id },
+          data: {
+            status: 'approved',
+            approvedAt: new Date(),
+            transactionId: String(payment_id || ''),
+            webhookData: req.body
+          }
+        }),
+        prisma.transactionLog.create({
+          data: {
+            type: 'nowpayments_ipn_confirmed',
+            entityId: deposit.id,
+            userId: deposit.userId,
+            amount: deposit.amount,
+            status: 'approved',
+            metadata: req.body
+          }
+        })
+      ])
+
+      await createNotification(deposit.userId, {
+        title: '₿ Crypto Payment Confirmed!',
+        message: `Your crypto deposit of $${deposit.amount} has been confirmed and credited.`,
+        type: 'success',
+        link: '/dashboard/deposits'
+      })
+
+      if (webhookLog) await prisma.paymentWebhook.update({ where: { id: webhookLog.id }, data: { status: 'processed' } }).catch(() => {})
+
+    } else if (payment_status === 'failed' || payment_status === 'expired') {
+      // Only update if still pending — don't overwrite an already-approved deposit
+      if (deposit.status === 'pending') {
         await prisma.deposit.update({
           where: { id: deposit.id },
-          data: { status: 'approved', approvedAt: new Date(), webhookData: req.body }
+          data: { status: 'failed', webhookData: req.body }
         })
 
         await createNotification(deposit.userId, {
-          title: '₿ Crypto Payment Confirmed!',
-          message: `Your crypto deposit of $${deposit.amount} has been confirmed.`,
-          type: 'success',
+          title: '❌ Crypto Payment Failed',
+          message: `Your crypto deposit of $${deposit.amount} ${payment_status === 'expired' ? 'expired' : 'failed'}. Please try again.`,
+          type: 'error',
           link: '/dashboard/deposits'
         })
       }
+
+      if (webhookLog) await prisma.paymentWebhook.update({ where: { id: webhookLog.id }, data: { status: 'processed' } }).catch(() => {})
+
+    } else if (payment_status === 'partially_paid') {
+      // User paid less than required — notify them, keep pending for admin review
+      await createNotification(deposit.userId, {
+        title: '⚠️ Partial Crypto Payment Received',
+        message: `We received a partial crypto payment for your $${deposit.amount} deposit. Please contact support.`,
+        type: 'warning',
+        link: '/dashboard/deposits'
+      })
+
+      if (webhookLog) await prisma.paymentWebhook.update({ where: { id: webhookLog.id }, data: { status: 'processed', error: 'Partial payment — pending admin review' } }).catch(() => {})
+
+    } else {
+      // waiting / confirming / sending — informational, no action needed
+      if (webhookLog) await prisma.paymentWebhook.update({ where: { id: webhookLog.id }, data: { status: 'ignored', error: `Informational status: ${payment_status}` } }).catch(() => {})
     }
 
     res.json({ success: true })
