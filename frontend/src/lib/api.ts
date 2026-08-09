@@ -81,6 +81,7 @@ export const depositApi = {
   getPaymentMethods: () => apiClient.get('/deposits/payment-methods'),
   getCryptoCurrencies: () => apiClient.get('/deposits/crypto-currencies'),
   getCryptoCoinsForAmount: (amount: number) => apiClient.get(`/deposits/crypto-coins?amount=${amount}`),
+  getCoinMinAmount: (coin: string) => apiClient.get(`/deposits/crypto-min-amount?coin=${coin}`),
   initiatePayment: (id: string) => apiClient.post(`/deposits/${id}/initiate`),
 }
 

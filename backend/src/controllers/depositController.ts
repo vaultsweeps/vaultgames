@@ -231,3 +231,16 @@ export const getCryptoCoinsForAmount = asyncHandler(async (req: AuthRequest, res
   const coins = await NowPaymentsService.getCurrenciesWithMinAmounts(amount)
   res.json({ success: true, data: coins })
 })
+
+// GET /api/deposits/crypto-min-amount?coin=usdttrc20
+// Returns the minimum USD deposit amount for a single specific coin
+export const getCoinMinAmount = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const coin = (req.query.coin as string)?.toLowerCase()
+  if (!coin) throw new AppError('coin query param is required', 400)
+
+  const coins = await NowPaymentsService.getCurrenciesWithMinAmounts(0) // amount=0 so all return min
+  const found = coins.find((c) => c.currency.toLowerCase() === coin)
+  if (!found) throw new AppError(`Coin ${coin} not found or not enabled`, 404)
+
+  res.json({ success: true, data: { currency: found.currency, minAmount: found.minAmount } })
+})
