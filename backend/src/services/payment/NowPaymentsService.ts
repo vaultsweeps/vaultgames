@@ -34,6 +34,21 @@ export interface NowPaymentsPaymentStatus {
   updated_at: string
 }
 
+export interface NowPaymentsPaymentResponse {
+  payment_id: string
+  payment_status: string
+  pay_address: string
+  price_amount: number
+  price_currency: string
+  pay_amount: number
+  pay_currency: string
+  order_id: string
+  order_description: string
+  ipn_callback_url: string
+  created_at: string
+  updated_at: string
+}
+
 export class NowPaymentsService {
   private static readonly apiKey = process.env.NOWPAYMENTS_API_KEY || ''
 
@@ -92,6 +107,60 @@ export class NowPaymentsService {
   static async getPaymentStatus(paymentId: string): Promise<NowPaymentsPaymentStatus> {
     const response = await axios.get<NowPaymentsPaymentStatus>(
       `${NOWPAYMENTS_BASE_URL}/payment/${paymentId}`,
+      { headers: NowPaymentsService.headers }
+    )
+    return response.data
+  }
+
+  /**
+   * Creates a raw payment (returns address and amount to send), instead of a hosted invoice page.
+   * Used for custom checkout UI.
+   */
+  static async createPayment(
+    amountUsd: number,
+    payCurrency: string,
+    orderId: string,
+    description: string
+  ): Promise<NowPaymentsPaymentResponse> {
+    if (!NowPaymentsService.apiKey) {
+      throw new Error('NOWPAYMENTS_API_KEY is not configured')
+    }
+
+    const ipnCallbackUrl = `${process.env.BACKEND_URL || 'https://api.vaultsweeps.com'}/api/webhooks/crypto`
+
+    const payload = {
+      price_amount: amountUsd,
+      price_currency: 'usd',
+      pay_currency: payCurrency,
+      ipn_callback_url: ipnCallbackUrl,
+      order_id: orderId,
+      order_description: description,
+      is_fixed_rate: false,
+      is_fee_paid_by_user: false,
+    }
+
+    logger.info(`[NOWPayments] Creating raw payment for order ${orderId}, amount $${amountUsd} in ${payCurrency}`)
+
+    const response = await axios.post<NowPaymentsPaymentResponse>(
+      `${NOWPAYMENTS_BASE_URL}/payment`,
+      payload,
+      { headers: NowPaymentsService.headers }
+    )
+
+    logger.info(`[NOWPayments] Payment created: ${response.data.payment_id} — address: ${response.data.pay_address}`)
+    return response.data
+  }
+
+  /**
+   * Get list of enabled currencies for the merchant.
+   */
+  static async getCurrencies(): Promise<{ selectedCurrencies: string[] }> {
+    if (!NowPaymentsService.apiKey) {
+      throw new Error('NOWPAYMENTS_API_KEY is not configured')
+    }
+
+    const response = await axios.get<{ selectedCurrencies: string[] }>(
+      `${NOWPAYMENTS_BASE_URL}/merchant/coins`,
       { headers: NowPaymentsService.headers }
     )
     return response.data
