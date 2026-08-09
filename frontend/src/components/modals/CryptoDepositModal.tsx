@@ -114,11 +114,36 @@ export default function CryptoDepositModal({ isOpen, onClose, amount: propAmount
       toast.error(`${coin.currency.toUpperCase()} is not available for this deposit amount`)
       return
     }
+
+    const amount = parseFloat(depositAmount)
+
+    // For USDTTRC20, check the minimum amount before attempting
+    // (TRC20 network fees make the minimum ~$19 regardless of the deposit amount)
+    if (coin.currency.toLowerCase() === 'usdttrc20') {
+      setIsSubmitting(true)
+      setSelectedCoin(coin.currency)
+      try {
+        const minRes = await depositApi.getCoinMinAmount(coin.currency)
+        const minAmount: number = minRes.data.data?.minAmount || 0
+        if (amount < minAmount) {
+          toast.error(
+            `USDT TRC20 requires a minimum deposit of $${Math.ceil(minAmount)} due to Tron network fees. Please increase your amount or choose another coin.`,
+            { duration: 6000 }
+          )
+          setIsSubmitting(false)
+          setSelectedCoin(null)
+          return
+        }
+      } catch {
+        // If min check fails, proceed anyway — payment API will handle it
+      }
+    }
+
     setSelectedCoin(coin.currency)
     setIsSubmitting(true)
     try {
       const res = await depositApi.create({
-        amount: parseFloat(depositAmount),
+        amount,
         paymentMethodId,
         cryptoCurrency: coin.currency
       })
