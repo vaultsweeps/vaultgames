@@ -8,7 +8,6 @@ import { QRCodeSVG } from 'qrcode.react'
 
 interface CoinInfo {
   currency: string
-  minAmount: number
   available: boolean
 }
 
@@ -70,19 +69,17 @@ export default function CryptoDepositModal({ isOpen, onClose, amount: propAmount
   const fetchCoins = async (amount: number) => {
     setLoadingCoins(true)
     try {
-      const res = await depositApi.getCryptoCoinsForAmount(amount)
-      const fetchedCoins: CoinInfo[] = res.data.data || []
-      fetchedCoins.sort((a, b) => {
-        const ai = PRIORITY.indexOf(a.currency.toLowerCase())
-        const bi = PRIORITY.indexOf(b.currency.toLowerCase())
-        // available first, then priority order
-        if (a.available !== b.available) return a.available ? -1 : 1
-        if (ai === -1 && bi === -1) return a.currency.localeCompare(b.currency)
+      const res = await depositApi.getCryptoCurrencies()
+      const fetched: string[] = res.data.data || []
+      const sorted = [...fetched].sort((a, b) => {
+        const ai = PRIORITY.indexOf(a.toLowerCase())
+        const bi = PRIORITY.indexOf(b.toLowerCase())
+        if (ai === -1 && bi === -1) return a.localeCompare(b)
         if (ai === -1) return 1
         if (bi === -1) return -1
         return ai - bi
       })
-      setCoins(fetchedCoins)
+      setCoins(sorted.map((c) => ({ currency: c, available: true })))
     } catch {
       toast.error('Failed to load available coins')
       handleClose()
@@ -247,9 +244,7 @@ export default function CryptoDepositModal({ isOpen, onClose, amount: propAmount
                         disabled={isSubmitting}
                         onClick={() => handleCoinSelect(coin)}
                         className={`p-4 rounded-xl border flex flex-col items-center justify-center gap-1.5 transition-all relative ${
-                          !coin.available
-                            ? 'opacity-50 cursor-not-allowed border-border-strong bg-black/20'
-                            : selectedCoin === coin.currency
+                          selectedCoin === coin.currency
                             ? 'bg-neon-blue/20 border-neon-blue text-white'
                             : 'glass border-border-strong hover:bg-white/5 text-secondary hover:text-white'
                         } ${isSubmitting && selectedCoin !== coin.currency ? 'opacity-30 cursor-not-allowed' : ''}`}
@@ -261,22 +256,11 @@ export default function CryptoDepositModal({ isOpen, onClose, amount: propAmount
                             {coin.currency}
                           </span>
                         )}
-                        {!coin.available && (
-                          <span className="text-[10px] text-orange-400 font-medium text-center leading-tight">
-                            Min ${coin.minAmount.toFixed(0)}
-                          </span>
-                        )}
                       </button>
                     ))}
                   </div>
                 )}
 
-                {!loadingCoins && coins.some(c => !c.available) && (
-                  <div className="flex items-start gap-2 bg-orange-500/10 border border-orange-500/20 rounded-xl p-3 text-xs text-orange-400">
-                    <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                    <p>Some coins have a higher minimum due to network fees. Increase your deposit amount or choose an available coin.</p>
-                  </div>
-                )}
               </div>
             )}
 
