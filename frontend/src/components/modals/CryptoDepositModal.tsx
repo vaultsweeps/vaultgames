@@ -111,7 +111,7 @@ export default function CryptoDepositModal({ isOpen, onClose, amount: propAmount
 
   const handleCoinSelect = async (coin: CoinInfo) => {
     if (!coin.available) {
-      toast.error(`Minimum deposit for ${coin.currency.toUpperCase()} is $${coin.minAmount.toFixed(2)}`)
+      toast.error(`${coin.currency.toUpperCase()} is not available for this deposit amount`)
       return
     }
     setSelectedCoin(coin.currency)
