@@ -246,7 +246,7 @@ export default function CryptoDepositModal({ isOpen, onClose, amount, paymentMet
                   onClick={handleClose}
                   className="btn-primary w-full py-3 text-sm"
                 >
-                  I HAVE SENT THE PAYMENT
+                  CLOSE
                 </button>
               </div>
             )}
