@@ -221,3 +221,13 @@ export const getCryptoCurrencies = asyncHandler(async (req: AuthRequest, res: Re
   const data = await NowPaymentsService.getCurrencies()
   res.json({ success: true, data: data.selectedCurrencies })
 })
+
+// GET /api/deposits/crypto-coins?amount=50
+// Returns all enabled coins with their min amounts and availability for the given USD amount
+export const getCryptoCoinsForAmount = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const amount = parseFloat(req.query.amount as string)
+  if (!amount || isNaN(amount) || amount <= 0) throw new AppError('Valid amount is required', 400)
+
+  const coins = await NowPaymentsService.getCurrenciesWithMinAmounts(amount)
+  res.json({ success: true, data: coins })
+})

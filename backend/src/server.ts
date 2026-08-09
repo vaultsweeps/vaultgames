@@ -140,16 +140,45 @@ app.use(errorHandler)
 import { TelegramSupportBot } from './services/TelegramSupportBot'
 import { ImapZappayService } from './services/payment/ImapZappayService'
 import { ImapChimePayPalService } from './services/payment/ImapChimePayPalService'
+import prisma from './lib/prisma'
+
+// Auto-fail stale pending crypto deposits after 8 hours
+async function failStaleCryptoDeposits() {
+  try {
+    const cutoff = new Date(Date.now() - 8 * 60 * 60 * 1000) // 8 hours ago
+    const stale = await prisma.deposit.findMany({
+      where: {
+        status: 'pending',
+        createdAt: { lt: cutoff },
+        paymentMethod: { code: 'crypto' }
+      },
+      include: { paymentMethod: true }
+    })
+
+    for (const deposit of stale) {
+      await prisma.deposit.update({
+        where: { id: deposit.id },
+        data: { status: 'failed', notes: 'Auto-failed after 8 hours without payment confirmation' }
+      })
+      logger.info(`[Scheduler] Auto-failed stale crypto deposit ${deposit.id} ($${deposit.amount})`)
+    }
+    if (stale.length > 0) logger.info(`[Scheduler] Auto-failed ${stale.length} stale crypto deposit(s)`)
+  } catch (err) {
+    logger.error('[Scheduler] Failed to auto-fail stale crypto deposits:', err)
+  }
+}
 
 // Start server
 app.listen(PORT, () => {
-  logger.info(`ðš€ Vault Sweeps API running on port ${PORT}`)
-  logger.info(`ð“± Environment: ${process.env.NODE_ENV || 'development'}`)
+  logger.info(`🚀 Vault Sweeps API running on port ${PORT}`)
+  logger.info(`🌱 Environment: ${process.env.NODE_ENV || 'development'}`)
   TelegramSupportBot.getInstance().start()
   ImapZappayService.startCron()
   ImapChimePayPalService.startCron()
+
+  // Run once on startup, then every hour
+  failStaleCryptoDeposits()
+  setInterval(failStaleCryptoDeposits, 60 * 60 * 1000)
 })
 
 export default app
-
-
