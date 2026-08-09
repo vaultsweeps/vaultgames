@@ -195,4 +195,26 @@ ${escMd(accountInfo)}
       return false
     }
   }
+
+  static async sendMessage(text: string, options: { parse_mode?: string } = {}): Promise<boolean> {
+    const token = process.env.TELEGRAM_BOT_TOKEN
+    const chatId = process.env.TELEGRAM_GROUP_CHAT_ID
+
+    if (!token || !chatId) {
+      logger.warn('Telegram Bot token or chat ID is not configured.')
+      return false
+    }
+
+    try {
+      await axios.post(`https://api.telegram.org/bot${token}/sendMessage`, {
+        chat_id: chatId,
+        text: text,
+        ...options
+      })
+      return true
+    } catch (error: any) {
+      logger.error('Failed to send Telegram message:', error?.response?.data || error.message)
+      return false
+    }
+  }
 }
