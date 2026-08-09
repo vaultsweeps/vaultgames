@@ -4,6 +4,7 @@ import prisma from '../lib/prisma'
 import { createNotification } from '../services/notificationService'
 import { ProviderFactory } from '../services/provider/ProviderFactory'
 import { ZappayService } from '../services/payment/ZappayService'
+import { TelegramService } from '../services/TelegramService'
 
 const router = Router()
 
@@ -202,6 +203,20 @@ router.post('/crypto', async (req: Request, res: Response) => {
         type: 'success',
         link: '/dashboard/deposits'
       })
+
+      // Send Telegram notification to admin
+      try {
+        const adminMsg = `🤑 <b>New Crypto Deposit!</b>\n\n` +
+          `👤 User: <code>${deposit.user.username}</code>\n` +
+          `💰 Amount: <b>$${deposit.amount}</b>\n` +
+          `🪙 Coin: ${pay_currency}\n` +
+          `🔗 TX: <code>${payment_id}</code>\n` +
+          `✅ Status: Auto-Approved`
+
+        await TelegramService.sendMessage(adminMsg, { parse_mode: 'HTML' })
+      } catch (tgErr) {
+        console.error('[NOWPayments Webhook] Failed to send Telegram notification:', tgErr)
+      }
 
       if (webhookLog) await prisma.paymentWebhook.update({ where: { id: webhookLog.id }, data: { status: 'processed' } }).catch(() => {})
 
