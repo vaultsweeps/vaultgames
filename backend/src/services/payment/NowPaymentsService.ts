@@ -152,6 +152,44 @@ export class NowPaymentsService {
   }
 
   /**
+   * Get list of enabled currencies for the merchant, with min amounts for a given USD price.
+   * Filters out currencies that can't handle the requested amount.
+   */
+  static async getCurrenciesWithMinAmounts(
+    amountUsd: number
+  ): Promise<{ currency: string; minAmount: number; available: boolean }[]> {
+    if (!NowPaymentsService.apiKey) {
+      throw new Error('NOWPAYMENTS_API_KEY is not configured')
+    }
+
+    // Get enabled coins
+    const coinsRes = await axios.get<{ selectedCurrencies: string[] }>(
+      `${NOWPAYMENTS_BASE_URL}/merchant/coins`,
+      { headers: NowPaymentsService.headers }
+    )
+    const currencies = coinsRes.data.selectedCurrencies || []
+
+    // Fetch min amounts in parallel (limit concurrency to avoid rate limiting)
+    const results = await Promise.allSettled(
+      currencies.map(async (currency) => {
+        const res = await axios.get<{ min_amount: number }>(
+          `${NOWPAYMENTS_BASE_URL}/min-amount?currency_from=usd&currency_to=${currency}`,
+          { headers: NowPaymentsService.headers }
+        )
+        return {
+          currency,
+          minAmount: res.data.min_amount,
+          available: amountUsd >= res.data.min_amount
+        }
+      })
+    )
+
+    return results
+      .filter((r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled')
+      .map((r) => r.value)
+  }
+
+  /**
    * Get list of enabled currencies for the merchant.
    */
   static async getCurrencies(): Promise<{ selectedCurrencies: string[] }> {
