@@ -8,6 +8,7 @@ import dynamic from 'next/dynamic'
 const ManualCashoutModal = dynamic(() => import('./ManualCashoutModal'), { ssr: false })
 const ZappayDepositModal = dynamic(() => import('./ZappayDepositModal'), { ssr: false })
 const ChimePayPalDepositModal = dynamic(() => import('./ChimePayPalDepositModal'), { ssr: false })
+const CryptoDepositModal = dynamic(() => import('./CryptoDepositModal'), { ssr: false })
 import { depositApi, withdrawalApi } from '@/lib/api'
 
 interface WalletModalProps {
@@ -105,7 +106,7 @@ function TxRow({ tx }: { tx: TxItem }) {
 export default function WalletModal({ isOpen, onClose, balance }: WalletModalProps) {
   const [activeTab, setActiveTab] = useState<'deposit' | 'cashout' | 'history'>('deposit')
   const [cashoutMethod, setCashoutMethod] = useState<'chime' | 'cashapp' | null>(null)
-  const [depositMethod, setDepositMethod] = useState<'zappay' | 'chime' | 'paypal' | 'apple' | 'card' | 'cashapp' | null>(null)
+  const [depositMethod, setDepositMethod] = useState<'zappay' | 'chime' | 'paypal' | 'apple' | 'card' | 'cashapp' | 'crypto' | null>(null)
   const [history, setHistory] = useState<TxItem[]>([])
   const [historyLoading, setHistoryLoading] = useState(false)
 
@@ -358,6 +359,10 @@ export default function WalletModal({ isOpen, onClose, balance }: WalletModalPro
         isOpen={depositMethod === 'chime' || depositMethod === 'paypal' || depositMethod === 'cashapp'}
         onClose={() => setDepositMethod(null)}
         method={depositMethod === 'chime' ? 'chime' : depositMethod === 'paypal' ? 'paypal' : depositMethod === 'cashapp' ? 'cashapp' : null}
+      />
+      <CryptoDepositModal
+        isOpen={depositMethod === 'crypto'}
+        onClose={() => setDepositMethod(null)}
       />
     </>
   )
