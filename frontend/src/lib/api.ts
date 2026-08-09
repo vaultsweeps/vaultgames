@@ -79,6 +79,7 @@ export const depositApi = {
   getAll: (params?: object) => apiClient.get('/deposits', { params }),
   getOne: (id: string) => apiClient.get(`/deposits/${id}`),
   getPaymentMethods: () => apiClient.get('/deposits/payment-methods'),
+  getCryptoCurrencies: () => apiClient.get('/deposits/crypto-currencies'),
   initiatePayment: (id: string) => apiClient.post(`/deposits/${id}/initiate`),
 }
 

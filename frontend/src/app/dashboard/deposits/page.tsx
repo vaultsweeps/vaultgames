@@ -9,6 +9,7 @@ import { useSearchParams } from 'next/navigation'
 
 const ZappayDepositModal = dynamic(() => import('@/components/modals/ZappayDepositModal'), { ssr: false })
 const ChimePayPalDepositModal = dynamic(() => import('@/components/modals/ChimePayPalDepositModal'), { ssr: false })
+const CryptoDepositModal = dynamic(() => import('@/components/modals/CryptoDepositModal'), { ssr: false })
 
 // Method icon/color map
 const METHOD_META: Record<string, { icon: string; color: string; desc: string; logoUrl?: string }> = {
@@ -53,7 +54,7 @@ function DepositsContent() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [zappayMethod, setZappayMethod] = useState<'zappay'|'apple'|'card'|null>(null)
   const [chimePayPalMethod, setChimePayPalMethod] = useState<'chime'|'paypal'|'cashapp'|null>(null)
-  const [cryptoPaymentUrl, setCryptoPaymentUrl] = useState<string | null>(null)
+  const [cryptoModalOpen, setCryptoModalOpen] = useState(false)
   const searchParams = useSearchParams()
 
   const fetchHistory = async () => {
@@ -102,16 +103,13 @@ function DepositsContent() {
     if (amount > selectedMethod.maxAmount) return toast.error(`Maximum deposit is $${selectedMethod.maxAmount}`)
     setIsSubmitting(true)
     try {
-      const res = await depositApi.create({ amount, paymentMethodId: selectedMethod.id })
-      const { paymentUrl } = res.data.data || {}
-
-      // Crypto via NOWPayments — redirect user to hosted payment page
-      if (paymentUrl && selectedMethod.code?.toLowerCase() === 'crypto') {
-        toast.success('Redirecting to payment page...')
-        await fetchHistory()
-        window.location.href = paymentUrl
+      if (selectedMethod.code?.toLowerCase() === 'crypto') {
+        setCryptoModalOpen(true)
+        setIsSubmitting(false)
         return
       }
+
+      await depositApi.create({ amount, paymentMethodId: selectedMethod.id })
 
       setStep(3)
       await fetchHistory()
@@ -359,6 +357,19 @@ function DepositsContent() {
         }}
         method={chimePayPalMethod}
       />
+      
+      {selectedMethod && (
+        <CryptoDepositModal
+          isOpen={cryptoModalOpen}
+          onClose={() => {
+            setCryptoModalOpen(false)
+            fetchHistory()
+            resetForm()
+          }}
+          amount={parseFloat(depositAmount) || 0}
+          paymentMethodId={selectedMethod.id}
+        />
+      )}
     </div>
   )
 }

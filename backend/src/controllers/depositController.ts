@@ -41,7 +41,7 @@ export const getDeposits = asyncHandler(async (req: AuthRequest, res: Response) 
 
 // POST /api/deposits - Create deposit
 export const createDeposit = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const { amount, paymentMethodId, currency = 'USD', accountName } = req.body
+  const { amount, paymentMethodId, currency = 'USD', accountName, cryptoCurrency } = req.body
 
   if (amount < 1) throw new AppError('Minimum deposit amount is $1', 400)
 
@@ -76,32 +76,41 @@ export const createDeposit = asyncHandler(async (req: AuthRequest, res: Response
   const user = deposit.user
 
   if (paymentMethod.code.toLowerCase() === 'crypto') {
-    // NOWPayments — create hosted invoice and return redirect URL
-    try {
-      const frontendUrl = process.env.FRONTEND_URL || 'https://vaultsweeps.com'
-      const successUrl = `${frontendUrl}/dashboard/deposits?payment=success&ref=${paymentReference}`
-      const cancelUrl = `${frontendUrl}/dashboard/deposits?payment=cancelled`
+    if (!cryptoCurrency) throw new AppError('Crypto currency must be selected', 400)
 
-      const invoice = await NowPaymentsService.createInvoice(
+    try {
+      const payment = await NowPaymentsService.createPayment(
         amount,
+        cryptoCurrency,
         paymentReference,
-        `VaultSweeps Deposit — ${paymentReference}`,
-        successUrl,
-        cancelUrl
+        `VaultSweeps Deposit — ${paymentReference}`
       )
 
-      paymentUrl = invoice.invoice_url
-
-      // Store the invoice ID for webhook correlation
+      // Store the payment ID for webhook correlation
       await prisma.deposit.update({
         where: { id: deposit.id },
-        data: { webhookData: { nowpayments_invoice_id: invoice.id } }
+        data: { webhookData: { nowpayments_payment_id: payment.payment_id } }
       })
 
-      logger.info(`[DepositController] NOWPayments invoice created for deposit ${deposit.id}: ${invoice.id}`)
+      logger.info(`[DepositController] NOWPayments raw payment created for deposit ${deposit.id}: ${payment.payment_id}`)
+
+      // Return the raw payment details so the frontend can build a custom UI
+      return res.status(201).json({
+        success: true,
+        message: 'Deposit request created successfully',
+        data: {
+          ...deposit,
+          cryptoDetails: {
+            payment_id: payment.payment_id,
+            pay_address: payment.pay_address,
+            pay_amount: payment.pay_amount,
+            pay_currency: payment.pay_currency,
+          }
+        }
+      })
     } catch (err: any) {
-      // Don't fail the deposit creation — admin can process manually
-      logger.error(`[DepositController] NOWPayments invoice creation failed: ${err?.message || err}`)
+      logger.error(`[DepositController] NOWPayments payment creation failed: ${err?.message || err}`)
+      throw new AppError('Failed to generate crypto payment address', 500)
     }
   } else if (paymentMethod.code.toUpperCase() === 'ZAPPAY') {
     // Generate Zappay URL
@@ -200,5 +209,8 @@ export const getDeposit = asyncHandler(async (req: AuthRequest, res: Response) =
   res.json({ success: true, data: deposit })
 })
 
-
-
+// GET /api/deposits/crypto-currencies
+export const getCryptoCurrencies = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const data = await NowPaymentsService.getCurrencies()
+  res.json({ success: true, data: data.selectedCurrencies })
+})

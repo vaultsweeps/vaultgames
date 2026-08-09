@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { body } from 'express-validator'
-import { getDeposits, createDeposit, getPaymentMethods, getDeposit } from '../controllers/depositController'
+import { getDeposits, createDeposit, getPaymentMethods, getDeposit, getCryptoCurrencies } from '../controllers/depositController'
 import { authenticate } from '../middleware/auth'
 import { validateRequest } from '../middleware/validate'
 
@@ -10,6 +10,7 @@ router.use(authenticate)
 
 router.get('/', getDeposits)
 router.get('/payment-methods', getPaymentMethods)
+router.get('/crypto-currencies', getCryptoCurrencies)
 router.get('/:id', getDeposit)
 router.post('/',
   [
