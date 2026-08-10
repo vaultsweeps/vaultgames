@@ -1,7 +1,7 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Loader2, X, Copy, CheckCircle2, ChevronLeft, AlertTriangle } from 'lucide-react'
+import { Loader2, X, Copy, CheckCircle2, ChevronLeft, AlertTriangle, CheckCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { depositApi } from '@/lib/api'
 import { QRCodeSVG } from 'qrcode.react'
@@ -14,15 +14,12 @@ interface CoinInfo {
 interface CryptoDepositModalProps {
   isOpen: boolean
   onClose: () => void
-  // Optional: pre-fill amount + paymentMethodId (from deposits page)
-  // If not provided, modal will ask for amount itself
   amount?: number
   paymentMethodId?: string
 }
 
 export default function CryptoDepositModal({ isOpen, onClose, amount: propAmount, paymentMethodId: propMethodId }: CryptoDepositModalProps) {
-  // Step: enter_amount → select_coin → payment_details
-  const [step, setStep] = useState<'enter_amount' | 'select_coin' | 'payment_details'>(
+  const [step, setStep] = useState<'enter_amount' | 'select_coin' | 'payment_details' | 'success'>(
     propAmount && propMethodId ? 'select_coin' : 'enter_amount'
   )
   const [depositAmount, setDepositAmount] = useState(propAmount ? String(propAmount) : '')
@@ -34,31 +31,67 @@ export default function CryptoDepositModal({ isOpen, onClose, amount: propAmount
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [paymentDetails, setPaymentDetails] = useState<any>(null)
+  const [depositId, setDepositId] = useState<string | null>(null)
   const [copiedField, setCopiedField] = useState<string | null>(null)
+  const [paidAmount, setPaidAmount] = useState<number>(0)
+
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
   const PRIORITY = ['btc', 'eth', 'usdttrc20', 'usdterc20', 'ltc', 'sol', 'bnbbsc', 'trx']
+
+  const stopPolling = useCallback(() => {
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current)
+      pollIntervalRef.current = null
+    }
+  }, [])
+
+  // Poll deposit status every 12 seconds while on payment_details step
+  const startPolling = useCallback((id: string, amount: number) => {
+    stopPolling()
+    const poll = async () => {
+      try {
+        const res = await depositApi.getOne(id)
+        const deposit = res.data.data
+        if (deposit?.status === 'approved') {
+          stopPolling()
+          setPaidAmount(deposit.amount)
+          setStep('success')
+        }
+      } catch {
+        // Silently ignore poll errors
+      }
+    }
+    pollIntervalRef.current = setInterval(poll, 12000)
+  }, [stopPolling])
+
+  // Cleanup polling on unmount or close
+  useEffect(() => {
+    return () => stopPolling()
+  }, [stopPolling])
 
   // Reset on close/open
   useEffect(() => {
     if (!isOpen) {
+      stopPolling()
       setTimeout(() => {
         setStep(propAmount && propMethodId ? 'select_coin' : 'enter_amount')
         setDepositAmount(propAmount ? String(propAmount) : '')
         setPaymentMethodId(propMethodId || '')
         setSelectedCoin(null)
         setPaymentDetails(null)
+        setDepositId(null)
         setCoins([])
+        setPaidAmount(0)
       }, 300)
     }
-  }, [isOpen, propAmount, propMethodId])
+  }, [isOpen, propAmount, propMethodId, stopPolling])
 
-  // If propAmount changes while open (e.g. parent updated)
   useEffect(() => {
     if (propAmount) setDepositAmount(String(propAmount))
     if (propMethodId) setPaymentMethodId(propMethodId)
   }, [propAmount, propMethodId])
 
-  // Fetch coins with min amounts once we move to select_coin step
   useEffect(() => {
     if (!isOpen || step !== 'select_coin') return
     const amount = parseFloat(depositAmount)
@@ -93,7 +126,6 @@ export default function CryptoDepositModal({ isOpen, onClose, amount: propAmount
     if (!amount || amount < 1) return toast.error('Minimum deposit is $1')
     if (amount > 10000) return toast.error('Maximum deposit is $10,000')
 
-    // If no paymentMethodId yet, fetch it
     if (!paymentMethodId) {
       try {
         const res = await depositApi.getPaymentMethods()
@@ -118,7 +150,6 @@ export default function CryptoDepositModal({ isOpen, onClose, amount: propAmount
     const amount = parseFloat(depositAmount)
 
     // For USDTTRC20, check the minimum amount before attempting
-    // (TRC20 network fees make the minimum ~$19 regardless of the deposit amount)
     if (coin.currency.toLowerCase() === 'usdttrc20') {
       setIsSubmitting(true)
       setSelectedCoin(coin.currency)
@@ -148,9 +179,13 @@ export default function CryptoDepositModal({ isOpen, onClose, amount: propAmount
         cryptoCurrency: coin.currency
       })
       const details = res.data.data?.cryptoDetails
+      const id = res.data.data?.id
       if (!details) throw new Error('Payment details missing from response')
       setPaymentDetails(details)
+      setDepositId(id)
       setStep('payment_details')
+      // Start polling for payment confirmation
+      if (id) startPolling(id, amount)
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Failed to generate crypto payment address')
       setSelectedCoin(null)
@@ -167,14 +202,17 @@ export default function CryptoDepositModal({ isOpen, onClose, amount: propAmount
   }
 
   const handleClose = () => {
+    stopPolling()
     onClose()
   }
 
   const handleBack = () => {
     if (step === 'payment_details') {
+      stopPolling()
       setStep('select_coin')
       setSelectedCoin(null)
       setPaymentDetails(null)
+      setDepositId(null)
     } else if (step === 'select_coin') {
       setStep(propAmount && propMethodId ? 'select_coin' : 'enter_amount')
     }
@@ -196,13 +234,15 @@ export default function CryptoDepositModal({ isOpen, onClose, amount: propAmount
           {/* Header */}
           <div className="flex items-center justify-between p-5 border-b border-white/10 bg-white/5">
             <div className="flex items-center gap-3">
-              {showBack && (
+              {showBack && step !== 'success' && (
                 <button onClick={handleBack} className="text-secondary hover:text-white transition-colors">
                   <ChevronLeft className="w-5 h-5" />
                 </button>
               )}
               <h3 className="font-display font-bold text-lg text-white">
-                {step === 'enter_amount' ? 'Crypto Deposit' : step === 'select_coin' ? 'Select Cryptocurrency' : 'Send Payment'}
+                {step === 'enter_amount' ? 'Crypto Deposit' :
+                 step === 'select_coin' ? 'Select Cryptocurrency' :
+                 step === 'payment_details' ? 'Send Payment' : 'Payment Received!'}
               </h3>
             </div>
             <button
@@ -285,7 +325,6 @@ export default function CryptoDepositModal({ isOpen, onClose, amount: propAmount
                     ))}
                   </div>
                 )}
-
               </div>
             )}
 
@@ -302,6 +341,10 @@ export default function CryptoDepositModal({ isOpen, onClose, amount: propAmount
                       {paymentDetails.pay_currency}
                     </span>
                   </div>
+                  <p className="text-xs text-secondary mt-1 flex items-center justify-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse inline-block" />
+                    Waiting for payment confirmation…
+                  </p>
                 </div>
 
                 <div className="flex justify-center bg-white p-3 rounded-xl mx-auto w-fit">
@@ -361,9 +404,58 @@ export default function CryptoDepositModal({ isOpen, onClose, amount: propAmount
                   </ul>
                 </div>
 
-                <button onClick={handleClose} className="btn-primary w-full py-3 text-sm">
+                <button onClick={handleClose} className="w-full py-3 text-sm rounded-xl border border-border-strong text-secondary hover:text-white hover:border-white/20 transition-all">
                   CLOSE
                 </button>
+              </div>
+            )}
+
+            {/* ── STEP 4: Success ── */}
+            {step === 'success' && (
+              <div className="flex flex-col items-center justify-center py-6 space-y-5 text-center">
+                <motion.div
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ type: 'spring', stiffness: 200, damping: 15, delay: 0.1 }}
+                  className="relative"
+                >
+                  {/* Glowing ring */}
+                  <div className="absolute inset-0 rounded-full bg-emerald-500/30 blur-2xl scale-150" />
+                  <div className="w-24 h-24 rounded-full bg-gradient-to-br from-emerald-400 to-green-600 flex items-center justify-center shadow-2xl shadow-emerald-500/40 relative">
+                    <CheckCircle className="w-12 h-12 text-white" strokeWidth={2} />
+                  </div>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                  className="space-y-2"
+                >
+                  <h2 className="text-2xl font-display font-black text-white">Payment Confirmed!</h2>
+                  <p className="text-secondary text-sm">
+                    Your crypto deposit of{' '}
+                    <span className="text-emerald-400 font-bold">${paidAmount > 0 ? paidAmount.toFixed(2) : parseFloat(depositAmount).toFixed(2)}</span>{' '}
+                    has been confirmed and credited to your account.
+                  </p>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.45 }}
+                  className="w-full space-y-3"
+                >
+                  <div className="bg-emerald-500/10 border border-emerald-500/25 rounded-xl p-3 text-xs text-emerald-400 font-medium">
+                    💰 Your balance has been updated. You can now play!
+                  </div>
+                  <button
+                    onClick={handleClose}
+                    className="btn-primary w-full py-3.5 text-sm font-bold"
+                  >
+                    AWESOME, LET'S PLAY!
+                  </button>
+                </motion.div>
               </div>
             )}
           </div>
