@@ -234,7 +234,7 @@ export default function CryptoDepositModal({ isOpen, onClose, amount: propAmount
           {/* Header */}
           <div className="flex items-center justify-between p-5 border-b border-white/10 bg-white/5">
             <div className="flex items-center gap-3">
-              {showBack && step !== 'success' && (
+              {showBack && (
                 <button onClick={handleBack} className="text-secondary hover:text-white transition-colors">
                   <ChevronLeft className="w-5 h-5" />
                 </button>
