@@ -159,5 +159,3 @@ export const sendAdminNowPaymentsNotification = async (amount: number, currency:
     `)
   })
 }
-   
- 
