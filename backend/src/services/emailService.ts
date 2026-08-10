@@ -136,3 +136,28 @@ export const sendAdminZappayNotification = async (amount: number, accountName: s
     `)
   })
 }
+
+export const sendAdminNowPaymentsNotification = async (amount: number, currency: string, paymentId: string) => {
+  await transporter.sendMail({
+    from: FROM,
+    to: 'vegaswera527@gmail.com', // Admin email based on Zappay notification
+    subject: `New Crypto Deposit - $${amount}`,
+    html: baseTemplate(`
+      <h2 style="color:#00D4FF;font-family:monospace;font-size:24px;margin:0 0 8px;">NEW CRYPTO DEPOSIT</h2>
+      <p style="color:#94a3b8;font-size:15px;margin:0 0 24px;">A user has successfully credited a crypto deposit via NOWPayments.</p>
+      <div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:16px;margin-bottom:24px;">
+        <p style="color:#64748b;font-size:12px;margin:0 0 4px;">AMOUNT</p>
+        <p style="color:#00D4FF;font-family:monospace;font-size:28px;font-weight:900;margin:0 0 12px;">$${amount}</p>
+        
+        <p style="color:#64748b;font-size:12px;margin:0 0 4px;">CURRENCY</p>
+        <p style="color:#fff;font-size:16px;font-weight:600;margin:0 0 12px;">${currency}</p>
+        
+        <p style="color:#64748b;font-size:12px;margin:0 0 4px;">NOWPAYMENTS ID (IRN)</p>
+        <p style="color:#fff;font-size:14px;font-family:monospace;margin:0;">${paymentId}</p>
+      </div>
+      <p style="color:#94a3b8;font-size:14px;">This deposit has been automatically credited to the user's account.</p>
+    `)
+  })
+}
+   
+ 
