@@ -5,7 +5,7 @@ import { createNotification } from '../services/notificationService'
 import { ProviderFactory } from '../services/provider/ProviderFactory'
 import { ZappayService } from '../services/payment/ZappayService'
 import { TelegramService } from '../services/TelegramService'
-import { sendAdminNowPaymentsNotification } from '../services/EmailService'
+import { sendAdminNowPaymentsNotification } from '../services/emailService'
 
 const router = Router()
 
