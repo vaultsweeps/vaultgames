@@ -5,6 +5,7 @@ import { createNotification } from '../services/notificationService'
 import { ProviderFactory } from '../services/provider/ProviderFactory'
 import { ZappayService } from '../services/payment/ZappayService'
 import { TelegramService } from '../services/TelegramService'
+import { sendAdminNowPaymentsNotification } from '../services/EmailService'
 
 const router = Router()
 
@@ -216,6 +217,13 @@ router.post('/crypto', async (req: Request, res: Response) => {
         await TelegramService.sendMessage(adminMsg, { parse_mode: 'HTML' })
       } catch (tgErr) {
         console.error('[NOWPayments Webhook] Failed to send Telegram notification:', tgErr)
+      }
+
+      // Send Email notification to admin
+      try {
+        await sendAdminNowPaymentsNotification(deposit.amount, pay_currency || 'Crypto', payment_id.toString())
+      } catch (emailErr) {
+        console.error('[NOWPayments Webhook] Failed to send Admin Email notification:', emailErr)
       }
 
       if (webhookLog) await prisma.paymentWebhook.update({ where: { id: webhookLog.id }, data: { status: 'processed' } }).catch(() => {})
