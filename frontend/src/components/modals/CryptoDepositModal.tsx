@@ -5,6 +5,7 @@ import { Loader2, X, Copy, CheckCircle2, ChevronLeft, AlertTriangle, CheckCircle
 import toast from 'react-hot-toast'
 import { depositApi } from '@/lib/api'
 import { QRCodeSVG } from 'qrcode.react'
+import { getSignalUrl } from '@/lib/signal'
 
 interface CoinInfo {
   currency: string
@@ -302,27 +303,56 @@ export default function CryptoDepositModal({ isOpen, onClose, amount: propAmount
                     <p className="text-sm text-secondary">Fetching available coins...</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 gap-3">
-                    {coins.map((coin) => (
-                      <button
-                        key={coin.currency}
-                        disabled={isSubmitting}
-                        onClick={() => handleCoinSelect(coin)}
-                        className={`p-4 rounded-xl border flex flex-col items-center justify-center gap-1.5 transition-all relative ${
-                          selectedCoin === coin.currency
-                            ? 'bg-neon-blue/20 border-neon-blue text-white'
-                            : 'glass border-border-strong hover:bg-white/5 text-secondary hover:text-white'
-                        } ${isSubmitting && selectedCoin !== coin.currency ? 'opacity-30 cursor-not-allowed' : ''}`}
-                      >
-                        {isSubmitting && selectedCoin === coin.currency ? (
-                          <Loader2 className="w-5 h-5 animate-spin text-neon-blue" />
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-3">
+                      {coins.map((coin) => {
+                        const isLtc = coin.currency.toLowerCase() === 'ltc'
+                        const isTrx = coin.currency.toLowerCase() === 'trx'
+                        const isUsdtTrc20 = coin.currency.toLowerCase() === 'usdttrc20'
+                        
+                        // Default to TRX UI if it's usdttrc20 for the requested look, or specific
+                        const bgColor = isLtc ? 'bg-blue-500' : 'bg-red-600'
+                        const icon = isLtc ? (
+                          <svg viewBox="0 0 24 24" fill="white" className="w-6 h-6"><path d="M11.944 2.5L2 9.5l9.944 7L22 9.5l-10.056-7z"/><path d="M2 11.5l9.944 7 10.056-7L11.944 23 2 11.5z"/></svg>
                         ) : (
-                          <span className="font-mono text-xs uppercase tracking-wider font-bold">
-                            {coin.currency}
-                          </span>
-                        )}
-                      </button>
-                    ))}
+                          <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><path d="M3 12h18"/><path d="M12 3v18"/><path d="M3 12l9-9 9 9-9 9-9-9z"/></svg>
+                        )
+                        
+                        const name = isLtc ? 'Litecoin' : isUsdtTrc20 ? 'USDT' : 'TRX'
+                        const network = isLtc ? 'Mainnet' : 'TRC-20'
+                        
+                        return (
+                          <button
+                            key={coin.currency}
+                            disabled={isSubmitting}
+                            onClick={() => handleCoinSelect(coin)}
+                            className={`p-5 rounded-2xl border flex flex-col items-center justify-center gap-2 transition-all relative ${
+                              selectedCoin === coin.currency
+                                ? 'bg-surface-elevated border-neon-blue text-white'
+                                : 'bg-surface border-border-subtle hover:bg-surface-elevated text-secondary hover:text-white'
+                            } ${isSubmitting && selectedCoin !== coin.currency ? 'opacity-30 cursor-not-allowed' : ''}`}
+                          >
+                            {isSubmitting && selectedCoin === coin.currency ? (
+                              <Loader2 className="w-10 h-10 animate-spin text-neon-blue" />
+                            ) : (
+                              <>
+                                <div className={`w-10 h-10 rounded-full ${bgColor} flex items-center justify-center font-bold text-white text-xl`}>
+                                  {icon}
+                                </div>
+                                <div className="text-center mt-1">
+                                  <span className="text-white font-bold text-sm block">{name}</span>
+                                  <span className="text-muted text-[10px] block">{network}</span>
+                                </div>
+                              </>
+                            )}
+                          </button>
+                        )
+                      })}
+                    </div>
+                    
+                    <a href={getSignalUrl()} target="_blank" rel="noopener noreferrer" className="btn-signal-beam-rect w-full block font-bold py-3 rounded-xl text-center text-sm shadow-md transition-all">
+                      <span className="relative z-10 text-white">Contact us for more option</span>
+                    </a>
                   </div>
                 )}
               </div>
