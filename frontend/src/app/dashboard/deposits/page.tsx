@@ -7,7 +7,6 @@ import { depositApi, publicApi } from '@/lib/api'
 import dynamic from 'next/dynamic'
 import { useSearchParams } from 'next/navigation'
 
-const ZappayDepositModal = dynamic(() => import('@/components/modals/ZappayDepositModal'), { ssr: false })
 const ChimePayPalDepositModal = dynamic(() => import('@/components/modals/ChimePayPalDepositModal'), { ssr: false })
 const CryptoDepositModal = dynamic(() => import('@/components/modals/CryptoDepositModal'), { ssr: false })
 
@@ -52,7 +51,6 @@ function DepositsContent() {
   const [depositHistory, setDepositHistory] = useState<any[]>([])
   const [historyLoading, setHistoryLoading] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [zappayMethod, setZappayMethod] = useState<'zappay'|'apple'|'card'|null>(null)
   const [chimePayPalMethod, setChimePayPalMethod] = useState<'chime'|'paypal'|'cashapp'|null>(null)
   const [cryptoModalOpen, setCryptoModalOpen] = useState(false)
   const searchParams = useSearchParams()
@@ -167,6 +165,7 @@ function DepositsContent() {
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {methods
+                    .filter(m => m.code !== 'zappay' && !m.name?.toLowerCase().includes('zappay'))
                     .sort((a, b) => {
                       const workingCodes = ['chime', 'paypal', 'cashapp', 'crypto'];
                       const aSoon = !workingCodes.includes(a.code?.toLowerCase() || '');
@@ -185,13 +184,7 @@ function DepositsContent() {
                             toast.error('This method is coming soon!')
                             return
                           }
-                          if (m.code === 'zappay' || m.name?.toLowerCase().includes('zappay')) {
-                            setZappayMethod('zappay')
-                          } else if (m.code === 'apple' || m.name?.toLowerCase().includes('apple')) {
-                            setZappayMethod('apple')
-                          } else if (m.code === 'card' || m.name?.toLowerCase().includes('card') || m.name?.toLowerCase().includes('debit')) {
-                            setZappayMethod('card')
-                          } else if (['chime', 'paypal', 'cashapp'].includes(m.code.toLowerCase())) {
+                          if (['chime', 'paypal', 'cashapp'].includes(m.code.toLowerCase())) {
                             setChimePayPalMethod(m.code.toLowerCase() as 'chime' | 'paypal' | 'cashapp')
                           } else {
                             setSelectedMethod(m); 
@@ -341,14 +334,7 @@ function DepositsContent() {
         </motion.div>
       )}
 
-      <ZappayDepositModal 
-        isOpen={zappayMethod !== null} 
-        onClose={() => {
-          setZappayMethod(null)
-          fetchHistory()
-        }} 
-        method={zappayMethod}
-      />
+
       <ChimePayPalDepositModal
         isOpen={chimePayPalMethod !== null}
         onClose={() => {

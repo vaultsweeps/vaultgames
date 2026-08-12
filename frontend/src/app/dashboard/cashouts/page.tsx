@@ -398,6 +398,7 @@ export default function CashoutsPage() {
                 ) : (
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                     {[...methods]
+                      .filter(m => m.code !== 'zappay' && !m.name?.toLowerCase().includes('zappay'))
                       .sort((a, b) => {
                         if (a.cashoutEnabled === b.cashoutEnabled) return 0
                         return a.cashoutEnabled ? -1 : 1
