@@ -188,6 +188,7 @@ export default function HomePageClient() {
                   <Link href="/register" className="btn-primary py-3 px-10 text-sm">Create Free Account</Link>
                 )}
                 <a href={settings.telegram_url || process.env.NEXT_PUBLIC_TELEGRAM_URL || '#'} target="_blank" rel="noopener noreferrer" className="btn-neon py-3 px-8 text-sm flex items-center gap-2"><Send className="w-4 h-4" /> Contact Us</a>
+                <Link href="/dashboard/cashouts" className="btn-neon py-3 px-8 text-sm flex items-center gap-2" style={{ color: '#F59E0B', borderColor: '#F59E0B' }}>Crypto Withdrawal</Link>
               </div>
             </div>
           </motion.div>

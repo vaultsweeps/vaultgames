@@ -256,7 +256,7 @@ function WithdrawalCountdown({ amount, title, settings, onClose, withdrawalId }:
 interface ManualCashoutModalProps {
   isOpen: boolean
   onClose: () => void
-  method: 'cashapp' | 'chime'
+  method: 'cashapp' | 'chime' | 'crypto_ltc' | 'crypto_trx'
 }
 
 export default function ManualCashoutModal({ isOpen, onClose, method }: ManualCashoutModalProps) {
@@ -293,9 +293,13 @@ export default function ManualCashoutModal({ isOpen, onClose, method }: ManualCa
 
 
   const isChime = method === 'chime'
-  const title = isChime ? 'Chime' : 'CashApp'
-  const tagPlaceholder = isChime ? '$chime-tag' : '$cashtag'
-  const tagLabel = isChime ? 'Your chime $tag' : 'Your cashapp $tag'
+  const isCashApp = method === 'cashapp'
+  const isLtc = method === 'crypto_ltc'
+  const isTrx = method === 'crypto_trx'
+
+  const title = isLtc ? 'Litecoin (LTC)' : isTrx ? 'TRON (TRC-20)' : isChime ? 'Chime' : 'CashApp'
+  const tagPlaceholder = isLtc ? 'LTC Address...' : isTrx ? 'TRX Address...' : isChime ? '$chime-tag' : '$cashtag'
+  const tagLabel = isLtc ? 'Your Litecoin Address' : isTrx ? 'Your TRX Address (TRC-20)' : isChime ? 'Your chime $tag' : 'Your cashapp $tag'
 
   const handlePercentage = (percent: number) => {
     setAmount(((withdrawable * percent) / 100).toFixed(2))

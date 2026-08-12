@@ -6,10 +6,10 @@ import Link from 'next/link'
 import toast from 'react-hot-toast'
 import dynamic from 'next/dynamic'
 const ManualCashoutModal = dynamic(() => import('./ManualCashoutModal'), { ssr: false })
-const ZappayDepositModal = dynamic(() => import('./ZappayDepositModal'), { ssr: false })
 const ChimePayPalDepositModal = dynamic(() => import('./ChimePayPalDepositModal'), { ssr: false })
 const CryptoDepositModal = dynamic(() => import('./CryptoDepositModal'), { ssr: false })
 import { depositApi, withdrawalApi } from '@/lib/api'
+import { getSignalUrl } from '@/lib/signal'
 
 interface WalletModalProps {
   isOpen: boolean
@@ -22,7 +22,6 @@ const paymentMethods = [
   { id: 'paypal',  name: 'PayPal',         icon: 'P',  badge: 'No fee',  color: 'bg-blue-500' },
   { id: 'cashapp', name: 'CashApp Pay',    icon: '$',  badge: 'No fee',  color: 'bg-green-500' },
   { id: 'crypto',  name: 'Cryptocurrency', icon: '₿',  badge: '+15%',    tag: '+5', color: 'bg-orange-500', soon: false },
-  { id: 'zappay',  name: 'Zappay',         icon: 'Z',  badge: 'Active',  color: 'bg-indigo-500',           soon: true },
   { id: 'apple',   name: 'Apple Pay',      icon: '',   badge: '-5%',     color: 'bg-black',                soon: true, logoUrl: 'https://i.pinimg.com/originals/ae/85/92/ae859253f4141e38711d2c159a53649e.jpg' },
   { id: 'card',    name: 'Debit Card',     icon: '💳', badge: '-10%',    color: 'bg-blue-600',             soon: true },
   { id: 'google',  name: 'Google Pay',     icon: 'G',  badge: '-5%',     color: 'bg-white text-black',     soon: true },
@@ -106,7 +105,7 @@ function TxRow({ tx }: { tx: TxItem }) {
 export default function WalletModal({ isOpen, onClose, balance }: WalletModalProps) {
   const [activeTab, setActiveTab] = useState<'deposit' | 'cashout' | 'history'>('deposit')
   const [cashoutMethod, setCashoutMethod] = useState<'chime' | 'cashapp' | null>(null)
-  const [depositMethod, setDepositMethod] = useState<'zappay' | 'chime' | 'paypal' | 'apple' | 'card' | 'cashapp' | 'crypto' | null>(null)
+  const [depositMethod, setDepositMethod] = useState<'chime' | 'paypal' | 'apple' | 'card' | 'cashapp' | 'crypto' | null>(null)
   const [history, setHistory] = useState<TxItem[]>([])
   const [historyLoading, setHistoryLoading] = useState(false)
 
@@ -280,23 +279,30 @@ export default function WalletModal({ isOpen, onClose, balance }: WalletModalPro
                       </div>
                       <div>
                         <h3 className="text-secondary text-sm font-medium mb-3 px-2">Cryptocurrency</h3>
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="bg-surface border border-border-subtle rounded-2xl p-5 flex flex-col items-center justify-center gap-2 opacity-60 cursor-not-allowed">
-                            <div className="w-10 h-10 rounded-full bg-orange-500 flex items-center justify-center font-bold text-white text-xl">₿</div>
-                            <div className="text-center">
-                              <span className="text-white font-bold text-sm block">Bitcoin</span>
-                              <span className="text-muted text-[10px] block">BTC Network</span>
+                        <div className="grid grid-cols-2 gap-3 mb-3">
+                          <button onClick={() => setCashoutMethod('crypto_ltc' as any)} className="bg-surface hover:bg-surface-elevated border border-border-subtle rounded-2xl p-5 flex flex-col items-center justify-center gap-2 transition-colors">
+                            <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center font-bold text-white text-xl">
+                              <svg viewBox="0 0 24 24" fill="white" className="w-6 h-6"><path d="M11.944 2.5L2 9.5l9.944 7L22 9.5l-10.056-7z"/><path d="M2 11.5l9.944 7 10.056-7L11.944 23 2 11.5z"/></svg>
                             </div>
-                            <span className="bg-surface-elevated text-secondary text-[10px] font-bold px-3 py-1 rounded-full mt-1">Soon</span>
-                          </div>
-                          <div className="bg-surface border border-border-subtle rounded-2xl p-5 flex flex-col items-center justify-center gap-2 opacity-60 cursor-not-allowed">
-                            <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center font-bold text-white text-xl">⬨</div>
                             <div className="text-center">
-                              <span className="text-white font-bold text-sm block">Ethereum</span>
-                              <span className="text-muted text-[10px] block">ERC-20</span>
+                              <span className="text-white font-bold text-sm block">Litecoin</span>
+                              <span className="text-muted text-[10px] block">Mainnet</span>
                             </div>
-                            <span className="bg-surface-elevated text-secondary text-[10px] font-bold px-3 py-1 rounded-full mt-1">Soon</span>
-                          </div>
+                          </button>
+                          <button onClick={() => setCashoutMethod('crypto_trx' as any)} className="bg-surface hover:bg-surface-elevated border border-border-subtle rounded-2xl p-5 flex flex-col items-center justify-center gap-2 transition-colors">
+                            <div className="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center font-bold text-white text-xl">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><path d="M3 12h18"/><path d="M12 3v18"/><path d="M3 12l9-9 9 9-9 9-9-9z"/></svg>
+                            </div>
+                            <div className="text-center">
+                              <span className="text-white font-bold text-sm block">TRX</span>
+                              <span className="text-muted text-[10px] block">TRC-20</span>
+                            </div>
+                          </button>
+                        </div>
+                        <div className="px-2">
+                          <a href={getSignalUrl()} target="_blank" rel="noopener noreferrer" className="btn-signal-beam-rect w-full block font-bold py-3 rounded-xl text-center text-sm shadow-md transition-all">
+                            <span className="relative z-10 text-white">Contact us for more option</span>
+                          </a>
                         </div>
                       </div>
                     </div>
@@ -350,11 +356,7 @@ export default function WalletModal({ isOpen, onClose, balance }: WalletModalPro
         onClose={() => setCashoutMethod(null)}
         method={cashoutMethod as any}
       />
-      <ZappayDepositModal
-        isOpen={depositMethod === 'zappay' || depositMethod === 'apple' || depositMethod === 'card'}
-        onClose={() => setDepositMethod(null)}
-        method={depositMethod as any}
-      />
+
       <ChimePayPalDepositModal
         isOpen={depositMethod === 'chime' || depositMethod === 'paypal' || depositMethod === 'cashapp'}
         onClose={() => setDepositMethod(null)}

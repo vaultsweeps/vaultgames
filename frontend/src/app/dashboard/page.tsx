@@ -184,7 +184,7 @@ export default function DashboardPage() {
 
       {/* Support CTA */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <a
             href="https://wa.me/16824829914"
             target="_blank"
@@ -215,6 +215,20 @@ export default function DashboardPage() {
               </div>
             </div>
           </Link>
+          <button onClick={() => {
+              const el = document.querySelector('[aria-label="wallet-trigger"]') as HTMLElement;
+              if (el) el.click();
+            }} className="block glass-card p-4 hover:border-orange-500/20 transition-all group text-left">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 bg-orange-500/10 border border-orange-500/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                <ArrowUpCircle className="w-5 h-5 text-orange-400" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-white text-sm font-medium">Crypto Withdrawal</p>
+                <p className="text-muted text-xs">Manual LTC & TRX Request</p>
+              </div>
+            </div>
+          </button>
         </div>
       </motion.div>
     </div>
