@@ -53,6 +53,7 @@ export class FastApiProviderService implements ProviderAdapter {
     const url = `${baseUrl}/${path}`;
 
     const requestData: Record<string, any> = {
+      appid: this.appid,
       requestid: crypto.randomBytes(16).toString('hex'),
       timestamp: Date.now().toString(),
       account: this.provider.agentId,
