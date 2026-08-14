@@ -212,8 +212,8 @@ export class FastApiProviderService implements ProviderAdapter {
       const message = response.data.message || response.data.msg || 'Unknown Provider Error';
       const data = response.data.data;
 
-      // 200 is success for FastApi (as per doc "200 Success")
-      if (code !== 200 && code !== 0) {
+      // 200 is success, 0 is success for some endpoints, 1 is "New User Is Created" success
+      if (code !== 200 && code !== 0 && code !== 1) {
         const errorMsg = this.mapProviderError(code, message);
         console.error(JSON.stringify({ ...logData, status: 200, response: response.data, message: errorMsg, duration }));
         await ProviderLogService.logRequest(this.provider.id, userId, endpoint, requestData, response.data, code, errorMsg);
