@@ -28,6 +28,7 @@ import webhookRoutes from './routes/webhooks'
 import providerRoutes from './routes/provider'
 import referralRoutes from './routes/referral'
 import couponRoutes from './routes/coupons'
+import wheelRoutes from './routes/wheel'
 
 const app = express()
 const PORT = process.env.PORT || 5000
@@ -89,9 +90,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 app.use(compression())
 
 // Redact one-time secret tokens (password reset / email verification) out of
-// the URL before it's written to any access log — these tokens are otherwise
-// long-lived-enough and sensitive enough that persisting them in log files
-// is an unnecessary secondary exposure path.
+// the URL before it's written to any access log
 morgan.token('url', (req: express.Request) =>
   (req.originalUrl || req.url || '').replace(/(reset-password|verify-email)\/[^/?]+/gi, '$1/[REDACTED]')
 )
@@ -128,6 +127,7 @@ app.use('/api/webhooks', webhookRoutes)
 app.use('/api/provider', providerRoutes)
 app.use('/api/referral', referralRoutes)
 app.use('/api/user/coupons', couponRoutes)
+app.use('/api/wheel', wheelRoutes)
 
 // 404 handler
 app.use('*', (req, res) => {

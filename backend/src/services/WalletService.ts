@@ -29,13 +29,14 @@ export class WalletService {
   static async getBalances(userId: string) {
     return getCached(`wallet_balances:${userId}`, async () => {
       // Run all aggregates in parallel for maximum speed
-      const [deposits, withdrawals, gameRecharges, gameWithdrawals, referralBonuses, freeplayBonuses] = await Promise.all([
+      const [deposits, withdrawals, gameRecharges, gameWithdrawals, referralBonuses, freeplayBonuses, wheelBonuses] = await Promise.all([
         prisma.deposit.aggregate({ where: { userId, status: 'approved' }, _sum: { amount: true } }),
         prisma.withdrawal.aggregate({ where: { userId, status: { in: ['pending', 'approved', 'paid'] } }, _sum: { amount: true } }),
         prisma.providerTransaction.aggregate({ where: { userId, type: 'recharge', status: 'success' }, _sum: { amount: true } }),
         prisma.providerTransaction.aggregate({ where: { userId, type: 'withdraw', status: 'success' }, _sum: { amount: true } }),
         prisma.bonusClaim.aggregate({ where: { userId, bonus: { type: 'referral' } }, _sum: { amount: true } }),
-        prisma.bonusClaim.aggregate({ where: { userId, bonus: { type: 'freeplay' } }, _sum: { amount: true } })
+        prisma.bonusClaim.aggregate({ where: { userId, bonus: { type: 'freeplay' } }, _sum: { amount: true } }),
+        prisma.bonusClaim.aggregate({ where: { userId, bonus: { type: 'wheel' } }, _sum: { amount: true } })
       ]);
 
       const totalDeposited = deposits._sum.amount || 0;
@@ -44,8 +45,9 @@ export class WalletService {
       const totalGameWithdrawals = gameWithdrawals._sum.amount || 0;
       const totalReferralBonus = referralBonuses._sum.amount || 0;
       const totalFreeplayBonus = freeplayBonuses._sum.amount || 0;
+      const totalWheelBonus = wheelBonuses._sum.amount || 0;
 
-      const totalNonWithdrawable = totalReferralBonus + totalFreeplayBonus;
+      const totalNonWithdrawable = totalReferralBonus + totalFreeplayBonus + totalWheelBonus;
 
       // 1. Calculate the absolute total wallet balance mathematically
       const totalWalletBalance = totalDeposited + totalGameWithdrawals + totalNonWithdrawable - totalWithdrawn - totalGameRecharges;
@@ -70,13 +72,14 @@ export class WalletService {
    * (used right before debiting funds, e.g. withdrawal creation).
    */
   static async getBalancesRaw(userId: string, client: Pick<typeof prisma, 'deposit' | 'withdrawal' | 'providerTransaction' | 'bonusClaim'> = prisma) {
-    const [deposits, withdrawals, gameRecharges, gameWithdrawals, referralBonuses, freeplayBonuses] = await Promise.all([
+    const [deposits, withdrawals, gameRecharges, gameWithdrawals, referralBonuses, freeplayBonuses, wheelBonuses] = await Promise.all([
       client.deposit.aggregate({ where: { userId, status: 'approved' }, _sum: { amount: true } }),
       client.withdrawal.aggregate({ where: { userId, status: { in: ['pending', 'approved', 'paid'] } }, _sum: { amount: true } }),
       client.providerTransaction.aggregate({ where: { userId, type: 'recharge', status: 'success' }, _sum: { amount: true } }),
       client.providerTransaction.aggregate({ where: { userId, type: 'withdraw', status: 'success' }, _sum: { amount: true } }),
       client.bonusClaim.aggregate({ where: { userId, bonus: { type: 'referral' } }, _sum: { amount: true } }),
-      client.bonusClaim.aggregate({ where: { userId, bonus: { type: 'freeplay' } }, _sum: { amount: true } })
+      client.bonusClaim.aggregate({ where: { userId, bonus: { type: 'freeplay' } }, _sum: { amount: true } }),
+      client.bonusClaim.aggregate({ where: { userId, bonus: { type: 'wheel' } }, _sum: { amount: true } })
     ]);
 
     const totalDeposited = deposits._sum.amount || 0;
@@ -85,8 +88,9 @@ export class WalletService {
     const totalGameWithdrawals = gameWithdrawals._sum.amount || 0;
     const totalReferralBonus = referralBonuses._sum.amount || 0;
     const totalFreeplayBonus = freeplayBonuses._sum.amount || 0;
+    const totalWheelBonus = wheelBonuses._sum.amount || 0;
 
-    const totalNonWithdrawable = totalReferralBonus + totalFreeplayBonus;
+    const totalNonWithdrawable = totalReferralBonus + totalFreeplayBonus + totalWheelBonus;
 
     const totalWalletBalance = totalDeposited + totalGameWithdrawals + totalNonWithdrawable - totalWithdrawn - totalGameRecharges;
     const displayBalance = Math.max(0, totalWalletBalance);

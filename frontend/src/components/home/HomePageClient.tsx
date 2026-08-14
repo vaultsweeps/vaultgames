@@ -55,7 +55,14 @@ export default function HomePageClient() {
   const [settings, setSettings] = useState<any>({})
   const [mounted, setMounted] = useState(false)
   const [signalUrl, setSignalUrl] = useState('')
-  const isAuthenticated = useAuthStore(state => state.isAuthenticated)
+  const { isAuthenticated, openAuthModal } = useAuthStore()
+
+  const handleFeatureClick = (e: React.MouseEvent) => {
+    if (!isAuthenticated) {
+      e.preventDefault()
+      openAuthModal('login')
+    }
+  }
 
   useEffect(() => {
     setMounted(true)
@@ -104,7 +111,7 @@ export default function HomePageClient() {
               <p className="font-mono text-xs tracking-[0.3em] text-neon-blue uppercase mb-3">Promotions</p>
               <h2 className="font-display font-bold text-4xl sm:text-5xl text-primary">HOT <span className="gradient-text">BONUSES</span></h2>
             </motion.div>
-            <Link href="/bonuses" className="btn-neon text-xs flex items-center gap-2">View All <ChevronRight className="w-3 h-3" /></Link>
+            <Link href="/bonuses" onClick={handleFeatureClick} className="btn-neon text-xs flex items-center gap-2">View All <ChevronRight className="w-3 h-3" /></Link>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {bonuses.length > 0 ? bonuses.map((b: any, i: number) => {
@@ -185,10 +192,10 @@ export default function HomePageClient() {
                 {mounted && isAuthenticated ? (
                   <Link href="/dashboard" className="btn-primary py-3 px-10 text-sm">Go to Dashboard</Link>
                 ) : (
-                  <Link href="/register" className="btn-primary py-3 px-10 text-sm">Create Free Account</Link>
+                  <button onClick={() => openAuthModal('register')} className="btn-primary py-3 px-10 text-sm font-medium">Create Free Account</button>
                 )}
                 <a href={settings.telegram_url || process.env.NEXT_PUBLIC_TELEGRAM_URL || '#'} target="_blank" rel="noopener noreferrer" className="btn-neon py-3 px-8 text-sm flex items-center gap-2"><Send className="w-4 h-4" /> Contact Us</a>
-                <Link href="/dashboard/cashouts" className="btn-neon py-3 px-8 text-sm flex items-center gap-2" style={{ color: '#F59E0B', borderColor: '#F59E0B' }}>Crypto Withdrawal</Link>
+                <Link href="/dashboard/cashouts" onClick={handleFeatureClick} className="btn-neon py-3 px-8 text-sm flex items-center gap-2" style={{ color: '#F59E0B', borderColor: '#F59E0B' }}>Crypto Withdrawal</Link>
               </div>
             </div>
           </motion.div>

@@ -3,8 +3,10 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Crown, RotateCw, Gem, Users, Wrench, X } from 'lucide-react'
+import { useAuthStore } from '@/store/authStore'
+import WheelModal from '@/components/wheel/WheelModal'
 
-const MAINTENANCE_KEYS = ['VIP Club', 'Daily Spin']
+const MAINTENANCE_KEYS = ['VIP Club']
 
 const LINKS = [
   {
@@ -19,6 +21,7 @@ const LINKS = [
     title: 'Daily Spin',
     icon: RotateCw,
     href: '#',
+    action: 'modal',
     gradient: 'from-[#4facfe] to-[#00f2fe]',
     shadowColor: 'rgba(79, 172, 254, 0.4)',
     iconColor: 'text-blue-100',
@@ -44,12 +47,26 @@ const LINKS = [
 export default function QuickLinks() {
   const [showMaintenance, setShowMaintenance] = useState(false)
   const [maintenanceTitle, setMaintenanceTitle] = useState('')
+  const [showWheelModal, setShowWheelModal] = useState(false)
+  const { isAuthenticated, openAuthModal } = useAuthStore()
 
-  const handleClick = (e: React.MouseEvent, title: string) => {
-    if (MAINTENANCE_KEYS.includes(title)) {
+  const handleClick = (e: React.MouseEvent, link: any) => {
+    if (!isAuthenticated) {
       e.preventDefault()
-      setMaintenanceTitle(title)
+      openAuthModal('login')
+      return
+    }
+
+    if (MAINTENANCE_KEYS.includes(link.title)) {
+      e.preventDefault()
+      setMaintenanceTitle(link.title)
       setShowMaintenance(true)
+      return
+    }
+    
+    if (link.action === 'modal' && link.title === 'Daily Spin') {
+      e.preventDefault()
+      setShowWheelModal(true)
     }
   }
 
@@ -58,7 +75,7 @@ export default function QuickLinks() {
       <section className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto py-4">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
           {LINKS.map((link, i) => (
-            <Link href={link.href} key={i} onClick={(e) => handleClick(e, link.title)} aria-label={link.title}>
+            <Link href={link.href} key={i} onClick={(e) => handleClick(e, link)} aria-label={link.title}>
               <motion.div
                 whileHover={{ y: -4, scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
@@ -131,6 +148,7 @@ export default function QuickLinks() {
           </motion.div>
         )}
       </AnimatePresence>
+      <WheelModal isOpen={showWheelModal} onClose={() => setShowWheelModal(false)} />
     </>
   )
 }

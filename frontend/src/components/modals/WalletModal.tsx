@@ -213,53 +213,60 @@ export default function WalletModal({ isOpen, onClose, balance }: WalletModalPro
                 {/* Tab Content */}
                 <div className="px-2 pb-4">
                   {activeTab === 'deposit' && (
-                    <div className="grid grid-cols-2 gap-3">
-                      {paymentMethods.map((method) => (
-                        <button
-                          key={method.id}
-                          onClick={() => {
-                            if (!method.soon) {
-                              // Sub-modal opens at z-[300], above this overlay at z-[200]
-                              setDepositMethod(method.id as any)
-                            } else {
-                              toast.error('This method is coming soon!')
-                            }
-                          }}
-                          className={`bg-surface rounded-2xl p-4 flex flex-col transition-all border border-border-subtle relative overflow-hidden text-left
-                            ${method.soon ? 'opacity-50 cursor-not-allowed hover:bg-surface' : 'hover:bg-surface-elevated hover:-translate-y-1'}`}
-                        >
-                          <div className="flex justify-between items-start mb-3">
-                            <div className={`w-8 h-8 rounded-full ${method.color} flex items-center justify-center font-bold text-sm shadow-lg overflow-hidden`}>
-                              {(method as any).logoUrl
-                                ? <img src={(method as any).logoUrl} alt={method.name} className="w-full h-full object-cover" />
-                                : method.icon
+                    <>
+                      <div className="grid grid-cols-2 gap-3">
+                        {paymentMethods.map((method) => (
+                          <button
+                            key={method.id}
+                            onClick={() => {
+                              if (!method.soon) {
+                                // Sub-modal opens at z-[300], above this overlay at z-[200]
+                                setDepositMethod(method.id as any)
+                              } else {
+                                toast.error('This method is coming soon!')
                               }
+                            }}
+                            className={`bg-surface rounded-2xl p-4 flex flex-col transition-all border border-border-subtle relative overflow-hidden text-left
+                              ${method.soon ? 'opacity-50 cursor-not-allowed hover:bg-surface' : 'hover:bg-surface-elevated hover:-translate-y-1'}`}
+                          >
+                            <div className="flex justify-between items-start mb-3">
+                              <div className={`w-8 h-8 rounded-full ${method.color} flex items-center justify-center font-bold text-sm shadow-lg overflow-hidden`}>
+                                {(method as any).logoUrl
+                                  ? <img src={(method as any).logoUrl} alt={method.name} className="w-full h-full object-cover" />
+                                  : method.icon
+                                }
+                              </div>
+                              {method.badge && !method.soon && (
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                  method.badge.includes('+') ? 'bg-yellow-500/20 text-yellow-500' :
+                                  method.badge.includes('-') ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/20 text-emerald-400'
+                                }`}>
+                                  {method.badge}
+                                </span>
+                              )}
+                              {method.soon && (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-surface-elevated text-secondary">
+                                  Soon
+                                </span>
+                              )}
                             </div>
-                            {method.badge && !method.soon && (
-                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                                method.badge.includes('+') ? 'bg-yellow-500/20 text-yellow-500' :
-                                method.badge.includes('-') ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/20 text-emerald-400'
-                              }`}>
-                                {method.badge}
-                              </span>
-                            )}
-                            {method.soon && (
-                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-surface-elevated text-secondary">
-                                Soon
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex justify-between items-center mt-auto">
-                            <span className="text-white font-medium text-sm">{method.name}</span>
-                          </div>
-                          {method.tag && !method.soon && (
-                            <div className="absolute top-4 left-10 bg-[#2AC3FF] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
-                              {method.tag}
+                            <div className="flex justify-between items-center mt-auto">
+                              <span className="text-white font-medium text-sm">{method.name}</span>
                             </div>
-                          )}
-                        </button>
-                      ))}
-                    </div>
+                            {method.tag && !method.soon && (
+                              <div className="absolute top-4 left-10 bg-[#2AC3FF] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                                {method.tag}
+                              </div>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="px-2 mt-3">
+                        <a href={getSignalUrl()} target="_blank" rel="noopener noreferrer" className="btn-signal-beam-rect w-full block font-bold py-3 rounded-xl text-center text-sm shadow-md transition-all">
+                          <span className="relative z-10 text-white">Contact us for more option</span>
+                        </a>
+                      </div>
+                    </>
                   )}
 
                   {activeTab === 'cashout' && (
@@ -294,7 +301,7 @@ export default function WalletModal({ isOpen, onClose, balance }: WalletModalPro
                               <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><path d="M3 12h18"/><path d="M12 3v18"/><path d="M3 12l9-9 9 9-9 9-9-9z"/></svg>
                             </div>
                             <div className="text-center">
-                              <span className="text-white font-bold text-sm block">TRX</span>
+                              <span className="text-white font-bold text-sm block">USDT</span>
                               <span className="text-muted text-[10px] block">TRC-20</span>
                             </div>
                           </button>
