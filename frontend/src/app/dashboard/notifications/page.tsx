@@ -121,7 +121,7 @@ export default function NotificationsPage() {
                         {new Date(notif.createdAt).toLocaleDateString()}
                       </span>
                     </div>
-                    <p className="text-sm text-secondary leading-relaxed">{notif.message}</p>
+                    <p className="text-sm text-secondary leading-relaxed break-words">{notif.message}</p>
                   </div>
                   {!notif.isRead && (
                     <div className="shrink-0 flex items-center justify-center">
