@@ -237,22 +237,38 @@ export class FastApiProviderService implements ProviderAdapter {
     }
   }
 
+  private getProviderAccount(userId: string): string {
+    // FastApi requires 3-16 characters, only letters and numbers
+    let clean = userId.replace(/[^a-zA-Z0-9]/g, '');
+    if (clean.length < 3) {
+      clean = clean + 'abc'.substring(0, 3 - clean.length);
+    }
+    if (clean.length > 16) {
+      clean = clean.substring(0, 16);
+    }
+    return clean.toLowerCase();
+  }
+
   async createPlayer(username: string, password?: string): Promise<{ userId: string; accountName: string }> {
     const endpoint = this.getEndpoint('createPlayer', '/fast/user/create');
+    const providerAccount = this.getProviderAccount(username);
     try {
       const data = await this.makeRequest(endpoint, {
-        account: username,
+        account: providerAccount,
         passwd: password || 'Test@123', // "6–16 characters, must include letters and numbers; allowed symbols: !@#$()%^/.,"
       });
 
       // data object contains: { full_account: "prefix_username" }
-      const accountName = data?.full_account || username;
+      const accountName = data?.full_account || providerAccount;
       return { userId: username, accountName };
     } catch (e: any) {
       // Code 12 = User Already Exists — treat as success, user is already on provider
       if (e.message?.includes('Code: 12') || e.message?.includes('User Already Exist')) {
-        console.info(`[FastApiProviderService] Player "${username}" already exists on provider — treating as success`);
-        return { userId: username, accountName: username };
+        console.info(`[FastApiProviderService] Player "${providerAccount}" already exists on provider — treating as success`);
+        // If it already exists, we must assume the accountName is prefix + providerAccount
+        // FastApi usually prefixes the agentId to the account name. We don't have the exact prefix, but the frontend 
+        // usually shows what we return. Let's return the providerAccount.
+        return { userId: username, accountName: providerAccount };
       }
       throw e;
     }
@@ -261,16 +277,15 @@ export class FastApiProviderService implements ProviderAdapter {
   async rechargePlayer(userId: string, amount: number, orderId: string): Promise<any> {
     const endpoint = this.getEndpoint('recharge', '/fast/user/deposit');
     return this.makeRequest(endpoint, {
-      account: userId,
+      account: this.getProviderAccount(userId),
       amount: amount.toFixed(2), // up to 2 decimal places
-      // requestid is already generated in generateRequestData
     }, userId);
   }
 
   async withdrawPlayer(userId: string, amount: number, orderId: string): Promise<any> {
     const endpoint = this.getEndpoint('withdraw', '/fast/user/withdrawal');
     return this.makeRequest(endpoint, {
-      account: userId,
+      account: this.getProviderAccount(userId),
       amount: amount.toFixed(2),
     }, userId);
   }
@@ -278,7 +293,7 @@ export class FastApiProviderService implements ProviderAdapter {
   async getPlayerBalance(userId: string): Promise<number> {
     const endpoint = this.getEndpoint('playerBalance', '/fast/user/balance');
     const data = await this.makeRequest(endpoint, {
-      account: userId,
+      account: this.getProviderAccount(userId),
     }, userId);
     return parseFloat(data.balance);
   }
@@ -286,8 +301,6 @@ export class FastApiProviderService implements ProviderAdapter {
   async getAgentBalance(): Promise<number> {
     const endpoint = this.getEndpoint('agentBalance', '/fast/agent/login');
     try {
-      // By calling makeRequest for agent login again, we can also refresh auth if needed,
-      // but authenticate() caches appid and appsecret.
       const data = await this.makeRequest(endpoint, {
         account: this.provider.agentId,
         passwd: this.provider.secretKey,
@@ -300,14 +313,13 @@ export class FastApiProviderService implements ProviderAdapter {
   }
 
   async getPlayerIdByUsername(username: string): Promise<string> {
-    // FastApi uses username as the account identifier directly.
     return username;
   }
 
   async resetPlayerPassword(userId: string, newPassword?: string): Promise<boolean> {
     const endpoint = this.getEndpoint('resetPassword', '/fast/user/updatePasswd');
     await this.makeRequest(endpoint, {
-      account: userId,
+      account: this.getProviderAccount(userId),
       passwd: 'OldPassword123!', // "passwd" requires old password in updatePasswd, we just provide a default if unknown.
       new_passwd: newPassword || 'Test@123',
     }, userId);
@@ -315,7 +327,6 @@ export class FastApiProviderService implements ProviderAdapter {
   }
 
   async forcePlayerOffline(userId: string): Promise<boolean> {
-    // Not available in FastApi docs, returning true
     return true;
   }
 
