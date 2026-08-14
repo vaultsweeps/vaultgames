@@ -6,9 +6,9 @@ import { wheelApi } from '@/lib/api'
 import { useAuthStore } from '@/store/authStore'
 import { X, Sparkles } from 'lucide-react'
 
-/* ─────────────────────────────────────────────
+/* _________________________________________________________
    Types
-───────────────────────────────────────────── */
+_________________________________________________________ */
 interface WheelPrize {
   id: string
   index: number
@@ -31,25 +31,22 @@ interface WheelModalProps {
   onClose: () => void
 }
 
-/* ─────────────────────────────────────────────
+/* _________________________________________________________
    Design tokens
-───────────────────────────────────────────── */
-// Alternating segment colours: vivid sapphire blue vs rich royal purple
-// with bright, readable inner zones and deep outer edges for a dimensional look
+_________________________________________________________ */
 const SEG = [
-  { inner: '#2a5fb8', mid: '#1238a0', outer: '#070e2e' },  // Sapphire blue
-  { inner: '#7b2dce', mid: '#4a148c', outer: '#1a0535' },  // Royal purple
+  { inner: '#2a5fb8', mid: '#1238a0', outer: '#070e2e' },
+  { inner: '#7b2dce', mid: '#4a148c', outer: '#1a0535' },
 ]
 
-// Special color for Try Again segments
 const TRY_AGAIN_SEG = { inner: '#4a4a4a', mid: '#2a2a2a', outer: '#111111' }
 
 const LIT_COUNT = 6
 const BULB_TOTAL = 32
 
-/* ─────────────────────────────────────────────
+/* _________________________________________________________
    Cooldown timer
-───────────────────────────────────────────── */
+_________________________________________________________ */
 function CooldownTimer({ nextSpinAt }: { nextSpinAt: string }) {
   const [timeLeft, setTimeLeft] = useState('')
   useEffect(() => {
@@ -78,14 +75,14 @@ function CooldownTimer({ nextSpinAt }: { nextSpinAt: string }) {
   )
 }
 
-/* ─────────────────────────────────────────────
+/* _________________________________________________________
    Main component
-───────────────────────────────────────────── */
+_________________________________________________________ */
 export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
-  /* ── Auth / balance ── */
+  /* -- Auth / balance -- */
   const { isAuthenticated, fetchBalance } = useAuthStore()
 
-  /* ── State ── */
+  /* -- State -- */
   const [config, setConfig] = useState<WheelConfig | null>(null)
   const [loading, setLoading] = useState(true)
   const [spinning, setSpinning] = useState(false)
@@ -93,21 +90,21 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
   const [winResult, setWinResult] = useState<WheelPrize | null>(null)
   const [showWin, setShowWin] = useState(false)
   const [error, setError] = useState('')
-  
+
   // Lighting & Effects
   const [lightPhase, setLightPhase] = useState(0)
   const [hostessAction, setHostessAction] = useState<'idle' | 'push'>('idle')
-  
+
   const spinLockRef = useRef(false)
 
-  /* ── Marquee light animation ── */
+  /* -- Marquee light animation -- */
   useEffect(() => {
     const ms = spinning ? 35 : 180
     const id = setInterval(() => setLightPhase(p => (p + 1) % BULB_TOTAL), ms)
     return () => clearInterval(id)
   }, [spinning])
 
-  /* ── Load config ── */
+  /* -- Load config -- */
   const loadConfig = useCallback(async () => {
     if (!isAuthenticated || !isOpen) return
     try {
@@ -121,7 +118,7 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
     }
   }, [isAuthenticated, isOpen])
 
-  /* ── Reset on open ── */
+  /* -- Reset on open -- */
   useEffect(() => {
     if (isOpen) {
       loadConfig()
@@ -135,14 +132,14 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
     }
   }, [isOpen, loadConfig])
 
-  /* ── Spin handler ── */
+  /* -- Spin handler -- */
   const handleSpin = async () => {
     if (!config?.eligible || spinning || spinLockRef.current) return
     spinLockRef.current = true
     setSpinning(true)
     setError('')
     setShowWin(false)
-    
+
     // Trigger Hostess physical interaction
     setHostessAction('push')
 
@@ -157,17 +154,15 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
       const currentVisual = rotation % 360
       const needed = (360 - targetAngle) % 360
       const delta = (needed - currentVisual + 360) % 360
-      const newRotation = rotation + 360 * 9 + delta // 9 full dramatic heavy spins
+      const newRotation = rotation + 360 * 9 + delta
 
       setRotation(newRotation)
       setWinResult(prize)
 
-      // Hostess returns to idle naturally after her forceful push
       setTimeout(() => {
         setHostessAction('idle')
       }, 800)
 
-      // If it's a Try Again, they now have a 48h cooldown just like a win.
       const isTryAgain = prize.title === 'Try Again' || prize.amount === 0
 
       setTimeout(() => {
@@ -176,9 +171,9 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
         if (!isTryAgain) {
           fetchBalance()
         }
-        loadConfig() // Reload config to start the 48h cooldown for ALL spins
+        loadConfig()
         spinLockRef.current = false
-      }, 8_500) // 8.5 seconds of heavy spinning
+      }, 8_500)
     } catch (e: any) {
       setError(e.response?.data?.message ?? 'Something went wrong.')
       setSpinning(false)
@@ -189,7 +184,7 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
 
   if (!isOpen) return null
 
-  /* ── Derived values ── */
+  /* -- Derived values -- */
   const prizes = config?.prizes ?? Array.from({ length: 14 }, (_, i) => ({
     id: `ph${i}`, index: i, title: i % 2 === 0 ? 'Cash' : 'Bonus',
     amount: 0, percentage: null, type: 'cash' as const,
@@ -206,7 +201,7 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
     )
   )
 
-  /* ──────────────────────────────────────── */
+  /* ================================================================ */
   return (
     <AnimatePresence>
       {isOpen && (
@@ -219,14 +214,17 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
           className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto overflow-x-hidden bg-[#000000]"
           onClick={() => { if (!spinning) onClose() }}
         >
-          {/* ── Realistic Casino Ambient Background ── */}
 
-
-          {/* ── MOBILE Girl: body visible on left, only hand tip bleeds over wheel ── */}
+          {/* ====================================================
+              MOBILE Girl — z-[45] so her hand overlaps the wheel.
+              pointer-events-none keeps the SPIN button tappable.
+              The content left-padding is 32vw so the wheel starts
+              early enough that ~10-15vw of her hand overlaps it.
+              ==================================================== */}
           <div
-            className="block md:hidden fixed left-0 bottom-0 z-10 pointer-events-none"
+            className="block md:hidden fixed left-0 bottom-0 z-[45] pointer-events-none"
             style={{
-              width: '44vw',
+              width: '48vw',
               height: '78vh',
               mixBlendMode: 'screen',
               filter: 'contrast(1.2) brightness(0.85)',
@@ -241,7 +239,7 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
             />
           </div>
 
-          {/* ── DESKTOP Girl: original full-size on left ── */}
+          {/* DESKTOP Girl — unchanged */}
           <div
             className="hidden md:block fixed left-0 bottom-0 z-10 pointer-events-none"
             style={{
@@ -260,13 +258,17 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
             />
           </div>
 
-          {/* ════════════════════ MAIN UI WRAPPER ════════════════════ */}
-          {/* Mobile: pl-[42vw] so wheel sits right of girl body; Desktop: original padding */}
+          {/* ================================================================
+              MAIN UI WRAPPER
+              Mobile:   pl-[32vw] — wheel starts early, girl hand overlaps it
+              Tablet:   pl-[32vw]
+              Desktop:  pl-[480px]
+              ================================================================ */}
           <div
             onClick={e => e.stopPropagation()}
-            className="relative z-20 w-full min-h-full flex flex-col items-center justify-start pt-5 pb-6 pl-[42vw] md:pl-[32vw] lg:pl-[480px]"
+            className="relative z-20 w-full min-h-full flex flex-col items-center justify-start pt-5 pb-6 pl-[32vw] md:pl-[32vw] lg:pl-[480px]"
           >
-            {/* Close button — always top-right */}
+            {/* Close button */}
             <button
               onClick={() => { if (!spinning) onClose() }}
               disabled={spinning}
@@ -282,7 +284,7 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
               <X size={18} />
             </button>
 
-            {/* ── Title ── */}
+            {/* Title */}
             <div className="z-50 text-center w-full pointer-events-none shrink-0 mb-4">
               <h1
                 className="font-black tracking-[0.25em] uppercase leading-none"
@@ -306,28 +308,22 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
               </p>
             </div>
 
-            {/* ────── Physical 3D Arena ────── */}
+            {/* 3D Arena */}
             <div className="relative w-full flex-1 flex items-center justify-center overflow-visible" style={{ perspective: '1500px' }}>
 
-
-
-
-              {/* ── CENTER: 3D Perspective Mounted Wheel ── */}
-              {/* This container applies the massive 3D rotation mimicking a real heavy object sitting on a casino floor */}
-              <motion.div 
-                 className="relative flex flex-col items-center justify-center z-40"
-                 style={{ 
-                   transformStyle: 'preserve-3d',
-                 }}
-                 animate={{
-                   rotateX: spinning ? [10, 15, 10] : 10,
-                   rotateY: spinning ? [-6, -4, -6] : -6,
-                 }}
-                 transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+              {/* CENTER: 3D Perspective Mounted Wheel */}
+              <motion.div
+                className="relative flex flex-col items-center justify-center z-40"
+                style={{ transformStyle: 'preserve-3d' }}
+                animate={{
+                  rotateX: spinning ? [10, 15, 10] : 10,
+                  rotateY: spinning ? [-6, -4, -6] : -6,
+                }}
+                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
               >
-                
-                {/* ════ Gold Pedestal / Base Mount ════ */}
-                <div 
+
+                {/* Gold Pedestal / Base Mount */}
+                <div
                   className="absolute bottom-[-100px] w-[500px] h-[150px] rounded-[50%] pointer-events-none"
                   style={{
                     background: 'radial-gradient(ellipse at center, rgba(249,202,36,0.4) 0%, rgba(20,10,40,0.8) 50%, transparent 80%)',
@@ -337,16 +333,16 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
                   }}
                 />
 
-                {/* ════ Fixed 3D Heavy Jewel Pointer ════ */}
+                {/* Fixed 3D Heavy Jewel Pointer */}
                 <div
                   className="absolute left-1/2 z-[60] pointer-events-none origin-top"
                   style={{
                     top: -15,
-                    transform: 'translateX(-50%) translateZ(40px)', // Raised above wheel surface
+                    transform: 'translateX(-50%) translateZ(40px)',
                     filter: 'drop-shadow(0 15px 20px rgba(0,0,0,0.95)) drop-shadow(0 0 15px rgba(249,202,36,0.6))',
                   }}
                 >
-                  <motion.svg 
+                  <motion.svg
                     width="45" height="55" viewBox="0 0 30 50"
                     animate={spinning ? { rotateZ: [0, -15, 10, -5, 0] } : {}}
                     transition={{ duration: 0.4, repeat: Infinity, repeatType: "mirror" }}
@@ -363,24 +359,20 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
                         <stop offset="100%" stopColor="rgba(255,255,255,0)" />
                       </linearGradient>
                     </defs>
-                    {/* Gem Body */}
                     <polygon points="15,50 0,15 8,0 22,0 30,15" fill="url(#ptrFill)" />
-                    {/* Metal Bevels */}
                     <polygon points="15,50 0,15 8,0 22,0 30,15" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="1.5" />
                     <polygon points="15,50 8,0 22,0" fill="url(#ptrHighlight)" opacity="0.4" />
                     <line x1="15" y1="50" x2="15" y2="15" stroke="rgba(0,0,0,0.4)" strokeWidth="2" />
                   </motion.svg>
                 </div>
 
-                {/* ════ Thick 3D Golden Frame & Wheel Body ════ */}
+                {/* Thick 3D Golden Frame & Wheel Body */}
                 <div
                   className="relative rounded-full"
                   style={{
-                    /* Mobile: min 200px. Desktop: up to 800px. Uses remaining viewport width via 85vw */
                     width: 'clamp(200px, min(85vw, 60vh), 800px)',
                     aspectRatio: '1 / 1',
                     padding: 'clamp(12px, 3vw, 32px)',
-                    /* Master casing gradient for massive 3D depth */
                     background: 'conic-gradient(from 0deg, #3d2204 0%, #f9ca24 15%, #fffae8 25%, #d35400 40%, #1a0800 50%, #d35400 60%, #fffae8 75%, #f9ca24 85%, #3d2204 100%)',
                     boxShadow: [
                       'inset 0 0 0 4px rgba(255,255,255,0.4)',
@@ -396,7 +388,7 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
                   <div className="absolute inset-0 rounded-full border-[3px] border-black/40 pointer-events-none" style={{ margin: '8px' }}></div>
                   <div className="absolute inset-0 rounded-full border-[2px] border-white/20 pointer-events-none" style={{ margin: '11px' }}></div>
 
-                  {/* ── Marquee Bulbs embedded in the gold frame ── */}
+                  {/* Marquee Bulbs */}
                   <svg
                     viewBox="0 0 100 100"
                     className="absolute inset-0 w-full h-full pointer-events-none z-10"
@@ -405,15 +397,13 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
                     {Array.from({ length: BULB_TOTAL }).map((_, i) => {
                       const angle = (i / BULB_TOTAL) * 360 - 90
                       const rad = (angle * Math.PI) / 180
-                      const r = 45.5 // Position exactly on the thick gold bezel
+                      const r = 45.5
                       const cx = 50 + r * Math.cos(rad)
                       const cy = 50 + r * Math.sin(rad)
                       const lit = litSet.has(i)
                       return (
                         <g key={i}>
-                          {/* Bulb socket (dark inset) */}
                           <circle cx={cx} cy={cy} r="2.2" fill="#221" stroke="rgba(255,255,255,0.2)" strokeWidth="0.2" />
-                          {/* Actual light bulb */}
                           <circle
                             cx={cx} cy={cy} r={lit ? 1.9 : 1.5}
                             fill={lit ? '#ffffff' : '#8a5c00'}
@@ -427,21 +417,19 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
                     })}
                   </svg>
 
-                  {/* ── The Physical Spinning Disk ── */}
+                  {/* The Physical Spinning Disk */}
                   <div
                     className="w-full h-full rounded-full overflow-hidden relative"
                     style={{
-                      border: '4px solid #000', // separating core from frame
+                      border: '4px solid #000',
                       boxShadow: 'inset 0 0 60px rgba(0,0,0,0.99), 0 0 20px rgba(0,0,0,0.8)',
                     }}
                   >
-                    {/* Real Physical Motion Simulation */}
                     <motion.div
                       className="w-full h-full"
                       animate={{ rotate: rotation }}
                       transition={
                         spinning
-                          // Custom physics: slow heavy start, massive acceleration, elastic micro-bounce at the end
                           ? { duration: 8.5, ease: [0.35, -0.05, 0.15, 1.02] }
                           : { duration: 0 }
                       }
@@ -451,8 +439,6 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
                           {prizes.map((prize, i) => {
                             const isTryAgain = prize.title === 'Try Again'
                             const c = isTryAgain ? TRY_AGAIN_SEG : SEG[i % 2]
-                            // Linear gradient from bright near-center to dark outer edge
-                            // This gives each segment a vivid inner glow that fades to depth at the rim
                             return (
                               <linearGradient
                                 key={i} id={`wsg${i}`}
@@ -464,11 +450,9 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
                               </linearGradient>
                             )
                           })}
-                          {/* Strong multi-layer text shadow for maximum readability */}
                           <filter id="lblShadow" x="-50%" y="-50%" width="200%" height="200%">
                             <feDropShadow dx="0" dy="0" stdDeviation="2.5" floodColor="#000" floodOpacity="1" />
                           </filter>
-                          {/* Extra outer glow for the dollar amount */}
                           <filter id="amtGlow" x="-50%" y="-50%" width="200%" height="200%">
                             <feGaussianBlur in="SourceGraphic" stdDeviation="1.5" result="blur" />
                             <feColorMatrix in="blur" type="matrix" values="0 0 0 0 1  0 0 0 0 0.9  0 0 0 0 0  0 0 0 1 0" result="gold" />
@@ -492,7 +476,6 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
 
                           const d = `M${cx} ${cy}L${x1} ${y1}A${r} ${r} 0 ${la} 1 ${x2} ${y2}Z`
 
-                          // Radial orientation
                           const midA = (sa + ea) / 2
                           const lx = cx + 66 * Math.cos(midA)
                           const ly = cy + 66 * Math.sin(midA)
@@ -509,41 +492,29 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
                           if (isTryAgain) {
                             amt = 'TRY'
                             sub = 'AGAIN'
-                            subColor = '#ff6b6b' // red
+                            subColor = '#ff6b6b'
                             segGlow = 'rgba(255,255,255,0.05)'
                           } else {
                             amt = prize.percentage ? `${prize.percentage}%` : `$${prize.amount}`
                             sub = prize.type === 'deposit_bonus' ? 'BONUS' : (prize.title ?? '').includes('Freeplay') ? 'FREE' : 'REWARD'
-                            
-                            // Per-segment unique accent colors for labels
                             const isBlue = i % 2 === 0
-                            subColor = isBlue ? '#f9e24f' : '#a5f3fc'  // gold or cyan
-                            segGlow  = isBlue ? 'rgba(41,127,255,0.18)' : 'rgba(139,92,246,0.18)'
+                            subColor = isBlue ? '#f9e24f' : '#a5f3fc'
+                            segGlow = isBlue ? 'rgba(41,127,255,0.18)' : 'rgba(139,92,246,0.18)'
                           }
 
                           return (
                             <g key={prize.id}>
-                              {/* Segment Body */}
                               <path d={d} fill={`url(#wsg${i})`} />
-
-                              {/* Subtle inner ambient glow band near outer rim */}
                               <path
-                                d={`M${cx + (r-22)*Math.cos(sa)} ${cy + (r-22)*Math.sin(sa)}A${r-22} ${r-22} 0 ${la} 1 ${cx + (r-22)*Math.cos(ea)} ${cy + (r-22)*Math.sin(ea)}`}
+                                d={`M${cx + (r - 22) * Math.cos(sa)} ${cy + (r - 22) * Math.sin(sa)}A${r - 22} ${r - 22} 0 ${la} 1 ${cx + (r - 22) * Math.cos(ea)} ${cy + (r - 22) * Math.sin(ea)}`}
                                 fill="none" stroke={segGlow} strokeWidth="22"
                               />
-
-                              {/* Premium bright gold separator lines */}
                               <line x1={cx} y1={cy} x2={x1} y2={y1} stroke="rgba(249,202,36,0.85)" strokeWidth="1.5" />
-                              {/* Highlight bevel on separator */}
                               <line x1={cx} y1={cy} x2={x1} y2={y1} stroke="rgba(255,255,255,0.3)" strokeWidth="0.5" transform="translate(0.6,0.6)" />
-
-                              {/* Outer arc bright rim highlight */}
                               <path d={`M${x1} ${y1}A${r} ${r} 0 ${la} 1 ${x2} ${y2}`} fill="none" stroke="rgba(255,255,255,0.22)" strokeWidth="4" />
 
-                              {/* Labels — only when config loaded */}
                               {hasConfig && (
                                 <g transform={`translate(${lx},${ly}) rotate(${labelRot})`}>
-                                  {/* Dollar/percentage amount — large, bold, bright white with gold glow */}
                                   <text
                                     x="0" y="-1"
                                     textAnchor="middle"
@@ -556,7 +527,6 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
                                   >
                                     {amt}
                                   </text>
-                                  {/* Sub-label — color-coded per segment type */}
                                   <text
                                     x="0" y="8.5"
                                     textAnchor="middle"
@@ -575,21 +545,19 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
                           )
                         })}
 
-                        {/* Subtle glass convex sheen — lightened so it doesn't darken segments */}
                         <circle cx="100" cy="100" r="100" fill="url(#glassGlow)" pointerEvents="none" />
                         <defs>
-                           <radialGradient id="glassGlow" cx="32%" cy="28%" r="55%">
-                              <stop offset="0%" stopColor="rgba(255,255,255,0.09)" />
-                              <stop offset="45%" stopColor="rgba(255,255,255,0)" />
-                              <stop offset="100%" stopColor="rgba(0,0,0,0.28)" />
-                           </radialGradient>
+                          <radialGradient id="glassGlow" cx="32%" cy="28%" r="55%">
+                            <stop offset="0%" stopColor="rgba(255,255,255,0.09)" />
+                            <stop offset="45%" stopColor="rgba(255,255,255,0)" />
+                            <stop offset="100%" stopColor="rgba(0,0,0,0.28)" />
+                          </radialGradient>
                         </defs>
                       </svg>
                     </motion.div>
-                  </div>{/* /inner spinning disk */}
+                  </div>
 
-                  {/* ════ Massive Raised Center SPIN Button ════ */}
-                  {/* Positioned absolutely outside the SVG so it doesn't spin, with huge translateZ for extreme physical pop-out effect */}
+                  {/* Massive Raised Center SPIN Button — z-[60] > girl z-[45], stays tappable */}
                   <div
                     className="absolute inset-0 flex items-center justify-center pointer-events-none z-[60]"
                     style={{ transform: 'translateZ(40px)' }}
@@ -601,7 +569,6 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
                       style={{
                         width: '28%',
                         height: '28%',
-                        /* 3D Button construction */
                         background: (spinning || !isEligible)
                           ? 'radial-gradient(circle at 40% 30%, #333, #0a0a0a)'
                           : 'radial-gradient(circle at 40% 30%, #fffbd4 0%, #f9ca24 35%, #e67e22 65%, #8e44ad 150%)',
@@ -623,9 +590,7 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
                           : { duration: 0.2 }
                       }
                     >
-                      {/* Button Rim Bevel */}
                       <div className="absolute inset-0 rounded-full border-2 border-white/40 m-1 pointer-events-none mix-blend-overlay"></div>
-                      
                       <span
                         className="relative z-10 select-none font-black uppercase leading-none drop-shadow-[0_4px_6px_rgba(0,0,0,0.8)]"
                         style={{
@@ -639,13 +604,12 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
                       </span>
                     </motion.button>
                   </div>
-                </div>{/* /gold frame */}
+                </div>
               </motion.div>
-            </div>{/* /3d arena */}
+            </div>
 
-            {/* ────── Info Panel (Below Wheel) ────── */}
+            {/* Info Panel (Below Wheel) */}
             <div className="relative z-50 w-full max-w-[720px] shrink-0 px-4 mt-3 mb-4">
-              {/* Error */}
               {error && (
                 <div className="w-full text-center py-2 px-6 rounded-xl text-[13px] font-bold bg-red-900/60 border border-red-500/40 text-red-200 mb-3">
                   {error}
@@ -666,18 +630,19 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
                   }}
                 >
                   {isEligible ? (
-                    // Eligible: show checklist + CTA in a horizontal row
                     <div className="flex flex-col sm:flex-row items-center gap-4">
                       <div className="flex flex-col gap-2 flex-1">
-                        {/* Check row: haven't spun */}
                         <div className="flex items-center gap-3">
-                          <div className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black" style={{ background:'rgba(34,197,94,0.15)', border:'1.5px solid #22c55e', color:'#22c55e' }}>✓</div>
-                          <p className="text-[13px] leading-snug" style={{ color:'rgba(255,255,255,0.75)' }}>You haven't spun the wheel in the last 48 hours</p>
+                          <div className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black" style={{ background: 'rgba(34,197,94,0.15)', border: '1.5px solid #22c55e', color: '#22c55e' }}>✓</div>
+                          <p className="text-[13px] leading-snug" style={{ color: 'rgba(255,255,255,0.75)' }}>You haven't spun the wheel in the last 48 hours</p>
                         </div>
-                        {/* Check row: spin available */}
                         <div className="flex items-center gap-3">
-                          <div className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black" style={{ background:'rgba(34,197,94,0.15)', border:'1.5px solid #22c55e', color:'#22c55e' }}>✓</div>
-                          <p className="text-[13px] leading-snug" style={{ color:'rgba(255,255,255,0.75)' }}>Your free spin reward is available!</p>
+                          <div className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black" style={{ background: 'rgba(34,197,94,0.15)', border: '1.5px solid #22c55e', color: '#22c55e' }}>✓</div>
+                          <p className="text-[13px] leading-snug" style={{ color: 'rgba(255,255,255,0.75)' }}>You deposited $25 or more in the last 24 hours</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black" style={{ background: 'rgba(34,197,94,0.15)', border: '1.5px solid #22c55e', color: '#22c55e' }}>✓</div>
+                          <p className="text-[13px] leading-snug" style={{ color: 'rgba(255,255,255,0.75)' }}>Your free spin reward is available!</p>
                         </div>
                       </div>
                       <div className="shrink-0 text-center">
@@ -689,18 +654,15 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
                       </div>
                     </div>
                   ) : (
-                    // Not eligible: show checklist + timer
                     <div className="flex flex-col sm:flex-row items-center gap-4">
                       <div className="flex flex-col gap-2 flex-1">
-                        {/* Check row: already spun */}
                         <div className="flex items-center gap-3">
-                          <div className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black" style={{ background:'rgba(239,68,68,0.15)', border:'1.5px solid #ef4444', color:'#ef4444' }}>✕</div>
-                          <p className="text-[13px] leading-snug" style={{ color:'rgba(255,255,255,0.75)' }}>{config?.reason || 'You are not eligible to spin right now'}</p>
+                          <div className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black" style={{ background: 'rgba(239,68,68,0.15)', border: '1.5px solid #ef4444', color: '#ef4444' }}>✕</div>
+                          <p className="text-[13px] leading-snug" style={{ color: 'rgba(255,255,255,0.75)' }}>{config?.reason || 'You must deposit at least $25 in the last 24 hours to spin'}</p>
                         </div>
-                        {/* Check row: come back */}
                         <div className="flex items-center gap-3">
-                          <div className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black" style={{ background:'rgba(34,197,94,0.15)', border:'1.5px solid #22c55e', color:'#22c55e' }}>✓</div>
-                          <p className="text-[13px] leading-snug" style={{ color:'rgba(255,255,255,0.75)' }}>Come back in 48 hours for your next free spin</p>
+                          <div className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black" style={{ background: 'rgba(34,197,94,0.15)', border: '1.5px solid #22c55e', color: '#22c55e' }}>✓</div>
+                          <p className="text-[13px] leading-snug" style={{ color: 'rgba(255,255,255,0.75)' }}>Come back in 48 hours for your next free spin</p>
                         </div>
                       </div>
                       <div className="shrink-0 text-center">
@@ -716,9 +678,9 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
               )}
             </div>
 
-          </div>{/* /main wrapper */}
+          </div>
 
-          {/* ══════════════ EPIC WIN OVERLAY ══════════════ */}
+          {/* EPIC WIN OVERLAY */}
           <AnimatePresence>
             {showWin && winResult && (
               <motion.div
@@ -733,7 +695,7 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
                   background: 'radial-gradient(circle at center, rgba(30,10,60,0.85) 0%, rgba(0,0,0,0.95) 100%)',
                 }}
               >
-                {/* Advanced Confetti */}
+                {/* Confetti */}
                 <div className="absolute inset-0 pointer-events-none overflow-hidden">
                   {winResult.title !== 'Try Again' && Array.from({ length: 45 }).map((_, i) => {
                     const colors = ['#f9ca24', '#ff4e50', '#a78bfa', '#00f2fe', '#fff']
@@ -765,7 +727,7 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
                   })}
                 </div>
 
-                {/* Heavy 3D Prize Box */}
+                {/* Prize Box */}
                 <motion.div
                   initial={{ scale: 0.5, y: 100, rotateX: 45 }}
                   animate={{ scale: 1, y: 0, rotateX: 0 }}
@@ -780,22 +742,18 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
                   {winResult.title === 'Try Again' ? (
                     <>
                       <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-48 h-48 bg-[#a0a0a0] rounded-full blur-[80px] opacity-20 pointer-events-none"></div>
-
                       <h3 className="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-b from-[#e0e0e0] to-[#808080] mb-4 uppercase tracking-[0.2em] drop-shadow-[0_5px_10px_rgba(0,0,0,0.9)]"
-                          style={{ WebkitTextStroke: '1px rgba(255,255,255,0.1)' }}>
+                        style={{ WebkitTextStroke: '1px rgba(255,255,255,0.1)' }}>
                         OOF!
                       </h3>
-                      
                       <div className="my-8 py-10 px-6 rounded-3xl bg-black/80 border border-white/10 shadow-[inset_0_10px_30px_rgba(0,0,0,0.9),0_10px_20px_rgba(0,0,0,0.5)] relative overflow-hidden">
                         <div className="text-5xl md:text-6xl font-black text-white/50 tracking-tighter drop-shadow-md">
                           TRY AGAIN
                         </div>
                       </div>
-                      
                       <p className="text-white/60 text-sm md:text-base font-medium mb-10 px-4 leading-relaxed">
                         So close! Don't worry, you'll have better luck next time. Come back in 48 hours for your next free spin!
                       </p>
-                      
                       <button
                         onClick={() => setShowWin(false)}
                         className="w-full py-5 rounded-full font-black text-xl uppercase tracking-[0.2em] text-white hover:scale-105 active:scale-95 transition-all shadow-[0_15px_30px_rgba(0,0,0,0.6)]"
@@ -810,31 +768,27 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
                   ) : (
                     <>
                       <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-48 h-48 bg-[#f9ca24] rounded-full blur-[80px] opacity-40 mix-blend-screen pointer-events-none"></div>
-
                       <h3 className="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-b from-[#ffeaa7] via-[#f9ca24] to-[#d35400] mb-4 uppercase tracking-[0.2em] drop-shadow-[0_5px_10px_rgba(0,0,0,0.9)]"
-                          style={{ WebkitTextStroke: '1px rgba(255,255,255,0.2)' }}>
+                        style={{ WebkitTextStroke: '1px rgba(255,255,255,0.2)' }}>
                         WINNER!
                       </h3>
-                      
                       <div className="my-8 py-10 px-6 rounded-3xl bg-black/80 border border-[#f9ca24]/30 shadow-[inset_0_10px_30px_rgba(0,0,0,0.9),0_10px_20px_rgba(0,0,0,0.5)] relative overflow-hidden">
                         <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent pointer-events-none"></div>
                         <div className="text-7xl md:text-8xl font-black text-white mb-2 tracking-tighter drop-shadow-[0_10px_20px_rgba(0,0,0,0.9)]"
-                             style={{ textShadow: '0 0 30px rgba(255,255,255,0.4)' }}>
+                          style={{ textShadow: '0 0 30px rgba(255,255,255,0.4)' }}>
                           {winResult.percentage ? `${winResult.percentage}%` : `$${winResult.amount}`}
                         </div>
                         <div className="text-[#f9ca24] font-black uppercase tracking-[0.3em] text-sm md:text-lg">
                           {winResult.type === 'deposit_bonus' ? 'Deposit Bonus' : winResult.title.includes('Freeplay') ? 'Freeplay Credit' : 'Real Cash'}
                         </div>
                       </div>
-                      
                       <p className="text-purple-200/80 text-sm md:text-base font-medium mb-10 px-4 leading-relaxed">
-                        {winResult.type === 'deposit_bonus' 
-                          ? 'Incredible! Your massive bonus is locked in for your next deposit.' 
+                        {winResult.type === 'deposit_bonus'
+                          ? 'Incredible! Your massive bonus is locked in for your next deposit.'
                           : 'Congratulations! Your real reward has been instantly deposited into your wallet.'}
                       </p>
-                      
                       <button
-                        onClick={onClose} // Close entirely so they see wallet
+                        onClick={onClose}
                         className="w-full py-5 rounded-full font-black text-xl uppercase tracking-[0.2em] text-white hover:scale-105 active:scale-95 transition-all shadow-[0_15px_30px_rgba(0,0,0,0.6),0_0_40px_rgba(249,202,36,0.6)]"
                         style={{
                           background: 'linear-gradient(to bottom, #f9ca24, #d35400)',
