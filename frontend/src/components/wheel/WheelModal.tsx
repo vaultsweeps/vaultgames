@@ -222,32 +222,28 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
           {/* ── Realistic Casino Ambient Background ── */}
 
 
-          {/* ── Casino Hostess ── */}
-          {/* MOBILE: girl fixed on left ~48% width, hand bleeds into wheel area (wheel z-40 > girl z-10) */}
-          {/* DESKTOP: restore original — girl fixed left, content padded to clear her */}
+          {/* ── MOBILE Girl: body visible on left, only hand tip bleeds over wheel ── */}
           <div
-            className="fixed left-0 bottom-0 pointer-events-none z-10"
+            className="block md:hidden fixed left-0 bottom-0 z-10 pointer-events-none"
             style={{
-              /* Mobile: take up left ~48% so hand edge overlaps centered wheel */
-              width: 'clamp(150px, 48vw, 48vw)',
-              height: 'clamp(300px, 88vh, 88vh)',
+              width: '44vw',
+              height: '78vh',
               mixBlendMode: 'screen',
               filter: 'contrast(1.2) brightness(0.85)',
             }}
           >
-            {/* Mobile: object-right-bottom so her right hand is the part closest to the wheel */}
             <Image
               src="/images/casino-host-new.png"
               alt="Casino Hostess"
               fill
-              className="object-contain object-right-bottom md:object-bottom"
+              className="object-contain object-left-bottom"
               priority
             />
           </div>
 
-          {/* DESKTOP override: restore original full-size girl */}
+          {/* ── DESKTOP Girl: original full-size on left ── */}
           <div
-            className="hidden md:block fixed left-0 bottom-0 pointer-events-none z-10"
+            className="hidden md:block fixed left-0 bottom-0 z-10 pointer-events-none"
             style={{
               width: 'clamp(110px, 32vw, 520px)',
               height: 'clamp(280px, 90vh, 1000px)',
@@ -265,9 +261,10 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
           </div>
 
           {/* ════════════════════ MAIN UI WRAPPER ════════════════════ */}
+          {/* Mobile: pl-[42vw] so wheel sits right of girl body; Desktop: original padding */}
           <div
             onClick={e => e.stopPropagation()}
-            className="relative z-20 w-full min-h-full flex flex-col items-center justify-start pt-5 pb-6 md:pl-[32vw] lg:pl-[480px]"
+            className="relative z-20 w-full min-h-full flex flex-col items-center justify-start pt-5 pb-6 pl-[42vw] md:pl-[32vw] lg:pl-[480px]"
           >
             {/* Close button — always top-right */}
             <button
