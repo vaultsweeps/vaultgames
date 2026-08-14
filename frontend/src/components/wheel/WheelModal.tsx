@@ -222,33 +222,38 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
           {/* ── Realistic Casino Ambient Background ── */}
 
 
-          {/* ── The Casino Hostess ── */}
-          {/* MOBILE: large container shifted far left so only right-side hand/arm is visible behind the wheel */}
-          {/* DESKTOP: normal left-side placement, full body */}
-          <div
-            className="fixed bottom-0 z-10 pointer-events-none
-              left-[-55vw] w-[120vw] h-[55vh]
-              md:left-0 md:w-[45vw] md:h-full
-              lg:w-[520px]"
-            style={{
-              mixBlendMode: 'screen',
-              filter: 'contrast(1.2) brightness(0.85)',
-            }}
-          >
-            <Image
-              src="/images/casino-host-new.png"
-              alt="Casino Hostess"
-              fill
-              className="object-contain object-right-bottom md:object-left-bottom"
-              priority
-            />
-          </div>
-
           {/* ════════════════════ MAIN UI WRAPPER ════════════════════ */}
+          {/* Full-screen flex row: girl-left | wheel-center | girl-right */}
           <div
             onClick={e => e.stopPropagation()}
-            className="relative z-20 w-full min-h-full flex flex-col items-center justify-start pt-5 pb-6 md:pl-[40vw] lg:pl-[480px]"
+            className="relative z-20 w-full min-h-full flex flex-col items-center justify-start pt-5 pb-6"
           >
+            {/* ── Girl figures: hidden on mobile, visible md+ ── */}
+            {/* LEFT GIRL */}
+            <div
+              className="hidden md:block fixed left-0 bottom-0 z-10 pointer-events-none"
+              style={{
+                width: 'clamp(120px, 22vw, 420px)',
+                height: 'clamp(300px, 85vh, 900px)',
+                mixBlendMode: 'screen',
+                filter: 'contrast(1.2) brightness(0.85)',
+              }}
+            >
+              <Image src="/images/casino-host-new.png" alt="Casino Hostess" fill className="object-contain object-bottom" priority />
+            </div>
+            {/* RIGHT GIRL (mirrored horizontally) */}
+            <div
+              className="hidden md:block fixed right-0 bottom-0 z-10 pointer-events-none"
+              style={{
+                width: 'clamp(120px, 22vw, 420px)',
+                height: 'clamp(300px, 85vh, 900px)',
+                mixBlendMode: 'screen',
+                filter: 'contrast(1.2) brightness(0.85)',
+                transform: 'scaleX(-1)',
+              }}
+            >
+              <Image src="/images/casino-host-new.png" alt="Casino Hostess" fill className="object-contain object-bottom" />
+            </div>
             {/* Close button — always top-right */}
             <button
               onClick={() => { if (!spinning) onClose() }}
@@ -496,7 +501,7 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
                             segGlow = 'rgba(255,255,255,0.05)'
                           } else {
                             amt = prize.percentage ? `${prize.percentage}%` : `$${prize.amount}`
-                            sub = prize.type === 'deposit_bonus' ? 'BONUS' : (prize.title ?? '').includes('Freeplay') ? 'FREE' : 'CASH'
+                            sub = prize.type === 'deposit_bonus' ? 'BONUS' : (prize.title ?? '').includes('Freeplay') ? 'FREE' : 'REWARD'
                             
                             // Per-segment unique accent colors for labels
                             const isBlue = i % 2 === 0
