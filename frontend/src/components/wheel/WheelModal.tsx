@@ -222,38 +222,53 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
           {/* ── Realistic Casino Ambient Background ── */}
 
 
+          {/* ── Casino Hostess ── */}
+          {/* MOBILE: girl fixed on left ~48% width, hand bleeds into wheel area (wheel z-40 > girl z-10) */}
+          {/* DESKTOP: restore original — girl fixed left, content padded to clear her */}
+          <div
+            className="fixed left-0 bottom-0 pointer-events-none z-10"
+            style={{
+              /* Mobile: take up left ~48% so hand edge overlaps centered wheel */
+              width: 'clamp(150px, 48vw, 48vw)',
+              height: 'clamp(300px, 88vh, 88vh)',
+              mixBlendMode: 'screen',
+              filter: 'contrast(1.2) brightness(0.85)',
+            }}
+          >
+            {/* Mobile: object-right-bottom so her right hand is the part closest to the wheel */}
+            <Image
+              src="/images/casino-host-new.png"
+              alt="Casino Hostess"
+              fill
+              className="object-contain object-right-bottom md:object-bottom"
+              priority
+            />
+          </div>
+
+          {/* DESKTOP override: restore original full-size girl */}
+          <div
+            className="hidden md:block fixed left-0 bottom-0 pointer-events-none z-10"
+            style={{
+              width: 'clamp(110px, 32vw, 520px)',
+              height: 'clamp(280px, 90vh, 1000px)',
+              mixBlendMode: 'screen',
+              filter: 'contrast(1.2) brightness(0.85)',
+            }}
+          >
+            <Image
+              src="/images/casino-host-new.png"
+              alt="Casino Hostess"
+              fill
+              className="object-contain object-bottom"
+              priority
+            />
+          </div>
+
           {/* ════════════════════ MAIN UI WRAPPER ════════════════════ */}
-          {/* Full-screen flex row: girl-left | wheel-center | girl-right */}
           <div
             onClick={e => e.stopPropagation()}
-            className="relative z-20 w-full min-h-full flex flex-col items-center justify-start pt-5 pb-6"
+            className="relative z-20 w-full min-h-full flex flex-col items-center justify-start pt-5 pb-6 md:pl-[32vw] lg:pl-[480px]"
           >
-            {/* ── Girl figures: hidden on mobile, visible md+ ── */}
-            {/* LEFT GIRL */}
-            <div
-              className="hidden md:block fixed left-0 bottom-0 z-10 pointer-events-none"
-              style={{
-                width: 'clamp(120px, 22vw, 420px)',
-                height: 'clamp(300px, 85vh, 900px)',
-                mixBlendMode: 'screen',
-                filter: 'contrast(1.2) brightness(0.85)',
-              }}
-            >
-              <Image src="/images/casino-host-new.png" alt="Casino Hostess" fill className="object-contain object-bottom" priority />
-            </div>
-            {/* RIGHT GIRL (mirrored horizontally) */}
-            <div
-              className="hidden md:block fixed right-0 bottom-0 z-10 pointer-events-none"
-              style={{
-                width: 'clamp(120px, 22vw, 420px)',
-                height: 'clamp(300px, 85vh, 900px)',
-                mixBlendMode: 'screen',
-                filter: 'contrast(1.2) brightness(0.85)',
-                transform: 'scaleX(-1)',
-              }}
-            >
-              <Image src="/images/casino-host-new.png" alt="Casino Hostess" fill className="object-contain object-bottom" />
-            </div>
             {/* Close button — always top-right */}
             <button
               onClick={() => { if (!spinning) onClose() }}
