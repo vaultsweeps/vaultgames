@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import Link from 'next/link'
 import Image from 'next/image'
 import { publicApi } from '@/lib/api'
+import { useAuthStore } from '@/store/authStore'
 
 const DEFAULT_BANNERS = [
   {
@@ -47,6 +48,14 @@ const DEFAULT_BANNERS = [
 export default function HeroSlider() {
   const [slides, setSlides] = useState(DEFAULT_BANNERS)
   const [current, setCurrent] = useState(0)
+  const { isAuthenticated, openAuthModal } = useAuthStore()
+
+  const handleCtaClick = (e: React.MouseEvent) => {
+    if (!isAuthenticated) {
+      e.preventDefault()
+      openAuthModal('login')
+    }
+  }
 
   // Auto-play timer
   useEffect(() => {
@@ -104,7 +113,7 @@ export default function HeroSlider() {
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.4 }}
               >
-                <Link href={slide.ctaLink} className="btn-liquid btn-signup-beam inline-block text-white font-bold py-2.5 px-6 sm:py-3 sm:px-8 rounded-xl sm:rounded-2xl text-sm sm:text-base">
+                <Link href={slide.ctaLink} onClick={handleCtaClick} className="btn-liquid btn-signup-beam inline-block text-white font-bold py-2.5 px-6 sm:py-3 sm:px-8 rounded-xl sm:rounded-2xl text-sm sm:text-base">
                   <span className="btn-liquid-content">{slide.ctaText}</span>
                 </Link>
               </motion.div>

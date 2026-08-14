@@ -274,3 +274,10 @@ export const referralApi = {
   setPromoCode: (promoCode: string) => apiClient.post('/referral/promo', { promoCode }),
   validateCode: (code: string) => apiClient.get(`/referral/validate/${code}`),
 }
+
+// ─── Wheel / Daily Spin APIs ─────────────────────────────────────────────────
+export const wheelApi = {
+  getConfig: () => apiClient.get('/wheel/config'),
+  spin: () => apiClient.post('/wheel/spin'),
+}
+

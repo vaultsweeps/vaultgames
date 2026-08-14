@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { ChevronRight, Gamepad2 } from 'lucide-react'
 import Image from 'next/image'
 import Loader from '@/components/ui/Loader'
+import { useAuthStore } from '@/store/authStore'
 
 import { publicApi } from '@/lib/api'
 
@@ -27,6 +28,14 @@ export default function FeaturedGames() {
   const [games, setGames] = useState<Game[]>([])
   const [loading, setLoading] = useState(true)
   const [imgErrors, setImgErrors] = useState<Record<string, boolean>>({})
+  const { isAuthenticated, openAuthModal } = useAuthStore()
+
+  const handleGameClick = (e: React.MouseEvent) => {
+    if (!isAuthenticated) {
+      e.preventDefault()
+      openAuthModal('login')
+    }
+  }
 
   useEffect(() => {
     const fetchGames = async () => {
@@ -68,7 +77,7 @@ export default function FeaturedGames() {
               style={{ willChange: 'transform' }}
               className="relative aspect-square rounded-[1.5rem] sm:rounded-[2rem] overflow-hidden group cursor-pointer shadow-lg bg-surface"
             >
-              <Link href={`/games/${game.id}`} className="absolute inset-0 z-20" aria-label={game.name}></Link>
+              <Link href={`/games/${game.id}`} onClick={handleGameClick} className="absolute inset-0 z-20" aria-label={game.name}></Link>
               
               {/* Game thumbnail */}
               <div className={`absolute inset-0 bg-gradient-to-br ${COLORS[i % COLORS.length]}`}>
@@ -113,12 +122,6 @@ export default function FeaturedGames() {
               </div>
             </motion.div>
           ))}
-        </div>
-        
-        <div className="mt-8 flex justify-center">
-           <Link href="/games" className="glass px-8 py-3 rounded-full text-sm font-bold text-secondary hover:text-white hover:bg-white/10 transition-colors flex items-center gap-2">
-             View All Games <ChevronRight className="w-4 h-4" />
-           </Link>
         </div>
       </div>
     </section>

@@ -4,7 +4,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Menu, X, Bell, ChevronDown, User, LogOut, Settings, LayoutDashboard, Moon, Sun, SunMoon, Wallet, Home, Gift, Crown } from 'lucide-react'
+import { Menu, X, Bell, ChevronDown, ChevronRight, User, LogOut, Settings, LayoutDashboard, Moon, Sun, SunMoon, Wallet, Home, Gift, Crown, Users, Gamepad2, Headset, FileText } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useTheme } from '@/components/ThemeProvider'
 import dynamic from 'next/dynamic'
@@ -25,15 +25,12 @@ export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
-  const { user, isAuthenticated, logout, balance, fetchBalance } = useAuthStore()
+  const { user, isAuthenticated, logout, balance, fetchBalance, authModalOpen, authModalView, openAuthModal, closeAuthModal } = useAuthStore()
   const { theme, setTheme } = useTheme()
   const pathname = usePathname()
   
   const [walletOpen, setWalletOpen] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
-
-  const [authModalOpen, setAuthModalOpen] = useState(false)
-  const [authModalView, setAuthModalView] = useState<'login' | 'register'>('login')
 
   const lastNotifFetch = useRef(0)
 
@@ -80,8 +77,10 @@ export default function Navbar() {
 
   return (
     <>
-    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-      isScrolled ? 'bg-background/95 backdrop-blur-md border-b border-border-strong py-3 shadow-lg shadow-black/20' : 'bg-transparent py-5'
+    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
+      mounted && isScrolled
+        ? 'py-2.5 backdrop-blur-xl bg-[#0a0a1a]/80 border-b border-purple-500/20 shadow-[0_4px_32px_rgba(139,92,246,0.15),0_1px_0_rgba(99,102,241,0.25)]'
+        : 'bg-transparent py-5'
     }`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between">
@@ -186,10 +185,10 @@ export default function Navbar() {
               </>
             ) : (
               <>
-                <button onClick={() => { setAuthModalView('login'); setAuthModalOpen(true); }} className="btn-liquid btn-signin-liquid text-sm py-2 px-5">
+                <button onClick={() => openAuthModal('login')} className="btn-liquid btn-signin-liquid text-sm py-2 px-5">
                   <span className="btn-liquid-content">Sign In</span>
                 </button>
-                <button onClick={() => { setAuthModalView('register'); setAuthModalOpen(true); }} className="btn-liquid btn-signup-beam text-sm py-2 px-6">
+                <button onClick={() => openAuthModal('register')} className="btn-liquid btn-signup-beam text-sm py-2 px-6">
                   <span className="btn-liquid-content">Sign Up</span>
                 </button>
               </>
@@ -245,10 +244,10 @@ export default function Navbar() {
 
             {!isAuthenticated && (
               <div className="flex items-center gap-2 ml-1">
-                <button onClick={() => { setAuthModalView('login'); setAuthModalOpen(true); }} className="btn-liquid btn-signin-liquid text-xs py-1.5 px-3">
+                <button onClick={() => openAuthModal('login')} className="btn-liquid btn-signin-liquid text-xs py-1.5 px-3">
                   <span className="btn-liquid-content">Sign In</span>
                 </button>
-                <button onClick={() => { setAuthModalView('register'); setAuthModalOpen(true); }} className="btn-liquid btn-signup-beam text-xs py-1.5 px-4">
+                <button onClick={() => openAuthModal('register')} className="btn-liquid btn-signup-beam text-xs py-1.5 px-4">
                   <span className="btn-liquid-content">Sign Up</span>
                 </button>
               </div>
@@ -257,57 +256,142 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Mobile menu */}
-      <AnimatePresence>
-        {mobileOpen && (
+    </nav>
+
+    {/* Mobile Sidebar Overlay & Drawer */}
+    <AnimatePresence>
+      {mobileOpen && (
+        <>
           <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="lg:hidden glass border-t border-border-subtle overflow-hidden"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setMobileOpen(false)}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] lg:hidden"
+          />
+          <motion.div
+            initial={{ x: '-100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '-100%' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="fixed top-0 left-0 bottom-0 w-[80vw] max-w-[320px] bg-[#12141d] z-[70] lg:hidden flex flex-col shadow-2xl"
           >
-            <div className="px-4 py-4 space-y-1">
-              {navLinks.map(link => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => setMobileOpen(false)}
-                  className={`block px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                    pathname === link.href ? 'text-neon-blue bg-neon-blue/10' : 'text-secondary'
-                  }`}
-                >
-                  {link.label}
-                </Link>
-              ))}
-              <div className="pt-2 flex flex-col gap-2">
-                {isAuthenticated ? (
-                  <>
-                    <Link href="/dashboard" onClick={() => setMobileOpen(false)} className="btn-neon text-center text-xs py-2.5">
-                      Dashboard
-                    </Link>
-                    <button onClick={logout} className="px-4 py-2.5 text-sm text-red-400 text-left">Logout</button>
-                  </>
-                ) : (
-                  <>
-                    <button onClick={() => { setMobileOpen(false); setAuthModalView('login'); setAuthModalOpen(true); }} className="btn-liquid btn-signin-liquid text-xs py-2.5 w-full">
-                      <span className="btn-liquid-content">Sign In</span>
+            {/* Sidebar Header */}
+            <div className="p-5 flex items-center justify-between">
+              <Link href="/" onClick={() => setMobileOpen(false)} className="flex-shrink-0 flex items-center gap-2">
+                <span className="font-display font-black text-2xl text-white tracking-tight" style={{ fontFamily: 'cursive' }}>Vault Sweeps</span>
+              </Link>
+              <button onClick={() => setMobileOpen(false)} className="text-secondary hover:text-white transition-colors p-1">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Sidebar Content */}
+            <div className="flex-1 overflow-y-auto px-4 pb-6 space-y-4">
+              
+              {/* Free Cash Banner */}
+              <Link 
+                href="/bonuses" 
+                onClick={() => setMobileOpen(false)}
+                className="w-full flex items-center justify-between bg-gradient-to-r from-[#7a5af8] to-[#6042ef] rounded-xl p-3 shadow-lg shadow-purple-500/20 group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="text-2xl filter drop-shadow-md relative -top-0.5 transform -rotate-12 group-hover:scale-110 transition-transform">💸</div>
+                  <span className="font-bold text-white text-sm tracking-wide">FREE CASH</span>
+                </div>
+                <ChevronRight className="w-5 h-5 text-white/70" />
+              </Link>
+
+              {/* User Info Box */}
+              {isAuthenticated && user ? (
+                <div className="bg-[#1c1e2b] rounded-2xl p-4 space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#8b5cf6] to-[#6366f1] flex items-center justify-center text-white font-bold text-lg shadow-inner">
+                      {user?.username?.charAt(0).toUpperCase() || <User className="w-5 h-5" />}
+                    </div>
+                    <p className="text-sm font-medium text-secondary">{user.username}</p>
+                  </div>
+                  
+                  <div className="flex items-center justify-between pt-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-[#272b3d] flex items-center justify-center">
+                        <span className="text-[#38bdf8] font-black text-sm">$</span>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-secondary uppercase font-bold tracking-wider">Balance</p>
+                        <p className="text-base font-black text-white">${balance.toFixed(2)}</p>
+                      </div>
+                    </div>
+                    <button onClick={() => { setMobileOpen(false); setWalletOpen(true); }} className="w-10 h-10 rounded-full bg-[#0ea5e9] hover:bg-[#38bdf8] flex items-center justify-center transition-colors shadow-lg shadow-sky-500/20">
+                      <Wallet className="w-5 h-5 text-white" />
                     </button>
-                    <button onClick={() => { setMobileOpen(false); setAuthModalView('register'); setAuthModalOpen(true); }} className="btn-liquid btn-signup-beam text-xs py-2.5 w-full">
-                      <span className="btn-liquid-content">Sign Up</span>
-                    </button>
-                  </>
-                )}
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-[#1c1e2b] rounded-2xl p-4 space-y-3">
+                  <p className="text-sm text-secondary text-center mb-1">Sign in to play and win!</p>
+                  <button onClick={() => { setMobileOpen(false); openAuthModal('login'); }} className="btn-liquid btn-signin-liquid text-sm py-3 w-full">
+                    <span className="btn-liquid-content">Sign In</span>
+                  </button>
+                  <button onClick={() => { setMobileOpen(false); openAuthModal('register'); }} className="btn-liquid btn-signup-beam text-sm py-3 w-full">
+                    <span className="btn-liquid-content">Sign Up</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Navigation Links */}
+              <div className="bg-[#1c1e2b] rounded-2xl py-2">
+                {[
+                  { href: '/', label: 'Home', icon: Home },
+                  { href: '/dashboard/invite', label: 'Invite', icon: Users },
+                  { href: '/games', label: 'Games', icon: Gamepad2 },
+                  { href: '/bonuses', label: 'Bonuses', icon: Gift },
+                ].map((link, i) => (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    onClick={() => setMobileOpen(false)}
+                    className="flex items-center gap-4 px-5 py-3.5 text-sm font-bold text-secondary hover:text-white transition-colors"
+                  >
+                    <link.icon className={`w-5 h-5 ${pathname === link.href ? 'text-[#8b5cf6]' : 'text-secondary opacity-70'}`} />
+                    <span className={pathname === link.href ? 'text-white' : ''}>{link.label}</span>
+                  </Link>
+                ))}
               </div>
+
+              {/* Live Operator (Contact Us) */}
+              <div className="bg-[#1c1e2b] rounded-xl overflow-hidden">
+                <a
+                  href={process.env.NEXT_PUBLIC_TELEGRAM_URL || '#'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setMobileOpen(false)}
+                  className="flex items-center gap-4 px-5 py-4 border-l-4 border-l-[#8b5cf6] text-sm font-bold text-white hover:bg-white/5 transition-colors"
+                >
+                  <Headset className="w-5 h-5 text-white" />
+                  Live Operator
+                </a>
+              </div>
+
+              {/* Logout Button */}
+              {isAuthenticated && (
+                <button 
+                  onClick={() => { setMobileOpen(false); logout(); }} 
+                  className="w-full bg-[#2a1a24] hover:bg-[#3a202a] text-[#ef4444] py-4 rounded-xl text-sm font-bold transition-colors mt-2"
+                >
+                  Logout
+                </button>
+              )}
             </div>
           </motion.div>
-        )}
-      </AnimatePresence>
-    </nav>
+        </>
+      )}
+    </AnimatePresence>
 
     {/* Mobile Bottom Navigation Bar */}
     <div className="lg:hidden fixed bottom-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5 pointer-events-none w-max">
       {/* Main Nav Pill */}
-      <div className="border border-border-strong rounded-full px-4 py-2.5 flex items-center gap-3 pointer-events-auto shadow-2xl shadow-black/60 bg-background/95 backdrop-blur-xl">
+      <div className="border border-purple-500/20 rounded-full px-4 py-2.5 flex items-center gap-3 pointer-events-auto shadow-[0_4px_32px_rgba(139,92,246,0.15),0_1px_0_rgba(99,102,241,0.25)] bg-[#0a0a1a]/80 backdrop-blur-xl">
         {/* Home */}
         <Link href="/" aria-label="Home" className={`relative flex items-center justify-center w-9 h-9 rounded-full transition-all ${pathname === '/' ? 'bg-white/10 text-white' : 'text-secondary hover:text-white'}`}>
           <Home className="w-5 h-5" />
@@ -346,7 +430,7 @@ export default function Navbar() {
     </div>
 
       <WalletModal isOpen={walletOpen} onClose={() => setWalletOpen(false)} balance={balance} />
-      <AuthModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} initialView={authModalView} />
+      <AuthModal isOpen={authModalOpen} onClose={closeAuthModal} initialView={authModalView} />
     </>
   )
 }

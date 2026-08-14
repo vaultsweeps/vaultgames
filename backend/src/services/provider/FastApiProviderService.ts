@@ -73,10 +73,13 @@ export class FastApiProviderService implements ProviderAdapter {
         timeout: this.provider.requestTimeout || 10000,
       });
 
-      const { code, msg, data } = response.data;
-      if (code !== 200) {
-        // We will log and throw later if this fails, but it's likely we need IP whitelisting
-        throw new AppError(`Agent Login failed: ${msg}`, 400);
+      const code = response.data.code;
+      const message = response.data.message || response.data.msg || 'Unknown Provider Error';
+      const data = response.data.data;
+      
+      if (code !== 200 && code !== 0) {
+        const errorMsg = this.mapProviderError(code, message);
+        throw new AppError(`Agent Login failed: ${errorMsg} (Code: ${code}, Message: ${message})`, 400);
       }
 
       this.appid = data.appid;
@@ -193,14 +196,16 @@ export class FastApiProviderService implements ProviderAdapter {
       });
 
       const duration = Date.now() - startTime;
-      const { code, msg, data } = response.data;
+      const code = response.data.code;
+      const message = response.data.message || response.data.msg || 'Unknown Provider Error';
+      const data = response.data.data;
 
       // 200 is success for FastApi (as per doc "200 Success")
-      if (code !== 200) {
-        const errorMsg = this.mapProviderError(code, msg);
+      if (code !== 200 && code !== 0) {
+        const errorMsg = this.mapProviderError(code, message);
         console.error(JSON.stringify({ ...logData, status: 200, response: response.data, message: errorMsg, duration }));
         await ProviderLogService.logRequest(this.provider.id, userId, endpoint, requestData, response.data, code, errorMsg);
-        throw new AppError(`Provider Error: ${errorMsg}`, 400);
+        throw new AppError(`Provider Error: ${errorMsg} (Code: ${code}, Message: ${message})`, 400);
       }
 
       console.info(JSON.stringify({ ...logData, status: 200, response: 'Success', duration }));
