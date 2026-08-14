@@ -167,17 +167,16 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
         setHostessAction('idle')
       }, 800)
 
-      // If it's a Try Again, they can spin again immediately.
-      // But we still want to show the overlay so they know what they landed on.
-      const isTryAgain = prize.title === 'Try Again'
+      // If it's a Try Again, they now have a 48h cooldown just like a win.
+      const isTryAgain = prize.title === 'Try Again' || prize.amount === 0
 
       setTimeout(() => {
         setSpinning(false)
         setShowWin(true)
         if (!isTryAgain) {
           fetchBalance()
-          loadConfig() // Reload config to start the 24h cooldown
         }
+        loadConfig() // Reload config to start the 48h cooldown for ALL spins
         spinLockRef.current = false
       }, 8_500) // 8.5 seconds of heavy spinning
     } catch (e: any) {
@@ -780,18 +779,18 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
                       </div>
                       
                       <p className="text-white/60 text-sm md:text-base font-medium mb-10 px-4 leading-relaxed">
-                        So close! Don't worry, this spin wasn't consumed. You can try again right now!
+                        So close! Don't worry, you'll have better luck next time. Come back in 48 hours for your next free spin!
                       </p>
                       
                       <button
-                        onClick={() => setShowWin(false)} // Just close overlay, let them spin again
+                        onClick={() => setShowWin(false)}
                         className="w-full py-5 rounded-full font-black text-xl uppercase tracking-[0.2em] text-white hover:scale-105 active:scale-95 transition-all shadow-[0_15px_30px_rgba(0,0,0,0.6)]"
                         style={{
                           background: 'linear-gradient(to bottom, #4a4a4a, #2a2a2a)',
                           border: '2px solid #6a6a6a'
                         }}
                       >
-                        Spin Again
+                        Close
                       </button>
                     </>
                   ) : (

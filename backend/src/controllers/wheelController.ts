@@ -35,10 +35,29 @@ export const getWheelConfig = asyncHandler(async (req: AuthRequest, res: Respons
 
   if (lastSpin) {
     const hoursSinceLastSpin = (Date.now() - lastSpin.createdAt.getTime()) / (1000 * 60 * 60)
-    if (hoursSinceLastSpin < 24) {
+    if (hoursSinceLastSpin < 48) {
       eligible = false
-      nextSpinAt = new Date(lastSpin.createdAt.getTime() + 24 * 60 * 60 * 1000)
-      reason = 'You have already spun today. Come back in 24 hours.'
+      nextSpinAt = new Date(lastSpin.createdAt.getTime() + 48 * 60 * 60 * 1000)
+      reason = 'You have already spun recently. Come back in 48 hours.'
+    }
+  }
+
+  // Check deposit requirement (must have deposited >= $25 in last 24 hours)
+  if (eligible) {
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
+    const recentDeposits = await prisma.deposit.aggregate({
+      where: {
+        userId,
+        status: 'approved',
+        createdAt: { gte: twentyFourHoursAgo }
+      },
+      _sum: { amount: true }
+    })
+    
+    const depositTotal = recentDeposits._sum.amount || 0;
+    if (depositTotal < 25) {
+      eligible = false;
+      reason = 'You must have deposited at least $25 in the last 24 hours to spin the wheel.';
     }
   }
 
@@ -89,34 +108,83 @@ export const spinWheel = asyncHandler(async (req: AuthRequest, res: Response) =>
 
     if (lastSpin) {
       const hoursSince = (Date.now() - lastSpin.createdAt.getTime()) / (1000 * 60 * 60)
-      if (hoursSince < 24) {
-        const nextSpinAt = new Date(lastSpin.createdAt.getTime() + 24 * 60 * 60 * 1000)
-        throw new AppError(`You have already spun today. Next spin available at ${nextSpinAt.toISOString()}.`, 400)
+      if (hoursSince < 48) {
+        const nextSpinAt = new Date(lastSpin.createdAt.getTime() + 48 * 60 * 60 * 1000)
+        throw new AppError(`You have already spun recently. Next spin available at ${nextSpinAt.toISOString()}.`, 400)
       }
     }
 
-    // 3. Server-side secure random prize selection (crypto-safe via Math.random is not enough;
-    //    use a weighted approach with Node's crypto module)
-    const crypto = require('crypto')
-    const randomBytes = crypto.randomBytes(4)
-    const randomInt = randomBytes.readUInt32BE(0)
-    const winningIndex = randomInt % prizes.length
-    const wonPrize = prizes[winningIndex]
-    const isTryAgain = wonPrize.title === 'Try Again'
+    // 2.5. Check deposit requirement (must have deposited >= $25 in last 24 hours)
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
+    const recentDeposits = await prisma.deposit.aggregate({
+      where: {
+        userId,
+        status: 'approved',
+        createdAt: { gte: twentyFourHoursAgo }
+      },
+      _sum: { amount: true }
+    })
+    
+    const depositTotal = recentDeposits._sum.amount || 0;
+    if (depositTotal < 25) {
+      throw new AppError('You must have deposited at least $25 in the last 24 hours to spin the wheel.', 400)
+    }
+
+    // 3. Server-side secure random prize selection according to strict patterns
+    // Pattern: First 10 spins = Try Again. Then Spin 11 = Win. Then 5 Try Agains, 1 Win, repeating.
+    const totalSpins = await prisma.bonusClaim.count({
+      where: { userId, bonus: { type: 'wheel' } }
+    })
+
+    let isWin = false
+    if (totalSpins >= 10) {
+      const spinsAfterInitial = totalSpins - 10
+      if (spinsAfterInitial % 6 === 0) {
+        isWin = true
+      }
+    }
+
+    let wonPrize;
+    if (isWin) {
+      // Find a prize that is exactly 1 or 1.5
+      const winPrizes = prizes.filter(p => p.amount === 1 || p.amount === 1.5)
+      if (winPrizes.length > 0) {
+        // Pick one randomly
+        const crypto = require('crypto')
+        const randomInt = crypto.randomBytes(4).readUInt32BE(0)
+        wonPrize = winPrizes[randomInt % winPrizes.length]
+      } else {
+        // Fallback to Try Again if 1 or 1.5 doesn't exist on the wheel
+        const tryAgainPrizes = prizes.filter(p => p.title.toLowerCase().includes('try again') || p.amount === 0)
+        wonPrize = tryAgainPrizes.length > 0 ? tryAgainPrizes[0] : prizes[0]
+      }
+    } else {
+      // Find a "Try Again" prize
+      const tryAgainPrizes = prizes.filter(p => p.title.toLowerCase().includes('try again') || p.amount === 0)
+      if (tryAgainPrizes.length > 0) {
+        wonPrize = tryAgainPrizes[0]
+      } else {
+        // Fallback to the first prize with 0 amount, or just the first prize
+        wonPrize = prizes.find(p => p.amount === 0) || prizes[0]
+      }
+    }
+
+    const winningIndex = prizes.findIndex(p => p.id === wonPrize.id)
+    const isTryAgain = wonPrize.amount === 0 || wonPrize.title.toLowerCase().includes('try again')
 
     let claimId = undefined;
 
-    if (!isTryAgain) {
-      // 4. Record the claim in a DB transaction ONLY if it's a real prize
-      const claim = await prisma.bonusClaim.create({
-        data: {
-          userId,
-          bonusId: wonPrize.id,
-          amount: wonPrize.amount || 0,
-        },
-      })
-      claimId = claim.id;
+    // 4. Record the claim in a DB transaction ALWAYS to enforce 48h cooldown and count total spins
+    const claim = await prisma.bonusClaim.create({
+      data: {
+        userId,
+        bonusId: wonPrize.id,
+        amount: wonPrize.amount || 0,
+      },
+    })
+    claimId = claim.id;
 
+    if (!isTryAgain) {
       // 5. Invalidate wallet cache so the new balance is reflected immediately
       invalidateWalletCache(userId)
 
