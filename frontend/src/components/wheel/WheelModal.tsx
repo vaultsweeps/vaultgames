@@ -92,17 +92,9 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
   const [error, setError] = useState('')
 
   // Lighting & Effects
-  const [lightPhase, setLightPhase] = useState(0)
   const [hostessAction, setHostessAction] = useState<'idle' | 'push'>('idle')
 
   const spinLockRef = useRef(false)
-
-  /* -- Marquee light animation -- */
-  useEffect(() => {
-    const ms = spinning ? 35 : 180
-    const id = setInterval(() => setLightPhase(p => (p + 1) % BULB_TOTAL), ms)
-    return () => clearInterval(id)
-  }, [spinning])
 
   /* -- Load config -- */
   const loadConfig = useCallback(async () => {
@@ -191,22 +183,14 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
   }))
   const count = prizes.length || 14
   const segDeg = 360 / count
-  const isEligible = config?.eligible === true
+  const isEligible = config?.eligible ?? false
   const hasConfig = config !== null
-
-  // Chasing bulbs
-  const litSet = new Set(
-    Array.from({ length: LIT_COUNT }, (_, k) =>
-      (lightPhase + (BULB_TOTAL / LIT_COUNT) * k) % BULB_TOTAL | 0
-    )
-  )
 
   /* ================================================================ */
   return (
     <AnimatePresence>
       {isOpen && (
         <motion.div
-          key="wheel-backdrop"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -214,6 +198,12 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
           className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto overflow-x-hidden bg-[#000000]"
           onClick={() => { if (!spinning) onClose() }}
         >
+          <style>{`
+            @keyframes bulbFlash {
+              0%, 15% { fill: #ffffff; filter: drop-shadow(0 0 2px #fff) drop-shadow(0 0 6px #f9ca24); r: 1.9; }
+              16%, 100% { fill: #8a5c00; filter: none; r: 1.5; }
+            }
+          `}</style>
 
           {/* ====================================================
               MOBILE Girl — z-[45] so her hand overlaps the wheel.
@@ -316,10 +306,9 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
                 className="relative flex flex-col items-center justify-center z-40"
                 style={{ transformStyle: 'preserve-3d' }}
                 animate={{
-                  rotateX: spinning ? [10, 15, 10] : 10,
-                  rotateY: spinning ? [-6, -4, -6] : -6,
+                  rotateX: 10,
+                  rotateY: -6,
                 }}
-                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
               >
 
                 {/* Gold Pedestal / Base Mount */}
@@ -400,16 +389,21 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
                       const r = 45.5
                       const cx = 50 + r * Math.cos(rad)
                       const cy = 50 + r * Math.sin(rad)
-                      const lit = litSet.has(i)
+                      
+                      // Calculate delay so that the lit bulbs travel around the circle
+                      // The animation duration is either fast (spinning) or slow (idle)
+                      const duration = spinning ? 0.6 : 3.0
+                      const delay = (i / BULB_TOTAL) * duration
+                      
                       return (
                         <g key={i}>
                           <circle cx={cx} cy={cy} r="2.2" fill="#221" stroke="rgba(255,255,255,0.2)" strokeWidth="0.2" />
                           <circle
-                            cx={cx} cy={cy} r={lit ? 1.9 : 1.5}
-                            fill={lit ? '#ffffff' : '#8a5c00'}
+                            cx={cx} cy={cy} r={1.5}
+                            fill="#8a5c00"
                             style={{
-                              filter: lit ? 'drop-shadow(0 0 2px #fff) drop-shadow(0 0 6px #f9ca24)' : 'inset 0 0 2px #000',
-                              transition: 'all 0.05s ease',
+                              animation: `bulbFlash ${duration}s linear infinite`,
+                              animationDelay: `${-delay}s`
                             }}
                           />
                         </g>
