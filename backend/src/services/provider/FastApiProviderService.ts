@@ -47,7 +47,7 @@ export class FastApiProviderService implements ProviderAdapter {
   private async authenticate() {
     if (this.isAuthenticated) return;
 
-    const endpoint = this.getEndpoint('agentBalance', '/fast/agent/login');
+    const endpoint = this.getEndpoint('agentLogin', '/fast/agent/login');
     const baseUrl = this.provider.apiBaseUrl.replace(/\/+$/, '');
     const path = endpoint.replace(/^\/+/, '');
     const url = `${baseUrl}/${path}`;
