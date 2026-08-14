@@ -239,17 +239,23 @@ export class FastApiProviderService implements ProviderAdapter {
 
   async createPlayer(username: string, password?: string): Promise<{ userId: string; accountName: string }> {
     const endpoint = this.getEndpoint('createPlayer', '/fast/user/create');
-    const data = await this.makeRequest(endpoint, {
-      account: username,
-      passwd: password || 'Test@123', // "6–16 characters, must include letters and numbers; allowed symbols: !@#$()%^/.,"
-    });
+    try {
+      const data = await this.makeRequest(endpoint, {
+        account: username,
+        passwd: password || 'Test@123', // "6–16 characters, must include letters and numbers; allowed symbols: !@#$()%^/.,"
+      });
 
-    // data object contains: { full_account: "prefix_username" }
-    // FastApi expects the player account without prefix in request, but returns full_account
-    // We will use the username as userId for FastApi.
-    const accountName = data?.full_account || username;
-    
-    return { userId: username, accountName };
+      // data object contains: { full_account: "prefix_username" }
+      const accountName = data?.full_account || username;
+      return { userId: username, accountName };
+    } catch (e: any) {
+      // Code 12 = User Already Exists — treat as success, user is already on provider
+      if (e.message?.includes('Code: 12') || e.message?.includes('User Already Exist')) {
+        console.info(`[FastApiProviderService] Player "${username}" already exists on provider — treating as success`);
+        return { userId: username, accountName: username };
+      }
+      throw e;
+    }
   }
 
   async rechargePlayer(userId: string, amount: number, orderId: string): Promise<any> {
