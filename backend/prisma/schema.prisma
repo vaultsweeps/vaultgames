@@ -66,22 +66,22 @@ enum NotificationType {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  username     String   @unique
-  email        String   @unique
+  id           String    @id @default(cuid())
+  username     String    @unique
+  email        String    @unique
   password     String
-  role         Role     @default(user)
-  isVerified   Boolean  @default(false)
-  isActive     Boolean  @default(true)
-  isBanned     Boolean  @default(false)
+  role         Role      @default(user)
+  isVerified   Boolean   @default(false)
+  isActive     Boolean   @default(true)
+  isBanned     Boolean   @default(false)
   verifyToken  String?
   resetToken   String?
   resetExpiry  DateTime?
   lastLogin    DateTime?
-  referralCode String?  @unique
-  promoCode    String?  @unique
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  referralCode String?   @unique
+  promoCode    String?   @unique
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   profile       UserProfile?
   deposits      Deposit[]
@@ -92,18 +92,18 @@ model User {
   ticketReplies TicketReply[]
   notifications Notification[]
   activityLogs  ActivityLog[]
-  referrals     User[]         @relation("Referrals")
-  referredBy    User?          @relation("Referrals", fields: [referredById], references: [id])
+  referrals     User[]          @relation("Referrals")
+  referredBy    User?           @relation("Referrals", fields: [referredById], references: [id])
   referredById  String?
+
+  providerUsers        ProviderUser[]
+  providerTransactions ProviderTransaction[]
+  conversations        Conversation[]
+  couponUsages         CouponUsage[]
 
   @@index([email])
   @@index([username])
   @@index([referralCode])
-
-  providerUsers ProviderUser[]
-  providerTransactions ProviderTransaction[]
-  conversations Conversation[]
-  couponUsages  CouponUsage[]
 }
 
 model UserProfile {
@@ -114,69 +114,69 @@ model UserProfile {
   country          String?
   avatar           String?
   telegramUsername String?
-  telegramId       String?  // Telegram numeric user ID
-  telegramPhone    String?  // Phone number shared by Telegram (if user shares it)
+  telegramId       String? // Telegram numeric user ID
+  telegramPhone    String? // Phone number shared by Telegram (if user shares it)
   user             User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Deposit {
-  id               String        @id @default(cuid())
-  userId           String
-  amount           Float
-  currency         String        @default("USD")
-  paymentMethodId  String?
-  status           DepositStatus @default(pending)
-  transactionId    String?
-  paymentReference String?       @unique
-  proofImage       String?
-  notes            String?
-  webhookData      Json?
-  approvedBy       String?
-  approvedAt       DateTime?
-  rejectedBy       String?
-  rejectedAt       DateTime?
-  rejectionReason  String?
+  id                String        @id @default(cuid())
+  userId            String
+  amount            Float
+  currency          String        @default("USD")
+  paymentMethodId   String?
+  status            DepositStatus @default(pending)
+  transactionId     String?
+  paymentReference  String?       @unique
+  proofImage        String?
+  notes             String?
+  webhookData       Json?
+  approvedBy        String?
+  approvedAt        DateTime?
+  rejectedBy        String?
+  rejectedAt        DateTime?
+  rejectionReason   String?
   telegramMessageId String?
-  telegramChatId   String?
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
+  telegramChatId    String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
 
   user          User           @relation(fields: [userId], references: [id])
   paymentMethod PaymentMethod? @relation(fields: [paymentMethodId], references: [id])
 
+  transaction DepositTransaction?
+
   @@index([status])
   @@index([userId, status])
-
-  transaction DepositTransaction?
 }
 
 model Withdrawal {
-  id               String           @id @default(cuid())
-  userId           String
-  amount           Float
-  currency         String           @default("USD")
-  paymentMethodId  String?
-  accountInfo      String
-  status           WithdrawalStatus @default(pending)
-  adminNotes       String?
-  processedBy      String?
-  processedAt      DateTime?
-  
-  // Enhanced Withdrawal Management fields
-  requestId          String?   @unique
-  paymentMethodStr   String?
-  accountDetails     String?
-  approvedBy         String?
-  approvedAt         DateTime?
-  rejectedBy         String?
-  rejectedAt         DateTime?
-  rejectionReason    String?
-  locked             Boolean   @default(false)
-  telegramMessageId  String?
-  telegramChatId     String?
+  id              String           @id @default(cuid())
+  userId          String
+  amount          Float
+  currency        String           @default("USD")
+  paymentMethodId String?
+  accountInfo     String
+  status          WithdrawalStatus @default(pending)
+  adminNotes      String?
+  processedBy     String?
+  processedAt     DateTime?
 
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
+  // Enhanced Withdrawal Management fields
+  requestId         String?   @unique
+  paymentMethodStr  String?
+  accountDetails    String?
+  approvedBy        String?
+  approvedAt        DateTime?
+  rejectedBy        String?
+  rejectedAt        DateTime?
+  rejectionReason   String?
+  locked            Boolean   @default(false)
+  telegramMessageId String?
+  telegramChatId    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   user          User           @relation(fields: [userId], references: [id])
   paymentMethod PaymentMethod? @relation(fields: [paymentMethodId], references: [id])
@@ -188,13 +188,13 @@ model Withdrawal {
 }
 
 model PaymentMethod {
-  id           String            @id @default(cuid())
-  name         String
-  code         String            @unique
-  type         PaymentMethodType
-  isActive     Boolean           @default(true)
-  minAmount    Float             @default(10)
-  maxAmount    Float             @default(100000)
+  id             String            @id @default(cuid())
+  name           String
+  code           String            @unique
+  type           PaymentMethodType
+  isActive       Boolean           @default(true)
+  minAmount      Float             @default(10)
+  maxAmount      Float             @default(100000)
   feePercent     Float             @default(0)
   iconUrl        String?
   instructions   String?
@@ -228,7 +228,7 @@ model Game {
   updatedAt     DateTime @updatedAt
 
   downloads GameDownload[]
-  provider  Provider? @relation(fields: [providerId], references: [id], onDelete: SetNull)
+  provider  Provider?      @relation(fields: [providerId], references: [id], onDelete: SetNull)
 
   @@index([category])
   @@index([isFeatured])
@@ -247,21 +247,21 @@ model GameDownload {
 }
 
 model Bonus {
-  id          String    @id @default(cuid())
-  title       String
-  description String
-  type        BonusType
-  amount      Float?
-  percentage  Float?
-  minDeposit  Float?
-  maxBonus    Float?
+  id           String    @id @default(cuid())
+  title        String
+  description  String
+  type         BonusType
+  amount       Float?
+  percentage   Float?
+  minDeposit   Float?
+  maxBonus     Float?
   requirements String
-  terms       String
-  expiresAt   DateTime?
-  isActive    Boolean   @default(true)
-  bannerUrl   String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  terms        String
+  expiresAt    DateTime?
+  isActive     Boolean   @default(true)
+  bannerUrl    String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   claims BonusClaim[]
 }
@@ -276,8 +276,8 @@ model BonusClaim {
   user  User  @relation(fields: [userId], references: [id])
   bonus Bonus @relation(fields: [bonusId], references: [id])
 
-  @@index([userId])
   @@unique([userId, bonusId])
+  @@index([userId])
 }
 
 model Banner {
@@ -299,17 +299,17 @@ model Banner {
 }
 
 model SupportTicket {
-  id        String         @id @default(cuid())
-  userId    String
-  subject   String
-  message   String
-  status    TicketStatus   @default(open)
-  priority  TicketPriority @default(medium)
-  category  String
+  id         String         @id @default(cuid())
+  userId     String
+  subject    String
+  message    String
+  status     TicketStatus   @default(open)
+  priority   TicketPriority @default(medium)
+  category   String
   assignedTo String?
-  closedAt  DateTime?
-  createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
+  closedAt   DateTime?
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
 
   user    User          @relation(fields: [userId], references: [id])
   replies TicketReply[]
@@ -407,166 +407,166 @@ model Setting {
 }
 
 model AdminWallet {
-  id          String   @id @default(cuid())
-  name        String
-  type        String
-  address     String
-  currency    String
-  isActive    Boolean  @default(true)
-  totalIn     Float    @default(0)
-  totalOut    Float    @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(cuid())
+  name      String
+  type      String
+  address   String
+  currency  String
+  isActive  Boolean  @default(true)
+  totalIn   Float    @default(0)
+  totalOut  Float    @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Provider {
-  id              String   @id @default(cuid())
-  name            String
-  apiBaseUrl      String
-  agentId         String
-  secretKey       String
-  status          Boolean  @default(true)
-  logo            String?
-  requestTimeout  Int      @default(5000)
-  retryCount      Int      @default(3)
-  endpoints       Json?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id             String   @id @default(cuid())
+  name           String
+  apiBaseUrl     String
+  agentId        String
+  secretKey      String
+  status         Boolean  @default(true)
+  logo           String?
+  requestTimeout Int      @default(5000)
+  retryCount     Int      @default(3)
+  endpoints      Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  users           ProviderUser[]
-  logs            ProviderLog[]
-  transactions    ProviderTransaction[]
-  balanceHistory  ProviderBalanceHistory[]
-  games           Game[]
+  users          ProviderUser[]
+  logs           ProviderLog[]
+  transactions   ProviderTransaction[]
+  balanceHistory ProviderBalanceHistory[]
+  games          Game[]
 }
 
 model ProviderUser {
-  id              String   @id @default(cuid())
-  userId          String
-  providerId      String
-  providerUserId  String
-  accountName     String
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id             String   @id @default(cuid())
+  userId         String
+  providerId     String
+  providerUserId String
+  accountName    String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  provider        Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
   @@unique([providerId, providerUserId])
   @@unique([userId, providerId])
+  @@index([userId])
 }
 
 model ProviderLog {
-  id              String   @id @default(cuid())
-  providerId      String?
-  userId          String?
-  endpoint        String
-  request         Json?
-  response        Json?
-  status          Int
-  errorMessage    String?
-  ipAddress       String?
-  createdAt       DateTime @default(now())
+  id           String   @id @default(cuid())
+  providerId   String?
+  userId       String?
+  endpoint     String
+  request      Json?
+  response     Json?
+  status       Int
+  errorMessage String?
+  ipAddress    String?
+  createdAt    DateTime @default(now())
 
-  provider        Provider? @relation(fields: [providerId], references: [id], onDelete: SetNull)
+  provider Provider? @relation(fields: [providerId], references: [id], onDelete: SetNull)
 }
 
 model ProviderTransaction {
   id              String   @id @default(cuid())
   providerId      String
   userId          String
-  type            String   // recharge, withdraw
+  type            String // recharge, withdraw
   amount          Float
   orderId         String   @unique
   providerOrderId String?
-  status          String   // pending, success, failed
+  status          String // pending, success, failed
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  provider        Provider @relation(fields: [providerId], references: [id])
-  user            User     @relation(fields: [userId], references: [id])
-  
+  provider Provider @relation(fields: [providerId], references: [id])
+  user     User     @relation(fields: [userId], references: [id])
+
   @@index([userId, type, status])
   @@index([providerId, userId, type, status])
   @@index([userId, providerId, type, status, createdAt(sort: Desc)])
 }
 
 model PaymentWebhook {
-  id              String   @id @default(cuid())
-  provider        String
-  payload         Json
-  status          String   // processed, failed, ignored
-  error           String?
-  createdAt       DateTime @default(now())
+  id        String   @id @default(cuid())
+  provider  String
+  payload   Json
+  status    String // processed, failed, ignored
+  error     String?
+  createdAt DateTime @default(now())
 }
 
 model DepositTransaction {
-  id              String   @id @default(cuid())
-  depositId       String   @unique
-  providerId      String?
-  transactionRef  String   @unique
-  status          String
-  amount          Float
-  currency        String
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id             String   @id @default(cuid())
+  depositId      String   @unique
+  providerId     String?
+  transactionRef String   @unique
+  status         String
+  amount         Float
+  currency       String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  deposit         Deposit  @relation(fields: [depositId], references: [id], onDelete: Cascade)
+  deposit Deposit @relation(fields: [depositId], references: [id], onDelete: Cascade)
 }
 
 model ProviderBalanceHistory {
-  id              String   @id @default(cuid())
-  providerId      String
-  balance         Float
-  recordedAt      DateTime @default(now())
+  id         String   @id @default(cuid())
+  providerId String
+  balance    Float
+  recordedAt DateTime @default(now())
 
-  provider        Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  provider Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
 }
 
 model Conversation {
-  id                 String    @id @default(cuid())
-  conversation_id    String    @unique
+  id                 String   @id @default(cuid())
+  conversation_id    String   @unique
   user_id            String?
   telegram_user_id   String?
   telegram_username  String?
   telegram_thread_id String?
-  source             String    // 'website' | 'telegram'
-  status             String    @default("open") // 'open' | 'waiting_for_agent' | 'waiting_for_user' | 'closed'
-  created_at         DateTime  @default(now())
-  updated_at         DateTime  @updatedAt
+  source             String // 'website' | 'telegram'
+  status             String   @default("open") // 'open' | 'waiting_for_agent' | 'waiting_for_user' | 'closed'
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
 
-  messages           Message[]
-  user               User?     @relation(fields: [user_id], references: [id])
+  messages Message[]
+  user     User?     @relation(fields: [user_id], references: [id])
 
   @@index([conversation_id])
   @@index([telegram_thread_id])
 }
 
 model Message {
-  id              String       @id @default(cuid())
+  id              String   @id @default(cuid())
   conversation_id String
-  sender_type     String       // 'user' | 'agent'
+  sender_type     String // 'user' | 'agent'
   message         String
-  created_at      DateTime     @default(now())
+  created_at      DateTime @default(now())
 
-  conversation    Conversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+  conversation Conversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
 
   @@index([conversation_id])
 }
 
 model Coupon {
-  id         String        @id @default(cuid())
-  code       String        @unique
-  amount     Float         @default(3)
-  isActive   Boolean       @default(true)
+  id         String    @id @default(cuid())
+  code       String    @unique
+  amount     Float     @default(3)
+  isActive   Boolean   @default(true)
   expiresAt  DateTime?
-  usageLimit Int?          // How many times total this coupon can be used
-  usedCount  Int           @default(0)
-  createdAt  DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
+  usageLimit Int? // How many times total this coupon can be used
+  usedCount  Int       @default(0)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
-  usages     CouponUsage[]
+  usages CouponUsage[]
 }
 
 model CouponUsage {
@@ -575,8 +575,8 @@ model CouponUsage {
   userId    String
   createdAt DateTime @default(now())
 
-  coupon    Coupon   @relation(fields: [couponId], references: [id])
-  user      User     @relation(fields: [userId], references: [id])
+  coupon Coupon @relation(fields: [couponId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
 
   @@unique([couponId, userId])
 }

@@ -22,9 +22,10 @@ export class FastApiProviderService implements ProviderAdapter {
       secretKey: provider.secretKey.trim(), // We use this as Agent Password
       apiBaseUrl: provider.apiBaseUrl.trim(),
     };
-    // Initialize with placeholders; will be overridden after authenticate()
-    this.appid = this.provider.agentId;
-    this.appsecret = this.provider.secretKey;
+    // Initialize with placeholders or read from endpoints JSON if provided
+    const endpointsConfig = (this.provider.endpoints as Record<string, string>) || {};
+    this.appid = endpointsConfig.appid || this.provider.agentId;
+    this.appsecret = endpointsConfig.appsecret || this.provider.secretKey;
   }
 
   private generateAesKey(password: string): Buffer {
@@ -58,13 +59,13 @@ export class FastApiProviderService implements ProviderAdapter {
       passwd: this.provider.secretKey
     };
 
-    // Try signing with empty appsecret for the initial login request
+    // Sign the initial login request with the provided appsecret
     const sortedKeys = Object.keys(requestData).sort();
     const strArr: string[] = [];
     for (const key of sortedKeys) {
       strArr.push(`${key}=${requestData[key]}`);
     }
-    const strToHash = strArr.join('&') + ''; // empty secret
+    const strToHash = strArr.join('&') + this.appsecret;
     requestData.sign = crypto.createHash('md5').update(strToHash).digest('hex');
 
     try {
