@@ -359,6 +359,15 @@ export class FastApiProviderService implements ProviderAdapter {
         }, userId);
         return true; // success
       } catch (e: any) {
+        // Code 2 (User Does Not Exist) — our DB has this user, but the provider doesn't!
+        // This happens if the provider wiped their DB or if a previous bug caused an out-of-sync state.
+        // We must auto-heal by recreating the user on the provider right now.
+        if (e.message?.includes('Code: 2') || e.message?.includes('User Does Not Exist')) {
+          console.warn(`[FastApiProviderService] Player "${providerAccount}" does not exist on provider! Auto-healing by recreating...`);
+          await this.createPlayer(userId, safeNewPassword);
+          return true;
+        }
+
         // Code 20 = wrong old password — try next candidate
         if (e.message?.includes('Code: 20') || e.message?.includes('Password error')) {
           console.warn(`[FastApiProviderService] Old password "${oldPass}" rejected for "${providerAccount}", trying next...`);
