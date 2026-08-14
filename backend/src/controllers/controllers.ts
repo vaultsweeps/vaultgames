@@ -46,6 +46,11 @@ export const downloadGame = asyncHandler(async (req: AuthRequest, res: Response)
   if (!game) throw new AppError('Game not found', 404)
   if (!game.downloadUrl) throw new AppError('Download not available', 400)
 
+  let finalDownloadUrl = game.downloadUrl;
+  if (!finalDownloadUrl.startsWith('http://') && !finalDownloadUrl.startsWith('https://')) {
+    finalDownloadUrl = 'https://' + finalDownloadUrl;
+  }
+
   await prisma.$transaction([
     prisma.game.update({ where: { id: game.id }, data: { downloadCount: { increment: 1 } } }),
     prisma.gameDownload.upsert({
@@ -55,7 +60,7 @@ export const downloadGame = asyncHandler(async (req: AuthRequest, res: Response)
     })
   ])
 
-  res.json({ success: true, data: { downloadUrl: game.downloadUrl, name: game.name } })
+  res.json({ success: true, data: { downloadUrl: finalDownloadUrl, name: game.name } })
 })
 
 // ─── BONUSES ─────────────────────────────────────────────────────────────────
