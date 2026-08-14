@@ -223,9 +223,14 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
 
 
           {/* ── The Casino Hostess ── */}
+          {/* MOBILE: large container shifted far left so only right-side hand/arm is visible behind the wheel */}
+          {/* DESKTOP: normal left-side placement, full body */}
           <div
-            className="fixed bottom-0 z-10 pointer-events-none w-[180vw] h-[70vh] -left-[110vw] md:left-0 md:w-[45vw] lg:w-[520px] md:h-full"
-            style={{ 
+            className="fixed bottom-0 z-10 pointer-events-none
+              left-[-55vw] w-[120vw] h-[55vh]
+              md:left-0 md:w-[45vw] md:h-full
+              lg:w-[520px]"
+            style={{
               mixBlendMode: 'screen',
               filter: 'contrast(1.2) brightness(0.85)',
             }}
@@ -234,7 +239,7 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
               src="/images/casino-host-new.png"
               alt="Casino Hostess"
               fill
-              className="object-contain object-right-bottom md:object-left-bottom opacity-100"
+              className="object-contain object-right-bottom md:object-left-bottom"
               priority
             />
           </div>
@@ -650,12 +655,12 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
                         {/* Check row: haven't spun */}
                         <div className="flex items-center gap-3">
                           <div className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black" style={{ background:'rgba(34,197,94,0.15)', border:'1.5px solid #22c55e', color:'#22c55e' }}>✓</div>
-                          <p className="text-[13px] leading-snug" style={{ color:'rgba(255,255,255,0.75)' }}>You haven't spun the wheel in the last 24 hours</p>
+                          <p className="text-[13px] leading-snug" style={{ color:'rgba(255,255,255,0.75)' }}>You haven't spun the wheel in the last 48 hours</p>
                         </div>
                         {/* Check row: spin available */}
                         <div className="flex items-center gap-3">
                           <div className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black" style={{ background:'rgba(34,197,94,0.15)', border:'1.5px solid #22c55e', color:'#22c55e' }}>✓</div>
-                          <p className="text-[13px] leading-snug" style={{ color:'rgba(255,255,255,0.75)' }}>Daily free spin is available for you</p>
+                          <p className="text-[13px] leading-snug" style={{ color:'rgba(255,255,255,0.75)' }}>Your free spin reward is available!</p>
                         </div>
                       </div>
                       <div className="shrink-0 text-center">
@@ -673,12 +678,12 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
                         {/* Check row: already spun */}
                         <div className="flex items-center gap-3">
                           <div className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black" style={{ background:'rgba(239,68,68,0.15)', border:'1.5px solid #ef4444', color:'#ef4444' }}>✕</div>
-                          <p className="text-[13px] leading-snug" style={{ color:'rgba(255,255,255,0.75)' }}>You have already spun the wheel today</p>
+                          <p className="text-[13px] leading-snug" style={{ color:'rgba(255,255,255,0.75)' }}>{config?.reason || 'You are not eligible to spin right now'}</p>
                         </div>
                         {/* Check row: come back */}
                         <div className="flex items-center gap-3">
                           <div className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black" style={{ background:'rgba(34,197,94,0.15)', border:'1.5px solid #22c55e', color:'#22c55e' }}>✓</div>
-                          <p className="text-[13px] leading-snug" style={{ color:'rgba(255,255,255,0.75)' }}>Come back in 24 hours for your next free spin</p>
+                          <p className="text-[13px] leading-snug" style={{ color:'rgba(255,255,255,0.75)' }}>Come back in 48 hours for your next free spin</p>
                         </div>
                       </div>
                       <div className="shrink-0 text-center">
