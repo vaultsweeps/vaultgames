@@ -222,14 +222,10 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
           {/* ── Realistic Casino Ambient Background ── */}
 
 
-          {/* ── The Casino Hostess (visible on ALL screen sizes) ── */}
+          {/* ── The Casino Hostess ── */}
           <div
-            className="fixed left-0 bottom-0 z-10 pointer-events-none"
+            className="fixed left-0 bottom-0 z-10 pointer-events-none w-full h-full md:w-[45vw] lg:w-[520px]"
             style={{ 
-              /* Mobile: 28vw. Tablet: 32vw. Desktop: capped at 520px */
-              width: 'clamp(110px, 32vw, 520px)', 
-              /* Always as tall as possible so she never looks short */
-              height: 'clamp(280px, 90vh, 1000px)',
               mixBlendMode: 'screen',
               filter: 'contrast(1.2) brightness(0.85)',
             }}
@@ -238,7 +234,7 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
               src="/images/casino-host-new.png"
               alt="Casino Hostess"
               fill
-              className="object-contain object-bottom"
+              className="object-contain object-bottom md:object-left-bottom opacity-60 md:opacity-100"
               priority
             />
           </div>
@@ -246,11 +242,7 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
           {/* ════════════════════ MAIN UI WRAPPER ════════════════════ */}
           <div
             onClick={e => e.stopPropagation()}
-            className="relative z-20 w-full min-h-full flex flex-col items-center justify-start pt-5 pb-6"
-            style={{
-              /* Matches girl width so content never overlaps her on any device */
-              paddingLeft: 'clamp(110px, 32vw, 520px)',
-            }}
+            className="relative z-20 w-full min-h-full flex flex-col items-center justify-start pt-5 pb-6 md:pl-[40vw] lg:pl-[480px]"
           >
             {/* Close button — always top-right */}
             <button
