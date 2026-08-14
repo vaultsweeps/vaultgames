@@ -214,11 +214,11 @@ export default function InvitePage() {
                       <Shield className="w-3 h-3" /> Your Invite Code
                     </p>
                     <div className="flex items-center gap-2">
-                      <div className="flex-1 bg-background border border-neon-blue/20 rounded-xl px-5 py-3.5 flex items-center justify-between">
-                        <span className="font-mono font-bold text-xl tracking-[0.2em] text-neon-blue">
+                      <div className="flex-1 min-w-0 bg-background border border-neon-blue/20 rounded-xl px-5 py-3.5 flex items-center justify-between">
+                        <span className="font-mono font-bold text-xl tracking-[0.2em] text-neon-blue truncate">
                           {info?.referralCode ?? '—'}
                         </span>
-                        <span className="text-[10px] text-muted font-mono">INVITE CODE</span>
+                        <span className="text-[10px] text-muted font-mono ml-2 shrink-0">INVITE CODE</span>
                       </div>
                       {info?.referralCode && <CopyButton text={info.referralCode} label="Invite code" />}
                     </div>
@@ -230,7 +230,7 @@ export default function InvitePage() {
                       <Link2 className="w-3 h-3" /> Your Invite Link
                     </p>
                     <div className="flex items-center gap-2">
-                      <div className="flex-1 bg-background border border-border-strong rounded-xl px-4 py-3 text-secondary text-sm font-mono truncate">
+                      <div className="flex-1 min-w-0 bg-background border border-border-strong rounded-xl px-4 py-3 text-secondary text-sm font-mono truncate">
                         {info?.referralLink ?? '—'}
                       </div>
                       {info?.referralLink && <CopyButton text={info.referralLink} label="Invite link" />}
