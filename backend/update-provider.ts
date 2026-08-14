@@ -26,6 +26,7 @@ async function run() {
     await prisma.provider.update({
         where: { id: target.id },
         data: {
+            apiBaseUrl: 'https://www.ultrapanda.mobi',  // Fixed: was ht.ultrapanda.mobi (returned 404)
             agentId: 'NickU123',
             secretKey: 'AbcD1122',
             endpoints: {
