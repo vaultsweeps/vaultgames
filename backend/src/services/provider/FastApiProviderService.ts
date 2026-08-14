@@ -26,6 +26,13 @@ export class FastApiProviderService implements ProviderAdapter {
     const endpointsConfig = (this.provider.endpoints as Record<string, string>) || {};
     this.appid = endpointsConfig.appid || this.provider.agentId;
     this.appsecret = endpointsConfig.appsecret || this.provider.secretKey;
+
+    // If both appid and appsecret are pre-configured in endpoints, skip the agentLogin step entirely.
+    // The stored credentials are already the post-login static API credentials.
+    if (endpointsConfig.appid && endpointsConfig.appsecret) {
+      this.isAuthenticated = true;
+      console.info(`[FastApiProviderService] Using pre-configured appid/appsecret for ${provider.name} — skipping agentLogin`);
+    }
   }
 
   private generateAesKey(password: string): Buffer {
