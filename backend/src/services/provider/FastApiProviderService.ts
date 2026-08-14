@@ -89,7 +89,10 @@ export class FastApiProviderService implements ProviderAdapter {
       this.isAuthenticated = true;
     } catch (e: any) {
       if (e instanceof AppError) throw e;
-      throw new AppError(`Agent Login connection failed (Make sure your IP is whitelisted!): ${e.message}`, 502);
+      const status = e.response?.status;
+      const data = JSON.stringify(e.response?.data || {});
+      console.error(`[FastApiProviderService] Login failed for ${url} - Status: ${status} - Response: ${data}`);
+      throw new AppError(`Agent Login connection failed (Make sure your IP is whitelisted! URL: ${url}): ${e.message}`, 502);
     }
   }
 
