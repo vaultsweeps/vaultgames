@@ -199,9 +199,12 @@ export const resetProviderPassword = asyncHandler(async (req: AuthRequest, res: 
   const providerService = await ProviderFactory.getProviderById(providerUser.providerId)
   if (!providerService) throw new AppError('Provider service unavailable', 503)
 
-  const newPassword = 'NxS_' + crypto.randomBytes(4).toString('hex')
+  // Generate a safe alphanumeric password (no underscores or special chars UltraPanda rejects)
+  const newPassword = 'Nx' + crypto.randomBytes(6).toString('hex') // e.g. "Nx1a2b3c4d5e6f"
 
   try {
+    // IMPORTANT: pass providerUser.providerUserId (the provider-side username)
+    // NOT userId (which is the internal DB cuid and would produce a different hash)
     await providerService.resetPlayerPassword(providerUser.providerUserId, newPassword)
   } catch (err: any) {
     // Re-throw the actual provider error so we can see what went wrong in logs
