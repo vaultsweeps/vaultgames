@@ -356,15 +356,25 @@ export const transferFunds = asyncHandler(async (req: AuthRequest, res: Response
           }
         }
       } else {
-        // 30% Regular Bonus
-        bonusAmount = amount * 0.3;
-        if (depositBonusDef) {
-          try {
-            await prisma.bonusClaim.create({ data: { userId, bonusId: depositBonusDef.id, amount: bonusAmount } });
-          } catch (e) {
-            // Ignore unique constraint error for recurring bonuses so transfer succeeds
+        // 30% Regular Bonus — only if user has NOT received any freeplay/wheel bonus
+        const freeBonusClaim = await prisma.bonusClaim.findFirst({
+          where: {
+            userId,
+            bonus: { type: { in: ['wheel', 'freeplay'] } }
+          }
+        });
+
+        if (!freeBonusClaim) {
+          bonusAmount = amount * 0.3;
+          if (depositBonusDef) {
+            try {
+              await prisma.bonusClaim.create({ data: { userId, bonusId: depositBonusDef.id, amount: bonusAmount } });
+            } catch (e) {
+              // Ignore unique constraint error for recurring bonuses so transfer succeeds
+            }
           }
         }
+        // If user has freeplay/wheel/coupon bonus, they get 0% deposit bonus — no action needed
       }
 
       finalProviderAmount = amount + bonusAmount;
