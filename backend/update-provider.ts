@@ -4,7 +4,9 @@ const prisma = new PrismaClient();
 
 async function run() {
     const providers = await prisma.provider.findMany();
-    console.log("Providers found:", providers.map(p => ({ id: p.id, name: p.name, agentId: p.agentId })));
+    console.log("Providers found:", providers.map(p => ({ 
+        id: p.id, name: p.name, agentId: p.agentId, apiBaseUrl: p.apiBaseUrl 
+    })));
 
     let target = providers.find(p => p.name.toLowerCase().includes('panda') || p.agentId === '***REDACTED***');
     
@@ -13,8 +15,14 @@ async function run() {
         return;
     }
 
-    console.log("Updating Provider:", target.name);
+    console.log("Current Provider Config:");
+    console.log("  Name:", target.name);
+    console.log("  Base URL:", target.apiBaseUrl);
+    console.log("  AgentId:", target.agentId);
+    console.log("  Endpoints:", JSON.stringify(target.endpoints, null, 2));
 
+    // DO NOT change apiBaseUrl — just fix the endpoint paths
+    // The FastAPI provider uses /fast/ prefix as per the UltraPanda API spec
     await prisma.provider.update({
         where: { id: target.id },
         data: {
@@ -23,13 +31,13 @@ async function run() {
             endpoints: {
                 "appid": "zf0I9bbeOt2mt5z107",
                 "appsecret": "P85FLdFf_grvaUhvcmf5kozud39",
-                "agentLogin": "/agent/login",
-                "agentBalance": "/agent/login",
-                "createPlayer": "/user/create",
-                "recharge": "/user/deposit",
-                "withdraw": "/user/withdrawal",
-                "playerBalance": "/user/balance",
-                "resetPassword": "/user/updatePasswd"
+                "agentLogin": "/fast/agent/login",
+                "agentBalance": "/fast/agent/login",
+                "createPlayer": "/fast/user/create",
+                "recharge": "/fast/user/deposit",
+                "withdraw": "/fast/user/withdrawal",
+                "playerBalance": "/fast/user/balance",
+                "resetPassword": "/fast/user/updatePasswd"
             }
         }
     });
