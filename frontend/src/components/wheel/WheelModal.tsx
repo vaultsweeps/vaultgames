@@ -224,7 +224,7 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
 
           {/* ── The Casino Hostess ── */}
           <div
-            className="fixed left-0 bottom-0 z-10 pointer-events-none w-full h-full md:w-[45vw] lg:w-[520px]"
+            className="fixed bottom-0 z-10 pointer-events-none w-[180vw] h-[70vh] -left-[110vw] md:left-0 md:w-[45vw] lg:w-[520px] md:h-full"
             style={{ 
               mixBlendMode: 'screen',
               filter: 'contrast(1.2) brightness(0.85)',
@@ -234,7 +234,7 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
               src="/images/casino-host-new.png"
               alt="Casino Hostess"
               fill
-              className="object-contain object-bottom md:object-left-bottom opacity-60 md:opacity-100"
+              className="object-contain object-right-bottom md:object-left-bottom opacity-100"
               priority
             />
           </div>
