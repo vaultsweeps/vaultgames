@@ -237,25 +237,46 @@ export class FastApiProviderService implements ProviderAdapter {
     }
   }
 
+  /**
+   * Sanitize userId → a valid UltraPanda account name.
+   * Rules: 3–16 chars, only a-z 0-9 (lowercase).
+   * We strip everything else and pad/truncate as needed.
+   */
   private getProviderAccount(userId: string): string {
-    // FastApi requires 3-16 characters, only letters and numbers
-    let clean = userId.replace(/[^a-zA-Z0-9]/g, '');
-    if (clean.length < 3) {
-      clean = clean + 'abc'.substring(0, 3 - clean.length);
+    // Remove any character that is not a letter or digit
+    let clean = userId.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+    // If too short after stripping, pad with 'u' chars
+    if (clean.length < 4) {
+      clean = clean.padEnd(4, 'u');
     }
-    if (clean.length > 16) {
-      clean = clean.substring(0, 16);
-    }
-    return clean.toLowerCase();
+    // Truncate to 16 chars max
+    return clean.substring(0, 16);
+  }
+
+  /**
+   * Generate a deterministic, safe 8-char alphanumeric password for this account.
+   * UltraPanda password rules: 6–16 chars, letters+numbers, symbols !@#$()%^/., are optional.
+   * We keep it simple: 8 alphanumeric chars derived from a hash of the userId.
+   * This is stable — same userId always produces the same provider password.
+   */
+  private getProviderPassword(userId: string): string {
+    const hash = crypto.createHash('md5').update(`ultrapanda-${userId}`).digest('hex');
+    // Take first 4 hex chars as letters A-P (always letters), rest as digits
+    const letters = hash.substring(0, 4).split('').map(c => String.fromCharCode(65 + parseInt(c, 16))).join('');
+    const digits = hash.substring(4, 8);
+    return letters + digits; // e.g. "ABCD1234" — always 8 chars, letters+digits, no special chars
   }
 
   async createPlayer(username: string, password?: string): Promise<{ userId: string; accountName: string }> {
     const endpoint = this.getEndpoint('createPlayer', '/fast/user/create');
     const providerAccount = this.getProviderAccount(username);
+    // Always use a deterministic safe password — never the raw user password which may contain
+    // characters unsupported by UltraPanda (e.g. @, spaces, special symbols).
+    const providerPassword = this.getProviderPassword(username);
     try {
       const data = await this.makeRequest(endpoint, {
         account: providerAccount,
-        passwd: password || 'Test@123', // "6–16 characters, must include letters and numbers; allowed symbols: !@#$()%^/.,"
+        passwd: providerPassword,
       });
 
       // data object contains: { full_account: "prefix_username" }
@@ -265,9 +286,6 @@ export class FastApiProviderService implements ProviderAdapter {
       // Code 12 = User Already Exists — treat as success, user is already on provider
       if (e.message?.includes('Code: 12') || e.message?.includes('User Already Exist')) {
         console.info(`[FastApiProviderService] Player "${providerAccount}" already exists on provider — treating as success`);
-        // If it already exists, we must assume the accountName is prefix + providerAccount
-        // FastApi usually prefixes the agentId to the account name. We don't have the exact prefix, but the frontend 
-        // usually shows what we return. Let's return the providerAccount.
         return { userId: username, accountName: providerAccount };
       }
       throw e;
@@ -318,10 +336,16 @@ export class FastApiProviderService implements ProviderAdapter {
 
   async resetPlayerPassword(userId: string, newPassword?: string): Promise<boolean> {
     const endpoint = this.getEndpoint('resetPassword', '/fast/user/updatePasswd');
+    // We always use the deterministic provider password as the known old password.
+    // newPassword must also be safe — if provided, sanitize it; otherwise reuse the derived one.
+    const knownOldPassword = this.getProviderPassword(userId);
+    const safeNewPassword = newPassword
+      ? newPassword.replace(/[^a-zA-Z0-9]/g, '').substring(0, 16).padEnd(6, '1')
+      : knownOldPassword;
     await this.makeRequest(endpoint, {
       account: this.getProviderAccount(userId),
-      passwd: 'OldPassword123!', // "passwd" requires old password in updatePasswd, we just provide a default if unknown.
-      new_passwd: newPassword || 'Test@123',
+      passwd: knownOldPassword,
+      new_passwd: safeNewPassword,
     }, userId);
     return true;
   }
