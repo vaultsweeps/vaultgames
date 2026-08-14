@@ -13,6 +13,11 @@ interface AuthStore extends AuthState {
   setUser: (user: User) => void
   setToken: (token: string) => void
   setBalance: (balance: number) => void
+  // Auth modal global trigger
+  authModalOpen: boolean
+  authModalView: 'login' | 'register'
+  openAuthModal: (view?: 'login' | 'register') => void
+  closeAuthModal: () => void
 }
 
 export const useAuthStore = create<AuthStore>()(
@@ -23,6 +28,8 @@ export const useAuthStore = create<AuthStore>()(
       balance: 0,
       isLoading: false,
       isAuthenticated: false,
+      authModalOpen: false,
+      authModalView: 'login' as 'login' | 'register',
 
       login: async (email: string, password: string) => {
         set({ isLoading: true })
@@ -81,6 +88,8 @@ export const useAuthStore = create<AuthStore>()(
       setUser: (user: User) => set({ user }),
       setToken: (token: string) => set({ token }),
       setBalance: (balance: number) => set({ balance }),
+      openAuthModal: (view: 'login' | 'register' = 'login') => set({ authModalOpen: true, authModalView: view }),
+      closeAuthModal: () => set({ authModalOpen: false }),
     }),
     {
       name: 'vaultsweeps-auth',
