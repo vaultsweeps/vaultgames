@@ -156,7 +156,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </AnimatePresence>
 
       {/* Main content */}
-      <div className="flex-1 lg:ml-64 flex flex-col min-h-screen">
+      <div className="flex-1 min-w-0 lg:ml-64 flex flex-col min-h-screen">
         {/* Top bar */}
         <header className="sticky top-0 z-20 bg-surface/80 backdrop-blur-sm border-b border-border-subtle px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between">
