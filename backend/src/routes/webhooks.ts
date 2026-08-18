@@ -4,6 +4,7 @@ import prisma from '../lib/prisma'
 import { createNotification } from '../services/notificationService'
 import { ProviderFactory } from '../services/provider/ProviderFactory'
 import { ZappayService } from '../services/payment/ZappayService'
+import { DollarPayService } from '../services/payment/DollarPayService'
 import { TelegramService } from '../services/TelegramService'
 import { sendAdminNowPaymentsNotification } from '../services/emailService'
 
@@ -351,6 +352,115 @@ router.post('/zappay', async (req: Request, res: Response) => {
       data: { provider: 'zappay', payload: req.body, status: 'error', error: error.message }
     });
     res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+// DollarPay webhook
+router.post('/dollarpay', async (req: Request, res: Response) => {
+  try {
+    const signature = req.body.sign as string;
+    
+    // Save raw webhook log
+    const webhookLog = await prisma.paymentWebhook.create({
+      data: { provider: 'dollarpay', payload: req.body, status: 'received' }
+    });
+
+    if (!signature || !DollarPayService.verifyWebhookSignature(req.body, signature)) {
+      await prisma.paymentWebhook.update({ where: { id: webhookLog.id }, data: { status: 'failed', error: 'Invalid signature' } });
+      return res.send('fail'); // Not sure if DollarPay requires specific string, document says respond SUCCESS on success.
+    }
+
+    const { outer_order_sn, pay_status, amount, transaction_id } = req.body;
+
+    const deposit = await prisma.deposit.findFirst({
+      where: { paymentReference: outer_order_sn },
+      include: { user: true }
+    });
+
+    if (deposit) {
+      // It's a deposit (pay-in)
+      if (deposit.status === 'approved') {
+        return res.send('SUCCESS');
+      }
+
+      if (pay_status === '1') { // 1: Successful
+        // Call Provider Recharge API
+        const providerUser = await prisma.providerUser.findFirst({ where: { userId: deposit.userId } });
+        if (providerUser) {
+          const providerService = await ProviderFactory.getProviderById(providerUser.providerId);
+          if (providerService) {
+            const rechargeResult = await providerService.rechargePlayer(providerUser.providerUserId, deposit.amount, deposit.paymentReference!);
+            
+            await prisma.$transaction([
+              prisma.deposit.update({
+                where: { id: deposit.id },
+                data: { status: 'approved', transactionId: transaction_id || rechargeResult.pay_order_id || String(transaction_id), approvedAt: new Date(), webhookData: req.body }
+              }),
+              prisma.providerTransaction.create({
+                data: {
+                  providerId: providerUser.providerId,
+                  userId: deposit.userId,
+                  type: 'recharge',
+                  amount: deposit.amount,
+                  orderId: deposit.paymentReference!,
+                  providerOrderId: rechargeResult.pay_order_id || String(transaction_id),
+                  status: 'success'
+                }
+              })
+            ]);
+
+            await createNotification(deposit.userId, {
+              title: '✅ Deposit Confirmed!',
+              message: `Your deposit of $${deposit.amount} has been successfully credited to your game account.`,
+              type: 'success',
+              link: '/dashboard/deposits'
+            });
+          }
+        } else {
+            // Handle if no providerUser (fallback)
+            await prisma.deposit.update({
+              where: { id: deposit.id },
+              data: { status: 'approved', transactionId: String(transaction_id), approvedAt: new Date(), webhookData: req.body }
+            });
+        }
+      } else if (pay_status === '4' || pay_status === '5') {
+        // Refunded or failed
+        if (deposit.status === 'pending') {
+          await prisma.deposit.update({
+            where: { id: deposit.id },
+            data: { status: 'failed', webhookData: req.body }
+          });
+        }
+      }
+    } else {
+      // Could be a withdrawal (payout)
+      const withdrawal = await prisma.withdrawal.findFirst({
+        where: { requestId: outer_order_sn }
+      });
+      
+      if (withdrawal) {
+        if (pay_status === '1' && withdrawal.status === 'pending') {
+          await prisma.withdrawal.update({
+            where: { id: withdrawal.id },
+            data: { status: 'approved', approvedAt: new Date() }
+          });
+        } else if (pay_status === '5' && withdrawal.status === 'pending') {
+          await prisma.withdrawal.update({
+            where: { id: withdrawal.id },
+            data: { status: 'rejected', rejectionReason: 'Payout failed at gateway', rejectedAt: new Date() }
+          });
+        }
+      } else {
+        await prisma.paymentWebhook.update({ where: { id: webhookLog.id }, data: { status: 'ignored', error: 'Order not found' } });
+        return res.send('SUCCESS'); // Still send SUCCESS to ack receipt
+      }
+    }
+
+    await prisma.paymentWebhook.update({ where: { id: webhookLog.id }, data: { status: 'processed' } });
+    res.send('SUCCESS');
+  } catch (error: any) {
+    console.error('DollarPay Webhook Error:', error);
+    res.status(500).send('ERROR');
   }
 });
 

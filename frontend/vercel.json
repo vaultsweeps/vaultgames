@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://nexsus-c053.onrender.com/api/:path*"
+      "destination": "https://www.vaultsweeps.com/api/:path*"
     }
   ]
 }

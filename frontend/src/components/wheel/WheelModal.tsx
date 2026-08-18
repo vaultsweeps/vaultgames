@@ -206,15 +206,15 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
           `}</style>
 
           {/* ====================================================
-              MOBILE Girl — z-[45] so her hand overlaps the wheel.
-              pointer-events-none keeps the SPIN button tappable.
-              The content left-padding is 32vw so the wheel starts
-              early enough that ~10-15vw of her hand overlaps it.
+              MOBILE Girl
+              z-[45]  — above wheel body (z-40) so hand overlaps.
+              42vw    — wide enough for the hand to reach the wheel.
+              pointer-events-none keeps SPIN button (z-[60]) tappable.
               ==================================================== */}
           <div
             className="block md:hidden fixed left-0 bottom-0 z-[45] pointer-events-none"
             style={{
-              width: '48vw',
+              width: '42vw',
               height: '78vh',
               mixBlendMode: 'screen',
               filter: 'contrast(1.2) brightness(0.85)',
@@ -250,13 +250,14 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
 
           {/* ================================================================
               MAIN UI WRAPPER
-              Mobile:   pl-[32vw] — wheel starts early, girl hand overlaps it
-              Tablet:   pl-[32vw]
-              Desktop:  pl-[480px]
+              Mobile:  pl-[20vw] — girl (42vw) overlaps wheel left edge ~10vw.
+                                   Wheel capped at 70vw so nothing bleeds right.
+              Tablet:  pl-[32vw]
+              Desktop: pl-[480px]
               ================================================================ */}
           <div
             onClick={e => e.stopPropagation()}
-            className="relative z-20 w-full min-h-full flex flex-col items-center justify-start pt-5 pb-6 pl-[32vw] md:pl-[32vw] lg:pl-[480px]"
+            className="relative z-20 w-full min-h-full flex flex-col items-center justify-start pt-5 pb-6 pl-[20vw] md:pl-[32vw] lg:pl-[480px]"
           >
             {/* Close button */}
             <button
@@ -359,7 +360,8 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
                 <div
                   className="relative rounded-full"
                   style={{
-                    width: 'clamp(200px, min(85vw, 60vh), 800px)',
+                    /* 70vw caps mobile/tablet; 60vh controls on desktop — no right-edge overflow */
+                    width: 'clamp(200px, min(70vw, 60vh), 800px)',
                     aspectRatio: '1 / 1',
                     padding: 'clamp(12px, 3vw, 32px)',
                     background: 'conic-gradient(from 0deg, #3d2204 0%, #f9ca24 15%, #fffae8 25%, #d35400 40%, #1a0800 50%, #d35400 60%, #fffae8 75%, #f9ca24 85%, #3d2204 100%)',
@@ -377,7 +379,7 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
                   <div className="absolute inset-0 rounded-full border-[3px] border-black/40 pointer-events-none" style={{ margin: '8px' }}></div>
                   <div className="absolute inset-0 rounded-full border-[2px] border-white/20 pointer-events-none" style={{ margin: '11px' }}></div>
 
-                  {/* Marquee Bulbs */}
+                  {/* Marquee Bulbs — pure CSS animation, no JS interval */}
                   <svg
                     viewBox="0 0 100 100"
                     className="absolute inset-0 w-full h-full pointer-events-none z-10"
@@ -389,12 +391,8 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
                       const r = 45.5
                       const cx = 50 + r * Math.cos(rad)
                       const cy = 50 + r * Math.sin(rad)
-                      
-                      // Calculate delay so that the lit bulbs travel around the circle
-                      // The animation duration is either fast (spinning) or slow (idle)
                       const duration = spinning ? 0.6 : 3.0
                       const delay = (i / BULB_TOTAL) * duration
-                      
                       return (
                         <g key={i}>
                           <circle cx={cx} cy={cy} r="2.2" fill="#221" stroke="rgba(255,255,255,0.2)" strokeWidth="0.2" />
@@ -551,7 +549,7 @@ export default function WheelModal({ isOpen, onClose }: WheelModalProps) {
                     </motion.div>
                   </div>
 
-                  {/* Massive Raised Center SPIN Button — z-[60] > girl z-[45], stays tappable */}
+                  {/* Massive Raised Center SPIN Button — z-[60] > girl z-[45], always tappable */}
                   <div
                     className="absolute inset-0 flex items-center justify-center pointer-events-none z-[60]"
                     style={{ transform: 'translateZ(40px)' }}
