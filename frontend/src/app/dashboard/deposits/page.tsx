@@ -185,15 +185,11 @@ function DepositsContent() {
                     })
                     .map(m => {
                     const meta = getMeta(m.code)
-                    const workingCodes = ['chime', 'paypal', 'cashapp', 'crypto', 'dollarpay'];
-                    const isSoon = !workingCodes.includes(m.code?.toLowerCase() || '');
+                    // All methods returned by the backend are active and working
+                    const isSoon = false;
                     return (
                       <button key={m.id}
                         onClick={() => { 
-                          if (isSoon) {
-                            toast.error('This method is coming soon!')
-                            return
-                          }
                           if (['chime', 'paypal', 'cashapp'].includes(m.code.toLowerCase())) {
                             setChimePayPalMethod(m.code.toLowerCase() as 'chime' | 'paypal' | 'cashapp')
                           } else {
@@ -202,7 +198,7 @@ function DepositsContent() {
                             setStep(2)
                           }
                         }}
-                        className={`glass-card p-5 text-left transition-all group flex flex-col gap-3 ${isSoon ? 'opacity-50 cursor-not-allowed hover:bg-white/5' : 'hover:-translate-y-1'}`}>
+                        className={`glass-card p-5 text-left transition-all group flex flex-col gap-3 hover:-translate-y-1`}>
                         <div className="flex justify-between items-start">
                           <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl overflow-hidden"
                             style={{ background: `${meta.color}20`, border: `1px solid ${meta.color}40` }}>
@@ -211,11 +207,7 @@ function DepositsContent() {
                                : meta.icon
                              }
                           </div>
-                          {isSoon && (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-secondary border border-border-strong">
-                              Soon
-                            </span>
-                          )}
+                        </div>
                         </div>
                         <div className="flex-1">
                           <p className="text-white font-semibold">{m.name}</p>
