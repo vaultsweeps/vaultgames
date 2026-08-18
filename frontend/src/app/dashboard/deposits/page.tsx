@@ -9,18 +9,20 @@ import { useSearchParams } from 'next/navigation'
 
 const ChimePayPalDepositModal = dynamic(() => import('@/components/modals/ChimePayPalDepositModal'), { ssr: false })
 const CryptoDepositModal = dynamic(() => import('@/components/modals/CryptoDepositModal'), { ssr: false })
+const DollarPayModal = dynamic(() => import('@/components/modals/DollarPayModal'), { ssr: false })
 
 // Method icon/color map
 const METHOD_META: Record<string, { icon: string; color: string; desc: string; logoUrl?: string }> = {
-  cashapp: { icon: '💸', color: '#00D632', desc: 'Send via Cash App — fast & easy' },
-  chime:   { icon: '🏦', color: '#00CFAA', desc: 'Deposit via Chime bank' },
-  crypto:  { icon: '₿',  color: '#F7931A', desc: 'USDT, BTC, ETH & 100+ cryptocurrencies' },
-  bitcoin: { icon: '₿',  color: '#F7931A', desc: 'Bitcoin payments' },
-  usdt:    { icon: '₮',  color: '#26A17B', desc: 'Tether stablecoin (TRC20)' },
-  bank:    { icon: '🏛️', color: '#00D4FF', desc: 'Bank wire transfer' },
-  apple:   { icon: '', color: '#000000', desc: 'Apple Pay — tap & pay instantly', logoUrl: 'https://i.pinimg.com/originals/ae/85/92/ae859253f4141e38711d2c159a53649e.jpg' },
-  card:    { icon: '💳', color: '#2563EB', desc: 'Debit card — pay securely' },
-  default: { icon: '💳', color: '#7B2FFF', desc: 'Digital payment' },
+  cashapp:    { icon: '💸', color: '#00D632', desc: 'Send via Cash App — fast & easy' },
+  chime:      { icon: '🏦', color: '#00CFAA', desc: 'Deposit via Chime bank' },
+  crypto:     { icon: '₿',  color: '#F7931A', desc: 'USDT, BTC, ETH & 100+ cryptocurrencies' },
+  bitcoin:    { icon: '₿',  color: '#F7931A', desc: 'Bitcoin payments' },
+  usdt:       { icon: '₮',  color: '#26A17B', desc: 'Tether stablecoin (TRC20)' },
+  bank:       { icon: '🏛️', color: '#00D4FF', desc: 'Bank wire transfer' },
+  apple:      { icon: '', color: '#000000', desc: 'Apple Pay — tap & pay instantly', logoUrl: 'https://i.pinimg.com/originals/ae/85/92/ae859253f4141e38711d2c159a53649e.jpg' },
+  card:       { icon: '💳', color: '#2563EB', desc: 'Debit card — pay securely' },
+  dollarpay:  { icon: '💵', color: '#22C55E', desc: 'Instant deposit via DollarPay secure link — auto-credited' },
+  default:    { icon: '💳', color: '#7B2FFF', desc: 'Digital payment' },
 }
 
 function getMeta(code: string) {
@@ -53,6 +55,7 @@ function DepositsContent() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [chimePayPalMethod, setChimePayPalMethod] = useState<'chime'|'paypal'|'cashapp'|null>(null)
   const [cryptoModalOpen, setCryptoModalOpen] = useState(false)
+  const [dollarPayModalOpen, setDollarPayModalOpen] = useState(false)
   const searchParams = useSearchParams()
 
   const fetchHistory = async () => {
@@ -107,7 +110,14 @@ function DepositsContent() {
         return
       }
 
-      await depositApi.create({ amount, paymentMethodId: selectedMethod.id })
+      const res = await depositApi.create({ amount, paymentMethodId: selectedMethod.id })
+      const data = res.data?.data
+
+      if (data?.redirectRequired && data?.paymentUrl) {
+        toast.success('Redirecting to payment gateway...')
+        window.location.href = data.paymentUrl
+        return
+      }
 
       setStep(3)
       await fetchHistory()
@@ -167,7 +177,7 @@ function DepositsContent() {
                   {methods
                     .filter(m => m.code !== 'zappay' && !m.name?.toLowerCase().includes('zappay'))
                     .sort((a, b) => {
-                      const workingCodes = ['chime', 'paypal', 'cashapp', 'crypto'];
+                      const workingCodes = ['chime', 'paypal', 'cashapp', 'crypto', 'dollarpay'];
                       const aSoon = !workingCodes.includes(a.code?.toLowerCase() || '');
                       const bSoon = !workingCodes.includes(b.code?.toLowerCase() || '');
                       if (aSoon === bSoon) return 0;
@@ -175,7 +185,7 @@ function DepositsContent() {
                     })
                     .map(m => {
                     const meta = getMeta(m.code)
-                    const workingCodes = ['chime', 'paypal', 'cashapp', 'crypto'];
+                    const workingCodes = ['chime', 'paypal', 'cashapp', 'crypto', 'dollarpay'];
                     const isSoon = !workingCodes.includes(m.code?.toLowerCase() || '');
                     return (
                       <button key={m.id}
@@ -187,8 +197,9 @@ function DepositsContent() {
                           if (['chime', 'paypal', 'cashapp'].includes(m.code.toLowerCase())) {
                             setChimePayPalMethod(m.code.toLowerCase() as 'chime' | 'paypal' | 'cashapp')
                           } else {
-                            setSelectedMethod(m); 
-                            setStep(2) 
+                            // dollarpay and crypto go through the amount step
+                            setSelectedMethod(m)
+                            setStep(2)
                           }
                         }}
                         className={`glass-card p-5 text-left transition-all group flex flex-col gap-3 ${isSoon ? 'opacity-50 cursor-not-allowed hover:bg-white/5' : 'hover:-translate-y-1'}`}>
@@ -272,12 +283,18 @@ function DepositsContent() {
           {step === 3 && selectedMethod && (
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
               className="glass-card p-8 max-w-md text-center">
-              <div className="w-16 h-16 bg-neon-blue/10 border border-neon-blue/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                <CreditCard className="w-8 h-8 text-neon-blue" />
+              <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${selectedMethod.code === 'dollarpay' ? 'bg-green-500/10 border border-green-500/20' : 'bg-neon-blue/10 border border-neon-blue/20'}`}>
+                {selectedMethod.code === 'dollarpay'
+                  ? <ExternalLink className="w-8 h-8 text-green-400" />
+                  : <CreditCard className="w-8 h-8 text-neon-blue" />}
               </div>
-              <h3 className="font-display font-bold text-xl text-white mb-2">PAYMENT REQUEST CREATED</h3>
+              <h3 className="font-display font-bold text-xl text-white mb-2">
+                {selectedMethod.code === 'dollarpay' ? 'REDIRECTED TO DOLLARPAY' : 'PAYMENT REQUEST CREATED'}
+              </h3>
               <p className="text-secondary text-sm mb-6">
-                Your deposit request for <span className="text-white font-medium">${depositAmount}</span> via {selectedMethod.name} has been submitted.
+                {selectedMethod.code === 'dollarpay'
+                  ? <>A DollarPay checkout page was opened in a new tab. Complete your payment there for <span className="text-white font-medium">${depositAmount}</span> — your deposit will be <span className="text-green-400 font-medium">automatically credited</span> once confirmed.</>
+                  : <>Your deposit request for <span className="text-white font-medium">${depositAmount}</span> via {selectedMethod.name} has been submitted.</>}
               </p>
               <div className="glass rounded-xl p-4 text-left mb-6 space-y-2 text-sm">
                 <div className="flex justify-between"><span className="text-muted">Method</span><span className="text-white">{selectedMethod.name}</span></div>
@@ -285,7 +302,9 @@ function DepositsContent() {
                 <div className="flex justify-between"><span className="text-muted">Status</span><span className="badge-pending text-xs px-2 py-0.5 rounded-full">PENDING</span></div>
               </div>
               <p className="text-xs text-muted mb-4">
-                Our team will review and approve your deposit within 1–24 hours.
+                {selectedMethod.code === 'dollarpay'
+                  ? 'If the payment page did not open, disable your popup blocker and try again.'
+                  : 'Our team will review and approve your deposit within 1–24 hours.'}
               </p>
               <div className="flex gap-3">
                 <button onClick={resetForm} className="btn-neon flex-1 text-sm py-2.5">New Deposit</button>
@@ -354,6 +373,25 @@ function DepositsContent() {
           }}
           amount={parseFloat(depositAmount) || 0}
           paymentMethodId={selectedMethod.id}
+        />
+      )}
+      
+      {selectedMethod && selectedMethod.code?.toLowerCase() === 'dollarpay' && (
+        <DollarPayModal
+          isOpen={dollarPayModalOpen}
+          onClose={() => {
+            setDollarPayModalOpen(false)
+            fetchHistory()
+            resetForm()
+          }}
+          amount={parseFloat(depositAmount) || 0}
+          paymentMethodId={selectedMethod.id}
+          onSuccess={() => {
+            setDollarPayModalOpen(false)
+            setTab('history')
+            fetchHistory()
+            resetForm()
+          }}
         />
       )}
     </div>

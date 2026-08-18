@@ -12,6 +12,7 @@ import { TelegramSupportBot } from '../services/TelegramSupportBot'
 import { sendAdminZappayNotification } from '../services/emailService'
 import { ImapZappayService } from '../services/payment/ImapZappayService'
 import { ImapChimePayPalService } from '../services/payment/ImapChimePayPalService'
+import { DollarPayService } from '../services/payment/DollarPayService'
 import { invalidateWalletCache } from '../services/WalletService'
 
 
@@ -139,6 +140,28 @@ export const createDeposit = asyncHandler(async (req: AuthRequest, res: Response
     } catch (e: any) {
       logger.error('[Telegram Deposit Notification Error] ' + (e?.message || e))
     }
+  } else if (paymentMethod.code.toLowerCase() === 'dollarpay') {
+    // DollarPay: deposit record created, frontend modal handles the payment submission directly
+    await prisma.deposit.update({
+      where: { id: deposit.id },
+      data: { webhookData: { provider: 'dollarpay', status: 'awaiting_payment' } }
+    })
+    // Return the proxy URL as the payment link so the user is redirected to the gateway
+    // Build absolute URL using the incoming request's own host so it works on any server (Namecheap, Render, localhost)
+    const requestHost = req.get('x-forwarded-host') || req.get('host') || 'localhost:5000'
+    const requestProto = req.get('x-forwarded-proto') || req.protocol || 'http'
+    const backendBaseUrl = process.env.BACKEND_URL || `${requestProto}://${requestHost}`
+    const paymentUrl = `${backendBaseUrl}/api/proxy/dollarpay-proxy?amount=${amount}&name=${encodeURIComponent(user.username)}`
+    
+    return res.status(201).json({
+      success: true,
+      message: 'Redirecting to DollarPay gateway',
+      data: { 
+        ...deposit,
+        redirectRequired: true,
+        paymentUrl
+      }
+    })
   } else if (['chime', 'paypal'].includes(paymentMethod.code.toLowerCase())) {
     const depositId = deposit.id
 
