@@ -55,9 +55,7 @@ export class FastApiProviderService implements ProviderAdapter {
     if (this.isAuthenticated) return;
 
     const endpoint = this.getEndpoint('agentLogin', '/fast/agent/login');
-    const baseUrl = this.provider.apiBaseUrl.replace(/\/+$/, '');
-    const path = endpoint.replace(/^\/+/, '');
-    const url = `${baseUrl}/${path}`;
+    const url = this.buildUrl(endpoint);
 
     const requestData: Record<string, any> = {
       appid: this.appid,
@@ -107,6 +105,27 @@ export class FastApiProviderService implements ProviderAdapter {
   private getEndpoint(key: string, defaultPath: string): string {
     const endpoints = this.provider.endpoints as Record<string, string>;
     return endpoints?.[key] || defaultPath;
+  }
+
+  /**
+   * Builds the full request URL from the provider's apiBaseUrl + endpoint path.
+   * Defensively strips any query string / #fragment from apiBaseUrl — a
+   * fragment (e.g. an admin pasting the web-dashboard URL, which often looks
+   * like `https://host/?#/some/route`) is never actually transmitted to the
+   * server by HTTP clients, so leaving it in silently sends requests to the
+   * wrong path (typically `/`) instead of erroring clearly. Falls back to the
+   * previous plain-string behavior if apiBaseUrl isn't a parseable absolute URL.
+   */
+  private buildUrl(endpoint: string): string {
+    const path = endpoint.replace(/^\/+/, '');
+    let baseUrl = this.provider.apiBaseUrl.replace(/\/+$/, '');
+    try {
+      const parsed = new URL(this.provider.apiBaseUrl);
+      baseUrl = `${parsed.origin}${parsed.pathname}`.replace(/\/+$/, '');
+    } catch {
+      // Not a parseable absolute URL — keep the trimmed raw string as-is.
+    }
+    return `${baseUrl}/${path}`;
   }
 
   private generateRequestData(payload: Record<string, any>) {
@@ -186,9 +205,7 @@ export class FastApiProviderService implements ProviderAdapter {
     
     const startTime = Date.now();
     const requestData = this.generateRequestData(payload);
-    const baseUrl = this.provider.apiBaseUrl.replace(/\/+$/, '');
-    const path = endpoint.replace(/^\/+/, '');
-    const url = `${baseUrl}/${path}`;
+    const url = this.buildUrl(endpoint);
 
     const logData = {
       timestamp: new Date().toISOString(),
