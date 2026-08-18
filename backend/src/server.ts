@@ -29,6 +29,7 @@ import providerRoutes from './routes/provider'
 import referralRoutes from './routes/referral'
 import couponRoutes from './routes/coupons'
 import wheelRoutes from './routes/wheel'
+import proxyRoutes from './routes/proxy'
 
 const app = express()
 const PORT = process.env.PORT || 5000
@@ -37,6 +38,7 @@ const PORT = process.env.PORT || 5000
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
   contentSecurityPolicy: false,
+  frameguard: false, // Allow iframe embedding for DollarPay proxy
 }))
 
 // Performance logger (track slow API calls)
@@ -128,6 +130,7 @@ app.use('/api/provider', providerRoutes)
 app.use('/api/referral', referralRoutes)
 app.use('/api/user/coupons', couponRoutes)
 app.use('/api/wheel', wheelRoutes)
+app.use('/api/proxy', proxyRoutes)
 
 // 404 handler
 app.use('*', (req, res) => {
