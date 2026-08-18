@@ -44,7 +44,7 @@ export default function DollarPayModal({ isOpen, onClose, amount, paymentMethodI
   }, [])
 
   useEffect(() => {
-    if (!isOpen) { stopPolling(); return }
+    if (!isOpen) { stopTimer(); return }
     setStep('checkout')
     setPayType('')
     setSelectedAmount('')
