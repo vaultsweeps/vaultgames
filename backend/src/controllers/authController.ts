@@ -441,12 +441,17 @@ export const sendPhoneOTP = asyncHandler(async (req: AuthRequest, res: Response)
   const phoneNumber = phone.startsWith('+') ? phone : '+' + phone;
 
   // Update user profile with phone number
-  await prisma.userProfile.update({
+  await prisma.userProfile.upsert({
     where: { userId },
-    data: { phone: phoneNumber }
+    update: { phone: phoneNumber },
+    create: { userId, phone: phoneNumber }
   });
 
-  await TwilioService.sendOTP(phoneNumber);
+  try {
+    await TwilioService.sendOTP(phoneNumber);
+  } catch (err: any) {
+    throw new AppError(err?.message || 'Failed to send verification code. Please try again.', 500);
+  }
 
   res.json({ success: true, message: 'OTP sent successfully' });
 });
