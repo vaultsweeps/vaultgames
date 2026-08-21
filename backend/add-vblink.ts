@@ -15,7 +15,7 @@ async function main() {
 
   const data = {
     name: 'Vblink',
-    apiBaseUrl: 'https://gm.vblink777.club/',
+    apiBaseUrl: 'https://www.vblink777.club',
     agentId: 'VegasV01',
     secretKey: 'VegasV01',
     status: true,
