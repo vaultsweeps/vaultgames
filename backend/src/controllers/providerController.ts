@@ -323,7 +323,7 @@ export const transferFunds = asyncHandler(async (req: AuthRequest, res: Response
     if (type === 'recharge') {
       // Parallelize user lookup + first-recharge check + all bonus definitions — all independent
       const [user, firstRechargeCheck, welcomeBonusDef, depositBonusDef, referralBonusDef] = await Promise.all([
-        prisma.user.findUnique({ where: { id: userId }, select: { id: true, username: true, isVerified: true, referredById: true } }),
+        prisma.user.findUnique({ where: { id: userId }, select: { id: true, username: true, isVerified: true, isPhoneVerified: true, referredById: true } }),
         prisma.providerTransaction.findFirst({ where: { userId, type: 'recharge', status: 'success' } }),
         prisma.bonus.findFirst({ where: { type: 'welcome' } }),
         prisma.bonus.findFirst({ where: { type: 'deposit' } }),
@@ -331,7 +331,7 @@ export const transferFunds = asyncHandler(async (req: AuthRequest, res: Response
       ]);
       const isFirstRecharge = !firstRechargeCheck;
 
-      if (isFirstRecharge && user?.isVerified) {
+      if (isFirstRecharge && user?.isVerified && user?.isPhoneVerified) {
         // 100% Signup Bonus
         bonusAmount = amount;
         if (welcomeBonusDef) {
