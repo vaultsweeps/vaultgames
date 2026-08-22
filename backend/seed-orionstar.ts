@@ -11,7 +11,7 @@ async function main() {
   if (existing) {
     provider = await prisma.provider.update({
       where: { id: existing.id },
-      update: {
+      data: {
         secretKey: 'AbcD1122@@',
         apiBaseUrl: 'https://orionstars.vip:8033',
         endpoints: {
