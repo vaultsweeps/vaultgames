@@ -64,13 +64,13 @@ export class OrionstarProviderService implements ProviderAdapter {
         timeout: this.provider.requestTimeout || 10000,
       });
 
-      const { code, msg, agentKey } = response.data;
+      const { code, msg, agentkey } = response.data;
 
-      if (code !== 200) {
+      if (String(code) !== '200') {
         throw new AppError(`Orionstar Agent Login failed: ${msg}`, 400);
       }
 
-      this.agentKey = agentKey;
+      this.agentKey = agentkey;
       this.lastAuthTime = Date.now();
       
       console.info(`[Orionstar] Successfully authenticated agent ${this.provider.agentId}`);
@@ -125,7 +125,7 @@ export class OrionstarProviderService implements ProviderAdapter {
       const { code, msg, ...data } = response.data;
 
       // 200 is success, 201 is failure
-      if (code !== 200) {
+      if (String(code) !== '200') {
         const errorMsg = msg || 'Unknown Orionstar Provider Error';
         console.error(JSON.stringify({ ...logData, status: 200, response: response.data, message: errorMsg, duration }));
         await ProviderLogService.logRequest(this.provider.id, userId, endpoint, requestData, response.data, code, errorMsg);
