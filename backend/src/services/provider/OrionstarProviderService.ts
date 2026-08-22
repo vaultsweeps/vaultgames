@@ -31,6 +31,11 @@ export class OrionstarProviderService implements ProviderAdapter {
     return this.provider.apiBaseUrl.replace(/\/+$/, '');
   }
 
+  private getServicePath(): string {
+    const endpoints = this.provider.endpoints as Record<string, string>;
+    return endpoints?.servicePath || '/ws/service.ashx';
+  }
+
   private async authenticate(): Promise<void> {
     // If we have an agentKey that is less than 50 minutes old, we can probably reuse it
     // But since the API says "This field will change every time after the API agentLogin is successfully called",
@@ -39,7 +44,7 @@ export class OrionstarProviderService implements ProviderAdapter {
       return;
     }
 
-    const endpoint = '/ws/service.ashx?action=agentLogin';
+    const endpoint = `${this.getServicePath()}?action=agentLogin`;
     const url = `${this.baseUrl}${endpoint}`;
     
     // According to doc: agentPasswd must be encrypted by MD5
@@ -97,7 +102,7 @@ export class OrionstarProviderService implements ProviderAdapter {
       ...payload
     };
 
-    const endpoint = `/ws/service.ashx?action=${action}`;
+    const endpoint = `${this.getServicePath()}?action=${action}`;
     const url = `${this.baseUrl}${endpoint}`;
 
     const logData = {
