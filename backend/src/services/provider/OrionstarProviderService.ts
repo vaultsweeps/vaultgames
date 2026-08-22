@@ -37,13 +37,8 @@ export class OrionstarProviderService implements ProviderAdapter {
   }
 
   private async authenticate(): Promise<void> {
-    // If we have an agentKey that is less than 50 minutes old, we can probably reuse it
-    // But since the API says "This field will change every time after the API agentLogin is successfully called",
-    // and doesn't specify an explicit expiration, we'll cache it for 5 minutes just to avoid spamming login.
-    if (this.agentKey && Date.now() - this.lastAuthTime < 5 * 60 * 1000) {
-      return;
-    }
-
+    // Orionstar agentKey changes after every login call and expires quickly,
+    // so we always fetch a fresh key before each request.
     const endpoint = `${this.getServicePath()}?action=agentLogin`;
     const url = `${this.baseUrl}${endpoint}`;
     
