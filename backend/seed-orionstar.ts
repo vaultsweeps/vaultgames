@@ -3,30 +3,39 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function main() {
-  const provider = await prisma.provider.upsert({
-    where: { name: 'orionstar' },
-    update: {
-      name: 'orionstar',
-      agentId: 'VegasO01',
-      secretKey: '***REDACTED***',
-      apiBaseUrl: 'https://orionstars.vip:8033',
-      endpoints: {
-        servicePath: '/ws/service.aspx'
-      },
-      isActive: true,
-    },
-    create: {
-      name: 'orionstar',
-      agentId: 'VegasO01',
-      secretKey: '***REDACTED***',
-      apiBaseUrl: 'https://orionstars.vip:8033',
-      endpoints: {
-        servicePath: '/ws/service.aspx'
-      },
-      isActive: true,
-    }
+  const existing = await prisma.provider.findFirst({
+    where: { name: 'orionstar', agentId: 'VegasO01' }
   });
-  console.log('Successfully seeded Orionstar provider:', provider);
+
+  let provider;
+  if (existing) {
+    provider = await prisma.provider.update({
+      where: { id: existing.id },
+      update: {
+        secretKey: '***REDACTED***',
+        apiBaseUrl: 'https://orionstars.vip:8033',
+        endpoints: {
+          servicePath: '/ws/service.aspx'
+        },
+        status: true,
+      }
+    });
+    console.log('Successfully updated Orionstar provider:', provider);
+  } else {
+    provider = await prisma.provider.create({
+      data: {
+        name: 'orionstar',
+        agentId: 'VegasO01',
+        secretKey: '***REDACTED***',
+        apiBaseUrl: 'https://orionstars.vip:8033',
+        endpoints: {
+          servicePath: '/ws/service.aspx'
+        },
+        status: true,
+      }
+    });
+    console.log('Successfully created Orionstar provider:', provider);
+  }
 }
 
 main()
