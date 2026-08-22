@@ -119,6 +119,7 @@ export class CashMachineProviderService implements ProviderAdapter {
     path: string,
     fields: Record<string, string>,
     userId: string | null = null,
+    isRetry = false
   ): Promise<any> {
     await this.authenticate();
 
@@ -151,6 +152,14 @@ export class CashMachineProviderService implements ProviderAdapter {
 
       if (body.status_code !== 200) {
         const msg = body.message || 'Unknown provider error';
+        
+        if (!isRetry && (body.status_code === 401 || msg.toLowerCase().includes('login again') || msg.toLowerCase().includes('token'))) {
+          console.warn(`[CashMachineProvider:${this.provider.name}] Token invalid/expired ("${msg}"). Clearing token and retrying once...`);
+          this.token = null;
+          this.tokenExpiresAt = 0;
+          return this.postRequest(path, fields, userId, true);
+        }
+
         console.error(JSON.stringify({ ...logData, status: body.status_code, response: body, duration }));
         await ProviderLogService.logRequest(
           this.provider.id, userId, path, fields, body, body.status_code, msg,
@@ -192,6 +201,7 @@ export class CashMachineProviderService implements ProviderAdapter {
     path: string,
     params: Record<string, string | number> = {},
     userId: string | null = null,
+    isRetry = false
   ): Promise<any> {
     await this.authenticate();
 
@@ -217,6 +227,14 @@ export class CashMachineProviderService implements ProviderAdapter {
 
       if (body.status_code !== 200) {
         const msg = body.message || 'Unknown provider error';
+
+        if (!isRetry && (body.status_code === 401 || msg.toLowerCase().includes('login again') || msg.toLowerCase().includes('token'))) {
+          console.warn(`[CashMachineProvider:${this.provider.name}] Token invalid/expired ("${msg}"). Clearing token and retrying once...`);
+          this.token = null;
+          this.tokenExpiresAt = 0;
+          return this.getRequest(path, params, userId, true);
+        }
+
         console.error(JSON.stringify({ ...logData, status: body.status_code, response: body, duration }));
         await ProviderLogService.logRequest(
           this.provider.id, userId, path, params as any, body, body.status_code, msg,
