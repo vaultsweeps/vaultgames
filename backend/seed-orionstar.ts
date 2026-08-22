@@ -15,7 +15,7 @@ async function main() {
         secretKey: '***REDACTED***',
         apiBaseUrl: 'https://orionstars.vip:8033',
         endpoints: {
-          servicePath: '/ws/service.aspx'
+          servicePath: '/ws/service.ashx'
         },
         status: true,
       }
@@ -29,7 +29,7 @@ async function main() {
         secretKey: '***REDACTED***',
         apiBaseUrl: 'https://orionstars.vip:8033',
         endpoints: {
-          servicePath: '/ws/service.aspx'
+          servicePath: '/ws/service.ashx'
         },
         status: true,
       }
