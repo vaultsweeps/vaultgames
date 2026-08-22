@@ -59,8 +59,8 @@ export class OrionstarProviderService implements ProviderAdapter {
     };
 
     try {
-      const response = await axios.post(url, new URLSearchParams(requestData).toString(), {
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      const response = await axios.post(url, null, {
+        params: requestData,
         timeout: this.provider.requestTimeout || 10000,
       });
 
@@ -116,8 +116,8 @@ export class OrionstarProviderService implements ProviderAdapter {
 
     const startTime = Date.now();
     try {
-      const response = await axios.post(url, new URLSearchParams(requestData).toString(), {
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      const response = await axios.post(url, null, {
+        params: requestData,
         timeout: this.provider.requestTimeout || 10000,
       });
 
