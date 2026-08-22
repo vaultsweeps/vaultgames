@@ -1,6 +1,8 @@
 import { ProviderService } from './ProviderService';
 import { FastApiProviderService } from './FastApiProviderService';
 import { OrionstarProviderService } from './OrionstarProviderService';
+import { CashMachineProviderService } from './CashMachineProviderService';
+import { GameRoomProviderService } from './GameRoomProviderService';
 import { ProviderAdapter } from './ProviderAdapter';
 import prisma from '../../lib/prisma';
 import { Provider } from '@prisma/client';
@@ -12,6 +14,12 @@ export function createProviderService(provider: Provider): ProviderAdapter {
   }
   if (name.includes('orionstar') || name.includes('orion star')) {
     return new OrionstarProviderService(provider);
+  }
+  if (name.includes('cashmachine') || name.includes('cash machine') || name.includes('cash777')) {
+    return new CashMachineProviderService(provider);
+  }
+  if (name.includes('gameroom') || name.includes('game room') || name.includes('gameroom777')) {
+    return new GameRoomProviderService(provider);
   }
   return new ProviderService(provider);
 }
