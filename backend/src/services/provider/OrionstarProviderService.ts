@@ -10,6 +10,8 @@ export class OrionstarProviderService implements ProviderAdapter {
   private agentKey: string | null = null;
   private sessionCookie: string | null = null;
   private lastAuthTime: number = 0;
+  private authPromise: Promise<void> | null = null;
+  private readonly TTL_MS = 50 * 1000; // 50 seconds
 
   constructor(provider: Provider) {
     if (!provider.apiBaseUrl || !provider.agentId || !provider.secretKey) {
@@ -37,48 +39,65 @@ export class OrionstarProviderService implements ProviderAdapter {
     return endpoints?.servicePath || '/ws/service.ashx';
   }
 
-  private async authenticate(): Promise<void> {
-    // Orionstar agentKey changes after every login call and expires quickly,
-    // so we always fetch a fresh key before each request.
-    const endpoint = `${this.getServicePath()}?action=agentLogin`;
-    const url = `${this.baseUrl}${endpoint}`;
-    
-    // According to doc: agentPasswd must be encrypted by MD5
-    const agentPasswdMd5 = this.md5(this.provider.secretKey);
-    // The docs say "currentTimeMillis()" but the example uses a 10-digit timestamp (seconds) e.g. 1598452539
-    const time = Math.floor(Date.now() / 1000).toString();
-
-    const requestData = {
-      agentName: this.provider.agentId,
-      agentPasswd: agentPasswdMd5,
-      time
-    };
-
-    try {
-      const response = await axios.post(url, null, {
-        params: requestData,
-        timeout: this.provider.requestTimeout || 10000,
-      });
-
-      const { code, msg, agentkey } = response.data;
-
-      if (String(code) !== '200') {
-        throw new AppError(`Orionstar Agent Login failed: ${msg}`, 400);
-      }
-
-      this.agentKey = agentkey;
-      this.sessionCookie = response.headers['set-cookie'] ? response.headers['set-cookie'].join('; ') : null;
-      this.lastAuthTime = Date.now();
-      
-      console.info(`[Orionstar] Successfully authenticated agent ${this.provider.agentId}`);
-    } catch (e: any) {
-      if (e instanceof AppError) throw e;
-      throw new AppError(`Orionstar Agent Login connection failed: ${e.message}`, 502);
+  private async authenticate(force: boolean = false): Promise<void> {
+    if (!force && this.agentKey && (Date.now() - this.lastAuthTime) < this.TTL_MS) {
+      return; // Still valid
     }
+
+    // If another auth is already in progress, wait for it instead of duplicating
+    if (this.authPromise && !force) {
+      return this.authPromise;
+    }
+
+    this.authPromise = (async () => {
+      const endpoint = `${this.getServicePath()}?action=agentLogin`;
+      const url = `${this.baseUrl}${endpoint}`;
+      
+      const agentPasswdMd5 = this.md5(this.provider.secretKey);
+      const time = Math.floor(Date.now() / 1000).toString();
+
+      const requestData = {
+        agentName: this.provider.agentId,
+        agentPasswd: agentPasswdMd5,
+        time
+      };
+
+      try {
+        const response = await axios.post(url, null, {
+          params: requestData,
+          timeout: this.provider.requestTimeout || 10000,
+        });
+
+        const { code, msg, agentkey, agentKey: capitalKey } = response.data;
+
+        if (String(code) !== '200') {
+          throw new AppError(`Orionstar Agent Login failed: ${msg}`, 400);
+        }
+
+        const validKey = (agentkey || capitalKey || '').trim();
+        if (!validKey) {
+          throw new AppError(`Orionstar Agent Login returned no agentKey`, 500);
+        }
+
+        this.agentKey = validKey;
+        this.sessionCookie = response.headers['set-cookie'] ? response.headers['set-cookie'].join('; ') : null;
+        this.lastAuthTime = Date.now();
+        
+        console.info(`[Orionstar] Successfully authenticated agent ${this.provider.agentId} | Key: ${this.agentKey}`);
+      } catch (e: any) {
+        this.agentKey = null; // reset on error
+        if (e instanceof AppError) throw e;
+        throw new AppError(`Orionstar Agent Login connection failed: ${e.message}`, 502);
+      } finally {
+        this.authPromise = null;
+      }
+    })();
+
+    return this.authPromise;
   }
 
-  private async makeRequest(action: string, payload: Record<string, any>, userId: string | null = null): Promise<any> {
-    await this.authenticate();
+  private async makeRequest(action: string, payload: Record<string, any>, userId: string | null = null, isRetry: boolean = false): Promise<any> {
+    await this.authenticate(isRetry);
     
     if (!this.agentKey) {
       throw new AppError('Orionstar authentication failed: No agentKey available', 500);
@@ -87,8 +106,6 @@ export class OrionstarProviderService implements ProviderAdapter {
     const time = Math.floor(Date.now() / 1000).toString();
     const agentName = this.provider.agentId;
     
-    // sign = md5((agentName + time + agentKey).toLowerCase()) according to docs
-    // "When calculating sign, all strings should convert to lowercase"
     const strToHash = (agentName + time + this.agentKey).toLowerCase();
     const sign = this.md5(strToHash);
 
@@ -108,7 +125,7 @@ export class OrionstarProviderService implements ProviderAdapter {
       providerName: this.provider.name,
       endpoint,
       url,
-      payload: { ...requestData, sign: '***' }, // mask sign for logs if needed, but keeping it simple
+      payload: { ...requestData, sign: '***' }, 
     };
 
     const startTime = Date.now();
@@ -125,14 +142,16 @@ export class OrionstarProviderService implements ProviderAdapter {
       // 200 is success, 201 is failure
       if (String(code) !== '200') {
         const errorMsg = msg || 'Unknown Orionstar Provider Error';
-        console.error(JSON.stringify({ ...logData, status: 200, response: response.data, message: errorMsg, duration }));
-        await ProviderLogService.logRequest(this.provider.id, userId, endpoint, requestData, response.data, code, errorMsg);
         
-        // If sign error or similar auth error, invalidate agentKey so it retries login next time
-        if (errorMsg.toLowerCase().includes('sign') || errorMsg.toLowerCase().includes('token') || errorMsg.toLowerCase().includes('expire')) {
+        // If sign error and we haven't retried yet, force a fresh login and retry
+        if (!isRetry && (errorMsg.toLowerCase().includes('sign') || errorMsg.toLowerCase().includes('token') || errorMsg.toLowerCase().includes('expire'))) {
+            console.warn(`[Orionstar] Signature error encountered. Forcing re-login and retrying once...`);
             this.agentKey = null;
+            return this.makeRequest(action, payload, userId, true);
         }
 
+        console.error(JSON.stringify({ ...logData, status: 200, response: response.data, message: errorMsg, duration }));
+        await ProviderLogService.logRequest(this.provider.id, userId, endpoint, requestData, response.data, code, errorMsg);
         throw new AppError(`Provider Error: ${errorMsg}`, 400);
       }
 
@@ -187,12 +206,10 @@ export class OrionstarProviderService implements ProviderAdapter {
   }
 
   async getAgentBalance(): Promise<number> {
-    // According to docs, agentBalance is returned in queryAgentInfo or agentLogin
-    // We can use agentLogin response directly by forcing a new login
-    this.agentKey = null; 
-    await this.authenticate();
+    // Force a fresh login to check agent balance securely
+    await this.authenticate(true);
     
-    // Or we can use queryAgentInfo
+    // We can use queryAgentInfo
     const agentPasswdMd5 = this.md5(this.provider.secretKey);
     const data = await this.makeRequest('queryAgentInfo', {
       passwd: agentPasswdMd5
