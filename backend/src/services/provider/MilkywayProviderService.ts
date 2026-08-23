@@ -9,7 +9,7 @@ import { Provider } from '@prisma/client';
  * MilkyWay Terminal API v1.2.3
  * Base URL: https://milkywayapp.xyz:8033
  * Auth: agentLogin → agentKey (changes on every login; cached for TTL_MS)
- * Sign: md5(agentName + time + agentKey)  — all lowercase, 10-digit unix seconds
+ * Sign: md5(agentName + time + agentKey)  — all lowercase, millisecond timestamp
  * Rate limit: < 30 req/min for most endpoints, < 10 req/min for record queries
  */
 export class MilkywayProviderService implements ProviderAdapter {
@@ -18,7 +18,7 @@ export class MilkywayProviderService implements ProviderAdapter {
   private agentBalance: number = 0;
   private lastAuthTime: number = 0;
   private authPromise: Promise<void> | null = null;
-  private readonly TTL_MS = 45 * 1000; // 45s — safely under the key rotation window
+  private readonly TTL_MS = 5 * 60 * 1000; // 5 minutes
   private readonly http: AxiosInstance;
 
   constructor(provider: Provider) {
@@ -51,16 +51,32 @@ export class MilkywayProviderService implements ProviderAdapter {
     return ep?.servicePath || '/ws/service.ashx';
   }
 
+  // Use milliseconds timestamp (Java System.currentTimeMillis() equivalent)
+  private getTimestamp(): string {
+    return Date.now().toString();
+  }
+
+  private isSessionError(msg: string): boolean {
+    const lower = msg.toLowerCase();
+    return (
+      lower.includes('session') ||
+      lower.includes('timeout') ||
+      lower.includes('expire') ||
+      lower.includes('signature') ||
+      lower.includes('invalid key') ||
+      lower.includes('not logged')
+    );
+  }
+
   // ── Session Management ─────────────────────────────────────────────────────
-  // ONE shared login per instance. Concurrent callers wait on the same Promise
-  // instead of spawning multiple logins (which would invalidate each other's key).
+  // ONE shared login per instance. Concurrent callers wait on the same Promise.
 
   private async authenticate(): Promise<void> {
     if (this.agentKey && (Date.now() - this.lastAuthTime) < this.TTL_MS) return;
     if (this.authPromise) return this.authPromise;
 
     this.authPromise = (async () => {
-      const time = Math.floor(Date.now() / 1000).toString();
+      const time = this.getTimestamp();
       try {
         const res = await this.http.post(this.servicePath, null, {
           params: {
@@ -80,9 +96,10 @@ export class MilkywayProviderService implements ProviderAdapter {
         this.agentKey     = key;
         this.agentBalance = parseFloat(balance || '0');
         this.lastAuthTime = Date.now();
-        console.info(`[MilkyWay] Authenticated | Agent: ${this.agentName} | Key: ${key}`);
+        console.info(`[MilkyWay] Authenticated | Agent: ${this.agentName} | Timestamp used: ${time}`);
       } catch (e: any) {
-        this.agentKey = null;
+        this.agentKey     = null;
+        this.lastAuthTime = 0;
         if (e instanceof AppError) throw e;
         throw new AppError(`MilkyWay login failed: ${e.message}`, 502);
       } finally {
@@ -91,6 +108,12 @@ export class MilkywayProviderService implements ProviderAdapter {
     })();
 
     return this.authPromise;
+  }
+
+  private forceReauth(): void {
+    this.agentKey     = null;
+    this.lastAuthTime = 0;
+    this.authPromise  = null;
   }
 
   // ── Core Request ───────────────────────────────────────────────────────────
@@ -104,7 +127,7 @@ export class MilkywayProviderService implements ProviderAdapter {
     await this.authenticate();
     if (!this.agentKey) throw new AppError('No agentKey available', 500);
 
-    const time      = Math.floor(Date.now() / 1000).toString();
+    const time      = this.getTimestamp();
     // sign = md5(agentName + time + agentKey) — all converted to lowercase per docs
     const signInput = (this.agentName + time + this.agentKey).toLowerCase();
     const sign      = this.md5(signInput);
@@ -112,7 +135,7 @@ export class MilkywayProviderService implements ProviderAdapter {
     const params   = { agentName: this.agentName, time, sign, ...payload };
     const endpoint = `${this.servicePath}?action=${action}`;
 
-    console.info(`[MilkyWay] ${action} | sign: ${sign}`);
+    console.info(`[MilkyWay] ${action} | time: ${time} | signInput: ${signInput}`);
 
     try {
       const res = await this.http.post(endpoint, null, { params });
@@ -121,12 +144,11 @@ export class MilkywayProviderService implements ProviderAdapter {
       if (String(code) !== '200') {
         const errMsg = msg || 'Unknown MilkyWay error';
 
-        // Retry ONCE on signature errors with a fresh session (not on rate-limit timeouts)
-        if (!isRetry && errMsg.toLowerCase().includes('signature')) {
-          console.warn(`[MilkyWay] Signature error on ${action} — refreshing session and retrying`);
-          this.agentKey     = null;
-          this.lastAuthTime = 0;
-          await new Promise(r => setTimeout(r, 2000)); // back off before retry
+        // Retry ONCE on any session/auth error with a fresh session
+        if (!isRetry && this.isSessionError(errMsg)) {
+          console.warn(`[MilkyWay] Session/auth error on ${action} — re-authenticating...`);
+          this.forceReauth();
+          await new Promise(r => setTimeout(r, 1000));
           return this.makeRequest(action, payload, userId, true);
         }
 
@@ -145,10 +167,6 @@ export class MilkywayProviderService implements ProviderAdapter {
 
   // ── Public API (ProviderAdapter) ───────────────────────────────────────────
 
-  /**
-   * registerUser — creates a new player account.
-   * Docs: action=registerUser, params: account, passwd (MD5), agentName, time, sign
-   */
   async createPlayer(username: string, password?: string): Promise<{ userId: string; accountName: string }> {
     await this.makeRequest('registerUser', {
       account: username,
@@ -157,44 +175,24 @@ export class MilkywayProviderService implements ProviderAdapter {
     return { userId: username, accountName: username };
   }
 
-  /**
-   * recharge — add credits to a player account.
-   * Docs: action=recharge, params: account, amount (int), agentName, time, sign
-   */
   async rechargePlayer(userId: string, amount: number, orderId: string): Promise<any> {
     return this.makeRequest('recharge', { account: userId, amount: Math.floor(amount) }, userId);
   }
 
-  /**
-   * redeem — remove credits from a player account.
-   * Docs: action=redeem, params: account, amount (int), agentName, time, sign
-   */
   async withdrawPlayer(userId: string, amount: number, orderId: string): Promise<any> {
     return this.makeRequest('redeem', { account: userId, amount: Math.floor(amount) }, userId);
   }
 
-  /**
-   * queryInfo — fetches player balance, gameId, webLoginUrl, etc.
-   * Docs: action=queryInfo, params: account, passwd (optional), agentName, time, sign
-   * Returns: userbalance
-   */
   async getPlayerBalance(userId: string): Promise<number> {
     const data = await this.makeRequest('queryInfo', { account: userId }, userId);
     return parseFloat(data.userbalance || '0');
   }
 
-  /**
-   * Agent balance is returned directly by agentLogin — no separate API call needed.
-   */
   async getAgentBalance(): Promise<number> {
     await this.authenticate();
     return this.agentBalance;
   }
 
-  /**
-   * changePasswd — updates a player's password.
-   * Docs: action=changePasswd, params: account, passwd (optional), passwdNew (MD5), agentName, time, sign
-   */
   async resetPlayerPassword(userId: string, newPassword?: string): Promise<boolean> {
     await this.makeRequest('changePasswd', {
       account:   userId,
@@ -203,12 +201,8 @@ export class MilkywayProviderService implements ProviderAdapter {
     return true;
   }
 
-  /**
-   * MilkyWay does not have a documented setStatus/offline endpoint.
-   * Returns true silently to satisfy the ProviderAdapter interface.
-   */
   async forcePlayerOffline(userId: string): Promise<boolean> {
-    console.warn(`[MilkyWay] forcePlayerOffline is not supported by this provider. userId=${userId}`);
+    console.warn(`[MilkyWay] forcePlayerOffline not supported. userId=${userId}`);
     return true;
   }
 
