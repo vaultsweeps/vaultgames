@@ -5,20 +5,13 @@ import { ProviderLogService } from './ProviderLogService';
 import { AppError } from '../../middleware/errorHandler';
 import { Provider } from '@prisma/client';
 
-/**
- * MilkyWay Terminal API v1.2.3
- * Base URL: https://milkywayapp.xyz:8033
- * Auth: agentLogin → agentKey (changes on every login; cached for TTL_MS)
- * Sign: md5(agentName + time + agentKey) — all lowercase, 10-digit unix seconds
- * Rate limit: < 30 req/min for most endpoints, < 10 req/min for record queries
- */
 export class MilkywayProviderService implements ProviderAdapter {
   private provider: Provider;
   private agentKey: string | null = null;
   private agentBalance: number = 0;
   private lastAuthTime: number = 0;
   private authPromise: Promise<void> | null = null;
-  private readonly TTL_MS = 10 * 60 * 1000; // 10 minutes
+  private readonly TTL_MS = 8 * 60 * 1000; // 8 minutes (conservative)
   private readonly http: AxiosInstance;
 
   constructor(provider: Provider) {
@@ -32,7 +25,6 @@ export class MilkywayProviderService implements ProviderAdapter {
       apiBaseUrl: provider.apiBaseUrl.replace(/\/+$/, ''),
     };
 
-    // IIS-backed .ashx endpoint requires Content-Length: 0 on empty POSTs
     this.http = axios.create({
       baseURL: this.provider.apiBaseUrl,
       timeout: this.provider.requestTimeout || 10000,
@@ -51,9 +43,13 @@ export class MilkywayProviderService implements ProviderAdapter {
     return ep?.servicePath || '/ws/service.ashx';
   }
 
-  // SECONDS — matches API reference URLs (time=1598452539 is 10 digits)
+  // Seconds — matches API reference examples (10-digit value)
   private getTimestamp(): string {
     return Math.floor(Date.now() / 1000).toString();
+  }
+
+  private sleep(ms: number): Promise<void> {
+    return new Promise(r => setTimeout(r, ms));
   }
 
   private isAuthError(msg: string): boolean {
@@ -75,9 +71,6 @@ export class MilkywayProviderService implements ProviderAdapter {
     this.authPromise  = null;
   }
 
-  // ── Session Management ─────────────────────────────────────────────────────
-  // ONE shared login per instance. Concurrent callers wait on the same Promise.
-
   private async authenticate(): Promise<void> {
     if (this.agentKey && (Date.now() - this.lastAuthTime) < this.TTL_MS) return;
     if (this.authPromise) return this.authPromise;
@@ -96,15 +89,14 @@ export class MilkywayProviderService implements ProviderAdapter {
           },
         });
 
-        // Log raw response to debug field name issues
         console.info(`[MilkyWay] Login raw response: ${JSON.stringify(res.data)}`);
 
         const data = res.data;
+        // API returns code as string — normalise before comparing
         if (String(data.code) !== '200') {
           throw new AppError(`MilkyWay login failed: ${data.msg}`, 400);
         }
 
-        // Handle all possible casing variations of agentKey field
         const key = (
           data.agentKey  ||
           data.agentkey  ||
@@ -115,7 +107,7 @@ export class MilkywayProviderService implements ProviderAdapter {
 
         if (!key) {
           throw new AppError(
-            `MilkyWay login returned no agentKey. Full response: ${JSON.stringify(data)}`,
+            `MilkyWay login returned no agentKey. Response: ${JSON.stringify(data)}`,
             500
           );
         }
@@ -125,6 +117,11 @@ export class MilkywayProviderService implements ProviderAdapter {
         this.lastAuthTime = Date.now();
 
         console.info(`[MilkyWay] Auth OK | key: ${key} | balance: ${this.agentBalance}`);
+
+        // Wait 2 seconds AFTER login so the next request always has a timestamp
+        // strictly greater than the login timestamp.
+        await this.sleep(2000);
+
       } catch (e: any) {
         this.forceReauth();
         if (e instanceof AppError) throw e;
@@ -137,8 +134,6 @@ export class MilkywayProviderService implements ProviderAdapter {
     return this.authPromise;
   }
 
-  // ── Core Request ───────────────────────────────────────────────────────────
-
   private async makeRequest(
     action: string,
     payload: Record<string, any> = {},
@@ -149,7 +144,6 @@ export class MilkywayProviderService implements ProviderAdapter {
     if (!this.agentKey) throw new AppError('No agentKey available', 500);
 
     const time      = this.getTimestamp();
-    // sign = md5(agentName + time + agentKey) — all converted to lowercase per docs
     const signInput = (this.agentName + time + this.agentKey).toLowerCase();
     const sign      = this.md5(signInput);
 
@@ -163,34 +157,51 @@ export class MilkywayProviderService implements ProviderAdapter {
       console.info(`[MilkyWay] ← ${action} | response: ${JSON.stringify(res.data)}`);
 
       const { code, msg, ...data } = res.data;
+      const codeStr = String(code);
 
-      if (String(code) !== '200') {
-        const errMsg = msg || 'Unknown MilkyWay error';
+      if (codeStr !== '200') {
+        const errMsg = msg || 'Unknown error';
 
-        // Retry ONCE on any auth/session/signature error with a fresh session
         if (!isRetry && this.isAuthError(errMsg)) {
           console.warn(`[MilkyWay] Auth error on "${action}": "${errMsg}" — re-authenticating...`);
           this.forceReauth();
-          await new Promise(r => setTimeout(r, 1500));
+          // Wait 3s — ensures next timestamp is at least 1s after new login timestamp
+          await this.sleep(3000);
           return this.makeRequest(action, payload, userId, true);
         }
 
-        await ProviderLogService.logRequest(this.provider.id, userId, endpoint, params, res.data, code, errMsg);
+        // Parse code as Int for Prisma — API returns string codes like "201"
+        await ProviderLogService.logRequest(
+          this.provider.id, userId, endpoint, params, res.data,
+          parseInt(codeStr, 10),
+          errMsg
+        );
         throw new AppError(`Provider Error: ${errMsg}`, 400);
       }
 
-      await ProviderLogService.logRequest(this.provider.id, userId, endpoint, params, res.data, 200, null);
+      await ProviderLogService.logRequest(
+        this.provider.id, userId, endpoint, params, res.data,
+        200,
+        null
+      );
       return data;
 
     } catch (e: any) {
       if (e instanceof AppError) throw e;
-      throw new AppError(`MilkyWay connection failed: ${e.message}`, 502);
+      throw new AppError(`Provider connection failed: ${e.message}`, 502);
     }
   }
 
-  // ── Public API (ProviderAdapter) ───────────────────────────────────────────
+  // ── Public API ─────────────────────────────────────────────────────────────
 
-  async createPlayer(username: string, password?: string): Promise<{ userId: string; accountName: string }> {
+  async createPlayer(username: string, password?: string) {
+    // Validate length before sending (API requires 6–32 chars)
+    if (username.length < 6 || username.length > 32) {
+      throw new AppError(
+        `Username "${username}" must be 6–32 characters (got ${username.length})`,
+        400
+      );
+    }
     await this.makeRequest('registerUser', {
       account: username,
       passwd:  this.md5(password || 'Test@123'),
@@ -198,11 +209,11 @@ export class MilkywayProviderService implements ProviderAdapter {
     return { userId: username, accountName: username };
   }
 
-  async rechargePlayer(userId: string, amount: number, orderId: string): Promise<any> {
+  async rechargePlayer(userId: string, amount: number, orderId: string) {
     return this.makeRequest('recharge', { account: userId, amount: Math.floor(amount) }, userId);
   }
 
-  async withdrawPlayer(userId: string, amount: number, orderId: string): Promise<any> {
+  async withdrawPlayer(userId: string, amount: number, orderId: string) {
     return this.makeRequest('redeem', { account: userId, amount: Math.floor(amount) }, userId);
   }
 
