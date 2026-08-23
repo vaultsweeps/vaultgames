@@ -61,11 +61,10 @@ export class OrionstarProviderService implements ProviderAdapter {
 
   private get agentName(): string { return this.provider.agentId; }
 
-  // ✅ KEY FIX: endpoint is .aspx — the original docs had a typo (.ashx)
-  // Confirmed correct in the official integration guide: /ws/service.aspx
+  // The original .ashx was correct — .aspx returns a 404!
   private get servicePath(): string {
     const ep = this.provider.endpoints as Record<string, string> | null;
-    return ep?.servicePath ?? '/ws/service.aspx';
+    return ep?.servicePath ?? '/ws/service.ashx';
   }
 
   private isAuthError(msg: string): boolean {
