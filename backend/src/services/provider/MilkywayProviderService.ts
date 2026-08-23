@@ -5,13 +5,20 @@ import { ProviderLogService } from './ProviderLogService';
 import { AppError } from '../../middleware/errorHandler';
 import { Provider } from '@prisma/client';
 
-export class OrionstarProviderService implements ProviderAdapter {
+/**
+ * MilkyWay Terminal API v1.2.3
+ * Base URL: https://milkywayapp.xyz:8033
+ * Auth: agentLogin → agentKey (changes on every login; cached for TTL_MS)
+ * Sign: md5(agentName + time + agentKey)  — all lowercase, 10-digit unix seconds
+ * Rate limit: < 30 req/min for most endpoints, < 10 req/min for record queries
+ */
+export class MilkywayProviderService implements ProviderAdapter {
   private provider: Provider;
   private agentKey: string | null = null;
   private agentBalance: number = 0;
   private lastAuthTime: number = 0;
   private authPromise: Promise<void> | null = null;
-  private readonly TTL_MS = 45 * 1000; // 45s — safely under 50s before stale
+  private readonly TTL_MS = 45 * 1000; // 45s — safely under the key rotation window
   private readonly http: AxiosInstance;
 
   constructor(provider: Provider) {
@@ -25,7 +32,7 @@ export class OrionstarProviderService implements ProviderAdapter {
       apiBaseUrl: provider.apiBaseUrl.replace(/\/+$/, ''),
     };
 
-    // Shared axios instance — always sends Content-Length: 0 for empty POSTs (IIS requires it)
+    // IIS-backed .ashx endpoint requires Content-Length: 0 on empty POSTs
     this.http = axios.create({
       baseURL: this.provider.apiBaseUrl,
       timeout: this.provider.requestTimeout || 10000,
@@ -38,12 +45,16 @@ export class OrionstarProviderService implements ProviderAdapter {
   }
 
   private get agentName(): string { return this.provider.agentId; }
+
   private get servicePath(): string {
-    const ep = this.provider.endpoints as Record<string, string>;
+    const ep = this.provider.endpoints as Record<string, string> | null;
     return ep?.servicePath || '/ws/service.ashx';
   }
 
-  // ONE login shared across all concurrent callers — no force re-login anywhere
+  // ── Session Management ─────────────────────────────────────────────────────
+  // ONE shared login per instance. Concurrent callers wait on the same Promise
+  // instead of spawning multiple logins (which would invalidate each other's key).
+
   private async authenticate(): Promise<void> {
     if (this.agentKey && (Date.now() - this.lastAuthTime) < this.TTL_MS) return;
     if (this.authPromise) return this.authPromise;
@@ -61,19 +72,19 @@ export class OrionstarProviderService implements ProviderAdapter {
         });
 
         const { code, msg, agentkey, agentKey: agentKeyAlt, balance } = res.data;
-        if (String(code) !== '200') throw new AppError(`Orionstar login failed: ${msg}`, 400);
+        if (String(code) !== '200') throw new AppError(`MilkyWay login failed: ${msg}`, 400);
 
         const key = (agentkey || agentKeyAlt || '').trim();
-        if (!key) throw new AppError('Orionstar login returned no agentKey', 500);
+        if (!key) throw new AppError('MilkyWay login returned no agentKey', 500);
 
         this.agentKey     = key;
         this.agentBalance = parseFloat(balance || '0');
         this.lastAuthTime = Date.now();
-        console.info(`[Orionstar] Authenticated | Agent: ${this.agentName} | Key: ${key}`);
+        console.info(`[MilkyWay] Authenticated | Agent: ${this.agentName} | Key: ${key}`);
       } catch (e: any) {
         this.agentKey = null;
         if (e instanceof AppError) throw e;
-        throw new AppError(`Orionstar login failed: ${e.message}`, 502);
+        throw new AppError(`MilkyWay login failed: ${e.message}`, 502);
       } finally {
         this.authPromise = null;
       }
@@ -81,6 +92,8 @@ export class OrionstarProviderService implements ProviderAdapter {
 
     return this.authPromise;
   }
+
+  // ── Core Request ───────────────────────────────────────────────────────────
 
   private async makeRequest(
     action: string,
@@ -92,27 +105,28 @@ export class OrionstarProviderService implements ProviderAdapter {
     if (!this.agentKey) throw new AppError('No agentKey available', 500);
 
     const time      = Math.floor(Date.now() / 1000).toString();
+    // sign = md5(agentName + time + agentKey) — all converted to lowercase per docs
     const signInput = (this.agentName + time + this.agentKey).toLowerCase();
     const sign      = this.md5(signInput);
 
-    const params = { agentName: this.agentName, time, sign, ...payload };
+    const params   = { agentName: this.agentName, time, sign, ...payload };
     const endpoint = `${this.servicePath}?action=${action}`;
 
-    console.info(`[Orionstar] ${action} | signInput: ${signInput} | sign: ${sign}`);
+    console.info(`[MilkyWay] ${action} | sign: ${sign}`);
 
     try {
       const res = await this.http.post(endpoint, null, { params });
       const { code, msg, ...data } = res.data;
 
       if (String(code) !== '200') {
-        const errMsg = msg || 'Unknown error';
+        const errMsg = msg || 'Unknown MilkyWay error';
 
-        // Only retry ONCE on signature errors — never on timeout (that's rate limiting)
+        // Retry ONCE on signature errors with a fresh session (not on rate-limit timeouts)
         if (!isRetry && errMsg.toLowerCase().includes('signature')) {
-          console.warn(`[Orionstar] Signature error on ${action} — refreshing session and retrying`);
+          console.warn(`[MilkyWay] Signature error on ${action} — refreshing session and retrying`);
           this.agentKey     = null;
           this.lastAuthTime = 0;
-          await new Promise(r => setTimeout(r, 2000)); // avoid immediate rate-limit
+          await new Promise(r => setTimeout(r, 2000)); // back off before retry
           return this.makeRequest(action, payload, userId, true);
         }
 
@@ -125,13 +139,17 @@ export class OrionstarProviderService implements ProviderAdapter {
 
     } catch (e: any) {
       if (e instanceof AppError) throw e;
-      throw new AppError(`Provider connection failed: ${e.message}`, 502);
+      throw new AppError(`MilkyWay connection failed: ${e.message}`, 502);
     }
   }
 
-  // ── Public API ─────────────────────────────────────────────────────────────
+  // ── Public API (ProviderAdapter) ───────────────────────────────────────────
 
-  async createPlayer(username: string, password?: string) {
+  /**
+   * registerUser — creates a new player account.
+   * Docs: action=registerUser, params: account, passwd (MD5), agentName, time, sign
+   */
+  async createPlayer(username: string, password?: string): Promise<{ userId: string; accountName: string }> {
     await this.makeRequest('registerUser', {
       account: username,
       passwd:  this.md5(password || 'Test@123'),
@@ -139,25 +157,44 @@ export class OrionstarProviderService implements ProviderAdapter {
     return { userId: username, accountName: username };
   }
 
-  async rechargePlayer(userId: string, amount: number, orderId: string) {
+  /**
+   * recharge — add credits to a player account.
+   * Docs: action=recharge, params: account, amount (int), agentName, time, sign
+   */
+  async rechargePlayer(userId: string, amount: number, orderId: string): Promise<any> {
     return this.makeRequest('recharge', { account: userId, amount: Math.floor(amount) }, userId);
   }
 
-  async withdrawPlayer(userId: string, amount: number, orderId: string) {
+  /**
+   * redeem — remove credits from a player account.
+   * Docs: action=redeem, params: account, amount (int), agentName, time, sign
+   */
+  async withdrawPlayer(userId: string, amount: number, orderId: string): Promise<any> {
     return this.makeRequest('redeem', { account: userId, amount: Math.floor(amount) }, userId);
   }
 
+  /**
+   * queryInfo — fetches player balance, gameId, webLoginUrl, etc.
+   * Docs: action=queryInfo, params: account, passwd (optional), agentName, time, sign
+   * Returns: userbalance
+   */
   async getPlayerBalance(userId: string): Promise<number> {
     const data = await this.makeRequest('queryInfo', { account: userId }, userId);
     return parseFloat(data.userbalance || '0');
   }
 
+  /**
+   * Agent balance is returned directly by agentLogin — no separate API call needed.
+   */
   async getAgentBalance(): Promise<number> {
-    // Agent balance is returned by agentLogin — no extra API call needed
     await this.authenticate();
     return this.agentBalance;
   }
 
+  /**
+   * changePasswd — updates a player's password.
+   * Docs: action=changePasswd, params: account, passwd (optional), passwdNew (MD5), agentName, time, sign
+   */
   async resetPlayerPassword(userId: string, newPassword?: string): Promise<boolean> {
     await this.makeRequest('changePasswd', {
       account:   userId,
@@ -166,8 +203,12 @@ export class OrionstarProviderService implements ProviderAdapter {
     return true;
   }
 
+  /**
+   * MilkyWay does not have a documented setStatus/offline endpoint.
+   * Returns true silently to satisfy the ProviderAdapter interface.
+   */
   async forcePlayerOffline(userId: string): Promise<boolean> {
-    console.warn(`[Orionstar] forcePlayerOffline is not supported by this provider. userId=${userId}`);
+    console.warn(`[MilkyWay] forcePlayerOffline is not supported by this provider. userId=${userId}`);
     return true;
   }
 
