@@ -11,7 +11,7 @@ export class OrionstarProviderService implements ProviderAdapter {
   private agentBalance: number = 0;
   private lastAuthTime: number = 0;
   private authPromise: Promise<void> | null = null;
-  private readonly TTL_MS = 45 * 1000; // 45s — safely under 50s before stale
+  private readonly TTL_MS = 5 * 60 * 1000; // 5 minutes
   private readonly http: AxiosInstance;
 
   constructor(provider: Provider) {
@@ -25,7 +25,6 @@ export class OrionstarProviderService implements ProviderAdapter {
       apiBaseUrl: provider.apiBaseUrl.replace(/\/+$/, ''),
     };
 
-    // Shared axios instance — always sends Content-Length: 0 for empty POSTs (IIS requires it)
     this.http = axios.create({
       baseURL: this.provider.apiBaseUrl,
       timeout: this.provider.requestTimeout || 10000,
@@ -38,18 +37,35 @@ export class OrionstarProviderService implements ProviderAdapter {
   }
 
   private get agentName(): string { return this.provider.agentId; }
+
   private get servicePath(): string {
     const ep = this.provider.endpoints as Record<string, string>;
     return ep?.servicePath || '/ws/service.ashx';
   }
 
-  // ONE login shared across all concurrent callers — no force re-login anywhere
+  // Use milliseconds timestamp (Java System.currentTimeMillis() equivalent)
+  private getTimestamp(): string {
+    return Date.now().toString();
+  }
+
+  private isSessionError(msg: string): boolean {
+    const lower = msg.toLowerCase();
+    return (
+      lower.includes('session') ||
+      lower.includes('timeout') ||
+      lower.includes('expire') ||
+      lower.includes('signature') ||
+      lower.includes('invalid key') ||
+      lower.includes('not logged')
+    );
+  }
+
   private async authenticate(): Promise<void> {
     if (this.agentKey && (Date.now() - this.lastAuthTime) < this.TTL_MS) return;
     if (this.authPromise) return this.authPromise;
 
     this.authPromise = (async () => {
-      const time = Math.floor(Date.now() / 1000).toString();
+      const time = this.getTimestamp();
       try {
         const res = await this.http.post(this.servicePath, null, {
           params: {
@@ -69,9 +85,10 @@ export class OrionstarProviderService implements ProviderAdapter {
         this.agentKey     = key;
         this.agentBalance = parseFloat(balance || '0');
         this.lastAuthTime = Date.now();
-        console.info(`[Orionstar] Authenticated | Agent: ${this.agentName} | Key: ${key}`);
+        console.info(`[Orionstar] Authenticated | Agent: ${this.agentName} | Timestamp used: ${time}`);
       } catch (e: any) {
-        this.agentKey = null;
+        this.agentKey     = null;
+        this.lastAuthTime = 0;
         if (e instanceof AppError) throw e;
         throw new AppError(`Orionstar login failed: ${e.message}`, 502);
       } finally {
@@ -80,6 +97,12 @@ export class OrionstarProviderService implements ProviderAdapter {
     })();
 
     return this.authPromise;
+  }
+
+  private forceReauth(): void {
+    this.agentKey     = null;
+    this.lastAuthTime = 0;
+    this.authPromise  = null;
   }
 
   private async makeRequest(
@@ -91,14 +114,14 @@ export class OrionstarProviderService implements ProviderAdapter {
     await this.authenticate();
     if (!this.agentKey) throw new AppError('No agentKey available', 500);
 
-    const time      = Math.floor(Date.now() / 1000).toString();
+    const time      = this.getTimestamp();
     const signInput = (this.agentName + time + this.agentKey).toLowerCase();
     const sign      = this.md5(signInput);
 
-    const params = { agentName: this.agentName, time, sign, ...payload };
+    const params   = { agentName: this.agentName, time, sign, ...payload };
     const endpoint = `${this.servicePath}?action=${action}`;
 
-    console.info(`[Orionstar] ${action} | signInput: ${signInput} | sign: ${sign}`);
+    console.info(`[Orionstar] ${action} | time: ${time} | signInput: ${signInput}`);
 
     try {
       const res = await this.http.post(endpoint, null, { params });
@@ -107,12 +130,11 @@ export class OrionstarProviderService implements ProviderAdapter {
       if (String(code) !== '200') {
         const errMsg = msg || 'Unknown error';
 
-        // Only retry ONCE on signature errors — never on timeout (that's rate limiting)
-        if (!isRetry && errMsg.toLowerCase().includes('signature')) {
-          console.warn(`[Orionstar] Signature error on ${action} — refreshing session and retrying`);
-          this.agentKey     = null;
-          this.lastAuthTime = 0;
-          await new Promise(r => setTimeout(r, 2000)); // avoid immediate rate-limit
+        // Retry on ANY session/auth error, not just "signature"
+        if (!isRetry && this.isSessionError(errMsg)) {
+          console.warn(`[Orionstar] Session/auth error on ${action} — re-authenticating...`);
+          this.forceReauth();
+          await new Promise(r => setTimeout(r, 1000));
           return this.makeRequest(action, payload, userId, true);
         }
 
@@ -153,7 +175,6 @@ export class OrionstarProviderService implements ProviderAdapter {
   }
 
   async getAgentBalance(): Promise<number> {
-    // Agent balance is returned by agentLogin — no extra API call needed
     await this.authenticate();
     return this.agentBalance;
   }
@@ -167,7 +188,7 @@ export class OrionstarProviderService implements ProviderAdapter {
   }
 
   async forcePlayerOffline(userId: string): Promise<boolean> {
-    console.warn(`[Orionstar] forcePlayerOffline is not supported by this provider. userId=${userId}`);
+    console.warn(`[Orionstar] forcePlayerOffline not supported. userId=${userId}`);
     return true;
   }
 
