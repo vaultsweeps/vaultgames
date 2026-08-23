@@ -8,6 +8,7 @@ import { Provider } from '@prisma/client';
 export class OrionstarProviderService implements ProviderAdapter {
   private provider: Provider;
   private agentKey: string | null = null;
+  private sessionCookie: string | null = null;
   private lastAuthTime: number = 0;
 
   constructor(provider: Provider) {
@@ -66,6 +67,7 @@ export class OrionstarProviderService implements ProviderAdapter {
       }
 
       this.agentKey = agentkey;
+      this.sessionCookie = response.headers['set-cookie'] ? response.headers['set-cookie'].join('; ') : null;
       this.lastAuthTime = Date.now();
       
       console.info(`[Orionstar] Successfully authenticated agent ${this.provider.agentId}`);
@@ -113,6 +115,7 @@ export class OrionstarProviderService implements ProviderAdapter {
     try {
       const response = await axios.post(url, null, {
         params: requestData,
+        headers: this.sessionCookie ? { 'Cookie': this.sessionCookie } : {},
         timeout: this.provider.requestTimeout || 10000,
       });
 
