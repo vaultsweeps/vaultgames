@@ -9,7 +9,7 @@ import { Provider } from '@prisma/client';
  * MilkyWay Terminal API v1.2.3
  * Base URL: https://milkywayapp.xyz:8033
  * Auth: agentLogin → agentKey (changes on every login; cached for TTL_MS)
- * Sign: md5(agentName + time + agentKey)  — all lowercase, millisecond timestamp
+ * Sign: md5(agentName + time + agentKey) — all lowercase, 10-digit unix seconds
  * Rate limit: < 30 req/min for most endpoints, < 10 req/min for record queries
  */
 export class MilkywayProviderService implements ProviderAdapter {
@@ -18,7 +18,7 @@ export class MilkywayProviderService implements ProviderAdapter {
   private agentBalance: number = 0;
   private lastAuthTime: number = 0;
   private authPromise: Promise<void> | null = null;
-  private readonly TTL_MS = 5 * 60 * 1000; // 5 minutes
+  private readonly TTL_MS = 10 * 60 * 1000; // 10 minutes
   private readonly http: AxiosInstance;
 
   constructor(provider: Provider) {
@@ -51,12 +51,12 @@ export class MilkywayProviderService implements ProviderAdapter {
     return ep?.servicePath || '/ws/service.ashx';
   }
 
-  // Use milliseconds timestamp (Java System.currentTimeMillis() equivalent)
+  // SECONDS — matches API reference URLs (time=1598452539 is 10 digits)
   private getTimestamp(): string {
-    return Date.now().toString();
+    return Math.floor(Date.now() / 1000).toString();
   }
 
-  private isSessionError(msg: string): boolean {
+  private isAuthError(msg: string): boolean {
     const lower = msg.toLowerCase();
     return (
       lower.includes('session') ||
@@ -64,8 +64,15 @@ export class MilkywayProviderService implements ProviderAdapter {
       lower.includes('expire') ||
       lower.includes('signature') ||
       lower.includes('invalid key') ||
-      lower.includes('not logged')
+      lower.includes('not logged') ||
+      lower.includes('login')
     );
+  }
+
+  private forceReauth(): void {
+    this.agentKey     = null;
+    this.lastAuthTime = 0;
+    this.authPromise  = null;
   }
 
   // ── Session Management ─────────────────────────────────────────────────────
@@ -77,6 +84,8 @@ export class MilkywayProviderService implements ProviderAdapter {
 
     this.authPromise = (async () => {
       const time = this.getTimestamp();
+      console.info(`[MilkyWay] Logging in | agent: ${this.agentName} | time: ${time}`);
+
       try {
         const res = await this.http.post(this.servicePath, null, {
           params: {
@@ -87,19 +96,37 @@ export class MilkywayProviderService implements ProviderAdapter {
           },
         });
 
-        const { code, msg, agentkey, agentKey: agentKeyAlt, balance } = res.data;
-        if (String(code) !== '200') throw new AppError(`MilkyWay login failed: ${msg}`, 400);
+        // Log raw response to debug field name issues
+        console.info(`[MilkyWay] Login raw response: ${JSON.stringify(res.data)}`);
 
-        const key = (agentkey || agentKeyAlt || '').trim();
-        if (!key) throw new AppError('MilkyWay login returned no agentKey', 500);
+        const data = res.data;
+        if (String(data.code) !== '200') {
+          throw new AppError(`MilkyWay login failed: ${data.msg}`, 400);
+        }
+
+        // Handle all possible casing variations of agentKey field
+        const key = (
+          data.agentKey  ||
+          data.agentkey  ||
+          data.AgentKey  ||
+          data.AGENTKEY  ||
+          ''
+        ).toString().trim();
+
+        if (!key) {
+          throw new AppError(
+            `MilkyWay login returned no agentKey. Full response: ${JSON.stringify(data)}`,
+            500
+          );
+        }
 
         this.agentKey     = key;
-        this.agentBalance = parseFloat(balance || '0');
+        this.agentBalance = parseFloat(data.balance || data.Balance || '0');
         this.lastAuthTime = Date.now();
-        console.info(`[MilkyWay] Authenticated | Agent: ${this.agentName} | Timestamp used: ${time}`);
+
+        console.info(`[MilkyWay] Auth OK | key: ${key} | balance: ${this.agentBalance}`);
       } catch (e: any) {
-        this.agentKey     = null;
-        this.lastAuthTime = 0;
+        this.forceReauth();
         if (e instanceof AppError) throw e;
         throw new AppError(`MilkyWay login failed: ${e.message}`, 502);
       } finally {
@@ -108,12 +135,6 @@ export class MilkywayProviderService implements ProviderAdapter {
     })();
 
     return this.authPromise;
-  }
-
-  private forceReauth(): void {
-    this.agentKey     = null;
-    this.lastAuthTime = 0;
-    this.authPromise  = null;
   }
 
   // ── Core Request ───────────────────────────────────────────────────────────
@@ -135,20 +156,22 @@ export class MilkywayProviderService implements ProviderAdapter {
     const params   = { agentName: this.agentName, time, sign, ...payload };
     const endpoint = `${this.servicePath}?action=${action}`;
 
-    console.info(`[MilkyWay] ${action} | time: ${time} | signInput: ${signInput}`);
+    console.info(`[MilkyWay] → ${action} | time: ${time} | sign: ${sign} | signInput: "${signInput}"`);
 
     try {
       const res = await this.http.post(endpoint, null, { params });
+      console.info(`[MilkyWay] ← ${action} | response: ${JSON.stringify(res.data)}`);
+
       const { code, msg, ...data } = res.data;
 
       if (String(code) !== '200') {
         const errMsg = msg || 'Unknown MilkyWay error';
 
-        // Retry ONCE on any session/auth error with a fresh session
-        if (!isRetry && this.isSessionError(errMsg)) {
-          console.warn(`[MilkyWay] Session/auth error on ${action} — re-authenticating...`);
+        // Retry ONCE on any auth/session/signature error with a fresh session
+        if (!isRetry && this.isAuthError(errMsg)) {
+          console.warn(`[MilkyWay] Auth error on "${action}": "${errMsg}" — re-authenticating...`);
           this.forceReauth();
-          await new Promise(r => setTimeout(r, 1000));
+          await new Promise(r => setTimeout(r, 1500));
           return this.makeRequest(action, payload, userId, true);
         }
 
@@ -207,6 +230,5 @@ export class MilkywayProviderService implements ProviderAdapter {
   }
 
   async getPlayerIdByUsername(username: string): Promise<string> { return username; }
-
   getProviderId(): string { return this.provider.id; }
 }
