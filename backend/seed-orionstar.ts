@@ -4,7 +4,7 @@ const prisma = new PrismaClient();
 
 async function main() {
   const existing = await prisma.provider.findFirst({
-    where: { name: 'orionstar', agentId: 'VegasO01' }
+    where: { name: 'orionstar', agentId: 'vaultsweeps45' }
   });
 
   let provider;
@@ -25,7 +25,7 @@ async function main() {
     provider = await prisma.provider.create({
       data: {
         name: 'orionstar',
-        agentId: 'VegasO01',
+        agentId: 'vaultsweeps45',
         secretKey: '***REDACTED***',
         apiBaseUrl: 'https://orionstars.vip:8033',
         endpoints: {
