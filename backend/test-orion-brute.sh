@@ -23,7 +23,7 @@ echo ""
 echo "▶ Logging in..."
 LOGIN_TIME=$(now)
 LOGIN_RESP=$(curl -sk -X POST \
-  "${API_BASE}/ws/service.aspx?action=agentLogin&agentName=${AGENT_NAME}&agentPasswd=${PASSWD_MD5}&time=${LOGIN_TIME}" \
+  "${API_BASE}/ws/service.ashx?action=agentLogin&agentName=${AGENT_NAME}&agentPasswd=${PASSWD_MD5}&time=${LOGIN_TIME}" \
   -H "Content-Length: 0")
 
 echo "  Response: $LOGIN_RESP"
