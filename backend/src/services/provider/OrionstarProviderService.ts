@@ -166,6 +166,11 @@ export class OrionstarProviderService implements ProviderAdapter {
     return true;
   }
 
+  async forcePlayerOffline(userId: string): Promise<boolean> {
+    console.warn(`[Orionstar] forcePlayerOffline is not supported by this provider. userId=${userId}`);
+    return true;
+  }
+
   async getPlayerIdByUsername(username: string): Promise<string> { return username; }
 
   getProviderId(): string { return this.provider.id; }
