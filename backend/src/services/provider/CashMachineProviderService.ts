@@ -90,6 +90,14 @@ export class CashMachineProviderService implements ProviderAdapter {
 
       const { status_code, message, data } = response.data;
 
+      // Handle cases where the URL is wrong and the server returns HTML instead of JSON
+      if (typeof response.data === 'string' || status_code === undefined) {
+        throw new AppError(
+          `${logPrefix} Agent login failed: Received non-JSON response. Check if the apiBaseUrl in the database is correct (currently: ${this.provider.apiBaseUrl}).`,
+          400,
+        );
+      }
+
       if (status_code !== 200 || !data?.token) {
         // Distinguish wrong credentials vs other API errors
         const isCredentialError =
@@ -174,6 +182,10 @@ export class CashMachineProviderService implements ProviderAdapter {
       const duration = Date.now() - startTime;
       const body = response.data;
 
+      if (typeof body === 'string' || body.status_code === undefined) {
+        throw new AppError(`Provider Error: Received non-JSON response from ${path}. Check apiBaseUrl in database (currently: ${this.provider.apiBaseUrl}).`, 400);
+      }
+
       if (body.status_code !== 200) {
         const msg = body.message || 'Unknown provider error';
         
@@ -253,11 +265,15 @@ export class CashMachineProviderService implements ProviderAdapter {
       const response = await axios.get(url, {
         params,
         headers: { Authorization: `Bearer ${this.token}` },
-        timeout: this.provider.requestTimeout || 10000,
+        timeout: this.provider.requestTimeout || 20000,
       });
 
       const duration = Date.now() - startTime;
       const body = response.data;
+
+      if (typeof body === 'string' || body.status_code === undefined) {
+        throw new AppError(`Provider Error: Received non-JSON response from ${path}. Check apiBaseUrl in database (currently: ${this.provider.apiBaseUrl}).`, 400);
+      }
 
       if (body.status_code !== 200) {
         const msg = body.message || 'Unknown provider error';
