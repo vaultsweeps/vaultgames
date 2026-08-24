@@ -3,6 +3,8 @@ import { FastApiProviderService } from './FastApiProviderService';
 import { OrionstarProviderService } from './OrionstarProviderService';
 import { CashMachineProviderService } from './CashMachineProviderService';
 import { GameRoomProviderService } from './GameRoomProviderService';
+import { CashFrenzyProviderService } from './CashFrenzyProviderService';
+import { VegasRollProviderService } from './VegasRollProviderService';
 import { MilkywayProviderService } from './MilkywayProviderService';
 import { ProviderAdapter } from './ProviderAdapter';
 import prisma from '../../lib/prisma';
@@ -21,6 +23,12 @@ export function createProviderService(provider: Provider): ProviderAdapter {
   }
   if (name.includes('gameroom') || name.includes('game room') || name.includes('gameroom777')) {
     return new GameRoomProviderService(provider);
+  }
+  if (name.includes('cashfrenzy') || name.includes('cash frenzy') || name.includes('cashfrenzy777')) {
+    return new CashFrenzyProviderService(provider);
+  }
+  if (name.includes('vegasroll') || name.includes('vegas roll') || name.includes('vegasroll777')) {
+    return new VegasRollProviderService(provider);
   }
   if (name.includes('milkyway') || name.includes('milky way') || name.includes('milky_way')) {
     return new MilkywayProviderService(provider);
