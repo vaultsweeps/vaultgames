@@ -18,9 +18,9 @@ import { Provider } from '@prisma/client';
  *   - POST /api/player/playerWithdraw
  *
  * Provider DB config:
- *   agentId    → agent username  (e.g. "***REDACTED***")
- *   secretKey  → agent password  (e.g. "***REDACTED***")
- *   apiBaseUrl → base URL        (e.g. "https://agentserver.cashmachine777.com")
+ *   agentId    → agent username  (stored in DB, set via seed or admin)
+ *   secretKey  → agent password  (stored in DB, set via seed or admin)
+ *   apiBaseUrl → base URL        (stored in DB)
  *
  * The numeric player ID returned by the provider is stored as userId in ProviderUser.
  */

@@ -9,13 +9,10 @@ build/
 .next/
 out/
 
-# Environment files
+# Environment files — NEVER commit these
 .env
-.env.local
-.env.production
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*
+!.env.example
 
 # Logs
 logs/
@@ -60,3 +57,36 @@ backend/prisma/*.db
 
 *.sql
 
+# ── One-off scripts that contain or reference secrets ─────────────────────────
+# These are local dev utilities — never commit to a public repo
+backend/test-*.js
+backend/test-*.ts
+backend/test-*.sh
+backend/testOrion.js
+backend/testCoupon.js
+backend/seed-*.ts
+backend/seed-*.js
+backend/seed_*.js
+backend/check-*.js
+backend/check_*.js
+backend/add-*.ts
+backend/add-*.js
+backend/update-*.ts
+backend/update-*.js
+backend/list-*.js
+backend/list-*.ts
+backend/dump_*.js
+backend/restore_*.js
+backend/fix_*.js
+backend/flush_*.js
+backend/migrate_*.js
+backend/remove-*.js
+backend/reorder-*.js
+backend/count_*.js
+backend/diagnose-*.js
+backend/*.txt
+backend/Untitled-*.txt
+backend/page_source*.html
+backend/out*.txt
+backend/out*.html
+backend/post-out*.txt
