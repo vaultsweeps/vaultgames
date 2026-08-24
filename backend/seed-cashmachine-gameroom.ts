@@ -28,7 +28,7 @@ const providers = [
     name: 'GameRoom',
     apiBaseUrl: 'https://agentserver1.gameroom777.com',
     agentId: '***REDACTED***',     // agent username
-    secretKey: '***REDACTED***', // agent password
+    secretKey: '***REDACTED***',  // agent password
     status: true,
     requestTimeout: 10000,
     endpoints: {},
