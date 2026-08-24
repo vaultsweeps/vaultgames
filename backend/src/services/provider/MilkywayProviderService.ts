@@ -178,8 +178,9 @@ export class MilkywayProviderService implements ProviderAdapter {
     }
 
     const time      = this.nowSeconds();
-    const signInput = this.agentName + time + this.agentKey;
-    const sign      = this.md5(signInput).toLowerCase();
+    // Per official docs: sign = MD5(agentName.toLowerCase() + time + agentKey.toLowerCase())
+    const signInput = this.agentName.toLowerCase() + time + this.agentKey.toLowerCase();
+    const sign      = this.md5(signInput);
 
     const params   = { agentName: this.agentName, time, sign, ...payload };
     const endpoint = `${this.servicePath}?action=${action}`;
