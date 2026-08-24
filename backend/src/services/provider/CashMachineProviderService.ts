@@ -338,18 +338,21 @@ export class CashMachineProviderService implements ProviderAdapter {
       'superadmin', 'administrator', 'mod', 'moderator', 'staff',
     ]);
 
-    // Strip characters the provider doesn't allow (keep alphanumeric + underscore)
-    let safe = username.replace(/[^a-zA-Z0-9_]/g, '').substring(0, 16);
+    // Strip ALL non-alphanumeric characters — providers only allow letters and numbers
+    // (no underscores, no special chars, no spaces)
+    let safe = username.replace(/[^a-zA-Z0-9]/g, '').substring(0, 18);
 
     // Prefix reserved words so the provider accepts them
+    // Use "u" prefix (no underscore) to stay within alphanumeric-only rule
     if (!safe || RESERVED.has(safe.toLowerCase())) {
-      safe = `u_${safe || username.substring(0, 14)}`;
+      safe = `u${safe || username.replace(/[^a-zA-Z0-9]/g, '').substring(0, 16)}`;
     }
 
     // Ensure minimum length of 3 chars
-    if (safe.length < 3) safe = `u_${safe}`;
+    if (safe.length < 3) safe = `u1${safe}`;
 
-    return safe;
+    // Final hard cap at 20 chars (provider limit)
+    return safe.substring(0, 20);
   }
 
   async createPlayer(
@@ -448,14 +451,34 @@ export class CashMachineProviderService implements ProviderAdapter {
    * Force a fresh login to get the current value.
    */
   async getAgentBalance(): Promise<number> {
-    // Invalidate cached token to force a fresh login (money field is in login response)
-    this.token = null;
-    this.tokenExpiresAt = 0;
-
     const url = this.buildUrl('/api/agent/login');
     const form = new FormData();
     form.append('username', this.provider.agentId);
     form.append('password', this.provider.secretKey);
+
+    // Only do a fresh login if the cached token is expired/missing.
+    // Do NOT force-invalidate the token here — doing so on every balance
+    // check causes repeated logins and triggers provider-side rate limits
+    // ("Too many login errors").
+    if (this.isTokenValid() && this.token) {
+      // Reuse cached token — fetch agent balance via a dedicated login only
+      // when necessary. Fall through to fresh login if token has expired.
+      try {
+        const response = await axios.post(url, form, {
+          headers: form.getHeaders(),
+          timeout: this.provider.requestTimeout || 10000,
+        });
+        const { data } = response.data;
+        if (data?.token) {
+          this.token = data.token;
+          this.tokenExpiresAt = data.expires_time || Math.floor(Date.now() / 1000) + 6 * 3600;
+        }
+        return parseFloat(data?.money ?? '0');
+      } catch (e: any) {
+        console.error(`[CashMachineProvider:${this.provider.name}] getAgentBalance failed:`, e.message);
+        return 0;
+      }
+    }
 
     try {
       const response = await axios.post(url, form, {
