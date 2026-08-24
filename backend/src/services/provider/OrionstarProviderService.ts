@@ -169,9 +169,9 @@ export class OrionstarProviderService implements ProviderAdapter {
     if (!this.agentKey) throw new AppError('No agentKey after authenticate()', 500);
 
     const time      = this.nowSeconds();
-    // sign = md5(agentName + time + agentKey) — all lowercase before hashing
-    const signInput = (this.agentName + time + this.agentKey).toLowerCase();
-    const sign      = this.md5(signInput);
+    // sign = md5(agentName + time + agentKey)
+    const signInput = this.agentName + time + this.agentKey;
+    const sign      = this.md5(signInput).toLowerCase();
 
     const params   = { agentName: this.agentName, time, sign, ...payload };
     const endpoint = `${this.servicePath}?action=${action}`;
