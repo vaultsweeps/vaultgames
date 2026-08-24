@@ -276,6 +276,32 @@ export class CashMachineProviderService implements ProviderAdapter {
    * NOTE: If the username already exists, we look up the player list to find
    * the existing numeric ID and return that as userId.
    */
+  /**
+   * Sanitize a platform username before sending to the provider.
+   * Prefixes reserved words and strips characters the provider rejects.
+   * Ensures the final username is 3-20 characters.
+   */
+  private sanitizeUsername(username: string): string {
+    // Reserved usernames that providers block or intercept
+    const RESERVED = new Set([
+      'admin', 'root', 'test', 'user', 'guest', 'system', 'support',
+      'superadmin', 'administrator', 'mod', 'moderator', 'staff',
+    ]);
+
+    // Strip characters the provider doesn't allow (keep alphanumeric + underscore)
+    let safe = username.replace(/[^a-zA-Z0-9_]/g, '').substring(0, 16);
+
+    // Prefix reserved words so the provider accepts them
+    if (!safe || RESERVED.has(safe.toLowerCase())) {
+      safe = `u_${safe || username.substring(0, 14)}`;
+    }
+
+    // Ensure minimum length of 3 chars
+    if (safe.length < 3) safe = `u_${safe}`;
+
+    return safe;
+  }
+
   async createPlayer(
     username: string,
     password?: string,
@@ -283,36 +309,56 @@ export class CashMachineProviderService implements ProviderAdapter {
     const endpoint = '/api/player/insertPlayer';
     const safePassword = password || 'Test@123';
 
+    // Sanitize username before sending to provider (blocks reserved words like "admin")
+    const providerUsername = this.sanitizeUsername(username);
+    if (providerUsername !== username) {
+      console.info(
+        `[CashMachineProvider:${this.provider.name}] Username sanitized: "${username}" → "${providerUsername}"`,
+      );
+    }
+
+    let insertError: any = null;
+    let createdAccount: string | null = null;
+
     try {
       const data = await this.postRequest(endpoint, {
-        username,
-        nickname: username,
+        username: providerUsername,
+        nickname: providerUsername,
         password: safePassword,
         money: '0',
       });
 
-      // Response: { account, password, balance, time }
-      // The provider doesn't return the numeric ID from insertPlayer —
-      // we must look it up via playerList right after creation.
-      const numericId = await this.getPlayerIdByUsername(data?.account || username);
-      console.info(
-        `[CashMachineProvider:${this.provider.name}] Created player "${username}" → numericId: ${numericId}`,
-      );
-      return { userId: numericId, accountName: data?.account || username };
+      createdAccount = data?.account || providerUsername;
     } catch (e: any) {
-      // "Username Already Exists" — look up numeric ID and return it
+      // Only catch "already exists" errors from insertPlayer itself.
+      // All other errors (network, auth, etc.) are re-thrown immediately.
       if (
         e.message?.toLowerCase().includes('already') ||
         e.message?.toLowerCase().includes('exist')
       ) {
-        console.info(
-          `[CashMachineProvider:${this.provider.name}] Player "${username}" already exists — looking up numeric ID`,
-        );
-        const numericId = await this.getPlayerIdByUsername(username);
-        return { userId: numericId, accountName: username };
+        insertError = e; // player exists — fall through to lookup below
+      } else {
+        throw e;
       }
-      throw e;
     }
+
+    if (insertError) {
+      // Player already exists on provider — look up their numeric ID
+      console.info(
+        `[CashMachineProvider:${this.provider.name}] Player "${providerUsername}" already exists — looking up numeric ID`,
+      );
+      const numericId = await this.getPlayerIdByUsername(providerUsername);
+      return { userId: numericId, accountName: providerUsername };
+    }
+
+    // Response: { account, password, balance, time }
+    // The provider doesn't return the numeric ID from insertPlayer —
+    // we must look it up via playerList right after creation.
+    const numericId = await this.getPlayerIdByUsername(createdAccount!);
+    console.info(
+      `[CashMachineProvider:${this.provider.name}] Created player "${providerUsername}" → numericId: ${numericId}`,
+    );
+    return { userId: numericId, accountName: createdAccount! };
   }
 
   /**
@@ -388,9 +434,10 @@ export class CashMachineProviderService implements ProviderAdapter {
     // Paginate until we find the player (max 20 pages × 100 per page = 2000 players)
     const limit = 100;
     for (let page = 1; page <= 20; page++) {
+      // Pass limit & page as proper query params (not embedded in the path string)
       const body = await this.getRequest(
-        `/api/player/playerList?limit=${limit}&page=${page}`,
-        {},
+        '/api/player/playerList',
+        { limit, page },
       );
 
       // body is the full response object since we return body.data ?? body
@@ -404,7 +451,9 @@ export class CashMachineProviderService implements ProviderAdapter {
       const match = players.find(
         (p: any) =>
           (p.Account || '').toLowerCase() === username.toLowerCase() ||
-          (p.nickname || '').toLowerCase() === username.toLowerCase(),
+          (p.account || '').toLowerCase() === username.toLowerCase() ||
+          (p.nickname || '').toLowerCase() === username.toLowerCase() ||
+          (p.username || '').toLowerCase() === username.toLowerCase(),
       );
 
       if (match) {
