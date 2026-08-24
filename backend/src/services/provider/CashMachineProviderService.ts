@@ -85,15 +85,25 @@ export class CashMachineProviderService implements ProviderAdapter {
     try {
       const response = await axios.post(url, form, {
         headers: form.getHeaders(),
-        timeout: this.provider.requestTimeout || 10000,
+        timeout: this.provider.requestTimeout || 20000,
       });
 
       const { status_code, message, data } = response.data;
 
       if (status_code !== 200 || !data?.token) {
+        // Distinguish wrong credentials vs other API errors
+        const isCredentialError =
+          status_code === 401 ||
+          (message || '').toLowerCase().includes('password') ||
+          (message || '').toLowerCase().includes('username') ||
+          (message || '').toLowerCase().includes('invalid') ||
+          (message || '').toLowerCase().includes('incorrect');
+
         throw new AppError(
-          `${logPrefix} Agent login failed: ${message || 'Unknown error'} (status_code: ${status_code})`,
-          400,
+          isCredentialError
+            ? `${logPrefix} Invalid agent credentials — check agentId/secretKey in provider config. (${message})`
+            : `${logPrefix} Agent login failed: ${message || 'Unknown error'} (status_code: ${status_code})`,
+          isCredentialError ? 401 : 400,
         );
       }
 
@@ -105,8 +115,22 @@ export class CashMachineProviderService implements ProviderAdapter {
       );
     } catch (e: any) {
       if (e instanceof AppError) throw e;
+
+      // Give actionable error messages based on the type of network failure
+      const code: string = e.code || '';
+      let hint = e.message;
+      if (code === 'ECONNREFUSED') {
+        hint = `Connection refused to ${url} — the provider server may be down or this server's IP is not whitelisted`;
+      } else if (code === 'ECONNRESET' || e.message?.includes('socket hang up')) {
+        hint = `Connection reset by ${this.provider.name} server — IP may not be whitelisted. Contact ${this.provider.name} support to whitelist your server IP`;
+      } else if (code === 'ETIMEDOUT' || code === 'ECONNABORTED') {
+        hint = `Connection timed out to ${url} — provider server unreachable from this IP`;
+      } else if (code === 'ENOTFOUND') {
+        hint = `DNS resolution failed for ${url} — check apiBaseUrl in provider config`;
+      }
+
       throw new AppError(
-        `${logPrefix} Agent login connection failed: ${e.message}`,
+        `${logPrefix} Agent login connection failed: ${hint}`,
         502,
       );
     }
@@ -144,7 +168,7 @@ export class CashMachineProviderService implements ProviderAdapter {
           ...form.getHeaders(),
           Authorization: `Bearer ${this.token}`,
         },
-        timeout: this.provider.requestTimeout || 10000,
+        timeout: this.provider.requestTimeout || 20000,
       });
 
       const duration = Date.now() - startTime;
@@ -190,7 +214,17 @@ export class CashMachineProviderService implements ProviderAdapter {
         this.token = null;
         this.tokenExpiresAt = 0;
       }
-      throw new AppError(`Provider connection failed: ${e.message || 'Unknown network error'}`, 502);
+      // Translate low-level network errors into actionable messages
+      const code: string = (e.code || '');
+      let networkHint = e.message || 'Unknown network error';
+      if (code === 'ECONNRESET' || networkHint.includes('socket hang up')) {
+        networkHint = `${this.provider.name} server reset the connection — your server IP may not be whitelisted by ${this.provider.name}`;
+      } else if (code === 'ETIMEDOUT' || code === 'ECONNABORTED') {
+        networkHint = `Request to ${this.provider.name} timed out — provider server unreachable`;
+      } else if (code === 'ECONNREFUSED') {
+        networkHint = `${this.provider.name} server refused the connection`;
+      }
+      throw new AppError(`Provider connection failed: ${networkHint}`, 502);
     }
   }
 
