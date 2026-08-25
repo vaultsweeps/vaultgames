@@ -416,7 +416,7 @@ export default function Navbar() {
     </AnimatePresence>
 
     {/* Mobile Bottom Navigation Bar */}
-    <div className="lg:hidden fixed bottom-5 left-1/2 -translate-x-1/2 w-[90%] max-w-[400px] z-50 flex justify-between items-center pointer-events-none">
+    <div className="lg:hidden fixed bottom-5 left-1/2 -translate-x-1/2 z-50 flex justify-center items-center gap-3 pointer-events-none">
 
       {/* Menu Toggle Button */}
       <button
