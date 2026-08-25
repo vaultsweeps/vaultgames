@@ -199,25 +199,7 @@ export default function Navbar() {
           {/* Mobile top-right icons: Theme + Wallet + Bell + Profile */}
           {/* Mobile top-right: premium redesigned */}
           <div className="lg:hidden flex items-center gap-1.5">
-            {/* Theme Toggle */}
-            {mounted && (
-              <button
-                onClick={() => {
-                  if (theme === 'dark') setTheme('light')
-                  else if (theme === 'light') setTheme('night')
-                  else setTheme('dark')
-                }}
-                className="w-9 h-9 rounded-xl flex items-center justify-center text-white/60 hover:text-white hover:bg-white/8 transition-all border border-white/8"
-                aria-label="Toggle Theme"
-                suppressHydrationWarning
-              >
-                {theme === 'light'
-                  ? <Sun className="w-4 h-4 text-amber-400" />
-                  : theme === 'night'
-                  ? <Moon className="w-4 h-4 text-indigo-400" />
-                  : <SunMoon className="w-4 h-4" />}
-              </button>
-            )}
+            {/* Theme toggle moved to drawer */}
 
             {isAuthenticated && (
               <>
@@ -407,6 +389,28 @@ export default function Navbar() {
                   className="w-full bg-[#2a1a24] hover:bg-[#3a202a] text-[#ef4444] py-4 rounded-xl text-sm font-bold transition-colors mt-2"
                 >
                   Logout
+                </button>
+              )}
+            </div>
+
+            {/* Sidebar Footer */}
+            <div className="p-4 pt-0 mt-auto flex items-center justify-start">
+              {mounted && (
+                <button
+                  onClick={() => {
+                    if (theme === 'dark') setTheme('light')
+                    else if (theme === 'light') setTheme('night')
+                    else setTheme('dark')
+                  }}
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-white/60 hover:text-white hover:bg-white/8 transition-all border border-white/10 shadow-lg bg-[#1a1b2e]"
+                  aria-label="Toggle Theme"
+                  suppressHydrationWarning
+                >
+                  {theme === 'light'
+                    ? <Sun className="w-4 h-4 text-amber-400" />
+                    : theme === 'night'
+                    ? <Moon className="w-4 h-4 text-indigo-400" />
+                    : <SunMoon className="w-4 h-4" />}
                 </button>
               )}
             </div>
