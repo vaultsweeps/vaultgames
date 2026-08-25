@@ -322,9 +322,12 @@ export const transferFunds = asyncHandler(async (req: AuthRequest, res: Response
   try {
     if (type === 'recharge') {
       // Parallelize user lookup + first-recharge check + all bonus definitions — all independent
+      // NOTE: firstRechargeCheck is per-provider (per game), NOT global.
+      // This ensures the 100% signup bonus applies each time a user recharges a NEW game
+      // for the very first time, even if they've played other games before.
       const [user, firstRechargeCheck, welcomeBonusDef, depositBonusDef, referralBonusDef] = await Promise.all([
         prisma.user.findUnique({ where: { id: userId }, select: { id: true, username: true, isVerified: true, isPhoneVerified: true, referredById: true } }),
-        prisma.providerTransaction.findFirst({ where: { userId, type: 'recharge', status: 'success' } }),
+        prisma.providerTransaction.findFirst({ where: { userId, providerId: providerUser.providerId, type: 'recharge', status: 'success' } }),
         prisma.bonus.findFirst({ where: { type: 'welcome' } }),
         prisma.bonus.findFirst({ where: { type: 'deposit' } }),
         prisma.bonus.findFirst({ where: { type: 'referral' } })
@@ -336,9 +339,14 @@ export const transferFunds = asyncHandler(async (req: AuthRequest, res: Response
         bonusAmount = amount;
         if (welcomeBonusDef) {
           try {
-            await prisma.bonusClaim.create({ data: { userId, bonusId: welcomeBonusDef.id, amount: bonusAmount } });
+            // Upsert: records the claim without failing if user played another game before
+            await prisma.bonusClaim.upsert({
+              where: { userId_bonusId: { userId, bonusId: welcomeBonusDef.id } },
+              create: { userId, bonusId: welcomeBonusDef.id, amount: bonusAmount },
+              update: { amount: { increment: bonusAmount } },
+            });
           } catch (e) {
-            // Ignore unique constraint error if a previous failed recharge attempt already created this claim
+            // Silently continue — bonus is already credited to game
           }
         }
         
@@ -371,9 +379,14 @@ export const transferFunds = asyncHandler(async (req: AuthRequest, res: Response
           bonusAmount = amount * 0.3;
           if (depositBonusDef) {
             try {
-              await prisma.bonusClaim.create({ data: { userId, bonusId: depositBonusDef.id, amount: bonusAmount } });
+              // Upsert: accumulate deposit bonuses across all games without unique constraint errors
+              await prisma.bonusClaim.upsert({
+                where: { userId_bonusId: { userId, bonusId: depositBonusDef.id } },
+                create: { userId, bonusId: depositBonusDef.id, amount: bonusAmount },
+                update: { amount: { increment: bonusAmount } },
+              });
             } catch (e) {
-              // Ignore unique constraint error for recurring bonuses so transfer succeeds
+              // Silently continue — bonus is already credited to game
             }
           }
         }
