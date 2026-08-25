@@ -313,7 +313,7 @@ export const transferFunds = asyncHandler(async (req: AuthRequest, res: Response
   }
 
   // 2. Process with provider
-  const orderId = `TX_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+  const orderId = `TX${Date.now()}${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
   let finalProviderAmount = amount;
   let bonusAmount = 0;
   let voidedAmount = 0;       // amount voided due to exceeding cashout cap
