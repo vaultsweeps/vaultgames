@@ -185,14 +185,25 @@ export default function Navbar() {
                 </div>
               </>
             ) : (
-              <>
-                <button onClick={() => openAuthModal('login')} className="btn-liquid btn-signin-liquid text-sm py-2 px-5">
-                  <span className="btn-liquid-content">Sign In</span>
+              <div className="flex items-center gap-3">
+                {/* Sign In - Dark pill with subtle cyan/purple border glow */}
+                <button 
+                  onClick={() => openAuthModal('login')} 
+                  className="relative group px-7 py-2.5 rounded-full bg-[#0a0a14] border border-cyan-500/30 hover:border-cyan-400/60 transition-all shadow-[0_0_15px_rgba(34,211,238,0.1)] hover:shadow-[0_0_20px_rgba(34,211,238,0.2)]"
+                >
+                  <span className="relative z-10 text-white font-extrabold tracking-wide text-[15px] group-hover:text-cyan-50 transition-colors">Sign In</span>
                 </button>
-                <button onClick={() => openAuthModal('register')} className="btn-liquid btn-signup-beam text-sm py-2 px-6">
-                  <span className="btn-liquid-content">Sign Up</span>
+
+                {/* Sign Up - Vibrant purple/blue gradient pill with inner highlight and strong glow */}
+                <button 
+                  onClick={() => openAuthModal('register')} 
+                  className="relative group px-8 py-2.5 rounded-full bg-gradient-to-r from-[#9333EA] via-[#6366F1] to-[#3B82F6] hover:from-[#A855F7] hover:via-[#818CF8] hover:to-[#60A5FA] transition-all shadow-[0_0_25px_rgba(99,102,241,0.5)] hover:shadow-[0_0_35px_rgba(99,102,241,0.7)] hover:scale-[1.02] active:scale-95"
+                >
+                  {/* Inner top highlight for 3D pill effect */}
+                  <div className="absolute inset-0 rounded-full shadow-[inset_0_2px_4px_rgba(255,255,255,0.4)] pointer-events-none" />
+                  <span className="relative z-10 text-white font-black tracking-wider text-[15px] drop-shadow-md">Sign Up</span>
                 </button>
-              </>
+              </div>
             )}
           </div>
 
