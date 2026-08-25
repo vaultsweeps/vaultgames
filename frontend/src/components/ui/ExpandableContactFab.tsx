@@ -139,7 +139,7 @@ export default function ExpandableContactFab({ inlinePill = false }: Props) {
           aria-label={isOpen ? 'Close support' : 'Contact Support'}
           className={`relative flex items-center justify-center transition-all duration-200 active:scale-90 ${
             inlinePill
-              ? `w-10 h-10 rounded-full bg-[#12122a] border border-white/10 text-white/60 hover:text-white`
+              ? `w-[42px] h-[42px] rounded-2xl bg-gradient-to-br from-indigo-500/10 to-violet-500/5 border border-white/5 text-white/70 hover:text-white shadow-[inset_0_0_12px_rgba(99,102,241,0.1)]`
               : `w-12 h-12 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#4F46E5] text-white border border-violet-400/30`
           }`}
           style={inlinePill ? undefined : {

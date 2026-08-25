@@ -433,40 +433,47 @@ export default function Navbar() {
       </button>
 
       {/* Main Nav Pill */}
-      <div className="border border-white/5 rounded-3xl px-1.5 py-1.5 flex items-center gap-1 pointer-events-auto shadow-xl bg-[#0b0f19] backdrop-blur-md">
+      <div className="relative border border-white/10 rounded-[28px] px-1.5 py-1.5 flex items-center gap-1.5 pointer-events-auto shadow-[0_8px_32px_rgba(0,0,0,0.6)] bg-gradient-to-b from-[#14152c]/95 to-[#090914]/95 backdrop-blur-xl">
+        {/* Inner subtle glow for the pill */}
+        <div className="absolute inset-0 rounded-[28px] shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] pointer-events-none" />
 
         {/* Home */}
-        <Link href="/" aria-label="Home" className={`relative flex flex-col items-center justify-center w-[52px] h-[52px] rounded-2xl transition-all duration-200 group ${
+        <Link href="/" aria-label="Home" className={`relative flex flex-col items-center justify-center w-[50px] h-[50px] rounded-2xl transition-all duration-300 group overflow-hidden ${
           pathname === '/'
-            ? 'bg-white/10 text-white'
-            : 'text-white/40 hover:text-white/80 hover:bg-white/5'
+            ? 'bg-gradient-to-b from-indigo-500/20 to-purple-500/10 text-indigo-300 shadow-[inset_0_0_12px_rgba(99,102,241,0.2)] border border-indigo-500/30'
+            : 'text-white/50 hover:text-white/90 hover:bg-white/5 border border-transparent'
         }`}>
-          <Home className="w-5 h-5" strokeWidth={pathname === '/' ? 2.5 : 1.8} />
-          {pathname === '/' && <span className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-1 h-1 bg-white rounded-full" />}
+          <Home className="w-[22px] h-[22px] z-10" strokeWidth={pathname === '/' ? 2.5 : 2} />
+          {pathname === '/' && <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-indigo-400 rounded-full shadow-[0_0_8px_rgba(129,140,248,0.9)]" />}
         </Link>
 
         {/* Games */}
-        <Link href="/games" aria-label="Games" className={`relative flex flex-col items-center justify-center w-[52px] h-[52px] rounded-2xl transition-all duration-200 ${
-          pathname.includes('/games') ? 'bg-white/10' : 'hover:bg-white/5'
+        <Link href="/games" aria-label="Games" className={`relative flex flex-col items-center justify-center w-[50px] h-[50px] rounded-2xl transition-all duration-300 ${
+          pathname.includes('/games') 
+            ? 'bg-gradient-to-b from-blue-500/20 to-cyan-500/10 shadow-[inset_0_0_12px_rgba(59,130,246,0.2)] border border-blue-500/30' 
+            : 'hover:bg-white/5 border border-transparent'
         }`}>
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden">
-            <Image src="/images/vault-sweeps-logo.png" alt="Games" width={32} height={32} className={`w-full h-full object-contain ${!pathname.includes('/games') ? 'opacity-60 grayscale-[50%]' : ''}`} />
+          <div className="w-[30px] h-[30px] rounded-lg flex items-center justify-center overflow-hidden z-10">
+            <Image src="/images/vault-sweeps-logo.png" alt="Games" width={32} height={32} className={`w-full h-full object-contain drop-shadow-[0_0_4px_rgba(255,255,255,0.2)] ${!pathname.includes('/games') && 'opacity-70 hover:opacity-100 transition-opacity'}`} />
           </div>
-          {pathname.includes('/games') && <span className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-1 h-1 bg-white rounded-full" />}
+          {pathname.includes('/games') && <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-blue-400 rounded-full shadow-[0_0_8px_rgba(96,165,250,0.9)]" />}
         </Link>
 
         {/* Bonuses */}
-        <Link href="/bonuses" aria-label="Bonuses" className={`relative flex flex-col items-center justify-center w-[52px] h-[52px] rounded-2xl transition-all duration-200 ${
+        <Link href="/bonuses" aria-label="Bonuses" className={`relative flex flex-col items-center justify-center w-[50px] h-[50px] rounded-2xl transition-all duration-300 ${
           pathname.includes('/bonuses')
-            ? 'bg-[#2a1f1a] text-[#FBBF24]'
-            : 'text-white/40 hover:text-white/80 hover:bg-white/5'
+            ? 'bg-gradient-to-b from-amber-500/20 to-orange-500/10 text-amber-300 shadow-[inset_0_0_12px_rgba(245,158,11,0.2)] border border-amber-500/30'
+            : 'text-white/50 hover:text-white/90 hover:bg-white/5 border border-transparent'
         }`}>
-          <Gift className="w-5 h-5" strokeWidth={pathname.includes('/bonuses') ? 2.5 : 1.8} />
-          {pathname.includes('/bonuses') && <span className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-[#FBBF24] rounded-full shadow-[0_0_8px_rgba(251,191,36,0.8)]" />}
+          <Gift className="w-[22px] h-[22px] z-10" strokeWidth={pathname.includes('/bonuses') ? 2.5 : 2} />
+          {pathname.includes('/bonuses') && <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-amber-400 rounded-full shadow-[0_0_8px_rgba(251,191,36,0.9)]" />}
         </Link>
 
+        {/* Divider */}
+        <div className="w-px h-8 bg-gradient-to-b from-transparent via-white/15 to-transparent mx-0.5" />
+
         {/* Contact FAB inside pill */}
-        <div className="w-[52px] h-[52px] flex items-center justify-center">
+        <div className="w-[50px] h-[50px] flex items-center justify-center">
           <ExpandableContactFab inlinePill />
         </div>
 
