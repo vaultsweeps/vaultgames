@@ -535,35 +535,64 @@ export class CashMachineProviderService implements ProviderAdapter {
   async getPlayerIdByUsername(username: string): Promise<string> {
     // Paginate until we find the player (max 20 pages × 100 per page = 2000 players)
     const limit = 100;
-    for (let page = 1; page <= 20; page++) {
-      // Pass limit & page as proper query params (not embedded in the path string)
-      const body = await this.getRequest(
-        '/api/player/playerList',
-        { limit, page },
-      );
-
-      // body is the full response object since we return body.data ?? body
-      // playerList returns { status_code, count, data: [ { Account, id, ... } ] }
-      const players: any[] = Array.isArray(body)
-        ? body
-        : Array.isArray(body?.data)
-          ? body.data
-          : [];
-
-      const match = players.find(
-        (p: any) =>
-          (p.Account || '').toLowerCase() === username.toLowerCase() ||
-          (p.account || '').toLowerCase() === username.toLowerCase() ||
-          (p.nickname || '').toLowerCase() === username.toLowerCase() ||
-          (p.username || '').toLowerCase() === username.toLowerCase(),
-      );
-
-      if (match) {
-        return String(match.id);
+    
+    // Helper to fetch and search a specific page
+    const searchPage = async (page: number): Promise<string | null> => {
+      try {
+        const body = await this.getRequest('/api/player/playerList', { limit, page });
+        const players: any[] = Array.isArray(body)
+          ? body
+          : Array.isArray(body?.data)
+            ? body.data
+            : [];
+            
+        const match = players.find(
+          (p: any) =>
+            (p.Account || '').toLowerCase() === username.toLowerCase() ||
+            (p.account || '').toLowerCase() === username.toLowerCase() ||
+            (p.nickname || '').toLowerCase() === username.toLowerCase() ||
+            (p.username || '').toLowerCase() === username.toLowerCase(),
+        );
+        return match ? String(match.id) : null;
+      } catch (e) {
+        return null;
       }
+    };
 
-      // If fewer records than limit were returned, we've hit the last page
-      if (players.length < limit) break;
+    // 1. Fetch page 1
+    const body1 = await this.getRequest('/api/player/playerList', { limit, page: 1 });
+    const players1: any[] = Array.isArray(body1) ? body1 : Array.isArray(body1?.data) ? body1.data : [];
+    
+    let match = players1.find(
+      (p: any) =>
+        (p.Account || '').toLowerCase() === username.toLowerCase() ||
+        (p.account || '').toLowerCase() === username.toLowerCase() ||
+        (p.nickname || '').toLowerCase() === username.toLowerCase() ||
+        (p.username || '').toLowerCase() === username.toLowerCase(),
+    );
+    if (match) return String(match.id);
+
+    // 2. If not on page 1, they are likely on the very last page (if sorted oldest->newest)
+    const count = typeof body1 === 'object' && body1 !== null && typeof body1.count === 'number' ? body1.count : 0;
+    const totalPages = count > 0 ? Math.ceil(count / limit) : 20;
+    
+    if (totalPages > 1) {
+      const lastPageId = await searchPage(totalPages);
+      if (lastPageId) return lastPageId;
+      
+      // 3. If still not found, search remaining pages in parallel batches
+      const pagesToSearch = [];
+      for (let p = totalPages - 1; p >= 2; p--) {
+        pagesToSearch.push(p); // Search backwards from end
+      }
+      
+      // Search in batches of 5 to avoid rate limits while being fast
+      for (let i = 0; i < pagesToSearch.length; i += 5) {
+        const batch = pagesToSearch.slice(i, i + 5);
+        const results = await Promise.all(batch.map(p => searchPage(p)));
+        const found = results.find(r => r !== null);
+        if (found) return found;
+      }
     }
 
     throw new AppError(
