@@ -239,20 +239,66 @@ export class MilkywayProviderService implements ProviderAdapter {
 
   // ─── Public API ───────────────────────────────────────────────────────────
 
+  /**
+   * Sanitize a username so it passes MilkyWay's constraints:
+   *   - Only letters, digits, and underscores  ([a-zA-Z0-9_])
+   *   - 6–32 characters
+   *
+   * Strategy: strip invalid chars to form a base, then ALWAYS append a
+   * 4-char random alphanumeric suffix when the original username needed any
+   * modification (had spaces/special chars), was too short, or was reserved.
+   * This guarantees a valid unique provider account every time.
+   */
+  private sanitizeUsername(username: string): string {
+    const RESERVED = new Set([
+      'admin', 'root', 'test', 'user', 'guest', 'system', 'support',
+      'superadmin', 'administrator', 'mod', 'moderator', 'staff',
+    ]);
+
+    /** 4-char random lowercase alphanumeric suffix */
+    const randomSuffix = (): string => {
+      const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+      let s = '';
+      for (let i = 0; i < 4; i++) s += chars[Math.floor(Math.random() * chars.length)];
+      return s;
+    };
+
+    // Keep only what the provider allows (letters + digits + underscore)
+    const base = username.replace(/[^a-zA-Z0-9_]/g, '').toLowerCase();
+
+    const wasModified = base !== username.toLowerCase().replace(/[^a-zA-Z0-9_]/g, '');
+    const needsSuffix =
+      !base ||
+      base.length < 6 ||
+      RESERVED.has(base) ||
+      wasModified;
+
+    let safe: string;
+    if (needsSuffix) {
+      const trimmedBase = (base || 'u').substring(0, 27);
+      safe = trimmedBase + randomSuffix();
+    } else {
+      safe = base;
+    }
+
+    if (safe.length < 6) safe = safe.padEnd(6, '0');
+    return safe.substring(0, 32);
+  }
+
   async createPlayer(username: string, password?: string) {
-    if (username.length < 6 || username.length > 32) {
-      throw new AppError(
-        `Username "${username}" must be 6–32 characters (received ${username.length})`,
-        400,
+    const providerUsername = this.sanitizeUsername(username);
+    if (providerUsername !== username) {
+      console.info(
+        `[MilkyWay:${this.provider.name}] Username sanitized: "${username}" → "${providerUsername}"`,
       );
     }
 
     await this.makeRequest('registerUser', {
-      account: username,
+      account: providerUsername,
       passwd:  this.md5(password || 'Test@1234'),
     });
 
-    return { userId: username, accountName: username };
+    return { userId: providerUsername, accountName: providerUsername };
   }
 
   async rechargePlayer(userId: string, amount: number, orderId: string) {
