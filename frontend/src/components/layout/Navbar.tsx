@@ -12,6 +12,7 @@ import { authApi, notificationsApi } from '@/lib/api'
 
 const WalletModal = dynamic(() => import('@/components/modals/WalletModal'), { ssr: false })
 const AuthModal = dynamic(() => import('@/components/modals/AuthModal'), { ssr: false })
+const ExpandableContactFab = dynamic(() => import('@/components/ui/ExpandableContactFab'), { ssr: false })
 
 const navLinks = [
   { href: '/', label: 'Home' },
@@ -419,6 +420,9 @@ export default function Navbar() {
         </Link>
       </div>
 
+      {/* Contact FAB */}
+      <ExpandableContactFab />
+
       {/* Menu Toggle Button */}
       <button
         onClick={() => setMobileOpen(!mobileOpen)}
@@ -427,6 +431,11 @@ export default function Navbar() {
       >
         {mobileOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
       </button>
+    </div>
+
+    {/* Desktop Contact FAB */}
+    <div className="hidden lg:block fixed bottom-6 right-6 z-50">
+      <ExpandableContactFab />
     </div>
 
       <WalletModal isOpen={walletOpen} onClose={() => setWalletOpen(false)} balance={balance} />
