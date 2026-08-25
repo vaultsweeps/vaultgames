@@ -267,7 +267,7 @@ export class ProviderService implements ProviderAdapter {
     const endpoint = this.getEndpoint('recharge', '/api/external/recharge');
     return this.makeRequest(endpoint, {
       user_id: userId,
-      amount: amount.toString(),
+      amount: Math.floor(amount).toString(),
       order_id: orderId,
     }, userId);
   }
@@ -276,7 +276,7 @@ export class ProviderService implements ProviderAdapter {
     const endpoint = this.getEndpoint('withdraw', '/api/external/withdraw');
     return this.makeRequest(endpoint, {
       user_id: userId,
-      amount: amount.toString(),
+      amount: Math.floor(amount).toString(),
       order_id: orderId,
     }, userId);
   }
