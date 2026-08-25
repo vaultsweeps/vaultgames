@@ -450,7 +450,7 @@ export default function Navbar() {
           pathname.includes('/games') ? 'bg-white/10' : 'hover:bg-white/5'
         }`}>
           <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden">
-            <Image src="/images/vault-sweeps-logo.png" alt="Games" width={32} height={32} className={`w-full h-full object-contain ${!pathname.includes('/games') && 'opacity-60 grayscale-[50%]'}`} />
+            <Image src="/images/vault-sweeps-logo.png" alt="Games" width={32} height={32} className={`w-full h-full object-contain ${!pathname.includes('/games') ? 'opacity-60 grayscale-[50%]' : ''}`} />
           </div>
           {pathname.includes('/games') && <span className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-1 h-1 bg-white rounded-full" />}
         </Link>
