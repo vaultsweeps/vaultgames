@@ -5,9 +5,11 @@ import { X, Headset } from 'lucide-react'
 import { publicApi } from '@/lib/api'
 
 const SignalIcon = () => (
-  <svg viewBox="0 0 48 48" className="w-[18px] h-[18px]" fill="none">
-    <path d="M24 12a12 12 0 1 0 7.39 21.39l3.14 1.06-1.06-3.14A12 12 0 0 0 24 12z" fill="white"/>
-    <path d="M19 23h10M19 27h6" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+  <svg viewBox="0 0 64 64" className="w-[20px] h-[20px]" fill="none">
+    {/* Signal messenger logo - shield/speech bubble shape */}
+    <path d="M32 4C16.536 4 4 16.536 4 32c0 5.23 1.484 10.117 4.06 14.27L4 60l13.897-3.998A27.87 27.87 0 0 0 32 60c15.464 0 28-12.536 28-28S47.464 4 32 4z" fill="white" fillOpacity="0.95"/>
+    <path d="M20 30h24M20 37h16" stroke="#1D4ED8" strokeWidth="4" strokeLinecap="round"/>
+    <circle cx="32" cy="23" r="4" fill="#1D4ED8"/>
   </svg>
 )
 const TelegramIcon = () => (
@@ -35,11 +37,20 @@ export default function ExpandableContactFab({ inlinePill = false }: Props) {
     publicApi.getSettings().then(res => setSettings(res.data?.data || {})).catch(() => {})
   }, [])
 
-  const currentHour = new Date().getHours()
+  // Initialize with actual hour to avoid wrong URL on first render
+  const [currentHour, setCurrentHour] = useState(() => {
+    if (typeof window !== 'undefined') return new Date().getHours()
+    return 12 // default to midday (day shift) on server
+  })
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setCurrentHour(new Date().getHours()); setMounted(true) }, [])
+
   const isDayShift = currentHour >= 4 && currentHour < 16
+  const signalDayUrl = settings.signal_day_url || process.env.NEXT_PUBLIC_SIGNAL_DAY_URL
+  const signalNightUrl = settings.signal_night_url || process.env.NEXT_PUBLIC_SIGNAL_NIGHT_URL
   const signalUrl = isDayShift
-    ? (process.env.NEXT_PUBLIC_SIGNAL_DAY_URL || process.env.NEXT_PUBLIC_SIGNAL_NIGHT_URL || '#')
-    : (process.env.NEXT_PUBLIC_SIGNAL_NIGHT_URL || process.env.NEXT_PUBLIC_SIGNAL_DAY_URL || '#')
+    ? (signalDayUrl || signalNightUrl || process.env.NEXT_PUBLIC_TELEGRAM_URL || '#')
+    : (signalNightUrl || signalDayUrl || process.env.NEXT_PUBLIC_TELEGRAM_URL || '#')
   const telegramUrl = settings.telegram_url || process.env.NEXT_PUBLIC_TELEGRAM_URL || '#'
   const facebookUrl = settings.facebook_url || process.env.NEXT_PUBLIC_FACEBOOK_URL || '#'
 
