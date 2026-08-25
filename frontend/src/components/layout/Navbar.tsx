@@ -348,13 +348,24 @@ export default function Navbar() {
                   </div>
                 </div>
               ) : (
-                <div className="bg-[#1c1e2b] rounded-2xl p-4 space-y-3">
-                  <p className="text-sm text-secondary text-center mb-1">Sign in to play and win!</p>
-                  <button onClick={() => { setMobileOpen(false); openAuthModal('login'); }} className="btn-liquid btn-signin-liquid text-sm py-3 w-full">
-                    <span className="btn-liquid-content">Sign In</span>
+                <div className="bg-[#1c1e2b]/50 border border-white/5 rounded-3xl p-5 space-y-4 shadow-xl">
+                  <p className="text-[13px] font-bold tracking-wide text-white/50 text-center mb-2 uppercase">Sign in to play and win!</p>
+                  
+                  {/* Sign Up - Vibrant purple/blue gradient pill */}
+                  <button 
+                    onClick={() => { setMobileOpen(false); openAuthModal('register'); }} 
+                    className="relative group w-full py-4 rounded-full bg-gradient-to-r from-[#9333EA] via-[#6366F1] to-[#3B82F6] active:from-[#A855F7] active:via-[#818CF8] active:to-[#60A5FA] transition-all shadow-[0_0_25px_rgba(99,102,241,0.4)] active:scale-95"
+                  >
+                    <div className="absolute inset-0 rounded-full shadow-[inset_0_2px_4px_rgba(255,255,255,0.4)] pointer-events-none" />
+                    <span className="relative z-10 text-white font-black tracking-wider text-base drop-shadow-md">Sign Up</span>
                   </button>
-                  <button onClick={() => { setMobileOpen(false); openAuthModal('register'); }} className="btn-liquid btn-signup-beam text-sm py-3 w-full">
-                    <span className="btn-liquid-content">Sign Up</span>
+
+                  {/* Sign In - Dark pill with subtle cyan/purple border glow */}
+                  <button 
+                    onClick={() => { setMobileOpen(false); openAuthModal('login'); }} 
+                    className="relative group w-full py-3.5 rounded-full bg-[#0a0a14] border border-cyan-500/30 active:border-cyan-400/60 transition-all shadow-[0_0_15px_rgba(34,211,238,0.1)] active:scale-95"
+                  >
+                    <span className="relative z-10 text-white font-extrabold tracking-wide text-base">Sign In</span>
                   </button>
                 </div>
               )}
