@@ -221,7 +221,7 @@ export class ProviderService implements ProviderAdapter {
       return s;
     };
 
-    const base = username.replace(/[^a-zA-Z0-9_]/g, '').toLowerCase();
+    const base = username.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
 
     const wasModified = base !== username.toLowerCase();
     const needsSuffix =
