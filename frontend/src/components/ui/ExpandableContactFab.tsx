@@ -38,19 +38,19 @@ export default function ExpandableContactFab({ inlinePill = false }: Props) {
   const currentHour = new Date().getHours()
   const isDayShift = currentHour >= 4 && currentHour < 16
   const signalUrl = isDayShift
-    ? (process.env.NEXT_PUBLIC_SIGNAL_DAY_URL || process.env.NEXT_PUBLIC_SIGNAL_NIGHT_URL)
-    : (process.env.NEXT_PUBLIC_SIGNAL_NIGHT_URL || process.env.NEXT_PUBLIC_SIGNAL_DAY_URL)
+    ? (process.env.NEXT_PUBLIC_SIGNAL_DAY_URL || process.env.NEXT_PUBLIC_SIGNAL_NIGHT_URL || '#')
+    : (process.env.NEXT_PUBLIC_SIGNAL_NIGHT_URL || process.env.NEXT_PUBLIC_SIGNAL_DAY_URL || '#')
   const telegramUrl = settings.telegram_url || process.env.NEXT_PUBLIC_TELEGRAM_URL || '#'
   const facebookUrl = settings.facebook_url || process.env.NEXT_PUBLIC_FACEBOOK_URL || '#'
 
   const contacts: ContactItem[] = [
-    ...(signalUrl ? [{
+    {
       key: 'signal', href: signalUrl, icon: <SignalIcon />, label: 'Signal',
       badge: isDayShift ? 'D' : 'N',
       gradient: 'from-[#1D4ED8] to-[#3B82F6]',
       glow: 'rgba(59,130,246,0.7)',
       beam: 'conic-gradient(from 0deg, transparent 55%, #93C5FD 78%, #3B82F6 90%, transparent)',
-    }] : []),
+    },
     {
       key: 'telegram', href: telegramUrl, icon: <TelegramIcon />, label: 'Telegram',
       gradient: 'from-[#0369A1] to-[#0EA5E9]',
