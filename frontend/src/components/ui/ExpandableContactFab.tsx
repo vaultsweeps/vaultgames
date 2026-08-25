@@ -49,8 +49,8 @@ export default function ExpandableContactFab({ inlinePill = false }: Props) {
   const signalDayUrl = settings.signal_day_url || process.env.NEXT_PUBLIC_SIGNAL_DAY_URL
   const signalNightUrl = settings.signal_night_url || process.env.NEXT_PUBLIC_SIGNAL_NIGHT_URL
   const signalUrl = isDayShift
-    ? (signalDayUrl || signalNightUrl || process.env.NEXT_PUBLIC_TELEGRAM_URL || '#')
-    : (signalNightUrl || signalDayUrl || process.env.NEXT_PUBLIC_TELEGRAM_URL || '#')
+    ? (signalDayUrl || signalNightUrl || '#')
+    : (signalNightUrl || signalDayUrl || '#')
   const telegramUrl = settings.telegram_url || process.env.NEXT_PUBLIC_TELEGRAM_URL || '#'
   const facebookUrl = settings.facebook_url || process.env.NEXT_PUBLIC_FACEBOOK_URL || '#'
 
