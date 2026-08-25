@@ -197,8 +197,9 @@ export default function Navbar() {
           </div>
 
           {/* Mobile top-right icons: Theme + Wallet + Bell + Profile */}
-          <div className="lg:hidden flex items-center gap-2">
-            {/* Theme Toggle Mobile — only rendered after mount */}
+          {/* Mobile top-right: premium redesigned */}
+          <div className="lg:hidden flex items-center gap-1.5">
+            {/* Theme Toggle */}
             {mounted && (
               <button
                 onClick={() => {
@@ -206,45 +207,56 @@ export default function Navbar() {
                   else if (theme === 'light') setTheme('night')
                   else setTheme('dark')
                 }}
-                className="p-2 text-secondary hover:text-neon-blue transition-colors"
-                title={theme === 'dark' ? 'Light Mode' : theme === 'light' ? 'Night Mode' : 'Dark Mode'}
+                className="w-9 h-9 rounded-xl flex items-center justify-center text-white/60 hover:text-white hover:bg-white/8 transition-all border border-white/8"
                 aria-label="Toggle Theme"
                 suppressHydrationWarning
               >
-                {theme === 'light' ? <Sun className="w-5 h-5 text-amber-400" /> : theme === 'night' ? <Moon className="w-5 h-5 text-indigo-400" /> : <SunMoon className="w-5 h-5" />}
+                {theme === 'light'
+                  ? <Sun className="w-4 h-4 text-amber-400" />
+                  : theme === 'night'
+                  ? <Moon className="w-4 h-4 text-indigo-400" />
+                  : <SunMoon className="w-4 h-4" />}
               </button>
             )}
 
             {isAuthenticated && (
               <>
-                {/* Wallet Balance */}
+                {/* Wallet – glass pill */}
                 <button
                   onClick={() => setWalletOpen(true)}
-                  className="flex items-center gap-1 bg-[#2AC3FF]/10 border border-[#2AC3FF]/20 text-[#2AC3FF] rounded-full px-2.5 py-1 text-xs font-bold"
+                  className="flex items-center gap-1.5 bg-[#0DF2FF]/8 border border-[#0DF2FF]/25 text-[#0DF2FF] rounded-xl px-3 py-1.5 text-xs font-bold hover:bg-[#0DF2FF]/15 transition-all shadow-[0_0_12px_rgba(13,242,255,0.12)]"
                 >
                   <Wallet className="w-3.5 h-3.5" />
-                  <span>${balance.toFixed(2)}</span>
+                  <span className="font-mono tracking-tight">${balance.toFixed(2)}</span>
                 </button>
 
                 {/* Bell */}
-                <Link href="/dashboard/notifications" aria-label="Notifications" className="relative p-1.5 text-secondary hover:text-white transition-colors">
-                  <Bell className="w-5 h-5" />
+                <Link
+                  href="/dashboard/notifications"
+                  aria-label="Notifications"
+                  className="relative w-9 h-9 rounded-xl flex items-center justify-center text-white/60 hover:text-white hover:bg-white/8 transition-all border border-white/8"
+                >
+                  <Bell className="w-4 h-4" />
                   {unreadCount > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-neon-blue rounded-full text-[9px] text-white flex items-center justify-center font-mono">
+                    <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-0.5 bg-[#FF3D6E] rounded-full text-[9px] text-white flex items-center justify-center font-bold shadow-[0_0_8px_rgba(255,61,110,0.6)]">
                       {unreadCount > 9 ? '9+' : unreadCount}
                     </span>
                   )}
                 </Link>
 
                 {/* Profile Avatar */}
-                <Link href="/dashboard/profile" aria-label="Profile" className="w-8 h-8 rounded-full bg-gradient-to-br from-neon-blue to-neon-purple flex items-center justify-center text-white font-bold text-xs border border-border-strong shrink-0">
+                <Link
+                  href="/dashboard/profile"
+                  aria-label="Profile"
+                  className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#7C3AED] to-[#2563EB] flex items-center justify-center text-white font-black text-sm border border-white/15 shadow-[0_0_12px_rgba(124,58,237,0.4)] hover:scale-105 transition-transform shrink-0"
+                >
                   {user?.username?.charAt(0).toUpperCase() || <User className="w-4 h-4" />}
                 </Link>
               </>
             )}
 
             {!isAuthenticated && (
-              <div className="flex items-center gap-2 ml-1">
+              <div className="flex items-center gap-1.5 ml-1">
                 <button onClick={() => openAuthModal('login')} className="btn-liquid btn-signin-liquid text-xs py-1.5 px-3">
                   <span className="btn-liquid-content">Sign In</span>
                 </button>
@@ -389,57 +401,63 @@ export default function Navbar() {
       )}
     </AnimatePresence>
 
-    {/* Mobile Bottom Navigation Bar – left-aligned pill */}
-    <div className="lg:hidden fixed bottom-5 left-4 z-50 flex items-center pointer-events-none">
-      {/* Main Nav Pill */}
-      <div className="border border-white/10 rounded-full px-3 py-2 flex items-center gap-1 pointer-events-auto shadow-[0_8px_32px_rgba(0,0,0,0.4),0_1px_0_rgba(255,255,255,0.05)] bg-[#0c0c1e]/85 backdrop-blur-xl">
-
-        {/* Home */}
-        <Link href="/" aria-label="Home" className={`relative flex items-center justify-center w-10 h-10 rounded-full transition-all duration-200 ${
-          pathname === '/'
-            ? 'bg-white/12 text-white'
-            : 'text-white/50 hover:text-white hover:bg-white/8'
-        }`}>
-          <Home className="w-5 h-5" />
-          {pathname === '/' && <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-3.5 h-0.5 bg-violet-400 rounded-full shadow-[0_0_6px_rgba(167,139,250,0.9)]" />}
-        </Link>
-
-        {/* Games (Site Logo) */}
-        <Link href="/games" aria-label="Games" className={`relative flex items-center justify-center w-10 h-10 rounded-full transition-all duration-200 ${
-          pathname.includes('/games') ? 'opacity-100' : 'opacity-50 hover:opacity-85'
-        }`}>
-          <div className="w-8 h-8 rounded-full border border-white/15 flex items-center justify-center bg-black/50 overflow-hidden">
-            <Image src="/images/vault-sweeps-logo.png" alt="Games" width={32} height={32} className="w-full h-full object-contain p-0.5" />
-          </div>
-          {pathname.includes('/games') && <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-3.5 h-0.5 bg-violet-400 rounded-full shadow-[0_0_6px_rgba(167,139,250,0.9)]" />}
-        </Link>
-
-        {/* Bonuses */}
-        <Link href="/bonuses" aria-label="Bonuses" className={`relative flex items-center justify-center w-10 h-10 rounded-full transition-all duration-200 ${
-          pathname.includes('/bonuses')
-            ? 'bg-white/12 text-white'
-            : 'text-white/50 hover:text-white hover:bg-white/8'
-        }`}>
-          <Gift className="w-5 h-5" />
-          {pathname.includes('/bonuses') && <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-3.5 h-0.5 bg-violet-400 rounded-full shadow-[0_0_6px_rgba(167,139,250,0.9)]" />}
-        </Link>
-
-        {/* Divider */}
-        <div className="w-px h-6 bg-white/10 mx-1" />
-
-        {/* Contact FAB inside pill */}
-        <ExpandableContactFab inlinePill />
-
-      </div>
+    {/* Mobile Bottom Navigation Bar – right-aligned */}
+    <div className="lg:hidden fixed bottom-5 right-4 z-50 flex items-center pointer-events-none">
 
       {/* Menu Toggle Button */}
       <button
         onClick={() => setMobileOpen(!mobileOpen)}
         aria-label={mobileOpen ? "Close menu" : "Open menu"}
-        className="ml-2 w-11 h-11 rounded-full bg-gradient-to-br from-[#8b5cf6] to-[#6366f1] flex items-center justify-center text-white shadow-xl shadow-indigo-500/30 pointer-events-auto border border-white/10 active:scale-95 transition-transform"
+        className="mr-2 w-11 h-11 rounded-full bg-gradient-to-br from-[#8b5cf6] to-[#6366f1] flex items-center justify-center text-white shadow-xl shadow-indigo-500/30 pointer-events-auto border border-white/10 active:scale-95 transition-all hover:shadow-[0_0_20px_rgba(139,92,246,0.6)]"
       >
-        {mobileOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+        <AnimatePresence mode="wait" initial={false}>
+          {mobileOpen
+            ? <motion.span key="x" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }} transition={{ duration: 0.15 }}><X className="w-4 h-4" /></motion.span>
+            : <motion.span key="m" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }} transition={{ duration: 0.15 }}><Menu className="w-4 h-4" /></motion.span>
+          }
+        </AnimatePresence>
       </button>
+
+      {/* Main Nav Pill */}
+      <div className="border border-white/10 rounded-2xl px-2 py-2 flex items-center gap-0.5 pointer-events-auto shadow-[0_8px_40px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.06)] bg-[#0c0c20]/90 backdrop-blur-2xl">
+
+        {/* Home */}
+        <Link href="/" aria-label="Home" className={`relative flex flex-col items-center justify-center w-11 h-11 rounded-xl transition-all duration-200 group ${
+          pathname === '/'
+            ? 'bg-violet-500/20 text-violet-300'
+            : 'text-white/40 hover:text-white/80 hover:bg-white/6'
+        }`}>
+          <Home className="w-4.5 h-4.5" strokeWidth={pathname === '/' ? 2.5 : 1.8} />
+          {pathname === '/' && <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-violet-400 rounded-full shadow-[0_0_6px_rgba(167,139,250,1)]" />}
+        </Link>
+
+        {/* Games */}
+        <Link href="/games" aria-label="Games" className={`relative flex flex-col items-center justify-center w-11 h-11 rounded-xl transition-all duration-200 ${
+          pathname.includes('/games') ? 'opacity-100 bg-white/8' : 'opacity-40 hover:opacity-80 hover:bg-white/5'
+        }`}>
+          <div className="w-7 h-7 rounded-lg border border-white/15 flex items-center justify-center bg-black/40 overflow-hidden">
+            <Image src="/images/vault-sweeps-logo.png" alt="Games" width={28} height={28} className="w-full h-full object-contain" />
+          </div>
+          {pathname.includes('/games') && <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-violet-400 rounded-full shadow-[0_0_6px_rgba(167,139,250,1)]" />}
+        </Link>
+
+        {/* Bonuses */}
+        <Link href="/bonuses" aria-label="Bonuses" className={`relative flex flex-col items-center justify-center w-11 h-11 rounded-xl transition-all duration-200 ${
+          pathname.includes('/bonuses')
+            ? 'bg-amber-500/15 text-amber-300'
+            : 'text-white/40 hover:text-white/80 hover:bg-white/6'
+        }`}>
+          <Gift className="w-4.5 h-4.5" strokeWidth={pathname.includes('/bonuses') ? 2.5 : 1.8} />
+          {pathname.includes('/bonuses') && <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-amber-400 rounded-full shadow-[0_0_6px_rgba(251,191,36,1)]" />}
+        </Link>
+
+        {/* Divider */}
+        <div className="w-px h-7 bg-white/8 mx-0.5" />
+
+        {/* Contact FAB inside pill */}
+        <ExpandableContactFab inlinePill />
+
+      </div>
     </div>
 
     {/* Desktop Contact FAB */}
