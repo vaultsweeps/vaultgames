@@ -77,7 +77,7 @@ export default function FeaturedGames() {
               style={{ willChange: 'transform' }}
               className="relative aspect-square rounded-[1.5rem] sm:rounded-[2rem] overflow-hidden group cursor-pointer shadow-lg bg-surface"
             >
-              <Link href={`/games/${game.id}`} onClick={handleGameClick} className="absolute inset-0 z-20" aria-label={game.name}></Link>
+              <Link href={`/games/${game.name.toLowerCase().replace(/[\s_.-]+/g, '')}`} onClick={handleGameClick} className="absolute inset-0 z-20" aria-label={game.name}></Link>
               
               {/* Game thumbnail */}
               <div className={`absolute inset-0 bg-gradient-to-br ${COLORS[i % COLORS.length]}`}>

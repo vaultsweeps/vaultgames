@@ -55,7 +55,12 @@ export default function ChooseGameModal({ isOpen, onClose }: ChooseGameModalProp
 
   const handleGameClick = (id: string) => {
     onClose()
-    router.push(`/games/${id}`)
+    const game = games.find(g => g.id === id)
+    if (game) {
+      router.push(`/games/${game.name.toLowerCase().replace(/[\s_.-]+/g, '')}`)
+    } else {
+      router.push(`/games/${id}`)
+    }
   }
 
   return (
