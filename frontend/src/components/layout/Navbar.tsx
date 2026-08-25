@@ -472,7 +472,6 @@ export default function Navbar() {
 
       </div>
     </div>
-    </div>
 
     {/* Desktop Contact FAB */}
     <div className="hidden lg:block fixed bottom-6 right-6 z-50">
