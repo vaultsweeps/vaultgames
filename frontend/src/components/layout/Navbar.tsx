@@ -263,12 +263,22 @@ export default function Navbar() {
             )}
 
             {!isAuthenticated && (
-              <div className="flex items-center gap-1.5 ml-1">
-                <button onClick={() => openAuthModal('login')} className="btn-liquid btn-signin-liquid text-xs py-1.5 px-3">
-                  <span className="btn-liquid-content">Sign In</span>
+              <div className="flex items-center gap-2 ml-1">
+                {/* Sign In - Mobile */}
+                <button 
+                  onClick={() => openAuthModal('login')} 
+                  className="relative group px-4 py-2 rounded-full bg-[#0a0a14] border border-cyan-500/30 active:border-cyan-400/60 transition-all shadow-[0_0_10px_rgba(34,211,238,0.1)] active:scale-95"
+                >
+                  <span className="relative z-10 text-white font-extrabold tracking-wide text-[13px]">Sign In</span>
                 </button>
-                <button onClick={() => openAuthModal('register')} className="btn-liquid btn-signup-beam text-xs py-1.5 px-4">
-                  <span className="btn-liquid-content">Sign Up</span>
+
+                {/* Sign Up - Mobile */}
+                <button 
+                  onClick={() => openAuthModal('register')} 
+                  className="relative group px-5 py-2 rounded-full bg-gradient-to-r from-[#9333EA] via-[#6366F1] to-[#3B82F6] active:from-[#A855F7] active:via-[#818CF8] active:to-[#60A5FA] transition-all shadow-[0_0_15px_rgba(99,102,241,0.4)] active:scale-95"
+                >
+                  <div className="absolute inset-0 rounded-full shadow-[inset_0_1px_3px_rgba(255,255,255,0.4)] pointer-events-none" />
+                  <span className="relative z-10 text-white font-black tracking-wider text-[13px] drop-shadow-md">Sign Up</span>
                 </button>
               </div>
             )}
