@@ -71,7 +71,7 @@ export default function ExpandableContactFab({ inlinePill = false }: Props) {
         {isOpen && (
           <>
             <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
-            <div className="absolute bottom-[calc(100%+12px)] left-1/2 -translate-x-1/2 flex flex-col-reverse items-center gap-2.5 z-50">
+            <div className="absolute bottom-[calc(100%+12px)] left-1/2 -translate-x-1/2 flex flex-col-reverse items-center gap-3 z-50">
               {contacts.map((c, i) => (
                 <motion.div
                   key={c.key}
@@ -79,34 +79,36 @@ export default function ExpandableContactFab({ inlinePill = false }: Props) {
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.4, y: 10 }}
                   transition={{ type: 'spring', stiffness: 500, damping: 30, delay: i * 0.06 }}
-                  className="relative group"
+                  className="relative group flex items-center justify-center"
                 >
-                  {/* Spinning beam ring */}
-                  <div
-                    className="absolute pointer-events-none"
-                    style={{
-                      inset: -3,
-                      borderRadius: '50%',
-                      background: c.beam,
-                      animation: 'spin 2.2s linear infinite',
-                    }}
-                  />
+                  {/* Spinning beam ring ONLY for Signal */}
+                  {c.key === 'signal' && (
+                    <div
+                      className="absolute pointer-events-none"
+                      style={{
+                        inset: -3,
+                        borderRadius: '50%',
+                        background: c.beam,
+                        animation: 'spin 2.2s linear infinite',
+                      }}
+                    />
+                  )}
                   {/* Button */}
                   <a
                     href={c.href} target="_blank" rel="noopener noreferrer"
                     aria-label={c.label} onClick={() => setIsOpen(false)}
-                    className={`relative w-11 h-11 bg-gradient-to-br ${c.gradient} rounded-full flex items-center justify-center border border-white/20 hover:scale-110 active:scale-95 transition-transform duration-150`}
+                    className={`relative w-[46px] h-[46px] bg-gradient-to-br ${c.gradient} rounded-full flex items-center justify-center border border-white/20 hover:scale-110 active:scale-95 transition-transform duration-150`}
                     style={{ boxShadow: `0 4px 20px ${c.glow}`, zIndex: 1 }}
                   >
                     {c.icon}
                     {c.badge && (
-                      <span className={`absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full text-[7px] font-black text-white flex items-center justify-center ${isDayShift ? 'bg-amber-500' : 'bg-indigo-500'}`}>
+                      <span className={`absolute -top-1 -right-1 w-[18px] h-[18px] rounded-full text-[9px] font-black text-white flex items-center justify-center shadow-lg border border-white/20 ${isDayShift ? 'bg-[#F59E0B]' : 'bg-[#6366F1]'}`}>
                         {c.badge}
                       </span>
                     )}
                   </a>
                   {/* Tooltip */}
-                  <span className="absolute right-full mr-2.5 top-1/2 -translate-y-1/2 whitespace-nowrap bg-[#0d0d1f]/95 backdrop-blur text-white/85 text-[11px] font-semibold px-2.5 py-1 rounded-lg pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity border border-white/10 shadow-2xl">
+                  <span className="absolute right-full mr-3 whitespace-nowrap bg-[#0f0f23]/95 backdrop-blur-md text-white/90 text-xs font-semibold px-3 py-1.5 rounded-lg pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity border border-white/10 shadow-xl">
                     {c.label}
                   </span>
                 </motion.div>
