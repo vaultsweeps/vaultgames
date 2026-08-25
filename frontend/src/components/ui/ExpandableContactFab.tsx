@@ -128,7 +128,7 @@ export default function ExpandableContactFab({ inlinePill = false }: Props) {
               inset: inlinePill ? -3 : -4,
               borderRadius: '50%',
               background: inlinePill
-                ? 'conic-gradient(from 0deg, transparent 55%, rgba(167,139,250,0.5) 78%, rgba(139,92,246,0.9) 90%, transparent)'
+                ? 'conic-gradient(from 0deg, transparent 40%, rgba(167,139,250,0.8) 75%, #A855F7 88%, rgba(216,180,254,1) 95%, transparent)'
                 : 'conic-gradient(from 0deg, transparent 50%, rgba(167,139,250,0.6) 72%, #8B5CF6 88%, rgba(99,102,241,0.9) 96%, transparent)',
               animation: 'spin 2.2s linear infinite',
             }}
@@ -139,7 +139,7 @@ export default function ExpandableContactFab({ inlinePill = false }: Props) {
           aria-label={isOpen ? 'Close support' : 'Contact Support'}
           className={`relative flex items-center justify-center transition-all duration-200 active:scale-90 ${
             inlinePill
-              ? `w-[42px] h-[42px] rounded-2xl bg-gradient-to-br from-indigo-500/10 to-violet-500/5 border border-white/5 text-white/70 hover:text-white shadow-[inset_0_0_12px_rgba(99,102,241,0.1)]`
+              ? `w-[46px] h-[46px] rounded-[18px] bg-gradient-to-br from-[#7C3AED] via-[#6D28D9] to-[#4F46E5] border border-violet-400/50 text-white shadow-[0_0_15px_rgba(124,58,237,0.4)]`
               : `w-12 h-12 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#4F46E5] text-white border border-violet-400/30`
           }`}
           style={inlinePill ? undefined : {
