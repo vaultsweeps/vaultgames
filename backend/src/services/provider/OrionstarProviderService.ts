@@ -242,7 +242,7 @@ export class OrionstarProviderService implements ProviderAdapter {
     // Keep only what the provider allows (letters + digits + underscore)
     const base = username.replace(/[^a-zA-Z0-9_]/g, '').toLowerCase();
 
-    const wasModified = base !== username.toLowerCase().replace(/[^a-zA-Z0-9_]/g, '');
+    const wasModified = base !== username.toLowerCase();
     const needsSuffix =
       !base ||
       base.length < 6 ||

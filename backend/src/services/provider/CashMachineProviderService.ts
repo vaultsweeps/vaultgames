@@ -357,11 +357,11 @@ export class CashMachineProviderService implements ProviderAdapter {
       return s;
     };
 
-    // Keep only what the provider allows (letters + digits)
-    const base = username.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+    // Keep only what the provider allows (letters, digits, underscore)
+    const base = username.replace(/[^a-zA-Z0-9_]/g, '').toLowerCase();
 
     // Determine if the username needed any fixing
-    const wasModified = base !== username.toLowerCase().replace(/[^a-zA-Z0-9]/g, '');
+    const wasModified = base !== username.toLowerCase();
     const needsSuffix =
       !base ||
       base.length < 3 ||
