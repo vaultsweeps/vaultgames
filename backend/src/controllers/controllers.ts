@@ -297,7 +297,7 @@ export const sendContactForm = asyncHandler(async (req: any, res: Response) => {
 export const getPublicSettings = asyncHandler(async (_req: any, res: Response) => {
   const obj = await getCached('public:settings', async () => {
     // Only expose safe public settings
-    const publicKeys = ['site_name', 'site_tagline', 'site_description', 'telegram_url', 'facebook_url', 'maintenance_mode']
+    const publicKeys = ['site_name', 'site_tagline', 'site_description', 'telegram_url', 'facebook_url', 'maintenance_mode', 'signal_day_url', 'signal_night_url']
     const settings = await prisma.setting.findMany({
       where: { key: { in: publicKeys } }
     })
