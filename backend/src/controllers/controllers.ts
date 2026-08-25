@@ -255,11 +255,11 @@ export const getPublicGameDetails = asyncHandler(async (req: any, res: Response)
 })
 
 export const getPublicBonuses = asyncHandler(async (_req: any, res: Response) => {
-  const bonuses = await getCached('public:bonuses', async () => {
+  const bonuses = await getCached('public:bonuses_v2', async () => {
     return await prisma.bonus.findMany({
       where: {
         isActive: true,
-        type: { not: 'freeplay' }, // freeplay is internal-only (coupon bonuses)
+        type: { notIn: ['freeplay', 'wheel'] }, // freeplay/wheel are internal-only
         OR: [{ expiresAt: null }, { expiresAt: { gte: new Date() } }]
       },
       orderBy: { createdAt: 'desc' }
