@@ -81,8 +81,9 @@ export default function ExpandableContactFab({ inlinePill = false }: Props) {
       <AnimatePresence>
         {isOpen && (
           <>
+            {/* Backdrop to close */}
             <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
-            <div className="absolute bottom-[calc(100%+12px)] left-1/2 -translate-x-1/2 flex flex-col-reverse items-center gap-3 z-50">
+            <div className="absolute bottom-[calc(100%+12px)] left-1/2 -translate-x-1/2 flex flex-col-reverse items-center gap-3" style={{ zIndex: 55 }}>
               {contacts.map((c, i) => (
                 <motion.div
                   key={c.key}
@@ -91,6 +92,7 @@ export default function ExpandableContactFab({ inlinePill = false }: Props) {
                   exit={{ opacity: 0, scale: 0.4, y: 10 }}
                   transition={{ type: 'spring', stiffness: 500, damping: 30, delay: i * 0.06 }}
                   className="relative group flex items-center justify-center"
+                  style={{ zIndex: 56 }}
                 >
                   {/* Spinning beam ring ONLY for Signal */}
                   {c.key === 'signal' && (
@@ -104,12 +106,18 @@ export default function ExpandableContactFab({ inlinePill = false }: Props) {
                       }}
                     />
                   )}
-                  {/* Button */}
-                  <a
-                    href={c.href} target="_blank" rel="noopener noreferrer"
-                    aria-label={c.label} onClick={() => setIsOpen(false)}
-                    className={`relative w-[46px] h-[46px] bg-gradient-to-br ${c.gradient} rounded-full flex items-center justify-center border border-white/20 hover:scale-110 active:scale-95 transition-transform duration-150`}
-                    style={{ boxShadow: `0 4px 20px ${c.glow}`, zIndex: 1 }}
+                  {/* Button — use button + window.open to bypass overlay z-index issues */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setIsOpen(false)
+                      if (c.href && c.href !== '#') {
+                        window.open(c.href, '_blank', 'noopener,noreferrer')
+                      }
+                    }}
+                    aria-label={c.label}
+                    className={`relative w-[46px] h-[46px] bg-gradient-to-br ${c.gradient} rounded-full flex items-center justify-center border border-white/20 hover:scale-110 active:scale-95 transition-transform duration-150 cursor-pointer`}
+                    style={{ boxShadow: `0 4px 20px ${c.glow}` }}
                   >
                     {c.icon}
                     {c.badge && (
@@ -117,7 +125,7 @@ export default function ExpandableContactFab({ inlinePill = false }: Props) {
                         {c.badge}
                       </span>
                     )}
-                  </a>
+                  </button>
                   {/* Tooltip */}
                   <span className="absolute right-full mr-3 whitespace-nowrap bg-[#0f0f23]/95 backdrop-blur-md text-white/90 text-xs font-semibold px-3 py-1.5 rounded-lg pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity border border-white/10 shadow-xl">
                     {c.label}
