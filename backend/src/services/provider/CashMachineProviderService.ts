@@ -328,30 +328,59 @@ export class CashMachineProviderService implements ProviderAdapter {
    */
   /**
    * Sanitize a platform username before sending to the provider.
-   * Prefixes reserved words and strips characters the provider rejects.
-   * Ensures the final username is 3-20 characters.
+   *
+   * CashMachine / VegasRoll / CashFrenzy / GameRoom rules:
+   *   - Only letters and digits ([a-zA-Z0-9])  — NO underscore, NO special chars
+   *   - 3–20 characters
+   *
+   * Strategy: strip invalid chars from the user's username to form a "base",
+   * then ALWAYS append a short random alphanumeric suffix whenever:
+   *   (a) the original username contained any invalid character (modified by
+   *       stripping) so the generated name is unique and doesn't clash, OR
+   *   (b) the base is too short (< 3 chars), OR
+   *   (c) the base is a reserved word that the provider blocks.
+   *
+   * This guarantees a valid unique account is always created regardless of
+   * what username the player chose on our platform.
    */
   private sanitizeUsername(username: string): string {
-    // Reserved usernames that providers block or intercept
     const RESERVED = new Set([
       'admin', 'root', 'test', 'user', 'guest', 'system', 'support',
       'superadmin', 'administrator', 'mod', 'moderator', 'staff',
     ]);
 
-    // Strip ALL non-alphanumeric characters — providers only allow letters and numbers
-    // (no underscores, no special chars, no spaces)
-    let safe = username.replace(/[^a-zA-Z0-9]/g, '').substring(0, 18);
+    /** 4-char random lowercase alphanumeric suffix — 36^4 = 1.6M combinations */
+    const randomSuffix = (): string => {
+      const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+      let s = '';
+      for (let i = 0; i < 4; i++) s += chars[Math.floor(Math.random() * chars.length)];
+      return s;
+    };
 
-    // Prefix reserved words so the provider accepts them
-    // Use "u" prefix (no underscore) to stay within alphanumeric-only rule
-    if (!safe || RESERVED.has(safe.toLowerCase())) {
-      safe = `u${safe || username.replace(/[^a-zA-Z0-9]/g, '').substring(0, 16)}`;
+    // Keep only what the provider allows (letters + digits)
+    const base = username.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+
+    // Determine if the username needed any fixing
+    const wasModified = base !== username.toLowerCase().replace(/[^a-zA-Z0-9]/g, '');
+    const needsSuffix =
+      !base ||
+      base.length < 3 ||
+      RESERVED.has(base) ||
+      wasModified;   // had spaces, special chars, or other invalid characters
+
+    let safe: string;
+    if (needsSuffix) {
+      // Trim base to leave room for the 4-char suffix (max total = 20)
+      const trimmedBase = (base || 'u').substring(0, 15);
+      safe = trimmedBase + randomSuffix();
+    } else {
+      safe = base;
     }
 
-    // Ensure minimum length of 3 chars
-    if (safe.length < 3) safe = `u1${safe}`;
+    // Minimum length guard (edge case)
+    if (safe.length < 3) safe = safe.padEnd(3, '0');
 
-    // Final hard cap at 20 chars (provider limit)
+    // Hard cap at 20 chars (provider limit)
     return safe.substring(0, 20);
   }
 

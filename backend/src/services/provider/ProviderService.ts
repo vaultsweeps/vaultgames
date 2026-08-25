@@ -200,15 +200,61 @@ export class ProviderService implements ProviderAdapter {
     }
   }
 
+  /**
+   * Sanitize a username so it passes provider constraints:
+   *   - Only letters, digits, and underscores  ([a-zA-Z0-9_])
+   *   - 3–20 characters
+   *
+   * Always appends a 4-char random suffix when the username needed modification,
+   * guaranteeing a valid unique account name regardless of player input.
+   */
+  private sanitizeUsername(username: string): string {
+    const RESERVED = new Set([
+      'admin', 'root', 'test', 'user', 'guest', 'system', 'support',
+      'superadmin', 'administrator', 'mod', 'moderator', 'staff',
+    ]);
+
+    const randomSuffix = (): string => {
+      const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+      let s = '';
+      for (let i = 0; i < 4; i++) s += chars[Math.floor(Math.random() * chars.length)];
+      return s;
+    };
+
+    const base = username.replace(/[^a-zA-Z0-9_]/g, '').toLowerCase();
+
+    const wasModified = base !== username.toLowerCase().replace(/[^a-zA-Z0-9_]/g, '');
+    const needsSuffix =
+      !base ||
+      base.length < 3 ||
+      RESERVED.has(base) ||
+      wasModified;
+
+    let safe: string;
+    if (needsSuffix) {
+      const trimmedBase = (base || 'u').substring(0, 15);
+      safe = trimmedBase + randomSuffix();
+    } else {
+      safe = base;
+    }
+
+    if (safe.length < 3) safe = safe.padEnd(3, '0');
+    return safe.substring(0, 20);
+  }
+
   async createPlayer(username: string, password?: string): Promise<{ userId: string; accountName: string }> {
     const endpoint = this.getEndpoint('createPlayer', '/api/external/addUser');
+    const safeUsername = this.sanitizeUsername(username);
+    if (safeUsername !== username) {
+      console.info(`[ProviderService:${this.provider.name}] Username sanitized: "${username}" → "${safeUsername}"`);
+    }
     const data = await this.makeRequest(endpoint, {
-      account: username,
+      account: safeUsername,
       login_pwd: password || 'Default123!',
     });
 
-    const userId = data?.user_id || `usr_${username}`;
-    const accountName = data?.account_name || username;
+    const userId = data?.user_id || `usr_${safeUsername}`;
+    const accountName = data?.account_name || safeUsername;
 
     if (!userId) {
       throw new AppError('Provider failed to return a valid player ID', 502);
