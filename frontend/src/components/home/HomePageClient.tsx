@@ -202,37 +202,6 @@ export default function HomePageClient() {
         </div>
       </section>
 
-      {/* Floating contact buttons */}
-      <div className="fixed bottom-24 right-4 lg:bottom-6 lg:right-6 z-40 flex flex-col gap-3">
-        {/* Signal – FIRST: fastest, auto-routes by time of day */}
-        {signalUrl && (
-          <a href={signalUrl} target="_blank" rel="noopener noreferrer"
-            aria-label="Signal Support"
-            className="btn-signal-beam w-12 h-12 rounded-full flex items-center justify-center shadow-lg shadow-[#3a76f0]/40 hover:scale-110 transition-transform relative"
-            title={signalUrl.includes('Vaulter') ? 'Signal (Day Shift 4 AM–4 PM)' : 'Signal (Night Shift 4 PM–4 AM)'}>
-            <svg viewBox="0 0 48 48" className="w-6 h-6 relative z-10" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-              <path d="M24 12a12 12 0 1 0 7.39 21.39l3.14 1.06-1.06-3.14A12 12 0 0 0 24 12z" fill="white"/>
-              <path d="M19 23h10M19 27h6" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-            </svg>
-            {/* Live shift badge */}
-            <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[8px] font-bold text-white flex items-center justify-center z-10" style={{ background: signalUrl.includes('Vaulter') ? '#f59e0b' : '#6366f1' }}>
-              {signalUrl.includes('Vaulter') ? 'D' : 'N'}
-            </span>
-          </a>
-        )}
-        <a href={settings.telegram_url || process.env.NEXT_PUBLIC_TELEGRAM_URL || '#'} target="_blank" rel="noopener noreferrer"
-          aria-label="Telegram Support"
-          className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform hover:shadow-blue-500/40"
-          title="Telegram Support">
-          <Send className="w-5 h-5 text-white" aria-hidden="true" />
-        </a>
-        <a href={settings.facebook_url || process.env.NEXT_PUBLIC_FACEBOOK_URL || '#'} target="_blank" rel="noopener noreferrer"
-          aria-label="Facebook Messenger Support"
-          className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform hover:shadow-blue-600/40"
-          title="Facebook Messenger">
-          <MessageCircle className="w-5 h-5 text-white" aria-hidden="true" />
-        </a>
-      </div>
     </>
   )
 }
