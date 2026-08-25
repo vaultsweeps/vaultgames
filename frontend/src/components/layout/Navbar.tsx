@@ -389,45 +389,54 @@ export default function Navbar() {
       )}
     </AnimatePresence>
 
-    {/* Mobile Bottom Navigation Bar */}
-    <div className="lg:hidden fixed bottom-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5 pointer-events-none w-max">
+    {/* Mobile Bottom Navigation Bar – left-aligned pill */}
+    <div className="lg:hidden fixed bottom-5 left-4 z-50 flex items-center pointer-events-none">
       {/* Main Nav Pill */}
-      <div className="border border-purple-500/20 rounded-full px-4 py-2.5 flex items-center gap-3 pointer-events-auto shadow-[0_4px_32px_rgba(139,92,246,0.15),0_1px_0_rgba(99,102,241,0.25)] bg-[#0a0a1a]/80 backdrop-blur-xl">
+      <div className="border border-white/10 rounded-full px-3 py-2 flex items-center gap-1 pointer-events-auto shadow-[0_8px_32px_rgba(0,0,0,0.4),0_1px_0_rgba(255,255,255,0.05)] bg-[#0c0c1e]/85 backdrop-blur-xl">
+
         {/* Home */}
-        <Link href="/" aria-label="Home" className={`relative flex items-center justify-center w-9 h-9 rounded-full transition-all ${pathname === '/' ? 'bg-white/10 text-white' : 'text-secondary hover:text-white'}`}>
+        <Link href="/" aria-label="Home" className={`relative flex items-center justify-center w-10 h-10 rounded-full transition-all duration-200 ${
+          pathname === '/'
+            ? 'bg-white/12 text-white'
+            : 'text-white/50 hover:text-white hover:bg-white/8'
+        }`}>
           <Home className="w-5 h-5" />
-          {pathname === '/' && <div className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 w-4 h-0.5 bg-neon-purple rounded-full shadow-[0_0_8px_rgba(168,85,247,0.9)]" />}
+          {pathname === '/' && <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-3.5 h-0.5 bg-violet-400 rounded-full shadow-[0_0_6px_rgba(167,139,250,0.9)]" />}
         </Link>
 
         {/* Games (Site Logo) */}
-        <Link href="/games" aria-label="Games" className={`relative flex items-center justify-center transition-all ${pathname.includes('/games') ? 'opacity-100' : 'opacity-60 hover:opacity-90'}`}>
-          <div className="w-9 h-9 rounded-full border border-white/15 flex items-center justify-center bg-black/60 overflow-hidden">
-            <Image src="/images/vault-sweeps-logo.png" alt="Games" width={36} height={36} className="w-full h-full object-contain p-1" />
+        <Link href="/games" aria-label="Games" className={`relative flex items-center justify-center w-10 h-10 rounded-full transition-all duration-200 ${
+          pathname.includes('/games') ? 'opacity-100' : 'opacity-50 hover:opacity-85'
+        }`}>
+          <div className="w-8 h-8 rounded-full border border-white/15 flex items-center justify-center bg-black/50 overflow-hidden">
+            <Image src="/images/vault-sweeps-logo.png" alt="Games" width={32} height={32} className="w-full h-full object-contain p-0.5" />
           </div>
-          {pathname.includes('/games') && <div className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 w-4 h-0.5 bg-neon-purple rounded-full shadow-[0_0_8px_rgba(168,85,247,0.9)]" />}
+          {pathname.includes('/games') && <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-3.5 h-0.5 bg-violet-400 rounded-full shadow-[0_0_6px_rgba(167,139,250,0.9)]" />}
         </Link>
 
-        {/* Gift/Bonuses */}
-        <Link href="/bonuses" aria-label="Bonuses" className={`relative flex items-center justify-center w-9 h-9 rounded-full transition-all ${pathname.includes('/bonuses') ? 'bg-white/10 text-white' : 'text-secondary hover:text-white'}`}>
+        {/* Bonuses */}
+        <Link href="/bonuses" aria-label="Bonuses" className={`relative flex items-center justify-center w-10 h-10 rounded-full transition-all duration-200 ${
+          pathname.includes('/bonuses')
+            ? 'bg-white/12 text-white'
+            : 'text-white/50 hover:text-white hover:bg-white/8'
+        }`}>
           <Gift className="w-5 h-5" />
-          {pathname.includes('/bonuses') && <div className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 w-4 h-0.5 bg-neon-purple rounded-full shadow-[0_0_8px_rgba(168,85,247,0.9)]" />}
+          {pathname.includes('/bonuses') && <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-3.5 h-0.5 bg-violet-400 rounded-full shadow-[0_0_6px_rgba(167,139,250,0.9)]" />}
         </Link>
 
-        {/* Crown/VIP */}
-        <Link href="/vip" aria-label="VIP" className={`relative flex items-center justify-center w-9 h-9 rounded-full transition-all ${pathname.includes('/vip') ? 'text-yellow-400' : 'text-yellow-400/60 hover:text-yellow-400'}`}>
-          <Crown className="w-5 h-5" />
-          {pathname.includes('/vip') && <div className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 w-4 h-0.5 bg-yellow-400 rounded-full shadow-[0_0_8px_rgba(250,204,21,0.9)]" />}
-        </Link>
+        {/* Divider */}
+        <div className="w-px h-6 bg-white/10 mx-1" />
+
+        {/* Contact FAB inside pill */}
+        <ExpandableContactFab inlinePill />
+
       </div>
-
-      {/* Contact FAB */}
-      <ExpandableContactFab />
 
       {/* Menu Toggle Button */}
       <button
         onClick={() => setMobileOpen(!mobileOpen)}
         aria-label={mobileOpen ? "Close menu" : "Open menu"}
-        className="w-11 h-11 rounded-full bg-gradient-to-br from-[#8b5cf6] to-[#6366f1] flex items-center justify-center text-white shadow-xl shadow-indigo-500/30 pointer-events-auto border border-border-strong active:scale-95 transition-transform"
+        className="ml-2 w-11 h-11 rounded-full bg-gradient-to-br from-[#8b5cf6] to-[#6366f1] flex items-center justify-center text-white shadow-xl shadow-indigo-500/30 pointer-events-auto border border-white/10 active:scale-95 transition-transform"
       >
         {mobileOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
       </button>
