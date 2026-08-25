@@ -364,7 +364,7 @@ export class CashMachineProviderService implements ProviderAdapter {
     const wasModified = base !== username.toLowerCase();
     const needsSuffix =
       !base ||
-      base.length < 3 ||
+      base.length < 6 ||
       RESERVED.has(base) ||
       wasModified;   // had spaces, special chars, or other invalid characters
 
@@ -378,7 +378,7 @@ export class CashMachineProviderService implements ProviderAdapter {
     }
 
     // Minimum length guard (edge case)
-    if (safe.length < 3) safe = safe.padEnd(3, '0');
+    if (safe.length < 6) safe = safe.padEnd(6, '0');
 
     // Hard cap at 20 chars (provider limit)
     return safe.substring(0, 20);
