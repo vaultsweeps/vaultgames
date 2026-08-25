@@ -221,13 +221,27 @@ export default function Navbar() {
 
             {isAuthenticated && (
               <>
-                {/* Wallet – glass pill */}
+                {/* Wallet — premium glass card */}
                 <button
                   onClick={() => setWalletOpen(true)}
-                  className="flex items-center gap-1.5 bg-[#0DF2FF]/8 border border-[#0DF2FF]/25 text-[#0DF2FF] rounded-xl px-3 py-1.5 text-xs font-bold hover:bg-[#0DF2FF]/15 transition-all shadow-[0_0_12px_rgba(13,242,255,0.12)]"
+                  className="flex items-center gap-0 rounded-2xl overflow-hidden border border-white/10 bg-[#0a0a1e]/80 backdrop-blur-xl shadow-[0_4px_24px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.06)] hover:border-white/20 transition-all active:scale-95"
+                  style={{ boxShadow: '0 0 0 1px rgba(37,99,235,0.15), 0 4px 20px rgba(37,99,235,0.1)' }}
                 >
-                  <Wallet className="w-3.5 h-3.5" />
-                  <span className="font-mono tracking-tight">${balance.toFixed(2)}</span>
+                  {/* Dollar circle */}
+                  <div className="flex items-center justify-center w-10 h-10 ml-1.5 rounded-full bg-gradient-to-br from-[#1a2a4a] to-[#0d1a35] border border-blue-500/20 shadow-[0_0_10px_rgba(59,130,246,0.3)]">
+                    <span className="text-[#3B82F6] font-black text-base" style={{ textShadow: '0 0 10px rgba(59,130,246,0.8)' }}>$</span>
+                  </div>
+                  {/* Balance text */}
+                  <div className="flex flex-col items-center px-3">
+                    <span className="text-[9px] font-bold tracking-[0.15em] text-white/40 uppercase">Balance</span>
+                    <span className="text-white font-black text-base leading-tight" style={{ fontVariantNumeric: 'tabular-nums' }}>{balance.toFixed(2)}</span>
+                  </div>
+                  {/* Divider */}
+                  <div className="w-px h-8 bg-white/10" />
+                  {/* Wallet icon */}
+                  <div className="flex items-center justify-center w-10 h-10 mr-1.5 rounded-xl bg-gradient-to-br from-[#2563EB] to-[#1D4ED8] shadow-[0_0_14px_rgba(37,99,235,0.5)]">
+                    <Wallet className="w-5 h-5 text-white" />
+                  </div>
                 </button>
 
                 {/* Bell */}
@@ -401,63 +415,63 @@ export default function Navbar() {
       )}
     </AnimatePresence>
 
-    {/* Mobile Bottom Navigation Bar – right-aligned */}
-    <div className="lg:hidden fixed bottom-5 right-4 z-50 flex items-center pointer-events-none">
+    {/* Mobile Bottom Navigation Bar */}
+    <div className="lg:hidden fixed bottom-5 left-1/2 -translate-x-1/2 w-[90%] max-w-[400px] z-50 flex justify-between items-center pointer-events-none">
 
       {/* Menu Toggle Button */}
       <button
         onClick={() => setMobileOpen(!mobileOpen)}
         aria-label={mobileOpen ? "Close menu" : "Open menu"}
-        className="mr-2 w-11 h-11 rounded-full bg-gradient-to-br from-[#8b5cf6] to-[#6366f1] flex items-center justify-center text-white shadow-xl shadow-indigo-500/30 pointer-events-auto border border-white/10 active:scale-95 transition-all hover:shadow-[0_0_20px_rgba(139,92,246,0.6)]"
+        className="w-[52px] h-[52px] rounded-full bg-[#7C3AED] hover:bg-[#6D28D9] flex items-center justify-center text-white shadow-lg pointer-events-auto transition-all active:scale-95"
       >
         <AnimatePresence mode="wait" initial={false}>
           {mobileOpen
-            ? <motion.span key="x" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }} transition={{ duration: 0.15 }}><X className="w-4 h-4" /></motion.span>
-            : <motion.span key="m" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }} transition={{ duration: 0.15 }}><Menu className="w-4 h-4" /></motion.span>
+            ? <motion.span key="x" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }} transition={{ duration: 0.15 }}><X className="w-5 h-5" /></motion.span>
+            : <motion.span key="m" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }} transition={{ duration: 0.15 }}><Menu className="w-5 h-5" /></motion.span>
           }
         </AnimatePresence>
       </button>
 
       {/* Main Nav Pill */}
-      <div className="border border-white/10 rounded-2xl px-2 py-2 flex items-center gap-0.5 pointer-events-auto shadow-[0_8px_40px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.06)] bg-[#0c0c20]/90 backdrop-blur-2xl">
+      <div className="border border-white/5 rounded-3xl px-1.5 py-1.5 flex items-center gap-1 pointer-events-auto shadow-xl bg-[#0b0f19] backdrop-blur-md">
 
         {/* Home */}
-        <Link href="/" aria-label="Home" className={`relative flex flex-col items-center justify-center w-11 h-11 rounded-xl transition-all duration-200 group ${
+        <Link href="/" aria-label="Home" className={`relative flex flex-col items-center justify-center w-[52px] h-[52px] rounded-2xl transition-all duration-200 group ${
           pathname === '/'
-            ? 'bg-violet-500/20 text-violet-300'
-            : 'text-white/40 hover:text-white/80 hover:bg-white/6'
+            ? 'bg-white/10 text-white'
+            : 'text-white/40 hover:text-white/80 hover:bg-white/5'
         }`}>
-          <Home className="w-4.5 h-4.5" strokeWidth={pathname === '/' ? 2.5 : 1.8} />
-          {pathname === '/' && <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-violet-400 rounded-full shadow-[0_0_6px_rgba(167,139,250,1)]" />}
+          <Home className="w-5 h-5" strokeWidth={pathname === '/' ? 2.5 : 1.8} />
+          {pathname === '/' && <span className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-1 h-1 bg-white rounded-full" />}
         </Link>
 
         {/* Games */}
-        <Link href="/games" aria-label="Games" className={`relative flex flex-col items-center justify-center w-11 h-11 rounded-xl transition-all duration-200 ${
-          pathname.includes('/games') ? 'opacity-100 bg-white/8' : 'opacity-40 hover:opacity-80 hover:bg-white/5'
+        <Link href="/games" aria-label="Games" className={`relative flex flex-col items-center justify-center w-[52px] h-[52px] rounded-2xl transition-all duration-200 ${
+          pathname.includes('/games') ? 'bg-white/10' : 'hover:bg-white/5'
         }`}>
-          <div className="w-7 h-7 rounded-lg border border-white/15 flex items-center justify-center bg-black/40 overflow-hidden">
-            <Image src="/images/vault-sweeps-logo.png" alt="Games" width={28} height={28} className="w-full h-full object-contain" />
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden">
+            <Image src="/images/vault-sweeps-logo.png" alt="Games" width={32} height={32} className={`w-full h-full object-contain ${!pathname.includes('/games') && 'opacity-60 grayscale-[50%]'}`} />
           </div>
-          {pathname.includes('/games') && <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-violet-400 rounded-full shadow-[0_0_6px_rgba(167,139,250,1)]" />}
+          {pathname.includes('/games') && <span className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-1 h-1 bg-white rounded-full" />}
         </Link>
 
         {/* Bonuses */}
-        <Link href="/bonuses" aria-label="Bonuses" className={`relative flex flex-col items-center justify-center w-11 h-11 rounded-xl transition-all duration-200 ${
+        <Link href="/bonuses" aria-label="Bonuses" className={`relative flex flex-col items-center justify-center w-[52px] h-[52px] rounded-2xl transition-all duration-200 ${
           pathname.includes('/bonuses')
-            ? 'bg-amber-500/15 text-amber-300'
-            : 'text-white/40 hover:text-white/80 hover:bg-white/6'
+            ? 'bg-[#2a1f1a] text-[#FBBF24]'
+            : 'text-white/40 hover:text-white/80 hover:bg-white/5'
         }`}>
-          <Gift className="w-4.5 h-4.5" strokeWidth={pathname.includes('/bonuses') ? 2.5 : 1.8} />
-          {pathname.includes('/bonuses') && <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-amber-400 rounded-full shadow-[0_0_6px_rgba(251,191,36,1)]" />}
+          <Gift className="w-5 h-5" strokeWidth={pathname.includes('/bonuses') ? 2.5 : 1.8} />
+          {pathname.includes('/bonuses') && <span className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-[#FBBF24] rounded-full shadow-[0_0_8px_rgba(251,191,36,0.8)]" />}
         </Link>
 
-        {/* Divider */}
-        <div className="w-px h-7 bg-white/8 mx-0.5" />
-
         {/* Contact FAB inside pill */}
-        <ExpandableContactFab inlinePill />
+        <div className="w-[52px] h-[52px] flex items-center justify-center">
+          <ExpandableContactFab inlinePill />
+        </div>
 
       </div>
+    </div>
     </div>
 
     {/* Desktop Contact FAB */}
