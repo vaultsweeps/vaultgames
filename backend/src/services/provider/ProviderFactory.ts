@@ -9,6 +9,7 @@ import { MilkywayProviderService } from './MilkywayProviderService';
 import { ProviderAdapter } from './ProviderAdapter';
 import prisma from '../../lib/prisma';
 import { Provider } from '@prisma/client';
+import { resolveGameId } from '../../utils/gameResolver';
 
 export function createProviderService(provider: Provider): ProviderAdapter {
   const name = provider.name?.toLowerCase() || '';
@@ -80,8 +81,11 @@ export class ProviderFactory {
     const cached = this.gameProviderCache.get(gameId);
     if (cached && Date.now() - cached.timestamp < CACHE_TTL) return cached.data;
 
+    let targetId = gameId;
+    try { targetId = await resolveGameId(gameId); } catch(e) {}
+
     const game = await prisma.game.findUnique({
-      where: { id: gameId },
+      where: { id: targetId },
       include: { provider: true },
     });
     let service: ProviderAdapter | null = null;
@@ -100,8 +104,11 @@ export class ProviderFactory {
     const cached = this.gameProviderIdCache.get(gameId);
     if (cached && Date.now() - cached.timestamp < CACHE_TTL) return cached.data;
 
+    let targetId = gameId;
+    try { targetId = await resolveGameId(gameId); } catch(e) {}
+
     const game = await prisma.game.findUnique({
-      where: { id: gameId },
+      where: { id: targetId },
       select: { providerId: true },
     });
     const pId = game?.providerId || null;

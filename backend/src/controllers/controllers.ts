@@ -240,10 +240,15 @@ export const getPublicFeaturedGames = asyncHandler(async (_req: any, res: Respon
   res.json({ success: true, data: games })
 })
 
+import { resolveGameId } from '../utils/gameResolver';
+
 export const getPublicGameDetails = asyncHandler(async (req: any, res: Response) => {
   const { id } = req.params
+  
+  const gameId = await resolveGameId(id);
+  
   const game = await prisma.game.findUnique({
-    where: { id }
+    where: { id: gameId }
   })
   if (!game || !game.isActive) throw new AppError('Game not found', 404)
   res.json({ success: true, data: game })
