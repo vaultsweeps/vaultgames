@@ -6,6 +6,8 @@ import { GameRoomProviderService } from './GameRoomProviderService';
 import { CashFrenzyProviderService } from './CashFrenzyProviderService';
 import { VegasRollProviderService } from './VegasRollProviderService';
 import { MilkywayProviderService } from './MilkywayProviderService';
+import { MafiaProviderService } from './MafiaProviderService';
+import { PandaMasterProviderService } from './PandaMasterProviderService';
 import { ProviderAdapter } from './ProviderAdapter';
 import prisma from '../../lib/prisma';
 import { Provider } from '@prisma/client';
@@ -33,6 +35,12 @@ export function createProviderService(provider: Provider): ProviderAdapter {
   }
   if (name.includes('milkyway') || name.includes('milky way') || name.includes('milky_way')) {
     return new MilkywayProviderService(provider);
+  }
+  if (name.includes('mafia')) {
+    return new MafiaProviderService(provider);
+  }
+  if (name.includes('pandamaster') || name.includes('panda master') || name.includes('panda_master')) {
+    return new PandaMasterProviderService(provider);
   }
   return new ProviderService(provider);
 }
