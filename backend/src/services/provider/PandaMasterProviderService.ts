@@ -59,7 +59,9 @@ export class PandaMasterProviderService implements ProviderAdapter {
     this.http = axios.create({
       baseURL: this.provider.apiBaseUrl,
       timeout: this.provider.requestTimeout || 15_000,
-      // Ignore SSL cert errors — pandamaster.vip has cert/altname issues
+      // IIS-backed endpoints require Content-Length even on empty POST bodies (HTTP 411)
+      // Also ignore SSL cert errors — pandamaster.vip cert has altname mismatch
+      headers: { 'Content-Length': '0', 'Accept-Language': 'en-US,en;q=0.9' },
       httpsAgent: new https.Agent({ rejectUnauthorized: false }),
     });
   }
