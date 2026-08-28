@@ -1,4 +1,5 @@
 import axios from 'axios';
+import https from 'https';
 import FormData from 'form-data';
 import { ProviderAdapter } from './ProviderAdapter';
 import { ProviderLogService } from './ProviderLogService';
@@ -33,6 +34,9 @@ export class CashMachineProviderService implements ProviderAdapter {
   private tokenExpiresAt: number = 0;
   /** 5-minute buffer before declared expiry, to avoid edge-case 401s */
   private static readonly TOKEN_BUFFER_SECS = 300;
+
+  /** Reusable https agent that ignores SSL errors, since providers often have broken certs */
+  private httpsAgent = new https.Agent({ rejectUnauthorized: false });
 
   constructor(provider: Provider) {
     if (!provider.apiBaseUrl || !provider.agentId || !provider.secretKey) {
@@ -86,6 +90,7 @@ export class CashMachineProviderService implements ProviderAdapter {
       const response = await axios.post(url, form, {
         headers: form.getHeaders(),
         timeout: this.provider.requestTimeout || 20000,
+        httpsAgent: this.httpsAgent,
       });
 
       const { status_code, message, data } = response.data;
@@ -177,6 +182,7 @@ export class CashMachineProviderService implements ProviderAdapter {
           Authorization: `Bearer ${this.token}`,
         },
         timeout: this.provider.requestTimeout || 20000,
+        httpsAgent: this.httpsAgent,
       });
 
       const duration = Date.now() - startTime;
@@ -266,6 +272,7 @@ export class CashMachineProviderService implements ProviderAdapter {
         params,
         headers: { Authorization: `Bearer ${this.token}` },
         timeout: this.provider.requestTimeout || 20000,
+        httpsAgent: this.httpsAgent,
       });
 
       const duration = Date.now() - startTime;
@@ -496,6 +503,7 @@ export class CashMachineProviderService implements ProviderAdapter {
         const response = await axios.post(url, form, {
           headers: form.getHeaders(),
           timeout: this.provider.requestTimeout || 10000,
+          httpsAgent: this.httpsAgent,
         });
         const { data } = response.data;
         if (data?.token) {
@@ -513,6 +521,7 @@ export class CashMachineProviderService implements ProviderAdapter {
       const response = await axios.post(url, form, {
         headers: form.getHeaders(),
         timeout: this.provider.requestTimeout || 10000,
+        httpsAgent: this.httpsAgent,
       });
       const { data } = response.data;
       // Re-cache token from this fresh login
