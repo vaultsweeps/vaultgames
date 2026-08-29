@@ -16,7 +16,8 @@ import {
 } from '../controllers/adminController'
 import {
   getProviders, createProvider, updateProvider, deleteProvider,
-  testConnection, getProviderLogs, getProviderTransactions, assignGamesToProvider
+  testConnection, getProviderLogs, getProviderTransactions, assignGamesToProvider,
+  getGameBalanceReport, getLiveGameBalance, exportGameBalanceReport, getProviderAgentBalances
 } from '../controllers/providerAdminController'
 
 const router = Router()
@@ -90,6 +91,15 @@ router.post('/providers/:id/test', testConnection)
 router.put('/providers/:id/games', assignGamesToProvider)
 router.get('/provider-logs', getProviderLogs)
 router.get('/provider-transactions', getProviderTransactions)
+
+// Game Balance Report — points added/withdrawn per user+game, over a
+// selectable window (8h/24h/all-time), plus on-demand live balance and
+// Excel export. Declared before any conflicting param routes wouldn't be
+// needed here since none of these paths overlap with a `:id` pattern.
+router.get('/game-balance-report', getGameBalanceReport)
+router.get('/game-balance-report/live-balance', getLiveGameBalance)
+router.get('/game-balance-report/export', exportGameBalanceReport)
+router.get('/game-balance-report/provider-balances', getProviderAgentBalances)
 
 // Coupons
 router.get('/coupons', getCoupons)

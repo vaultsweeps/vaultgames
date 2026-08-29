@@ -249,6 +249,15 @@ export const adminApi = {
   getProviderLogs: (params?: object) => apiClient.get('/admin/provider-logs', { params }),
   getProviderTransactions: (params?: object) => apiClient.get('/admin/provider-transactions', { params }),
 
+  // Game Balance Report
+  getGameBalanceReport: (params?: { range?: '8h' | '24h' | 'all'; providerId?: string; search?: string; includeLiveBalance?: boolean; onlyActive?: boolean }) =>
+    apiClient.get('/admin/game-balance-report', { params }),
+  getLiveGameBalance: (params: { userId: string; providerId: string }) =>
+    apiClient.get('/admin/game-balance-report/live-balance', { params }),
+  exportGameBalanceReport: (params?: { range?: '8h' | '24h' | 'all'; providerId?: string; search?: string; onlyActive?: boolean }) =>
+    apiClient.get('/admin/game-balance-report/export', { params, responseType: 'blob' }),
+  getProviderAgentBalances: () => apiClient.get('/admin/game-balance-report/provider-balances'),
+
   // Enhanced Withdrawals (admin)
   getEnhancedWithdrawals: (params?: object) => apiClient.get('/admin/enhanced-withdrawals', { params }),
   approveEnhancedWithdrawal: (requestId: string, reason?: string) => apiClient.patch(`/admin/enhanced-withdrawals/${requestId}/approve`, { reason }),

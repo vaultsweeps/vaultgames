@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard, Users, CreditCard, ArrowUpCircle, Gamepad2, Gift,
   HelpCircle, Image as ImageIcon, Settings, Bell, LogOut, Menu, X, Zap,
-  ChevronRight, BarChart3, Wallet, FileText, Server
+  ChevronRight, BarChart3, Wallet, FileText, Server, TrendingUp
 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 
@@ -24,6 +24,7 @@ const NAV_ITEMS = [
   { href: '/admin/support', icon: HelpCircle, label: 'Support' },
   { href: '/admin/reports', icon: BarChart3, label: 'Reports' },
   { href: '/admin/providers', icon: Server, label: 'Providers' },
+  { href: '/admin/game-balance', icon: TrendingUp, label: 'Game Balances' },
   { href: '/admin/settings', icon: Settings, label: 'Settings' },
 ]
 
