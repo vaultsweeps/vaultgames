@@ -6,6 +6,8 @@ import { X, Phone, Mail, ArrowLeft } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { authApi } from '@/lib/api'
 import { useAuthStore } from '@/store/authStore'
+import { RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from 'firebase/auth'
+import { auth } from '@/lib/firebase'
 
 type Step = 'select' | 'phone_input' | 'otp_input'
 
@@ -16,6 +18,7 @@ export default function VerifyPage() {
   const [step, setStep] = useState<Step>('select')
   const [phone, setPhone] = useState('')
   const [otpCode, setOtpCode] = useState('')
+  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null)
 
   // Redirect if not logged in
   useEffect(() => {
@@ -23,6 +26,14 @@ export default function VerifyPage() {
       router.push('/login')
     }
   }, [user, router])
+
+  const setupRecaptcha = () => {
+    if (!(window as any).recaptchaVerifier) {
+      (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+        size: 'invisible',
+      })
+    }
+  }
 
   const handleVerifyEmail = async () => {
     if (user?.isVerified) {
@@ -53,11 +64,22 @@ export default function VerifyPage() {
 
     setIsSending(true)
     try {
-      await authApi.sendPhoneOTP(phone)
+      setupRecaptcha()
+      const appVerifier = (window as any).recaptchaVerifier
+      const confirmation = await signInWithPhoneNumber(auth, phone, appVerifier)
+      setConfirmationResult(confirmation)
       toast.success('Verification code sent to your phone!')
       setStep('otp_input')
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Failed to send verification code.')
+      console.error(err)
+      toast.error(err.message || 'Failed to send verification code. Ensure phone number is valid and in E.164 format (e.g., +1...).')
+      if ((window as any).recaptchaVerifier) {
+        (window as any).recaptchaVerifier.render().then((widgetId: any) => {
+          if ((window as any).grecaptcha) {
+            (window as any).grecaptcha.reset(widgetId)
+          }
+        })
+      }
     } finally {
       setIsSending(false)
     }
@@ -69,10 +91,18 @@ export default function VerifyPage() {
       toast.error('Please enter the verification code.')
       return
     }
+    if (!confirmationResult) {
+      toast.error('Session expired. Please try again.')
+      setStep('phone_input')
+      return
+    }
 
     setIsSending(true)
     try {
-      await authApi.verifyPhoneOTP(otpCode)
+      const result = await confirmationResult.confirm(otpCode)
+      const idToken = await result.user.getIdToken()
+      
+      await authApi.verifyPhoneOTP(idToken)
       toast.success('Phone verified successfully!')
       
       // Update local user state if needed, or redirect
@@ -83,7 +113,7 @@ export default function VerifyPage() {
         toast('Don\'t forget to verify your email too!', { icon: '📧' })
       }
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Invalid or expired verification code.')
+      toast.error(err?.response?.data?.message || err.message || 'Invalid or expired verification code.')
     } finally {
       setIsSending(false)
     }
@@ -93,6 +123,7 @@ export default function VerifyPage() {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/95 backdrop-blur-sm p-4">
+      <div id="recaptcha-container"></div>
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}

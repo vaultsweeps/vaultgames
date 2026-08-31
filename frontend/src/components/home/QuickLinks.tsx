@@ -2,45 +2,55 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Crown, RotateCw, Gem, Users, Wrench, X } from 'lucide-react'
+import { Crown, RotateCw, Gem, Users, Wrench, X, ArrowRight } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import WheelModal from '@/components/wheel/WheelModal'
 
 const MAINTENANCE_KEYS = ['VIP Club']
 
-const LINKS = [
+type QuickLink = {
+  title: string
+  subtitle: string
+  icon: any
+  href: string
+  action?: string
+  gradient: string
+  glow: string
+}
+
+const LINKS: QuickLink[] = [
   {
     title: 'VIP Club',
+    subtitle: 'Exclusive perks',
     icon: Crown,
     href: '/vip',
-    gradient: 'from-[#ff9a44] to-[#fc6076]',
-    shadowColor: 'rgba(255, 154, 68, 0.4)',
-    iconColor: 'text-yellow-200',
+    gradient: 'linear-gradient(150deg, #1B3FAE 0%, #3E7BFF 100%)',
+    glow: 'rgba(47,107,255,0.4)',
   },
   {
     title: 'Daily Spin',
+    subtitle: 'Free daily prize',
     icon: RotateCw,
     href: '#',
     action: 'modal',
-    gradient: 'from-[#4facfe] to-[#00f2fe]',
-    shadowColor: 'rgba(79, 172, 254, 0.4)',
-    iconColor: 'text-blue-100',
+    gradient: 'linear-gradient(150deg, #C2540A 0%, #FFA338 100%)',
+    glow: 'rgba(242,129,30,0.4)',
   },
   {
     title: 'Bonus Zone',
+    subtitle: 'Live promotions',
     icon: Gem,
     href: '/bonuses',
-    gradient: 'from-[#43e97b] to-[#38f9d7]',
-    shadowColor: 'rgba(67, 233, 123, 0.4)',
-    iconColor: 'text-green-100',
+    gradient: 'linear-gradient(150deg, #00695E 0%, #00CBB4 100%)',
+    glow: 'rgba(0,169,154,0.4)',
   },
   {
     title: 'Refer & Earn',
+    subtitle: 'Earn up to $10',
     icon: Users,
     href: '/dashboard/invite',
-    gradient: 'from-[#fa709a] to-[#fee140]',
-    shadowColor: 'rgba(250, 112, 154, 0.4)',
-    iconColor: 'text-pink-100',
+    gradient: 'linear-gradient(150deg, #0F6A36 0%, #34D06A 100%)',
+    glow: 'rgba(31,174,85,0.4)',
   }
 ]
 
@@ -63,7 +73,7 @@ export default function QuickLinks() {
       setShowMaintenance(true)
       return
     }
-    
+
     if (link.action === 'modal' && link.title === 'Daily Spin') {
       e.preventDefault()
       setShowWheelModal(true)
@@ -73,24 +83,51 @@ export default function QuickLinks() {
   return (
     <>
       <section className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto py-4">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">
           {LINKS.map((link, i) => (
-            <Link href={link.href} key={i} onClick={(e) => handleClick(e, link)} aria-label={link.title}>
+            <Link href={link.href} key={i} onClick={(e) => handleClick(e, link)} aria-label={`${link.title} — ${link.subtitle}`}>
               <motion.div
-                whileHover={{ y: -4, scale: 1.02 }}
+                initial={{ opacity: 0, y: 12 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4, delay: i * 0.06 }}
+                whileHover={{ y: -3 }}
                 whileTap={{ scale: 0.98 }}
-                className={`relative overflow-hidden rounded-[1.5rem] bg-gradient-to-br ${link.gradient} p-4 sm:p-5 h-24 sm:h-28 lg:h-32 flex items-center justify-between group transition-shadow cursor-pointer`}
-                style={{ boxShadow: `0 8px 24px ${link.shadowColor}` }}
+                className="group relative overflow-hidden rounded-2xl p-4 sm:p-5 h-28 sm:h-32 lg:h-36 flex flex-col justify-between cursor-pointer"
+                style={{ background: link.gradient, boxShadow: `0 10px 24px -8px ${link.glow}` }}
               >
-                {/* Glossy overlay */}
-                <div className="absolute inset-0 bg-white/10 mix-blend-overlay opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                {/* Spotlight glow behind the icon, plus a top sheen for depth */}
+                <div aria-hidden className="absolute -top-6 -left-6 w-24 h-24 rounded-full bg-white blur-2xl opacity-30" />
+                <div
+                  aria-hidden
+                  className="absolute inset-0"
+                  style={{ background: 'linear-gradient(160deg, rgba(255,255,255,0.16) 0%, transparent 40%, rgba(0,0,0,0.12) 100%)' }}
+                />
 
-                <h3 className="font-bold text-white text-base sm:text-lg lg:text-xl drop-shadow-md z-10 w-1/2 leading-tight">
-                  {link.title}
-                </h3>
+                {/* Hover sheen sweep */}
+                <div
+                  aria-hidden
+                  className="absolute inset-0 -translate-x-[120%] group-hover:translate-x-[120%] transition-transform duration-700 ease-out"
+                  style={{ background: 'linear-gradient(115deg, transparent 42%, rgba(255,255,255,0.22) 50%, transparent 58%)' }}
+                />
 
-                <div className="relative z-10 opacity-90 group-hover:opacity-100 group-hover:rotate-12 transition-all duration-300">
-                  <link.icon className={`w-10 h-10 sm:w-12 sm:h-12 lg:w-16 lg:h-16 ${link.iconColor} drop-shadow-lg`} strokeWidth={1.5} />
+                <div className="relative z-10 flex items-start justify-between">
+                  <div
+                    className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-white/20 border border-white/25 backdrop-blur-sm flex items-center justify-center transition-transform duration-300 group-hover:scale-105"
+                    style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.4)' }}
+                  >
+                    <link.icon className="w-5 h-5 sm:w-6 sm:h-6 text-white" strokeWidth={2} />
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-white/50 group-hover:text-white group-hover:translate-x-0.5 transition-all duration-300" />
+                </div>
+
+                <div className="relative z-10">
+                  <h3 className="font-display font-bold text-white text-sm sm:text-base leading-tight tracking-wide drop-shadow-sm">
+                    {link.title}
+                  </h3>
+                  <p className="text-[11px] sm:text-xs text-white/75 mt-0.5 leading-tight">
+                    {link.subtitle}
+                  </p>
                 </div>
               </motion.div>
             </Link>
