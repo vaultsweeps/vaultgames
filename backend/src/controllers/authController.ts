@@ -10,6 +10,7 @@ import { ProviderFactory } from '../services/provider/ProviderFactory'
 import { WalletService } from '../services/WalletService'
 import { revokeTokensIssuedBefore, markEmailVerifyTokenIssued, isEmailVerifyTokenValid, clearEmailVerifyToken, createTelegramLinkToken } from '../lib/redis'
 import { auth } from '../lib/firebaseAdmin'
+import { createNotification } from '../services/notificationService'
 
 
 // POST /api/auth/register
@@ -446,16 +447,36 @@ export const verifyPhoneOTP = asyncHandler(async (req: AuthRequest, res: Respons
 
     const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : '+' + phoneNumber;
 
+    // Save phone number to user profile
     await prisma.userProfile.upsert({
       where: { userId },
       update: { phone: formattedPhone },
       create: { userId, phone: formattedPhone }
     });
 
-    await prisma.user.update({
+    // Mark phone as verified
+    const updatedUser = await prisma.user.update({
       where: { id: userId },
-      data: { isPhoneVerified: true }
+      data: { isPhoneVerified: true },
+      select: { isVerified: true }
     });
+
+    // Notify user of phone verification
+    await createNotification(userId, {
+      title: '📱 Phone Number Verified!',
+      message: `Your phone number ${formattedPhone} has been successfully verified.`,
+      type: 'success',
+    });
+
+    // If both email and phone are now verified, notify the user they unlocked the 100% welcome bonus
+    if (updatedUser.isVerified) {
+      await createNotification(userId, {
+        title: '🎁 Welcome Bonus Unlocked!',
+        message: 'You have verified both your email and phone number! Make your first deposit to automatically receive a 100% welcome bonus on your game balance.',
+        type: 'success',
+        link: '/games'
+      });
+    }
 
     res.json({ success: true, message: 'Phone number verified successfully' });
   } catch (error: any) {
