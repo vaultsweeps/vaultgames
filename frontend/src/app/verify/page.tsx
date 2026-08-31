@@ -64,6 +64,10 @@ export default function VerifyPage() {
 
     setIsSending(true)
     try {
+      // Check if phone number is already used in our database before requesting OTP
+      const formattedPhone = phone.startsWith('+') ? phone : '+' + phone;
+      await authApi.checkPhone(formattedPhone);
+
       setupRecaptcha()
       const appVerifier = (window as any).recaptchaVerifier
       const confirmation = await signInWithPhoneNumber(auth, phone, appVerifier)
