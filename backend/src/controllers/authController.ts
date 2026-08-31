@@ -9,8 +9,7 @@ import { AuthRequest } from '../middleware/auth'
 import { ProviderFactory } from '../services/provider/ProviderFactory'
 import { WalletService } from '../services/WalletService'
 import { revokeTokensIssuedBefore, markEmailVerifyTokenIssued, isEmailVerifyTokenValid, clearEmailVerifyToken, createTelegramLinkToken } from '../lib/redis'
-import { TwilioService } from '../services/twilio.service'
-
+import { auth } from '../lib/firebaseAdmin'
 
 
 // POST /api/auth/register
@@ -428,60 +427,39 @@ export const checkUsername = asyncHandler(async (req: Request, res: Response) =>
   return res.json({ available: true })
 })
 
-// POST /api/auth/send-otp
-export const sendPhoneOTP = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const { phone } = req.body;
-  const userId = req.user!.id;
-
-  if (!phone) {
-    throw new AppError('Phone number is required', 400);
-  }
-
-  // Ensure phone has a plus sign (E.164 format)
-  const phoneNumber = phone.startsWith('+') ? phone : '+' + phone;
-
-  // Update user profile with phone number
-  await prisma.userProfile.upsert({
-    where: { userId },
-    update: { phone: phoneNumber },
-    create: { userId, phone: phoneNumber }
-  });
-
-  try {
-    await TwilioService.sendOTP(phoneNumber);
-  } catch (err: any) {
-    throw new AppError(err?.message || 'Failed to send verification code. Please try again.', 500);
-  }
-
-  res.json({ success: true, message: 'OTP sent successfully' });
-});
-
 // POST /api/auth/verify-otp
 export const verifyPhoneOTP = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const { code } = req.body;
+  const { idToken } = req.body;
   const userId = req.user!.id;
 
-  if (!code) {
-    throw new AppError('Verification code is required', 400);
+  if (!idToken) {
+    throw new AppError('Firebase ID token is required', 400);
   }
 
-  const profile = await prisma.userProfile.findUnique({ where: { userId } });
-  
-  if (!profile || !profile.phone) {
-    throw new AppError('No phone number associated with this account', 400);
+  try {
+    const decodedToken = await auth.verifyIdToken(idToken);
+    const phoneNumber = decodedToken.phone_number;
+
+    if (!phoneNumber) {
+      throw new AppError('No phone number found in Firebase token', 400);
+    }
+
+    const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : '+' + phoneNumber;
+
+    await prisma.userProfile.upsert({
+      where: { userId },
+      update: { phone: formattedPhone },
+      create: { userId, phone: formattedPhone }
+    });
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: { isPhoneVerified: true }
+    });
+
+    res.json({ success: true, message: 'Phone number verified successfully' });
+  } catch (error: any) {
+    console.error('[Firebase Admin] Error verifying ID token:', error);
+    throw new AppError('Invalid or expired Firebase ID token', 400);
   }
-
-  const isValid = await TwilioService.verifyOTP(profile.phone, code);
-
-  if (!isValid) {
-    throw new AppError('Invalid or expired OTP', 400);
-  }
-
-  // Update user to be phone verified
-  await prisma.user.update({
-    where: { id: userId },
-    data: { isPhoneVerified: true }
-  });
-
-  res.json({ success: true, message: 'Phone number verified successfully' });
 });

@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { body } from 'express-validator'
-import { register, login, getMe, verifyEmail, forgotPassword, resetPassword, logout, getBalance, checkUsername, dashboardInit, sendPhoneOTP, verifyPhoneOTP } from '../controllers/authController'
+import { register, login, getMe, verifyEmail, forgotPassword, resetPassword, logout, getBalance, checkUsername, dashboardInit, verifyPhoneOTP } from '../controllers/authController'
 import { authenticate } from '../middleware/auth'
 import { validateRequest } from '../middleware/validate'
 import { authLimiter } from '../middleware/rateLimiter'
@@ -43,8 +43,7 @@ router.post('/reset-password/:token',
 import { resendVerification } from '../controllers/resendVerification'
 
 router.post('/resend-verification', authenticate, resendVerification)
-router.post('/send-otp', authenticate, [body('phone').notEmpty()], validateRequest, sendPhoneOTP)
-router.post('/verify-otp', authenticate, [body('code').notEmpty()], validateRequest, verifyPhoneOTP)
+router.post('/verify-otp', authenticate, [body('idToken').notEmpty()], validateRequest, verifyPhoneOTP)
 router.post('/logout', authenticate, logout)
 
 export default router
