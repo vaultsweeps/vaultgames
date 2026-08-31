@@ -457,7 +457,7 @@ export class CashMachineProviderService implements ProviderAdapter {
   async rechargePlayer(userId: string, amount: number, orderId: string): Promise<any> {
     return this.postRequest('/api/player/playerRecharge', {
       id: userId,
-      balance: Math.floor(amount).toString(),
+      balance: Number(amount.toFixed(2)).toString(),
       remark: orderId,
     }, userId);
   }
@@ -468,7 +468,7 @@ export class CashMachineProviderService implements ProviderAdapter {
   async withdrawPlayer(userId: string, amount: number, orderId: string): Promise<any> {
     return this.postRequest('/api/player/playerWithdraw', {
       id: userId,
-      balance: Math.floor(amount).toString(),
+      balance: Number(amount.toFixed(2)).toString(),
       remark: orderId,
     }, userId);
   }

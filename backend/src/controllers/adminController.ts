@@ -214,7 +214,7 @@ export const getUserDetails = asyncHandler(async (req: AuthRequest, res: Respons
       let balance = 0;
       try {
         const providerService = await ProviderFactory.getProviderById(pu.providerId);
-        balance = await providerService.getPlayerBalance(pu.accountName);
+        balance = await providerService.getPlayerBalance(pu.providerUserId);
       } catch (e) {
         console.error(`Failed to fetch balance for ${pu.accountName}:`, e);
       }

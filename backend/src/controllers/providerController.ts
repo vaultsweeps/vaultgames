@@ -325,17 +325,21 @@ export const transferFunds = asyncHandler(async (req: AuthRequest, res: Response
       // Parallelize user lookup + first-recharge check + all bonus definitions — all independent
       // NOTE: firstRechargeCheck is GLOBAL (across all games) — the 100% signup bonus
       // is a one-time reward for the very first ever recharge on the platform.
-      const [user, userProfile, firstRechargeCheck, welcomeBonusDef, depositBonusDef, referralBonusDef] = await Promise.all([
+      const [user, userProfile, welcomeBonusDef, depositBonusDef, referralBonusDef] = await Promise.all([
         prisma.user.findUnique({ where: { id: userId }, select: { id: true, username: true, email: true, isVerified: true, isPhoneVerified: true, referredById: true } }),
         prisma.userProfile.findUnique({ where: { userId }, select: { phone: true } }),
-        prisma.providerTransaction.findFirst({ where: { userId, type: 'recharge', status: 'success' } }),
         prisma.bonus.findFirst({ where: { type: 'welcome' } }),
         prisma.bonus.findFirst({ where: { type: 'deposit' } }),
         prisma.bonus.findFirst({ where: { type: 'referral' } })
       ]);
-      const isFirstRecharge = !firstRechargeCheck;
 
-      if (isFirstRecharge && user?.isVerified && user?.isPhoneVerified) {
+      const welcomeClaim = welcomeBonusDef
+        ? await prisma.bonusClaim.findUnique({ where: { userId_bonusId: { userId, bonusId: welcomeBonusDef.id } } })
+        : null;
+      
+      const hasClaimedWelcome = !!welcomeClaim;
+
+      if (!hasClaimedWelcome && user?.isVerified && user?.isPhoneVerified) {
         // 100% Signup Bonus
         bonusAmount = amount;
         if (welcomeBonusDef) {

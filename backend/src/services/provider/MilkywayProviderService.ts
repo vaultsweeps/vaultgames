@@ -304,7 +304,7 @@ export class MilkywayProviderService implements ProviderAdapter {
   async rechargePlayer(userId: string, amount: number, orderId: string) {
     return this.makeRequest(
       'recharge',
-      { account: userId, amount: Math.floor(amount) },
+      { account: userId, amount: Number(amount.toFixed(2)) },
       userId,
     );
   }
@@ -312,7 +312,7 @@ export class MilkywayProviderService implements ProviderAdapter {
   async withdrawPlayer(userId: string, amount: number, orderId: string) {
     return this.makeRequest(
       'redeem',
-      { account: userId, amount: Math.floor(amount) },
+      { account: userId, amount: Number(amount.toFixed(2)) },
       userId,
     );
   }

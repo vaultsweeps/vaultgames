@@ -300,11 +300,11 @@ export class PandaMasterProviderService implements ProviderAdapter {
   }
 
   async rechargePlayer(userId: string, amount: number, _orderId: string): Promise<any> {
-    return this.makeRequest('recharge', { account: userId, amount: Math.floor(amount) }, userId);
+    return this.makeRequest('recharge', { account: userId, amount: Number(amount.toFixed(2)) }, userId);
   }
 
   async withdrawPlayer(userId: string, amount: number, _orderId: string): Promise<any> {
-    return this.makeRequest('redeem', { account: userId, amount: Math.floor(amount) }, userId);
+    return this.makeRequest('redeem', { account: userId, amount: Number(amount.toFixed(2)) }, userId);
   }
 
   async getPlayerBalance(userId: string): Promise<number> {
