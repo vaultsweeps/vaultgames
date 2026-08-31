@@ -173,13 +173,20 @@ export class OrionstarProviderService implements ProviderAdapter {
     const signInput = this.agentName.toLowerCase() + time + this.agentKey.toLowerCase();
     const sign      = this.md5(signInput);
 
-    const params   = { agentName: this.agentName, time, sign, ...payload };
-    const endpoint = `${this.servicePath}?action=${action}`;
+    const searchParams = new URLSearchParams();
+    searchParams.append('agentName', this.agentName);
+    for (const [key, val] of Object.entries(payload)) {
+      searchParams.append(key, String(val));
+    }
+    searchParams.append('time', time);
+    searchParams.append('sign', sign);
+
+    const endpoint = `${this.servicePath}?action=${action}&${searchParams.toString()}`;
 
     console.info(`[Orionstar] → ${action} | time: ${time} | signInput: "${signInput}" | sign: ${sign}`);
 
     try {
-      const res = await this.http.post(endpoint, null, { params });
+      const res = await this.http.post(endpoint, null);
       const { code, msg, ...data } = res.data;
       const codeStr = String(code);
 
