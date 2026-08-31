@@ -173,6 +173,8 @@ export class OrionstarProviderService implements ProviderAdapter {
     const signInput = this.agentName.toLowerCase() + time + this.agentKey.toLowerCase();
     const sign      = this.md5(signInput);
 
+    const params = { agentName: this.agentName, time, sign, ...payload };
+
     const searchParams = new URLSearchParams();
     searchParams.append('agentName', this.agentName);
     for (const [key, val] of Object.entries(payload)) {
