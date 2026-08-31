@@ -217,4 +217,14 @@ ${escMd(accountInfo)}
       return false
     }
   }
+  static async sendBonusClaimedNotification(username: string, email: string, phone: string, bonusAmount: number, depositAmount: number) {
+    const text = `
+🎉 *100% Welcome Bonus Claimed!* 🎉
+👤 *User:* ${escMd(username)} (${escMd(email)})
+📱 *Phone:* ${escMd(phone)}
+💵 *Deposit:* $${depositAmount.toFixed(2)}
+🎁 *Bonus Added:* $${bonusAmount.toFixed(2)}
+    `.trim();
+    return this.sendTextMessage(text);
+  }
 }

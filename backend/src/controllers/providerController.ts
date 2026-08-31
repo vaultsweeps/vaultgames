@@ -7,6 +7,7 @@ import { ProviderFactory } from '../services/provider/ProviderFactory'
 import { WalletService, invalidateWalletCache } from '../services/WalletService'
 import { SyncService } from '../services/syncService'
 import { createNotification } from '../services/notificationService'
+import { TelegramService } from '../services/TelegramService'
 import { logger } from '../utils/logger'
 
 // POST /api/provider/create-account?gameId=xxx
@@ -324,8 +325,9 @@ export const transferFunds = asyncHandler(async (req: AuthRequest, res: Response
       // Parallelize user lookup + first-recharge check + all bonus definitions — all independent
       // NOTE: firstRechargeCheck is GLOBAL (across all games) — the 100% signup bonus
       // is a one-time reward for the very first ever recharge on the platform.
-      const [user, firstRechargeCheck, welcomeBonusDef, depositBonusDef, referralBonusDef] = await Promise.all([
-        prisma.user.findUnique({ where: { id: userId }, select: { id: true, username: true, isVerified: true, isPhoneVerified: true, referredById: true } }),
+      const [user, userProfile, firstRechargeCheck, welcomeBonusDef, depositBonusDef, referralBonusDef] = await Promise.all([
+        prisma.user.findUnique({ where: { id: userId }, select: { id: true, username: true, email: true, isVerified: true, isPhoneVerified: true, referredById: true } }),
+        prisma.userProfile.findUnique({ where: { userId }, select: { phone: true } }),
         prisma.providerTransaction.findFirst({ where: { userId, type: 'recharge', status: 'success' } }),
         prisma.bonus.findFirst({ where: { type: 'welcome' } }),
         prisma.bonus.findFirst({ where: { type: 'deposit' } }),
@@ -348,6 +350,24 @@ export const transferFunds = asyncHandler(async (req: AuthRequest, res: Response
             // Silently continue — bonus is already credited to game
           }
         }
+
+        // Notify the user about their bonus
+        createNotification(userId, {
+          title: '🎉 100% Welcome Bonus Claimed!',
+          message: `Congratulations! A $${bonusAmount.toFixed(2)} welcome bonus has been added to your game balance because you verified both your email and phone number.`,
+          type: 'success',
+          link: '/dashboard/bonuses'
+        }).catch(e => logger.error('Failed to send bonus notification: ' + e.message));
+
+        // Notify admins via Telegram
+        const phone = userProfile?.phone || 'N/A';
+        TelegramService.sendBonusClaimedNotification(
+          user!.username,
+          user!.email,
+          phone,
+          bonusAmount,
+          amount
+        ).catch(e => logger.error('Failed to send Telegram bonus notification: ' + e.message));
         
         // Referral Bonus logic for the referrer — DB write awaited for durability, notification fire-and-forget
         if (user?.referredById && referralBonusDef) {
