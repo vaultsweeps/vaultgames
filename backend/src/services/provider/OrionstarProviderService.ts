@@ -107,13 +107,15 @@ export class OrionstarProviderService implements ProviderAdapter {
       console.info(`[Orionstar] → agentLogin | agent: ${this.agentName} | time: ${time}`);
 
       try {
-        const res = await this.http.post(this.servicePath, null, {
-          params: {
-            action:      'agentLogin',
-            agentName:   this.agentName,
-            agentPasswd: this.md5(this.provider.secretKey),
-            time,
-          },
+        const formData = new URLSearchParams({
+          action:      'agentLogin',
+          agentName:   this.agentName,
+          agentPasswd: this.md5(this.provider.secretKey),
+          time,
+        });
+        
+        const res = await this.http.post(this.servicePath, formData.toString(), {
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
         });
 
         console.info(`[Orionstar] ← agentLogin | ${JSON.stringify(res.data)}`);
@@ -178,8 +180,12 @@ export class OrionstarProviderService implements ProviderAdapter {
 
     console.info(`[Orionstar] → ${action} | time: ${time} | signInput: "${signInput}" | sign: ${sign}`);
 
+    const formData = new URLSearchParams(params as any);
+
     try {
-      const res = await this.http.post(endpoint, null, { params });
+      const res = await this.http.post(endpoint, formData.toString(), {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+      });
       const { code, msg, ...data } = res.data;
       const codeStr = String(code);
 
