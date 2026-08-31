@@ -1,7 +1,6 @@
-const admin = require('firebase-admin');
-import * as path from 'path';
+const { initializeApp, cert, getApps } = require('firebase-admin/app');
+const { getAuth } = require('firebase-admin/auth');
 
-// Load service account from file
 let serviceAccount: any;
 try {
   serviceAccount = require('../../firebaseServiceAccount.json');
@@ -9,13 +8,12 @@ try {
   console.warn('Firebase Service Account JSON not found at backend/firebaseServiceAccount.json. Firebase features will not work.');
 }
 
-if (serviceAccount && !admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount)
+let app;
+if (serviceAccount && !getApps().length) {
+  app = initializeApp({
+    credential: cert(serviceAccount)
   });
 }
 
-const auth = admin.auth();
-
+const auth = getAuth(app);
 export { auth };
-
