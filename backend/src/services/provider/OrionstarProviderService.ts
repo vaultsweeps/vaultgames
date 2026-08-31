@@ -178,12 +178,8 @@ export class OrionstarProviderService implements ProviderAdapter {
 
     console.info(`[Orionstar] → ${action} | time: ${time} | signInput: "${signInput}" | sign: ${sign}`);
 
-    const formData = new URLSearchParams(params as any);
-
     try {
-      const res = await this.http.post(endpoint, formData.toString(), {
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-      });
+      const res = await this.http.post(endpoint, null, { params });
       const { code, msg, ...data } = res.data;
       const codeStr = String(code);
 
