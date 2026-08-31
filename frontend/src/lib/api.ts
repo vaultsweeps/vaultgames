@@ -64,6 +64,7 @@ export const authApi = {
   logout: () => apiClient.post('/auth/logout'),
   verifyEmail: (token: string) => apiClient.post(`/auth/verify-email/${token}`),
   resendVerification: () => apiClient.post('/auth/resend-verification'),
+  checkPhone: (phone: string) => apiClient.post('/auth/check-phone', { phone }),
   verifyPhoneOTP: (idToken: string) => apiClient.post('/auth/verify-otp', { idToken }),
   forgotPassword: (email: string) => apiClient.post('/auth/forgot-password', { email }),
   resetPassword: (token: string, password: string) => apiClient.post(`/auth/reset-password/${token}`, { password }),

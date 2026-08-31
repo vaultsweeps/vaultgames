@@ -428,6 +428,29 @@ export const checkUsername = asyncHandler(async (req: Request, res: Response) =>
   return res.json({ available: true })
 })
 
+// POST /api/auth/check-phone
+export const checkPhone = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { phone } = req.body;
+  const userId = req.user!.id;
+
+  if (!phone) {
+    throw new AppError('Phone number is required', 400);
+  }
+
+  const formattedPhone = phone.startsWith('+') ? phone : '+' + phone;
+
+  // Check if phone number is already used by another account
+  const existingProfile = await prisma.userProfile.findFirst({
+    where: { phone: formattedPhone, userId: { not: userId } }
+  });
+
+  if (existingProfile) {
+    throw new AppError('This phone number is already verified on another account.', 400);
+  }
+
+  res.json({ success: true, message: 'Phone number is available' });
+});
+
 // POST /api/auth/verify-otp
 export const verifyPhoneOTP = asyncHandler(async (req: AuthRequest, res: Response) => {
   const { idToken } = req.body;
