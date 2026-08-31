@@ -76,7 +76,7 @@ export default function VerifyPage() {
       setStep('otp_input')
     } catch (err: any) {
       console.error(err)
-      toast.error(err.message || 'Failed to send verification code. Ensure phone number is valid and in E.164 format (e.g., +1...).')
+      toast.error(err?.response?.data?.message || err.message || 'Failed to send verification code. Ensure phone number is valid and in E.164 format (e.g., +1...).')
       if ((window as any).recaptchaVerifier) {
         (window as any).recaptchaVerifier.render().then((widgetId: any) => {
           if ((window as any).grecaptcha) {
