@@ -447,6 +447,15 @@ export const verifyPhoneOTP = asyncHandler(async (req: AuthRequest, res: Respons
 
     const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : '+' + phoneNumber;
 
+    // Check if phone number is already used by another account
+    const existingProfile = await prisma.userProfile.findFirst({
+      where: { phone: formattedPhone, userId: { not: userId } }
+    });
+
+    if (existingProfile) {
+      throw new AppError('This phone number is already verified on another account.', 400);
+    }
+
     // Save phone number to user profile
     await prisma.userProfile.upsert({
       where: { userId },
