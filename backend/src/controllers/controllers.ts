@@ -42,7 +42,8 @@ export const getGame = asyncHandler(async (req: AuthRequest, res: Response) => {
 })
 
 export const downloadGame = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const game = await prisma.game.findUnique({ where: { id: req.params.id as string, isActive: true } })
+  const gameId = await resolveGameId(req.params.id as string)
+  const game = await prisma.game.findUnique({ where: { id: gameId, isActive: true } })
   if (!game) throw new AppError('Game not found', 404)
   if (!game.downloadUrl) throw new AppError('Download not available', 400)
 
@@ -66,7 +67,8 @@ export const downloadGame = asyncHandler(async (req: AuthRequest, res: Response)
 // POST /api/games/:id/download-code
 // Generates a download code for providers that support it (e.g. Orionstar)
 export const generateDownloadCode = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const game = await prisma.game.findUnique({ where: { id: req.params.id as string, isActive: true } })
+  const gameId = await resolveGameId(req.params.id as string)
+  const game = await prisma.game.findUnique({ where: { id: gameId, isActive: true } })
   if (!game) throw new AppError('Game not found', 404)
 
   // Get the provider for this game

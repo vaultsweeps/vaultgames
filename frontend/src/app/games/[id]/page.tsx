@@ -186,8 +186,9 @@ export default function GameDetailsPage() {
     const token = Cookies.get('vaultsweeps_token')
     if (!token) return router.push('/login')
 
-    // For Orionstar (provider games): show the download popup with Generate Code
-    if (game?.providerId) {
+    // For Orionstar: show the download popup with Generate Code
+    const isOrionstar = game?.providerId?.toLowerCase().includes('orion') || game?.name.toLowerCase().includes('orion')
+    if (isOrionstar) {
       setDownloadCode(null)
       setDownloadModalOpen(true)
       return
