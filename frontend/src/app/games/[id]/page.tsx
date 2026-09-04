@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useParams, useRouter } from 'next/navigation'
-import { Download, ArrowLeft, RefreshCw, Copy, Eye, EyeOff, PlusCircle, ArrowUpCircle, AlertCircle, Key, Info, Bot, MessageCircle } from 'lucide-react'
+import { Download, ArrowLeft, RefreshCw, Copy, Eye, EyeOff, PlusCircle, ArrowUpCircle, AlertCircle, Key, Info, Bot, MessageCircle, X, RefreshCcw } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Link from 'next/link'
 
@@ -42,6 +42,9 @@ export default function GameDetailsPage() {
   const [downloading, setDownloading] = useState(false)
   const [resetting, setResetting] = useState(false)
   const [provisioning, setProvisioning] = useState(false)
+  const [downloadModalOpen, setDownloadModalOpen] = useState(false)
+  const [downloadCode, setDownloadCode] = useState<string | null>(null)
+  const [generatingCode, setGeneratingCode] = useState(false)
   
   const [transferModalOpen, setTransferModalOpen] = useState(false)
   const [chooseGameOpen, setChooseGameOpen] = useState(false)
@@ -178,10 +181,15 @@ export default function GameDetailsPage() {
   }, [isAuthenticated, accountFetched, game?.providerId])
 
 
-  const handleDownload = async () => {
+  const handleDownload = () => {
     const token = Cookies.get('vaultsweeps_token')
     if (!token) return router.push('/login')
+    setDownloadCode(null)
+    setDownloadModalOpen(true)
+  }
 
+  const handleDirectDownload = async () => {
+    if (!game) return
     setDownloading(true)
     try {
       const res = await gamesApi.download(id as string)
@@ -191,9 +199,28 @@ export default function GameDetailsPage() {
         toast.success('Download started successfully!')
       }
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Failed to download game')
+      toast.error(err?.response?.data?.message || 'Download link not available')
     } finally {
       setDownloading(false)
+    }
+  }
+
+  const handleGenerateDownloadCode = async () => {
+    if (!game) return
+    setGeneratingCode(true)
+    setDownloadCode(null)
+    try {
+      const res = await gamesApi.generateDownloadCode(id as string)
+      const code = res.data.data?.downloadCode
+      if (code) {
+        setDownloadCode(code)
+      } else {
+        toast.error('No download code returned')
+      }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Failed to generate download code')
+    } finally {
+      setGeneratingCode(false)
     }
   }
 
@@ -330,10 +357,9 @@ export default function GameDetailsPage() {
             <div className="flex flex-col gap-2">
               <button 
                 onClick={handleDownload} 
-                disabled={downloading}
-                className="bg-[#2AC3FF] hover:bg-[#1CA0D9] text-white font-bold py-3 px-4 rounded-xl w-full flex items-center justify-center gap-2 transition-all disabled:opacity-70"
+                className="bg-[#2AC3FF] hover:bg-[#1CA0D9] text-white font-bold py-3 px-4 rounded-xl w-full flex items-center justify-center gap-2 transition-all"
               >
-                {downloading ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Download className="w-4 h-4" />}
+                <Download className="w-4 h-4" />
                 Download Game
               </button>
               
@@ -597,6 +623,91 @@ export default function GameDetailsPage() {
           onClose={() => setAgentModalOpen(false)}
           settings={settings}
         />
+      )}
+
+      {/* Download Popup Modal */}
+      {downloadModalOpen && game && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4" onClick={() => setDownloadModalOpen(false)}>
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            onClick={e => e.stopPropagation()}
+            className="w-full max-w-sm bg-[#111827] rounded-2xl border border-white/10 shadow-2xl overflow-hidden"
+          >
+            {/* Header */}
+            <div className="p-5 border-b border-white/10 flex items-start justify-between">
+              <div>
+                <h3 className="text-white font-bold text-lg">Download</h3>
+                <p className="text-slate-400 text-sm mt-0.5">Download the game to your device for the convenience of playing</p>
+              </div>
+              <button onClick={() => setDownloadModalOpen(false)} className="text-slate-500 hover:text-white transition-colors ml-3 mt-0.5">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Game info */}
+            <div className="p-5 space-y-4">
+              <div className="flex items-center gap-3 bg-white/5 rounded-xl p-3 border border-white/10">
+                {game.thumbnailUrl
+                  ? <img src={game.thumbnailUrl} alt={game.name} className="w-12 h-12 rounded-lg object-cover" />
+                  : <div className="w-12 h-12 rounded-lg bg-white/10 flex items-center justify-center"><Download className="w-5 h-5 text-white/40" /></div>
+                }
+                <div className="flex-1">
+                  <p className="text-white font-bold">{game.name}</p>
+                </div>
+              </div>
+
+              <p className="text-slate-400 text-sm">
+                Go to the download page of the game and follow the installation instructions. During installation, the game may request a download code. You can get it by clicking on the &quot;Generate download code&quot; button
+              </p>
+
+              {/* Download code display */}
+              {downloadCode ? (
+                <div className="bg-white/5 rounded-xl p-4 border border-[#2AC3FF]/20 text-center">
+                  <p className="text-xs text-slate-400 mb-1">Download code</p>
+                  <div className="flex items-center justify-center gap-3">
+                    <span className="text-3xl font-black text-white tracking-widest font-mono">{downloadCode}</span>
+                    <button
+                      onClick={() => { navigator.clipboard.writeText(downloadCode); toast.success('Code copied!') }}
+                      className="text-slate-400 hover:text-white transition-colors p-1"
+                    >
+                      <Copy className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={handleGenerateDownloadCode}
+                  disabled={generatingCode}
+                  className="w-full py-3 rounded-xl font-bold text-white bg-emerald-500 hover:bg-emerald-600 disabled:opacity-60 flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-500/20"
+                >
+                  {generatingCode
+                    ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    : <RefreshCcw className="w-4 h-4" />}
+                  Generate download code
+                </button>
+              )}
+
+              {/* Bottom buttons */}
+              <div className="flex gap-3">
+                <button
+                  onClick={handleDirectDownload}
+                  disabled={downloading}
+                  className="flex-1 bg-[#2AC3FF] hover:bg-[#1CA0D9] disabled:opacity-60 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all"
+                >
+                  {downloading ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Download className="w-4 h-4" />}
+                  Download
+                </button>
+                <button
+                  onClick={() => setDownloadModalOpen(false)}
+                  className="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold py-3 rounded-xl transition-all"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
       )}
     </div>
   )
