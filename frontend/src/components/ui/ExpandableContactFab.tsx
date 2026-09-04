@@ -4,12 +4,9 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { X, Headset } from 'lucide-react'
 import { publicApi } from '@/lib/api'
 
-const SignalIcon = () => (
-  <svg viewBox="0 0 64 64" className="w-[20px] h-[20px]" fill="none">
-    {/* Signal messenger logo - shield/speech bubble shape */}
-    <path d="M32 4C16.536 4 4 16.536 4 32c0 5.23 1.484 10.117 4.06 14.27L4 60l13.897-3.998A27.87 27.87 0 0 0 32 60c15.464 0 28-12.536 28-28S47.464 4 32 4z" fill="white" fillOpacity="0.95"/>
-    <path d="M20 30h24M20 37h16" stroke="#1D4ED8" strokeWidth="4" strokeLinecap="round"/>
-    <circle cx="32" cy="23" r="4" fill="#1D4ED8"/>
+const SmsIcon = () => (
+  <svg viewBox="0 0 24 24" className="w-[18px] h-[18px]" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
   </svg>
 )
 const TelegramIcon = () => (
@@ -46,21 +43,16 @@ export default function ExpandableContactFab({ inlinePill = false }: Props) {
   useEffect(() => { setCurrentHour(new Date().getHours()); setMounted(true) }, [])
 
   const isDayShift = currentHour >= 4 && currentHour < 16
-  const signalDayUrl = settings.signal_day_url || process.env.NEXT_PUBLIC_SIGNAL_DAY_URL
-  const signalNightUrl = settings.signal_night_url || process.env.NEXT_PUBLIC_SIGNAL_NIGHT_URL
-  const signalUrl = isDayShift
-    ? (signalDayUrl || signalNightUrl || '#')
-    : (signalNightUrl || signalDayUrl || '#')
+  const smsUrl = 'sms:+14692998449'
   const telegramUrl = settings.telegram_url || process.env.NEXT_PUBLIC_TELEGRAM_URL || '#'
   const facebookUrl = settings.facebook_url || process.env.NEXT_PUBLIC_FACEBOOK_URL || '#'
 
   const contacts: ContactItem[] = [
     {
-      key: 'signal', href: signalUrl, icon: <SignalIcon />, label: 'Signal',
-      badge: isDayShift ? 'D' : 'N',
-      gradient: 'from-[#1D4ED8] to-[#3B82F6]',
-      glow: 'rgba(59,130,246,0.7)',
-      beam: 'conic-gradient(from 0deg, transparent 55%, #93C5FD 78%, #3B82F6 90%, transparent)',
+      key: 'sms', href: smsUrl, icon: <SmsIcon />, label: 'SMS Us',
+      gradient: 'from-[#10B981] to-[#34D399]',
+      glow: 'rgba(16,185,129,0.7)',
+      beam: 'conic-gradient(from 0deg, transparent 55%, #6EE7B7 78%, #10B981 90%, transparent)',
     },
     {
       key: 'telegram', href: telegramUrl, icon: <TelegramIcon />, label: 'Telegram',
@@ -94,8 +86,8 @@ export default function ExpandableContactFab({ inlinePill = false }: Props) {
                   className="relative group flex items-center justify-center"
                   style={{ zIndex: 56 }}
                 >
-                  {/* Spinning beam ring ONLY for Signal */}
-                  {c.key === 'signal' && (
+                  {/* Spinning beam ring ONLY for SMS */}
+                  {c.key === 'sms' && (
                     <div
                       className="absolute pointer-events-none"
                       style={{

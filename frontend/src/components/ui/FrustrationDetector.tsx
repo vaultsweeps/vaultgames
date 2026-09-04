@@ -3,18 +3,16 @@ import { useEffect, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
 import { HelpCircle } from 'lucide-react'
 import { getTelegramUrl } from '@/lib/telegram'
-import { getSignalUrl } from '@/lib/signal'
+import { getSmsUrl } from '@/lib/sms'
 import { useAuthStore } from '@/store/authStore'
 
 export default function FrustrationDetector() {
   const clickTimes = useRef<number[]>([])
   const { user } = useAuthStore()
-  const [signalUrl, setSignalUrl] = useState('')
+  const [smsUrl, setSmsUrl] = useState('')
 
   useEffect(() => {
-    setSignalUrl(getSignalUrl())
-    const t = setInterval(() => setSignalUrl(getSignalUrl()), 60_000)
-    return () => clearInterval(t)
+    setSmsUrl(getSmsUrl())
   }, [])
 
   useEffect(() => {
@@ -59,22 +57,20 @@ export default function FrustrationDetector() {
             </div>
             
             <div className="flex sm:flex-col border-t sm:border-t-0 sm:border-l border-border-strong bg-[#0B0B11] sm:w-32 relative z-10">
-              {signalUrl && (
+              {smsUrl && (
                 <button
                   onClick={() => {
                     toast.dismiss(t.id)
-                    window.open(signalUrl, '_blank')
+                    window.open(smsUrl, '_blank')
                   }}
-                  className="w-full flex-1 flex flex-row sm:flex-col items-center justify-center gap-1.5 sm:gap-1 text-sm font-bold text-[#3a76f0] hover:text-white hover:bg-[#3a76f0]/10 transition-colors border-r sm:border-r-0 sm:border-b border-border-strong py-4 sm:py-0 relative overflow-hidden group"
+                  className="w-full flex-1 flex flex-row sm:flex-col items-center justify-center gap-1.5 sm:gap-1 text-sm font-bold text-[#4ade80] hover:text-white hover:bg-[#4ade80]/10 transition-colors border-r sm:border-r-0 sm:border-b border-border-strong py-4 sm:py-0 relative overflow-hidden group"
                 >
-                  <div className="absolute inset-0 bg-[#3a76f0]/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="absolute inset-0 bg-[#4ade80]/5 opacity-0 group-hover:opacity-100 transition-opacity" />
                   <span className="flex items-center gap-1 relative z-10">
-                    <svg viewBox="0 0 48 48" className="w-4 h-4" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <circle cx="24" cy="24" r="20" fill="currentColor"/>
-                      <path d="M24 12a12 12 0 1 0 7.39 21.39l3.14 1.06-1.06-3.14A12 12 0 0 0 24 12z" fill="white"/>
-                      <path d="M19 23h10M19 27h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                    <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
                     </svg>
-                    Signal
+                    SMS
                   </span>
                 </button>
               )}

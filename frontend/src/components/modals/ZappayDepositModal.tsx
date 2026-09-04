@@ -307,18 +307,16 @@ export default function ZappayDepositModal({ isOpen, onClose, method = 'zappay' 
                     <h3 className="text-white font-bold text-2xl">Verification Failed</h3>
                     <p className="text-secondary text-sm">We could not find a matching payment. If you already sent it, please wait a few minutes and check your history.</p>
                     <div className="grid grid-cols-3 gap-2 mt-2 w-full">
-                      {signalUrl && (
-                        <a href={signalUrl} target="_blank" rel="noreferrer" className="flex flex-col items-center justify-center gap-1 bg-[#3a76f0]/10 text-[#3a76f0] hover:bg-[#3a76f0]/20 font-bold py-2 rounded-xl transition-all border border-[#3a76f0]/30 text-xs relative overflow-hidden group">
-                          <div className="absolute inset-0 bg-[#3a76f0]/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      {smsUrl && (
+                        <a href={smsUrl} target="_blank" rel="noreferrer" className="flex flex-col items-center justify-center gap-1 bg-[#4ade80]/10 text-[#4ade80] hover:bg-[#4ade80]/20 font-bold py-2 rounded-xl transition-all border border-[#4ade80]/30 text-xs relative overflow-hidden group">
+                          <div className="absolute inset-0 bg-[#4ade80]/5 opacity-0 group-hover:opacity-100 transition-opacity" />
                           <div className="flex items-center gap-1.5 z-10">
-                            <svg viewBox="0 0 48 48" className="w-4 h-4" fill="none" xmlns="http://www.w3.org/2000/svg">
-                              <circle cx="24" cy="24" r="20" fill="currentColor"/>
-                              <path d="M24 12a12 12 0 1 0 7.39 21.39l3.14 1.06-1.06-3.14A12 12 0 0 0 24 12z" fill="white"/>
-                              <path d="M19 23h10M19 27h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                            <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
                             </svg>
-                            Signal
+                            SMS
                           </div>
-                          <span className="text-[8px] px-1 bg-[#3a76f0]/20 rounded text-[#3a76f0] z-10">FASTEST</span>
+                          <span className="text-[10px] font-medium opacity-80 z-10">Fastest</span>
                         </a>
                       )}
                       <a href={getTelegramUrl(settings.telegram_url || process.env.NEXT_PUBLIC_TELEGRAM_URL || "https://t.me/vaultsweeps", useAuthStore.getState().user)} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-1.5 bg-[#2AC3FF]/10 text-[#2AC3FF] hover:bg-[#2AC3FF]/20 font-bold py-3 rounded-xl transition-all border border-[#2AC3FF]/20 text-sm">
