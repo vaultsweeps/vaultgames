@@ -21,6 +21,7 @@ interface Game {
   name: string
   thumbnailUrl: string | null
   providerId: string | null
+  downloadUrl: string | null
 }
 
 interface ProviderAccount {
@@ -184,8 +185,25 @@ export default function GameDetailsPage() {
   const handleDownload = () => {
     const token = Cookies.get('vaultsweeps_token')
     if (!token) return router.push('/login')
-    setDownloadCode(null)
-    setDownloadModalOpen(true)
+
+    // For Orionstar (provider games): show the download popup with Generate Code
+    if (game?.providerId) {
+      setDownloadCode(null)
+      setDownloadModalOpen(true)
+      return
+    }
+
+    // For regular games: open the downloadUrl directly
+    if (game?.downloadUrl) {
+      let url = game.downloadUrl
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        url = 'https://' + url
+      }
+      window.open(url, '_blank')
+      toast.success('Download started!')
+    } else {
+      toast.error('No download link available for this game yet.')
+    }
   }
 
   const handleDirectDownload = async () => {
