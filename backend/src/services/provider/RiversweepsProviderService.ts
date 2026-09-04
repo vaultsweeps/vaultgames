@@ -50,9 +50,9 @@ export class RiversweepsProviderService implements ProviderAdapter {
       }
     }
 
-    const endpoint = `/${action}?${searchParams.toString()}`;
+    const endpoint = `/api/${action}?${searchParams.toString()}`;
     const startTime = Date.now();
-    const logEndpoint = `/${action}`; // Mask secrets in DB endpoint path
+    const logEndpoint = `/api/${action}`; // Mask secrets in DB endpoint path
 
     try {
       const response = await this.http.get(endpoint);
