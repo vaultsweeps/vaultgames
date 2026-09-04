@@ -315,13 +315,23 @@ export class OrionstarProviderService implements ProviderAdapter {
   }
 
   /**
-   * Returns the download/store code for Orionstar app installation.
-   * Orionstar doesn't have an API to fetch this dynamically, 
-   * so this returns the configured static agent code.
+   * Generates a download code for Orionstar app installation.
+   * Per the API docs: only agentName + time + sign are required.
+   * Returns the downloadCode string on success.
    */
   async getDownloadCode(): Promise<string> {
-    // For now, return a placeholder or the agentName until the user provides the actual code
-    return "YOUR_STORE_CODE";
+    try {
+      const res = await this.makeRequest('getDownloadCode', {}, null);
+      if (res && res.downloadCode) {
+        return res.downloadCode;
+      }
+    } catch (err) {
+      console.warn(`[Orionstar] getDownloadCode API failed:`, err);
+    }
+    
+    // Fallback: If the API fails, returns an empty string, or is disabled, 
+    // return the agent name as the default store code (which is commonly used in Orionstar)
+    return this.agentName || "YOUR_STORE_CODE";
   }
 
 
