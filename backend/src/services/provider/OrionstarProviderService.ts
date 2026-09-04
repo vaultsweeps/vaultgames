@@ -307,9 +307,9 @@ export class OrionstarProviderService implements ProviderAdapter {
   }
 
   async resetPlayerPassword(userId: string, newPassword?: string): Promise<boolean> {
-    await this.makeRequest('changePassword', {
+    await this.makeRequest('changePasswd', {
       account:   userId,
-      passwdNew: this.md5(newPassword || 'Test@1234'),
+      passwdnew: this.md5(newPassword || 'Test@1234'),
     }, userId);
     return true;
   }
