@@ -8,6 +8,7 @@ import { VegasRollProviderService } from './VegasRollProviderService';
 import { MilkywayProviderService } from './MilkywayProviderService';
 import { MafiaProviderService } from './MafiaProviderService';
 import { PandaMasterProviderService } from './PandaMasterProviderService';
+import { RiversweepsProviderService } from './RiversweepsProviderService';
 import { ProviderAdapter } from './ProviderAdapter';
 import prisma from '../../lib/prisma';
 import { Provider } from '@prisma/client';
@@ -41,6 +42,9 @@ export function createProviderService(provider: Provider): ProviderAdapter {
   }
   if (name.includes('pandamaster') || name.includes('panda master') || name.includes('panda_master')) {
     return new PandaMasterProviderService(provider);
+  }
+  if (name.includes('riversweeps') || name.includes('river sweeps') || name.includes('river_sweeps')) {
+    return new RiversweepsProviderService(provider);
   }
   return new ProviderService(provider);
 }
