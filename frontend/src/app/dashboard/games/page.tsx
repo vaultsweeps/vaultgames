@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Gamepad2, Download, Search, Star, Eye, RefreshCw, Bot, X, MessageCircle, Send, Zap } from 'lucide-react'
+import { Gamepad2, Download, Search, Star, Eye, RefreshCw, Bot, X, MessageCircle, Send, Zap, Copy, RefreshCcw } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Link from 'next/link'
 import { gamesApi, publicApi } from '@/lib/api'
@@ -48,6 +48,8 @@ export default function GamesPage() {
   const [agentGame, setAgentGame] = useState<Game | null>(null)
   const [settings, setSettings] = useState<any>({})
   const [visibleCount, setVisibleCount] = useState(12)
+  const [downloadCode, setDownloadCode] = useState<string | null>(null)
+  const [generatingCode, setGeneratingCode] = useState(false)
 
   const fetchGames = async () => {
     setLoading(true)
@@ -101,6 +103,24 @@ export default function GamesPage() {
       toast.error(err?.response?.data?.message || 'Download failed')
     } finally {
       setDownloading(null)
+    }
+  }
+
+  const handleGenerateDownloadCode = async (game: Game) => {
+    setGeneratingCode(true)
+    setDownloadCode(null)
+    try {
+      const res = await gamesApi.generateDownloadCode(game.id)
+      const code = res.data.data?.downloadCode
+      if (code) {
+        setDownloadCode(code)
+      } else {
+        toast.error('No download code returned')
+      }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Failed to generate download code')
+    } finally {
+      setGeneratingCode(false)
     }
   }
 
@@ -249,7 +269,7 @@ export default function GamesPage() {
 
       {/* Game Detail Modal */}
       {selectedGame && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setSelectedGame(null)}>
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => { setSelectedGame(null); setDownloadCode(null); }}>
           <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} onClick={e => e.stopPropagation()}
             className="glass-card max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
             <div className={`h-40 bg-gradient-to-br from-blue-900/30 to-purple-900/30 rounded-xl mb-5 relative overflow-hidden`}>
@@ -272,11 +292,36 @@ export default function GamesPage() {
               )}
             </div>
             <p className="text-secondary text-sm leading-relaxed mb-5">{selectedGame.description || 'No description available.'}</p>
+            {/* Generate Download Code section (Orionstar only) */}
+            {selectedGame.downloadUrl && (
+              <div className="mb-4">
+                {downloadCode ? (
+                  <div className="glass rounded-xl p-4 border border-neon-blue/20 text-center">
+                    <p className="text-xs text-secondary mb-1">Download code</p>
+                    <div className="flex items-center justify-center gap-3">
+                      <span className="text-2xl font-bold text-white tracking-widest font-mono">{downloadCode}</span>
+                      <button onClick={() => { navigator.clipboard.writeText(downloadCode); toast.success('Code copied!'); }}
+                        className="text-secondary hover:text-white transition-colors">
+                        <Copy className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button onClick={() => handleGenerateDownloadCode(selectedGame)}
+                    disabled={generatingCode}
+                    className="w-full py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 transition-all disabled:opacity-50">
+                    {generatingCode ? <div className="w-4 h-4 border-2 border-emerald-400/30 border-t-emerald-400 rounded-full animate-spin" /> : <RefreshCcw className="w-4 h-4" />}
+                    Generate download code
+                  </button>
+                )}
+              </div>
+            )}
+
             <div className="flex gap-3">
               <div className="flex-1 flex gap-2">
                 <button onClick={() => handleDownload(selectedGame)} disabled={downloading === selectedGame.id || !selectedGame.downloadUrl}
                   className="btn-primary flex-1 py-3 text-sm flex items-center justify-center gap-2 disabled:opacity-50">
-                  {downloading === selectedGame.id ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><Download className="w-4 h-4" /> Download Game</>}
+                  {downloading === selectedGame.id ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><Download className="w-4 h-4" /> Download</>}
                 </button>
                 {!hasProvider(selectedGame) && (
                   <button onClick={() => { setSelectedGame(null); setAgentGame(selectedGame); }}
@@ -285,7 +330,7 @@ export default function GamesPage() {
                   </button>
                 )}
               </div>
-              <button onClick={() => setSelectedGame(null)} className="glass px-5 py-3 rounded-xl text-secondary hover:text-white border border-border-strong transition-all text-sm">Close</button>
+              <button onClick={() => { setSelectedGame(null); setDownloadCode(null); }} className="glass px-5 py-3 rounded-xl text-secondary hover:text-white border border-border-strong transition-all text-sm">Close</button>
             </div>
           </motion.div>
         </div>

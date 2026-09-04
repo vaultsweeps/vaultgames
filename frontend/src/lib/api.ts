@@ -102,6 +102,7 @@ export const gamesApi = {
   getAll: (params?: object) => apiClient.get('/games', { params }),
   getOne: (id: string) => apiClient.get(`/games/${id}`),
   download: (id: string) => apiClient.post(`/games/${id}/download`),
+  generateDownloadCode: (id: string) => apiClient.post(`/games/${id}/download-code`),
 }
 
 // Bonuses APIs

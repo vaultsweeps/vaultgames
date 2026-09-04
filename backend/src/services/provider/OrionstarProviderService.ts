@@ -314,6 +314,20 @@ export class OrionstarProviderService implements ProviderAdapter {
     return true;
   }
 
+  /**
+   * Generates a download code for Orionstar app installation.
+   * Per the API docs: only agentName + time + sign are required.
+   * Returns the downloadCode string on success.
+   */
+  async getDownloadCode(): Promise<string> {
+    const res = await this.makeRequest('getDownloadCode', {}, null);
+    if (!res?.downloadCode) {
+      throw new AppError('Orionstar did not return a download code', 502);
+    }
+    return res.downloadCode as string;
+  }
+
+
   async forcePlayerOffline(userId: string): Promise<boolean> {
     console.warn(`[Orionstar] forcePlayerOffline not supported. userId=${userId}`);
     return true;

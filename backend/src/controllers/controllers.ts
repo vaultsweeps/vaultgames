@@ -63,6 +63,30 @@ export const downloadGame = asyncHandler(async (req: AuthRequest, res: Response)
   res.json({ success: true, data: { downloadUrl: finalDownloadUrl, name: game.name } })
 })
 
+// POST /api/games/:id/download-code
+// Generates a download code for providers that support it (e.g. Orionstar)
+export const generateDownloadCode = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const game = await prisma.game.findUnique({ where: { id: req.params.id as string, isActive: true } })
+  if (!game) throw new AppError('Game not found', 404)
+
+  // Get the provider for this game
+  const { ProviderFactory } = await import('../services/provider/ProviderFactory')
+  const providerId = await ProviderFactory.getProviderIdForGame(game.id)
+  if (!providerId) throw new AppError('No provider configured for this game', 404)
+
+  const providerService = await ProviderFactory.getProviderById(providerId)
+  if (!providerService) throw new AppError('Provider service unavailable', 503)
+
+  // Only Orionstar supports download codes
+  if (!('getDownloadCode' in providerService)) {
+    throw new AppError('This game provider does not support download codes', 400)
+  }
+
+  const downloadCode = await (providerService as any).getDownloadCode()
+  res.json({ success: true, data: { downloadCode } })
+})
+
+
 // ─── BONUSES ─────────────────────────────────────────────────────────────────
 export const getBonuses = asyncHandler(async (req: AuthRequest, res: Response) => {
   const bonuses = await getCached('bonuses:active', async () => {
