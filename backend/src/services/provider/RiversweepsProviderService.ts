@@ -57,11 +57,14 @@ export class RiversweepsProviderService implements ProviderAdapter {
     try {
       const response = await this.http.get(endpoint);
       const data = response.data;
-      const duration = Date.now() - startTime;
 
-      if (data && data.STATUS !== 0) {
-        // Riversweeps returns STATUS: 1 and data.message on error
-        const errMsg = data.data?.message || 'Unknown provider error';
+      // Log raw response for debugging
+      console.info(`[Riversweeps] ${action} raw response:`, JSON.stringify(data));
+
+      // STATUS: 0 = success, 1 = error. Handle both string and numeric.
+      const status = Number(data?.STATUS);
+      if (data !== undefined && status !== 0) {
+        const errMsg = data.data?.message || data.message || data.MSG || 'Unknown provider error';
         await ProviderLogService.logRequest(
           this.provider.id, userId, logEndpoint, params, data, 400, errMsg
         );
@@ -72,7 +75,8 @@ export class RiversweepsProviderService implements ProviderAdapter {
         this.provider.id, userId, logEndpoint, params, data, 200, null
       );
       
-      return data.data;
+      // Return data.data if it exists, otherwise the whole response
+      return data?.data ?? data;
 
     } catch (err: any) {
       if (err instanceof AppError) throw err;
@@ -81,12 +85,20 @@ export class RiversweepsProviderService implements ProviderAdapter {
   }
 
   async createPlayer(username: string, password?: string): Promise<{ userId: string; accountName: string }> {
-    // Riversweeps create account takes amount (0) and bounceback (0).
-    // It returns a newly generated code as the player's account.
-    // We ignore the `username` provided since Riversweeps generates a PIN/code.
+    // Riversweeps auto-generates a unique code (e.g. "28-18-06-62-19-99") for each player.
+    // The user provides this code to log into the Riversweeps app.
     const res = await this.makeRequest('create', { amount: 0, bounceback: 0 });
-    const code = res.code;
-    return { userId: code, accountName: code };
+    
+    // Handle different possible field names in the response
+    const code = res?.code || res?.CODE || res?.playerCode || res?.player_code || res?.id;
+    
+    if (!code) {
+      console.error('[Riversweeps] createPlayer: no code in response:', JSON.stringify(res));
+      throw new AppError('Riversweeps account created but no code returned', 500);
+    }
+    
+    const codeStr = String(code);
+    return { userId: codeStr, accountName: codeStr };
   }
 
   async rechargePlayer(userId: string, amount: number, orderId: string): Promise<any> {
