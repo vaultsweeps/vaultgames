@@ -1,7 +1,7 @@
 'use client'
 import { useAuthStore } from '@/store/authStore'
 import { getTelegramUrl } from '@/lib/telegram'
-import { getSignalUrl } from '@/lib/signal'
+import { getSmsUrl } from '@/lib/sms'
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, CheckCircle, ArrowRight } from 'lucide-react'
@@ -27,13 +27,13 @@ export default function ZappayDepositModal({ isOpen, onClose, method = 'zappay' 
   const [profileName, setProfileName] = useState('')
   const [methods, setMethods] = useState<any[]>([])
   const [settings, setSettings] = useState<any>({})
-  const [signalUrl, setSignalUrl] = useState('')
+  const [smsUrl, setSmsUrl] = useState('')
 
   useEffect(() => {
     if (isOpen) {
       depositApi.getPaymentMethods().then(res => setMethods(res.data.data)).catch(() => {})
       publicApi.getSettings().then(res => setSettings(res.data.data || {})).catch(() => {})
-      setSignalUrl(getSignalUrl())
+      setSmsUrl(getSmsUrl())
       setStep(1)
       setStatus('idle')
       setAmount('0.00')
@@ -42,11 +42,9 @@ export default function ZappayDepositModal({ isOpen, onClose, method = 'zappay' 
     // Body overflow is managed by WalletModal (parent)
   }, [isOpen])
 
-  // Keep signal URL up to date as shifts change
+  // Keep sms URL up to date as shifts change
   useEffect(() => {
-    setSignalUrl(getSignalUrl())
-    const t = setInterval(() => setSignalUrl(getSignalUrl()), 60_000)
-    return () => clearInterval(t)
+    setSmsUrl(getSmsUrl())
   }, [])
 
 
