@@ -299,10 +299,12 @@ export class OrionstarProviderService implements ProviderAdapter {
   }
 
   async getPlayerBalance(userId: string): Promise<number> {
-    const data = await this.makeRequest('queryUserinfo', { account: userId }, userId);
+    // Orionstar uses 'queryInfo' (NOT 'queryUserinfo') — queryUserinfo returns empty data.
+    // queryInfo response: { code:'200', userBalance:'5.00', agentBalance:'400', webLoginUrl:'...', gameId:'...' }
+    const data = await this.makeRequest('queryInfo', { account: userId }, userId);
     console.info(`[Orionstar] getPlayerBalance raw response for ${userId}:`, JSON.stringify(data));
-    // Orionstar may return balance as: score, userbalance, userBalance, or balance
-    const raw = data.score ?? data.userbalance ?? data.userBalance ?? data.balance ?? data.Score ?? '0';
+    // Balance field is 'userBalance' (capital B) in queryInfo response
+    const raw = data.userBalance ?? data.userbalance ?? data.score ?? data.balance ?? '0';
     return parseFloat(String(raw)) || 0;
   }
 
