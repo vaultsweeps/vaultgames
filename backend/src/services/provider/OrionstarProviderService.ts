@@ -289,11 +289,11 @@ export class OrionstarProviderService implements ProviderAdapter {
   }
 
   async rechargePlayer(userId: string, amount: number, orderId: string) {
-    return this.makeRequest('recharge', { account: userId, score: Number(amount.toFixed(2)) }, userId);
+    return this.makeRequest('recharge', { account: userId, amount: Math.floor(amount) }, userId);
   }
 
   async withdrawPlayer(userId: string, amount: number, orderId: string) {
-    return this.makeRequest('redeem', { account: userId, score: Number(amount.toFixed(2)) }, userId);
+    return this.makeRequest('redeem', { account: userId, amount: Math.floor(amount) }, userId);
   }
 
   async getPlayerBalance(userId: string): Promise<number> {
