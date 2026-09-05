@@ -136,7 +136,7 @@ export class OrionstarProviderService implements ProviderAdapter {
         }
 
         this.agentKey     = key;
-        this.agentBalance = (parseFloat(d.balance ?? d.Balance ?? '0') || 0) / 100;
+        this.agentBalance = parseFloat(d.balance ?? d.Balance ?? '0') || 0;
         this.lastAuthTime = Date.now();
 
         console.info(`[Orionstar] Session OK | key: ${key} | balance: ${this.agentBalance}`);
@@ -289,17 +289,16 @@ export class OrionstarProviderService implements ProviderAdapter {
   }
 
   async rechargePlayer(userId: string, amount: number, orderId: string) {
-    return this.makeRequest('recharge', { account: userId, amount: Math.round(amount * 100) }, userId);
+    return this.makeRequest('recharge', { account: userId, amount: Math.round(amount) }, userId);
   }
 
   async withdrawPlayer(userId: string, amount: number, orderId: string) {
-    return this.makeRequest('redeem', { account: userId, amount: Math.round(amount * 100) }, userId);
+    return this.makeRequest('redeem', { account: userId, amount: Math.round(amount) }, userId);
   }
 
   async getPlayerBalance(userId: string): Promise<number> {
     const data = await this.makeRequest('queryUserinfo', { account: userId }, userId);
-    const balanceCents = parseFloat(data.userbalance ?? data.userBalance ?? '0') || 0;
-    return balanceCents / 100;
+    return parseFloat(data.userbalance ?? data.userBalance ?? '0') || 0;
   }
 
   async getAgentBalance(): Promise<number> {
