@@ -392,7 +392,7 @@ export const transferFunds = asyncHandler(async (req: AuthRequest, res: Response
       } else {
         // 30% Regular Deposit Bonus — applied on every recharge after the first.
         // This bonus always applies regardless of wheel/freeplay/coupon history.
-        bonusAmount = amount * 0.3;
+        bonusAmount = Math.floor(amount * 0.3);
         if (depositBonusDef) {
           try {
             // Upsert: accumulate the total bonus amount received across all rechargess
