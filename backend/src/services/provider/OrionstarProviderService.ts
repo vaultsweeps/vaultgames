@@ -289,16 +289,21 @@ export class OrionstarProviderService implements ProviderAdapter {
   }
 
   async rechargePlayer(userId: string, amount: number, orderId: string) {
+    // Orionstar uses raw integer gold units — round to nearest whole number
     return this.makeRequest('recharge', { account: userId, amount: Math.round(amount) }, userId);
   }
 
   async withdrawPlayer(userId: string, amount: number, orderId: string) {
+    // Orionstar uses raw integer gold units — round to nearest whole number
     return this.makeRequest('redeem', { account: userId, amount: Math.round(amount) }, userId);
   }
 
   async getPlayerBalance(userId: string): Promise<number> {
     const data = await this.makeRequest('queryUserinfo', { account: userId }, userId);
-    return parseFloat(data.userbalance ?? data.userBalance ?? '0') || 0;
+    console.info(`[Orionstar] getPlayerBalance raw response for ${userId}:`, JSON.stringify(data));
+    // Orionstar may return balance as: score, userbalance, userBalance, or balance
+    const raw = data.score ?? data.userbalance ?? data.userBalance ?? data.balance ?? data.Score ?? '0';
+    return parseFloat(String(raw)) || 0;
   }
 
   async getAgentBalance(): Promise<number> {
@@ -307,10 +312,23 @@ export class OrionstarProviderService implements ProviderAdapter {
   }
 
   async resetPlayerPassword(userId: string, newPassword?: string): Promise<boolean> {
-    await this.makeRequest('changePasswd', {
-      account:   userId,
-      passwdnew: this.md5(newPassword || 'Test@1234'),
-    }, userId);
+    // Orionstar uses 'passwdnew' (lowercase) for the new password field
+    try {
+      await this.makeRequest('changePasswd', {
+        account:   userId,
+        passwdnew: this.md5(newPassword || 'Test@1234'),
+      }, userId);
+    } catch (err: any) {
+      // Try alternate capitalization if first attempt fails
+      if (err?.message?.includes('Provider Error')) {
+        await this.makeRequest('changePasswd', {
+          account:    userId,
+          passwdNew: this.md5(newPassword || 'Test@1234'),
+        }, userId);
+      } else {
+        throw err;
+      }
+    }
     return true;
   }
 
