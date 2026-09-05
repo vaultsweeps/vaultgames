@@ -410,13 +410,18 @@ export const transferFunds = asyncHandler(async (req: AuthRequest, res: Response
       finalProviderAmount = amount + bonusAmount;
       await providerService.rechargePlayer(providerUser.providerUserId, finalProviderAmount, orderId);
     } else {
-      // CASHOUT: withdraw FULL game balance from provider
+      // CASHOUT: withdraw the user-requested amount (or full balance if less), cap at maxCashout
       const { maxCashout, liveGameBalance } = (req as any).__cashout__ as { minCashout: number; maxCashout: number; liveGameBalance: number };
 
-      const withdrawFromProvider = Math.floor(liveGameBalance); // full balance, floored
-      creditedAmount = Math.min(withdrawFromProvider, maxCashout);  // capped at their max
-      voidedAmount = Math.max(0, withdrawFromProvider - creditedAmount); // excess voided
+      // How much to actually pull from the game — the FULL balance (sweep everything out)
+      const withdrawFromProvider = Math.floor(liveGameBalance);
 
+      // How much to credit the user's wallet — capped at their max allowed cashout
+      creditedAmount = Math.min(withdrawFromProvider, maxCashout);
+      // Anything above the cap is voided (not credited to wallet)
+      voidedAmount = Math.max(0, withdrawFromProvider - creditedAmount);
+
+      // Pull the full balance out of the game provider
       await providerService.withdrawPlayer(providerUser.providerUserId, withdrawFromProvider, orderId);
     }
   } catch (err: any) {
