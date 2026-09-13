@@ -7,7 +7,7 @@ import { useForm } from 'react-hook-form'
 import toast from 'react-hot-toast'
 import { HelpCircle, Plus, MessageCircle, Send, ChevronRight, Clock, CheckCircle, Mail } from 'lucide-react'
 import { supportApi, publicApi } from '@/lib/api'
-import { getSignalUrl } from '@/lib/signal'
+import { getSmsUrl } from '@/lib/sms'
 import LiveChat from './LiveChat'
 
 const CATEGORIES = ['General', 'Deposits', 'Cashouts', 'Games', 'Bonuses', 'Technical', 'Account', 'Other']
@@ -26,14 +26,14 @@ export default function SupportPage() {
   const [tickets, setTickets] = useState<any[]>([])
   const [ticketsLoading, setTicketsLoading] = useState(true)
   const [settings, setSettings] = useState<any>({})
-  const [signalUrl, setSignalUrl] = useState('')
+  const [smsUrl, setsmsUrl] = useState('')
   const { register, handleSubmit, reset, formState: { errors } } = useForm()
 
   useEffect(() => {
     publicApi.getSettings().then(res => setSettings(res.data.data || {})).catch(() => {})
-    setSignalUrl(getSignalUrl())
+    setsmsUrl(getSmsUrl())
     // Refresh signal URL every minute in case the shift changes while the page is open
-    const t = setInterval(() => setSignalUrl(getSignalUrl()), 60_000)
+    const t = setInterval(() => setsmsUrl(getSmsUrl()), 60_000)
     return () => clearInterval(t)
   }, [])
 
@@ -182,7 +182,7 @@ export default function SupportPage() {
       {tab === 'contact' && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* Signal – FIRST and fastest */}
-          <a href={signalUrl} target="_blank" rel="noopener noreferrer"
+          <a href={smsUrl} target="_blank" rel="noopener noreferrer"
             className="glass-card p-6 hover:border-[#3a76f0]/40 transition-all group relative overflow-hidden">
             {/* Subtle beam hint on the card border */}
             <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform" style={{ background: 'rgba(58,118,240,0.12)', border: '1px solid rgba(58,118,240,0.3)' }}>
@@ -192,11 +192,11 @@ export default function SupportPage() {
                 <path d="M19 23h10M19 27h6" stroke="#3a76f0" strokeWidth="2" strokeLinecap="round"/>
               </svg>
             </div>
-            <h4 className="font-display font-bold text-primary mb-1">Signal Support</h4>
+            <h4 className="font-display font-bold text-primary mb-1">Text Support</h4>
             <div className="flex items-center gap-2 mb-2">
               <span className="inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-full" style={{ background: 'rgba(58,118,240,0.15)', color: '#3a76f0', border: '1px solid rgba(58,118,240,0.3)' }}>
                 <span className="w-1.5 h-1.5 rounded-full bg-[#3a76f0] animate-pulse inline-block"></span>
-                {signalUrl.includes('Vaulter') ? 'Day Shift  4 AM – 4 PM' : 'Night Shift  4 PM – 4 AM'}
+                {smsUrl.includes('Vaulter') ? 'Day Shift  4 AM – 4 PM' : 'Night Shift  4 PM – 4 AM'}
               </span>
               <span className="inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">⚡ Fastest</span>
             </div>

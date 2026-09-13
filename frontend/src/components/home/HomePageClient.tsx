@@ -5,7 +5,7 @@ import { Gift, Shield, Zap, Headphones, ChevronDown, Send, MessageCircle, Star, 
 import { useState, useEffect } from 'react'
 import { publicApi } from '@/lib/api'
 import { useAuthStore } from '@/store/authStore'
-import { getSignalUrl } from '@/lib/signal'
+import { getSmsUrl } from '@/lib/sms'
 import dynamic from 'next/dynamic'
 
 const WelcomeBonusPopup = dynamic(() => import('@/components/modals/WelcomeBonusPopup'), { ssr: false })
@@ -57,7 +57,7 @@ export default function HomePageClient() {
   const [bonuses, setBonuses] = useState<any[]>([])
   const [settings, setSettings] = useState<any>({})
   const [mounted, setMounted] = useState(false)
-  const [signalUrl, setSignalUrl] = useState('')
+  const [smsUrl, setsmsUrl] = useState('')
   const [showWelcomePopup, setShowWelcomePopup] = useState(false)
   const { isAuthenticated, openAuthModal } = useAuthStore()
 
@@ -70,8 +70,8 @@ export default function HomePageClient() {
 
   useEffect(() => {
     setMounted(true)
-    setSignalUrl(getSignalUrl())
-    const t = setInterval(() => setSignalUrl(getSignalUrl()), 60_000)
+    setsmsUrl(getSmsUrl())
+    const t = setInterval(() => setsmsUrl(getSmsUrl()), 60_000)
     publicApi.getBonuses()
       .then(res => setBonuses((res.data.data || []).slice(0, 4)))
       .catch(() => {})

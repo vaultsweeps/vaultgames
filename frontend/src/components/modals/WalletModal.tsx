@@ -277,7 +277,7 @@ export default function WalletModal({ isOpen, onClose, balance }: WalletModalPro
                         ))}
                       </div>
                       <div className="px-2 mt-3">
-                        <a href={getSmsUrl()} target="_blank" rel="noopener noreferrer" className="btn-signal-beam-rect w-full block font-bold py-3 rounded-xl text-center text-sm shadow-md transition-all">
+                        <a href={getSmsUrl()} target="_blank" rel="noopener noreferrer" className="btn-sms-beam-rect w-full block font-bold py-3 rounded-xl text-center text-sm shadow-md transition-all">
                           <span className="relative z-10 text-white">Contact us for more option</span>
                         </a>
                       </div>
@@ -322,7 +322,7 @@ export default function WalletModal({ isOpen, onClose, balance }: WalletModalPro
                           </button>
                         </div>
                         <div className="px-2">
-                          <a href={getSmsUrl()} target="_blank" rel="noopener noreferrer" className="btn-signal-beam-rect w-full block font-bold py-3 rounded-xl text-center text-sm shadow-md transition-all">
+                          <a href={getSmsUrl()} target="_blank" rel="noopener noreferrer" className="btn-sms-beam-rect w-full block font-bold py-3 rounded-xl text-center text-sm shadow-md transition-all">
                             <span className="relative z-10 text-white">Contact us for more option</span>
                           </a>
                         </div>

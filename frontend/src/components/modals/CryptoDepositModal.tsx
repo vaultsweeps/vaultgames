@@ -5,7 +5,7 @@ import { Loader2, X, Copy, CheckCircle2, ChevronLeft, AlertTriangle, CheckCircle
 import toast from 'react-hot-toast'
 import { depositApi } from '@/lib/api'
 import { QRCodeSVG } from 'qrcode.react'
-import { getSignalUrl } from '@/lib/signal'
+import { getSmsUrl } from '@/lib/sms'
 
 interface CoinInfo {
   currency: string
@@ -350,7 +350,7 @@ export default function CryptoDepositModal({ isOpen, onClose, amount: propAmount
                       })}
                     </div>
                     
-                    <a href={getSignalUrl()} target="_blank" rel="noopener noreferrer" className="btn-signal-beam-rect w-full block font-bold py-3 rounded-xl text-center text-sm shadow-md transition-all">
+                    <a href={getSmsUrl()} target="_blank" rel="noopener noreferrer" className="btn-sms-beam-rect w-full block font-bold py-3 rounded-xl text-center text-sm shadow-md transition-all">
                       <span className="relative z-10 text-white">Contact us for more option</span>
                     </a>
                   </div>
