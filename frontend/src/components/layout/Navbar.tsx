@@ -71,14 +71,28 @@ export default function Navbar() {
 
   useEffect(() => {
     setMounted(true)
-    const handler = () => setIsScrolled(window.scrollY > 20)
-    window.addEventListener('scroll', handler)
-    return () => window.removeEventListener('scroll', handler)
+    let rafId: number
+    let lastScrolled = false
+    const handler = () => {
+      cancelAnimationFrame(rafId)
+      rafId = requestAnimationFrame(() => {
+        const nowScrolled = window.scrollY > 20
+        if (nowScrolled !== lastScrolled) {
+          lastScrolled = nowScrolled
+          setIsScrolled(nowScrolled)
+        }
+      })
+    }
+    window.addEventListener('scroll', handler, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', handler)
+      cancelAnimationFrame(rafId)
+    }
   }, [])
 
   return (
     <>
-    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
+    <nav className={`fixed top-0 left-0 right-0 z-50 transition-[background-color,box-shadow,padding,border-color,backdrop-filter] duration-500 ${
       mounted && isScrolled
         ? 'py-2.5 backdrop-blur-xl bg-[#0a0a1a]/80 border-b border-purple-500/20 shadow-[0_4px_32px_rgba(139,92,246,0.15),0_1px_0_rgba(99,102,241,0.25)]'
         : 'bg-transparent py-5'
@@ -451,14 +465,27 @@ export default function Navbar() {
       )}
     </AnimatePresence>
 
-    {/* Mobile Bottom Navigation Bar */}
-    <div className="lg:hidden fixed bottom-5 left-1/2 -translate-x-1/2 z-50 flex justify-center items-center gap-3 pointer-events-none">
+    {/* Mobile Bottom Navigation Bar
+        Performance notes:
+        - translate3d(-50%,0,0) instead of -translate-x-1/2 Tailwind class: locks element to GPU compositing layer
+        - will-change:transform: pre-promotes to its own layer so scroll events don't cause repaint
+        - contain:layout style: prevents children repaints from bubbling up to the compositor
+        - No transition-all on children: only GPU-friendly color/opacity transitions
+    */}
+    <div
+      className="mobile-nav-stable lg:hidden fixed bottom-5 left-1/2 z-50 flex justify-center items-center gap-3 pointer-events-none"
+      style={{
+        transform: 'translate3d(-50%, 0, 0)',
+        willChange: 'transform',
+      }}
+    >
 
       {/* Menu Toggle Button */}
       <button
         onClick={() => setMobileOpen(!mobileOpen)}
         aria-label={mobileOpen ? "Close menu" : "Open menu"}
-        className="w-[52px] h-[52px] rounded-full bg-[#7C3AED] hover:bg-[#6D28D9] flex items-center justify-center text-white shadow-lg pointer-events-auto transition-all active:scale-95"
+        className="w-[52px] h-[52px] rounded-full bg-[#7C3AED] hover:bg-[#6D28D9] flex items-center justify-center text-white shadow-lg pointer-events-auto active:scale-95"
+        style={{ transition: 'background-color 0.2s ease, transform 0.1s ease' }}
       >
         <AnimatePresence mode="wait" initial={false}>
           {mobileOpen
@@ -469,38 +496,41 @@ export default function Navbar() {
       </button>
 
       {/* Main Nav Pill */}
-      <div className="relative border border-white/10 rounded-[28px] px-1.5 py-1.5 flex items-center gap-1.5 pointer-events-auto shadow-[0_8px_32px_rgba(0,0,0,0.6)] bg-gradient-to-b from-[#14152c]/95 to-[#090914]/95 backdrop-blur-xl">
+      <div
+        className="relative border border-white/10 rounded-[28px] px-1.5 py-1.5 flex items-center gap-1.5 pointer-events-auto shadow-[0_8px_32px_rgba(0,0,0,0.6)] bg-gradient-to-b from-[#14152c]/95 to-[#090914]/95 backdrop-blur-xl"
+        style={{ contain: 'layout style' }}
+      >
         {/* Inner subtle glow for the pill */}
         <div className="absolute inset-0 rounded-[28px] shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] pointer-events-none" />
 
         {/* Home */}
-        <Link href="/" aria-label="Home" className={`relative flex flex-col items-center justify-center w-[50px] h-[50px] rounded-2xl transition-all duration-300 group overflow-hidden ${
+        <Link href="/" aria-label="Home" className={`relative flex flex-col items-center justify-center w-[50px] h-[50px] rounded-2xl group overflow-hidden ${
           pathname === '/'
             ? 'bg-gradient-to-b from-indigo-500/20 to-purple-500/10 text-indigo-300 shadow-[inset_0_0_12px_rgba(99,102,241,0.2)] border border-indigo-500/30'
             : 'text-white/50 hover:text-white/90 hover:bg-white/5 border border-transparent'
-        }`}>
+        }`} style={{ transition: 'background-color 0.2s ease, color 0.2s ease' }}>
           <Home className="w-[22px] h-[22px] z-10" strokeWidth={pathname === '/' ? 2.5 : 2} />
           {pathname === '/' && <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-indigo-400 rounded-full shadow-[0_0_8px_rgba(129,140,248,0.9)]" />}
         </Link>
 
         {/* Games */}
-        <Link href="/games" aria-label="Games" className={`relative flex flex-col items-center justify-center w-[50px] h-[50px] rounded-2xl transition-all duration-300 ${
-          pathname.includes('/games') 
-            ? 'bg-gradient-to-b from-blue-500/20 to-cyan-500/10 shadow-[inset_0_0_12px_rgba(59,130,246,0.2)] border border-blue-500/30' 
+        <Link href="/games" aria-label="Games" className={`relative flex flex-col items-center justify-center w-[50px] h-[50px] rounded-2xl ${
+          pathname.includes('/games')
+            ? 'bg-gradient-to-b from-blue-500/20 to-cyan-500/10 shadow-[inset_0_0_12px_rgba(59,130,246,0.2)] border border-blue-500/30'
             : 'hover:bg-white/5 border border-transparent'
-        }`}>
+        }`} style={{ transition: 'background-color 0.2s ease' }}>
           <div className="w-[30px] h-[30px] rounded-lg flex items-center justify-center overflow-hidden z-10">
-            <Image src="/images/vault-sweeps-logo.png" alt="Games" width={32} height={32} className={`w-full h-full object-contain drop-shadow-[0_0_4px_rgba(255,255,255,0.2)] ${!pathname.includes('/games') && 'opacity-70 hover:opacity-100 transition-opacity'}`} />
+            <Image src="/images/vault-sweeps-logo.png" alt="Games" width={32} height={32} className={`w-full h-full object-contain drop-shadow-[0_0_4px_rgba(255,255,255,0.2)] ${!pathname.includes('/games') && 'opacity-70 hover:opacity-100'}`} style={{ transition: 'opacity 0.2s ease' }} />
           </div>
           {pathname.includes('/games') && <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-blue-400 rounded-full shadow-[0_0_8px_rgba(96,165,250,0.9)]" />}
         </Link>
 
         {/* Bonuses */}
-        <Link href="/bonuses" aria-label="Bonuses" className={`relative flex flex-col items-center justify-center w-[50px] h-[50px] rounded-2xl transition-all duration-300 ${
+        <Link href="/bonuses" aria-label="Bonuses" className={`relative flex flex-col items-center justify-center w-[50px] h-[50px] rounded-2xl ${
           pathname.includes('/bonuses')
             ? 'bg-gradient-to-b from-amber-500/20 to-orange-500/10 text-amber-300 shadow-[inset_0_0_12px_rgba(245,158,11,0.2)] border border-amber-500/30'
             : 'text-white/50 hover:text-white/90 hover:bg-white/5 border border-transparent'
-        }`}>
+        }`} style={{ transition: 'background-color 0.2s ease, color 0.2s ease' }}>
           <Gift className="w-[22px] h-[22px] z-10" strokeWidth={pathname.includes('/bonuses') ? 2.5 : 2} />
           {pathname.includes('/bonuses') && <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-amber-400 rounded-full shadow-[0_0_8px_rgba(251,191,36,0.9)]" />}
         </Link>
