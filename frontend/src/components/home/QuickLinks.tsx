@@ -150,16 +150,48 @@ export default function QuickLinks() {
 
                 <div className="relative z-10 flex items-start justify-between">
                   <div
-                    className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center transition-all duration-300 group-hover:scale-105 group-hover:shadow-[0_0_20px_rgba(255,255,255,0.25)] relative overflow-hidden backdrop-blur-md"
+                    className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center transition-all duration-500 group-hover:scale-110 group-hover:-translate-y-1 relative overflow-hidden backdrop-blur-xl z-10"
                     style={{ 
-                      background: `linear-gradient(135deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.05) 100%)`,
-                      boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.4)',
-                      border: '1px solid rgba(255,255,255,0.15)'
+                      // Deep glass base with subtle color tint
+                      background: `linear-gradient(135deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.02) 100%)`,
+                      // Complex box-shadow for glass thickness, inner glow, and outer drop shadow
+                      boxShadow: `
+                        inset 0 2px 4px rgba(255,255,255,0.6), 
+                        inset 0 -4px 8px rgba(0,0,0,0.3), 
+                        inset 0 0 12px ${link.accent}70,
+                        0 8px 16px rgba(0,0,0,0.4),
+                        0 2px 4px rgba(0,0,0,0.2)
+                      `,
+                      // 3D edge borders mimicking light hitting the top-left edge
+                      borderTop: '1.5px solid rgba(255,255,255,0.7)',
+                      borderLeft: '1.5px solid rgba(255,255,255,0.5)',
+                      borderRight: '1px solid rgba(255,255,255,0.1)',
+                      borderBottom: '1px solid rgba(255,255,255,0.1)'
                     }}
                   >
-                    {/* Inner glass highlight */}
-                    <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent pointer-events-none" />
-                    <link.icon className="w-5 h-5 sm:w-6 sm:h-6 text-white drop-shadow-md relative z-10" strokeWidth={2.5} />
+                    {/* Glass surface curve top reflection */}
+                    <div 
+                      className="absolute inset-0 pointer-events-none" 
+                      style={{ 
+                        background: 'radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.6) 0%, transparent 60%)',
+                      }} 
+                    />
+                    
+                    {/* Diagonal intense glass sheen (refraction highlight) */}
+                    <div 
+                      className="absolute inset-0 pointer-events-none"
+                      style={{ background: 'linear-gradient(135deg, transparent 35%, rgba(255,255,255,0.5) 45%, rgba(255,255,255,0.05) 50%, transparent 60%)' }}
+                    />
+                    
+                    {/* The Icon itself, styled to look 3D inside the capsule */}
+                    <link.icon 
+                      className="w-5 h-5 sm:w-6 sm:h-6 text-white relative z-10 transition-transform duration-500 group-hover:scale-110" 
+                      strokeWidth={2.5} 
+                      style={{ 
+                        // Deep drop shadow makes it float inside, outer glow makes it emit light
+                        filter: `drop-shadow(0 4px 4px rgba(0,0,0,0.5)) drop-shadow(0 0 10px ${link.accent})` 
+                      }} 
+                    />
                   </div>
                   <ArrowRight className="w-4 h-4 text-white/60 group-hover:text-white group-hover:translate-x-1 group-hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.6)] transition-all duration-300" />
                 </div>
