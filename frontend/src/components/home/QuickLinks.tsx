@@ -192,25 +192,21 @@ export default function QuickLinks() {
 
                 <div className="relative z-10 flex items-start justify-between">
                   <div className="relative w-10 h-10 sm:w-12 sm:h-12 transition-transform duration-500 group-hover:scale-110 group-hover:-translate-y-1 z-10 group">
-                    {/* Deep Ambient Occlusion & Soft Drop Shadow */}
-                    <link.icon className="absolute top-2 left-1 w-full h-full opacity-60 mix-blend-multiply" strokeWidth={3} stroke="#000" style={{ filter: 'blur(4px)' }} />
-                    <link.icon className="absolute top-4 left-2 w-full h-full opacity-40 mix-blend-multiply" strokeWidth={3} stroke="#000" style={{ filter: 'blur(8px)' }} />
+                    {/* Deep Ambient Occlusion - Solid drop shadow instead of blurred multiply */}
+                    <link.icon className="absolute top-2 left-1 w-full h-full opacity-40" strokeWidth={3} stroke="#000" style={{ filter: 'blur(2px)' }} />
 
                     {/* Extrusion Base (3D Thickness/Volume) */}
-                    <link.icon className="absolute top-[3px] left-[1.5px] w-full h-full" strokeWidth={2.5} stroke={link.accent} style={{ filter: 'brightness(0.2)' }} />
-                    <link.icon className="absolute top-[2px] left-[1px] w-full h-full" strokeWidth={2.5} stroke={link.accent} style={{ filter: 'brightness(0.3)' }} />
-                    <link.icon className="absolute top-[1px] left-[0.5px] w-full h-full" strokeWidth={2.5} stroke={link.accent} style={{ filter: 'brightness(0.4)' }} />
+                    <link.icon className="absolute top-[3px] left-[1.5px] w-full h-full" strokeWidth={2.5} stroke="#000" opacity={0.6} />
+                    <link.icon className="absolute top-[2px] left-[1px] w-full h-full" strokeWidth={2.5} stroke="#000" opacity={0.4} />
+                    <link.icon className="absolute top-[1px] left-[0.5px] w-full h-full" strokeWidth={2.5} stroke="#000" opacity={0.2} />
 
                     {/* Main Metallic/Plastic Face */}
                     <link.icon className="absolute inset-0 w-full h-full" strokeWidth={2.5} stroke={`url(#${link.gradientId})`} />
 
                     {/* Specular Highlight / Bevel (Rim lighting) */}
                     <link.icon className="absolute -top-[1px] -left-[1px] w-full h-full opacity-90" strokeWidth={1} stroke="#ffffff" />
-                    
-                    {/* Internal core glow (bloom effect) */}
-                    <div className="absolute inset-0 rounded-full opacity-0 group-hover:opacity-60 transition-opacity duration-500 pointer-events-none" style={{ background: `radial-gradient(circle, ${link.accent}90 0%, transparent 60%)`, filter: 'blur(12px)' }} />
                   </div>
-                  <ArrowRight className="w-4 h-4 text-white/60 group-hover:text-white group-hover:translate-x-1 group-hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.6)] transition-all duration-300" />
+                  <ArrowRight className="w-4 h-4 text-white/60 group-hover:text-white group-hover:translate-x-1 group-hover:drop-shadow-[0_0_4px_rgba(255,255,255,0.4)] transition-all duration-300" />
                 </div>
 
                 <div className="relative z-10">
