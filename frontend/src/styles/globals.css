@@ -312,6 +312,38 @@ body {
 :root .scan-line { opacity: 0.12; }
 .dark .scan-line { opacity: 0.3; }
 
+/* ===== Mobile Bottom Nav — Scroll Jitter Fix =====
+ * This class and its descendants are opted OUT of the global * transition rule.
+ * The element is promoted to its own GPU compositing layer.
+ * This prevents the nav from being repainted during page scrolls.
+ */
+.mobile-nav-stable {
+  /* Promote to own GPU layer — prevents compositor from merging with scrolling content */
+  will-change: transform;
+  transform: translateZ(0);
+  /* Opt ALL descendants out of the global background/border/color transitions
+     which fire on every scroll when the page background or ancestor changes */
+  transition: none !important;
+  /* Safe area for iOS home bar / Android nav gestures */
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  /* Prevent accidental touch-action interference */
+  touch-action: none;
+  /* Contain layout so children repaints don't escape upward */
+  contain: layout style;
+}
+
+/* Allow children to have their own deliberate transitions (set via inline style) */
+.mobile-nav-stable * {
+  transition: none !important;
+}
+
+/* Re-enable specific transitions on interactive elements inside the nav */
+.mobile-nav-stable a,
+.mobile-nav-stable button {
+  transition: background-color 0.2s ease, color 0.2s ease, opacity 0.2s ease !important;
+}
+
+
 /* --- Liquid & Beam Auth Buttons --- */
 .btn-liquid {
   position: relative;
