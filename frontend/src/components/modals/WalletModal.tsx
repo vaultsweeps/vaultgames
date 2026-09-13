@@ -23,7 +23,7 @@ const paymentMethods = [
   { id: 'chime',   name: 'Chime',          icon: 'C',  badge: 'No fee',  color: 'bg-emerald-500' },
   { id: 'paypal',  name: 'PayPal',         icon: 'P',  badge: 'No fee',  color: 'bg-blue-500' },
   { id: 'cashapp', name: 'CashApp Pay',    icon: '$',  badge: 'No fee',  color: 'bg-green-500' },
-  { id: 'crypto',  name: 'Cryptocurrency', icon: '₿',  badge: '+15%',    tag: '+5', color: 'bg-orange-500', soon: false },
+  { id: 'crypto',  name: 'Cryptocurrency', icon: '₿',  badge: 'Bonus +30%', tag: '+5', color: 'bg-orange-500', soon: false },
   { id: 'apple',   name: 'Apple Pay',      icon: '',   badge: '-5%',     color: 'bg-black',                soon: true, logoUrl: 'https://i.pinimg.com/originals/ae/85/92/ae859253f4141e38711d2c159a53649e.jpg' },
   { id: 'card',    name: 'Debit Card',     icon: '💳', badge: '-10%',    color: 'bg-blue-600',             soon: true },
   { id: 'google',  name: 'Google Pay',     icon: 'G',  badge: '-5%',     color: 'bg-white text-black',     soon: true },
@@ -264,10 +264,38 @@ export default function WalletModal({ isOpen, onClose, balance }: WalletModalPro
                               </button>
                             )
                           }
-                          return (
-                          <button
-                            key={method.id}
-                            onClick={() => {
+                          // Special card for Cryptocurrency with overlapping coin icons
+                          if (method.id === 'crypto') {
+                            return (
+                              <button
+                                key={method.id}
+                                onClick={() => setDepositMethod('crypto')}
+                                className="bg-surface rounded-2xl p-4 flex flex-col transition-all border border-border-subtle relative overflow-hidden text-left hover:bg-surface-elevated hover:-translate-y-1"
+                              >
+                                <div className="flex justify-between items-start mb-3">
+                                  <div className="flex" >
+                                    {[
+                                      { bg: 'bg-orange-500', label: '₿', z: 3 },
+                                      { bg: 'bg-blue-500',   label: 'Ξ', z: 2 },
+                                      { bg: 'bg-slate-600',  label: '+5', z: 1 },
+                                    ].map((a, i) => (
+                                      <div
+                                        key={i}
+                                        className={`w-8 h-8 rounded-full ${a.bg} flex items-center justify-center text-white font-bold text-xs border-2 border-[#12121c]`}
+                                        style={{ zIndex: a.z, marginLeft: i === 0 ? 0 : -8 }}
+                                      >{a.label}</div>
+                                    ))}
+                                  </div>
+                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400">
+                                    Bonus +30%
+                                  </span>
+                                </div>
+                                <div className="flex justify-between items-center mt-auto">
+                                  <span className="text-white font-medium text-sm">{method.name}</span>
+                                </div>
+                              </button>
+                            )
+                          }
                               if (!method.soon) {
                                 // Sub-modal opens at z-[300], above this overlay at z-[200]
                                 setDepositMethod(method.id as any)

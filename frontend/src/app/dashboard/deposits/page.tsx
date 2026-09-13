@@ -214,7 +214,45 @@ function DepositsContent() {
                             </div>
                           </div>
                           <h3 className="text-white font-bold text-lg mb-1 relative z-10">Payment Apps</h3>
-                          <p className="text-xs text-slate-400 relative z-10">CashApp, Zelle, PayPal & more</p>
+                          <p className="text-xs text-slate-400 relative z-10">CashApp, Zelle, PayPal &amp; more</p>
+                        </button>
+                      )
+                    }
+
+                    if (m.code?.toLowerCase() === 'crypto') {
+                      return (
+                        <button key={m.id}
+                          onClick={() => {
+                            setSelectedMethod(m)
+                            setCryptoModalOpen(true)
+                          }}
+                          className="p-5 text-left transition-all group flex flex-col justify-center items-start hover:-translate-y-1 relative overflow-hidden"
+                          style={{ 
+                            background: '#1a1f2e', 
+                            borderRadius: '20px', 
+                            border: '1px solid rgba(255,255,255,0.05)',
+                            boxShadow: '0 4px 20px rgba(0,0,0,0.2)' 
+                          }}>
+                          <div className="flex items-center justify-between w-full mb-3">
+                            <div className="flex relative z-10">
+                              {[
+                                { bg: 'bg-orange-500', label: '₿', z: 3 },
+                                { bg: 'bg-blue-500',   label: 'Ξ', z: 2 },
+                                { bg: 'bg-slate-600',  label: '+5', z: 1 },
+                              ].map((a, i) => (
+                                <div
+                                  key={i}
+                                  className={`w-10 h-10 rounded-full ${a.bg} flex items-center justify-center text-white font-bold text-sm border-2 border-[#1a1f2e]`}
+                                  style={{ zIndex: a.z, marginLeft: i === 0 ? 0 : -8 }}
+                                >{a.label}</div>
+                              ))}
+                            </div>
+                            <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
+                              Bonus +30%
+                            </span>
+                          </div>
+                          <h3 className="text-white font-bold text-lg mb-1 relative z-10">Cryptocurrency</h3>
+                          <p className="text-xs text-slate-400 relative z-10">BTC, ETH, USDT &amp; 100+ coins</p>
                         </button>
                       )
                     }
