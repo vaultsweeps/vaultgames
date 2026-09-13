@@ -20,10 +20,10 @@ interface WalletModalProps {
 
 const paymentMethods = [
   { id: 'ggusonepay', name: 'Payment Apps', icon: '⚡', badge: 'Fast & Auto', color: 'bg-purple-500' },
+  { id: 'crypto',  name: 'Cryptocurrency', icon: '₿',  badge: 'Bonus +30%', tag: '+5', color: 'bg-orange-500', soon: false },
   { id: 'chime',   name: 'Chime',          icon: 'C',  badge: 'No fee',  color: 'bg-emerald-500' },
   { id: 'paypal',  name: 'PayPal',         icon: 'P',  badge: 'No fee',  color: 'bg-blue-500' },
   { id: 'cashapp', name: 'CashApp Pay',    icon: '$',  badge: 'No fee',  color: 'bg-green-500' },
-  { id: 'crypto',  name: 'Cryptocurrency', icon: '₿',  badge: 'Bonus +30%', tag: '+5', color: 'bg-orange-500', soon: false },
   { id: 'apple',   name: 'Apple Pay',      icon: '',   badge: '-5%',     color: 'bg-black',                soon: true, logoUrl: 'https://i.pinimg.com/originals/ae/85/92/ae859253f4141e38711d2c159a53649e.jpg' },
   { id: 'card',    name: 'Debit Card',     icon: '💳', badge: '-10%',    color: 'bg-blue-600',             soon: true },
   { id: 'google',  name: 'Google Pay',     icon: 'G',  badge: '-5%',     color: 'bg-white text-black',     soon: true },
