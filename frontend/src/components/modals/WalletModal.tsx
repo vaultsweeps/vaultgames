@@ -296,6 +296,10 @@ export default function WalletModal({ isOpen, onClose, balance }: WalletModalPro
                               </button>
                             )
                           }
+                          return (
+                          <button
+                            key={method.id}
+                            onClick={() => {
                               if (!method.soon) {
                                 // Sub-modal opens at z-[300], above this overlay at z-[200]
                                 setDepositMethod(method.id as any)
@@ -337,6 +341,7 @@ export default function WalletModal({ isOpen, onClose, balance }: WalletModalPro
                             )}
                           </button>
                           )
+
                         })}
                       </div>
                       <div className="px-2 mt-3">
