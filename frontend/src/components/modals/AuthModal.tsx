@@ -67,7 +67,15 @@ export default function AuthModal({ isOpen, onClose, initialView = 'login' }: Au
         password: data.password,
         couponCode: data.couponCode,
       })
+      
+      // Trigger the welcome bonus popup to show on the homepage
+      // Must be set BEFORE login so the homepage useEffect sees it when auth state changes
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('vs_welcome_popup', '1')
+      }
+      
       await login(data.email, data.password)
+      
       toast.success('Registration successful! Welcome to Vault Sweeps!')
       onClose()
     } catch (err: any) {

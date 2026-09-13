@@ -69,7 +69,7 @@ export default function HeroSlider() {
 
   return (
     <section className="pt-6 pb-4 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-      <div className="relative w-full h-[280px] sm:h-[320px] lg:h-[360px] rounded-[2rem] overflow-hidden shadow-[0_0_40px_rgba(123,47,255,0.15)] group bg-surface">
+      <div className="relative w-full h-[280px] sm:h-[320px] lg:h-[380px] rounded-[2rem] overflow-hidden shadow-[0_0_40px_rgba(123,47,255,0.15)] group bg-surface">
         <div
           key={slide.id}
           className={`absolute inset-0 bg-gradient-to-r ${slide.gradient} transition-all duration-500`}
@@ -126,7 +126,7 @@ export default function HeroSlider() {
               animate={{ x: 0, opacity: 1 }}
               transition={{ duration: 0.8, type: "spring", bounce: 0.4 }}
               style={{ willChange: 'transform, opacity' }}
-              className="absolute right-0 bottom-0 top-0 w-[55%] lg:w-[50%] z-10 flex items-end justify-end pointer-events-none"
+              className="absolute right-0 bottom-0 top-0 w-[45%] sm:w-[48%] lg:w-[50%] z-10 flex items-end justify-end pointer-events-none"
             >
               <style jsx>{`
                 @keyframes eyeBlink {
@@ -147,28 +147,27 @@ export default function HeroSlider() {
                   repeat: Infinity, 
                   ease: "easeInOut" 
                 }}
-                className={`relative h-full w-full object-[center_15%] animate-character ${slide.isTransparent ? 'drop-shadow-2xl translate-y-[2%]' : ''}`}
+                className={`relative h-full w-full animate-character`}
                 style={!slide.isTransparent ? {
                   willChange: 'transform',
-                  WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 20%)',
-                  maskImage: 'linear-gradient(to right, transparent 0%, black 20%)'
+                  WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 18%)',
+                  maskImage: 'linear-gradient(to right, transparent 0%, black 18%)'
                 } : { willChange: 'transform' }}
               >
                 <Image
                   src={slide.imageUrl} 
                   alt="Promo character"
-                  width={600}
-                  height={800}
+                  fill
                   priority={current === 0}
-                  className={`w-full h-full ${slide.isTransparent ? 'object-contain' : 'object-cover'}`}
+                  className={`${slide.isTransparent ? 'object-contain object-bottom' : 'object-cover object-top'}`}
                 />
               </motion.div>
             </motion.div>
           </div>
         </div>
 
-        {/* Slide indicators */}
-        <div className="absolute bottom-6 left-6 sm:left-10 lg:left-12 z-30 flex items-center gap-2">
+        {/* Slide indicators — hidden on mobile to avoid overlapping the CTA button */}
+        <div className="hidden sm:flex absolute bottom-6 left-10 lg:left-12 z-30 items-center gap-2">
           {slides.map((_, i) => (
             <button
               key={i}

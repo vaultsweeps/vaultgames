@@ -244,13 +244,24 @@ export const verifyEmail = asyncHandler(async (req: Request, res: Response) => {
     throw new AppError('Invalid or expired verification link', 400)
   }
 
-  await prisma.user.update({
+  const updatedUser = await prisma.user.update({
     where: { id: user.id },
-    data: { isVerified: true, verifyToken: null }
+    data: { isVerified: true, verifyToken: null },
+    select: { isPhoneVerified: true }
   })
   clearEmailVerifyToken(token as string).catch(() => {})
 
   try { await sendWelcomeEmail(user.email, user.username) } catch {}
+
+  // If both email and phone are now verified, notify the user they unlocked the 100% welcome bonus
+  if (updatedUser.isPhoneVerified) {
+    createNotification(user.id, {
+      title: '🎁 Welcome Bonus Unlocked!',
+      message: 'You have verified both your email and phone number! Make your first deposit to automatically receive a 100% welcome bonus on your game balance.',
+      type: 'success',
+      link: '/games'
+    }).catch(console.error);
+  }
 
   res.json({ success: true, message: 'Email verified successfully! You can now login.' })
 })

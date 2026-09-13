@@ -25,9 +25,9 @@
 
 .dark {
   /* Current Dark Mode UI */
-  --bg-background: #0F1219;
-  --bg-surface: #1A1E29;
-  --bg-surface-elevated: #13161F;
+  --bg-background: #000000;
+  --bg-surface: #0a0a0a;
+  --bg-surface-elevated: #111111;
   --text-primary: #ffffff;
   --text-secondary: #94a3b8;
   --text-muted: #64748b;

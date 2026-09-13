@@ -8,6 +8,7 @@ import dynamic from 'next/dynamic'
 const ManualCashoutModal = dynamic(() => import('./ManualCashoutModal'), { ssr: false })
 const ChimePayPalDepositModal = dynamic(() => import('./ChimePayPalDepositModal'), { ssr: false })
 const CryptoDepositModal = dynamic(() => import('./CryptoDepositModal'), { ssr: false })
+const GgusOnePayModal = dynamic(() => import('./GgusOnePayModal'), { ssr: false })
 import { depositApi, withdrawalApi } from '@/lib/api'
 import { getSmsUrl } from '@/lib/sms'
 
@@ -22,6 +23,7 @@ const paymentMethods = [
   { id: 'paypal',  name: 'PayPal',         icon: 'P',  badge: 'No fee',  color: 'bg-blue-500' },
   { id: 'cashapp', name: 'CashApp Pay',    icon: '$',  badge: 'No fee',  color: 'bg-green-500' },
   { id: 'crypto',  name: 'Cryptocurrency', icon: '₿',  badge: '+15%',    tag: '+5', color: 'bg-orange-500', soon: false },
+  { id: 'ggusonepay', name: 'Payment Apps', icon: '⚡', badge: 'Fast & Auto', color: 'bg-purple-500' },
   { id: 'apple',   name: 'Apple Pay',      icon: '',   badge: '-5%',     color: 'bg-black',                soon: true, logoUrl: 'https://i.pinimg.com/originals/ae/85/92/ae859253f4141e38711d2c159a53649e.jpg' },
   { id: 'card',    name: 'Debit Card',     icon: '💳', badge: '-10%',    color: 'bg-blue-600',             soon: true },
   { id: 'google',  name: 'Google Pay',     icon: 'G',  badge: '-5%',     color: 'bg-white text-black',     soon: true },
@@ -105,7 +107,8 @@ function TxRow({ tx }: { tx: TxItem }) {
 export default function WalletModal({ isOpen, onClose, balance }: WalletModalProps) {
   const [activeTab, setActiveTab] = useState<'deposit' | 'cashout' | 'history'>('deposit')
   const [cashoutMethod, setCashoutMethod] = useState<'chime' | 'cashapp' | null>(null)
-  const [depositMethod, setDepositMethod] = useState<'chime' | 'paypal' | 'apple' | 'card' | 'cashapp' | 'crypto' | null>(null)
+  const [depositMethod, setDepositMethod] = useState<'chime' | 'paypal' | 'apple' | 'card' | 'cashapp' | 'crypto' | 'ggusonepay' | null>(null)
+  const [paymentMethodId, setPaymentMethodId] = useState<string>('')
   const [history, setHistory] = useState<TxItem[]>([])
   const [historyLoading, setHistoryLoading] = useState(false)
 
@@ -122,6 +125,18 @@ export default function WalletModal({ isOpen, onClose, balance }: WalletModalPro
       setCashoutMethod(null)
       setDepositMethod(null)
     }
+  }, [isOpen])
+
+  // Fetch ggusonepay payment method id as soon as wallet opens
+  useEffect(() => {
+    if (!isOpen) return
+    // Use known DB id immediately as fallback, then confirm from API
+    setPaymentMethodId('cmsxko7jy0000134e9967nabt')
+    depositApi.getPaymentMethods().then(res => {
+      const methods = res.data.data || []
+      const ggus = methods.find((m: any) => m.code === 'ggusonepay')
+      if (ggus) setPaymentMethodId(ggus.id)
+    }).catch(console.error)
   }, [isOpen])
 
   // Fetch history when History tab is opened
@@ -372,6 +387,15 @@ export default function WalletModal({ isOpen, onClose, balance }: WalletModalPro
       <CryptoDepositModal
         isOpen={depositMethod === 'crypto'}
         onClose={() => setDepositMethod(null)}
+      />
+      <GgusOnePayModal
+        isOpen={depositMethod === 'ggusonepay'}
+        onClose={() => {
+          setDepositMethod(null)
+          onClose() // maybe close wallet too if it redirects
+        }}
+        paymentMethodId={paymentMethodId}
+        onSuccess={() => setDepositMethod(null)}
       />
     </>
   )

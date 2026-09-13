@@ -9,7 +9,7 @@ import { useSearchParams } from 'next/navigation'
 
 const ChimePayPalDepositModal = dynamic(() => import('@/components/modals/ChimePayPalDepositModal'), { ssr: false })
 const CryptoDepositModal = dynamic(() => import('@/components/modals/CryptoDepositModal'), { ssr: false })
-const DollarPayModal = dynamic(() => import('@/components/modals/DollarPayModal'), { ssr: false })
+const GgusOnePayModal = dynamic(() => import('@/components/modals/GgusOnePayModal'), { ssr: false })
 
 // Method icon/color map
 const METHOD_META: Record<string, { icon: string; color: string; desc: string; logoUrl?: string }> = {
@@ -55,7 +55,7 @@ function DepositsContent() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [chimePayPalMethod, setChimePayPalMethod] = useState<'chime'|'paypal'|'cashapp'|null>(null)
   const [cryptoModalOpen, setCryptoModalOpen] = useState(false)
-  const [dollarPayModalOpen, setDollarPayModalOpen] = useState(false)
+  const [ggusOnePayModalOpen, setGgusOnePayModalOpen] = useState(false)
   const searchParams = useSearchParams()
 
   const fetchHistory = async () => {
@@ -177,7 +177,7 @@ function DepositsContent() {
                   {methods
                     .filter(m => m.code !== 'zappay' && !m.name?.toLowerCase().includes('zappay'))
                     .sort((a, b) => {
-                      const workingCodes = ['chime', 'paypal', 'cashapp', 'crypto', 'dollarpay'];
+                      const workingCodes = ['chime', 'paypal', 'cashapp', 'crypto', 'ggusonepay'];
                       const aSoon = !workingCodes.includes(a.code?.toLowerCase() || '');
                       const bSoon = !workingCodes.includes(b.code?.toLowerCase() || '');
                       if (aSoon === bSoon) return 0;
@@ -185,8 +185,37 @@ function DepositsContent() {
                     })
                     .map(m => {
                     const meta = getMeta(m.code)
-                    const workingCodes = ['chime', 'paypal', 'cashapp', 'crypto', 'dollarpay'];
+                    const workingCodes = ['chime', 'paypal', 'cashapp', 'crypto', 'ggusonepay'];
                     const isSoon = !workingCodes.includes(m.code?.toLowerCase() || '');
+                    
+                    if (m.code?.toLowerCase() === 'ggusonepay') {
+                      return (
+                        <button key={m.id}
+                          onClick={() => {
+                            setSelectedMethod(m)
+                            setGgusOnePayModalOpen(true)
+                          }}
+                          className="p-5 text-left transition-all group flex flex-col justify-center items-start hover:-translate-y-1 relative overflow-hidden"
+                          style={{ 
+                            background: '#1a1f2e', 
+                            borderRadius: '20px', 
+                            border: '1px solid rgba(255,255,255,0.05)',
+                            boxShadow: '0 4px 20px rgba(0,0,0,0.2)' 
+                          }}>
+                          <div className="flex items-center mb-3">
+                            <div className="flex -space-x-2 relative z-10">
+                              <div className="w-10 h-10 rounded-full flex items-center justify-center bg-green-500 border-2 border-[#1a1f2e] text-white font-bold text-lg" style={{ zIndex: 3 }}>$</div>
+                              <div className="w-10 h-10 rounded-full flex items-center justify-center bg-sky-500 border-2 border-[#1a1f2e] text-white font-bold text-lg" style={{ zIndex: 2 }}>Z</div>
+                              <div className="w-10 h-10 rounded-full flex items-center justify-center bg-blue-700 border-2 border-[#1a1f2e] text-white font-bold text-lg" style={{ zIndex: 1 }}>P</div>
+                              <div className="w-10 h-10 rounded-full flex items-center justify-center bg-slate-700 border-2 border-[#1a1f2e] text-white font-bold text-sm" style={{ zIndex: 0 }}>+4</div>
+                            </div>
+                          </div>
+                          <h3 className="text-white font-bold text-lg mb-1 relative z-10">Payment Apps</h3>
+                          <p className="text-xs text-slate-400 relative z-10">CashApp, Zelle, PayPal & more</p>
+                        </button>
+                      )
+                    }
+
                     return (
                       <button key={m.id}
                         onClick={() => { 
@@ -283,18 +312,14 @@ function DepositsContent() {
           {step === 3 && selectedMethod && (
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
               className="glass-card p-8 max-w-md text-center">
-              <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${selectedMethod.code === 'dollarpay' ? 'bg-green-500/10 border border-green-500/20' : 'bg-neon-blue/10 border border-neon-blue/20'}`}>
-                {selectedMethod.code === 'dollarpay'
-                  ? <ExternalLink className="w-8 h-8 text-green-400" />
-                  : <CreditCard className="w-8 h-8 text-neon-blue" />}
+              <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 bg-neon-blue/10 border border-neon-blue/20">
+                <CreditCard className="w-8 h-8 text-neon-blue" />
               </div>
               <h3 className="font-display font-bold text-xl text-white mb-2">
-                {selectedMethod.code === 'dollarpay' ? 'REDIRECTED TO DOLLARPAY' : 'PAYMENT REQUEST CREATED'}
+                PAYMENT REQUEST CREATED
               </h3>
               <p className="text-secondary text-sm mb-6">
-                {selectedMethod.code === 'dollarpay'
-                  ? <>A DollarPay checkout page was opened in a new tab. Complete your payment there for <span className="text-white font-medium">${depositAmount}</span> — your deposit will be <span className="text-green-400 font-medium">automatically credited</span> once confirmed.</>
-                  : <>Your deposit request for <span className="text-white font-medium">${depositAmount}</span> via {selectedMethod.name} has been submitted.</>}
+                Your deposit request for <span className="text-white font-medium">${depositAmount}</span> via {selectedMethod.name} has been submitted.
               </p>
               <div className="glass rounded-xl p-4 text-left mb-6 space-y-2 text-sm">
                 <div className="flex justify-between"><span className="text-muted">Method</span><span className="text-white">{selectedMethod.name}</span></div>
@@ -302,9 +327,7 @@ function DepositsContent() {
                 <div className="flex justify-between"><span className="text-muted">Status</span><span className="badge-pending text-xs px-2 py-0.5 rounded-full">PENDING</span></div>
               </div>
               <p className="text-xs text-muted mb-4">
-                {selectedMethod.code === 'dollarpay'
-                  ? 'If the payment page did not open, disable your popup blocker and try again.'
-                  : 'Our team will review and approve your deposit within 1–24 hours.'}
+                Our team will review and approve your deposit within 1–24 hours.
               </p>
               <div className="flex gap-3">
                 <button onClick={resetForm} className="btn-neon flex-1 text-sm py-2.5">New Deposit</button>
@@ -376,18 +399,17 @@ function DepositsContent() {
         />
       )}
       
-      {selectedMethod && selectedMethod.code?.toLowerCase() === 'dollarpay' && (
-        <DollarPayModal
-          isOpen={dollarPayModalOpen}
+      {selectedMethod && selectedMethod.code?.toLowerCase() === 'ggusonepay' && (
+        <GgusOnePayModal
+          isOpen={ggusOnePayModalOpen}
           onClose={() => {
-            setDollarPayModalOpen(false)
+            setGgusOnePayModalOpen(false)
             fetchHistory()
             resetForm()
           }}
-          amount={parseFloat(depositAmount) || 0}
           paymentMethodId={selectedMethod.id}
           onSuccess={() => {
-            setDollarPayModalOpen(false)
+            setGgusOnePayModalOpen(false)
             setTab('history')
             fetchHistory()
             resetForm()

@@ -4,7 +4,7 @@ import prisma from '../lib/prisma'
 import { createNotification } from '../services/notificationService'
 import { ProviderFactory } from '../services/provider/ProviderFactory'
 import { ZappayService } from '../services/payment/ZappayService'
-import { DollarPayService } from '../services/payment/DollarPayService'
+import { GgusOnePayService } from '../services/payment/GgusOnePayService'
 import { TelegramService } from '../services/TelegramService'
 import { sendAdminNowPaymentsNotification } from '../services/emailService'
 
@@ -355,35 +355,36 @@ router.post('/zappay', async (req: Request, res: Response) => {
   }
 });
 
-// DollarPay webhook
-router.post('/dollarpay', async (req: Request, res: Response) => {
+// GgusOnePay webhook
+router.post('/ggusonepay', async (req: Request, res: Response) => {
   try {
     const signature = req.body.sign as string;
     
     // Save raw webhook log
     const webhookLog = await prisma.paymentWebhook.create({
-      data: { provider: 'dollarpay', payload: req.body, status: 'received' }
+      data: { provider: 'ggusonepay', payload: req.body, status: 'received' }
     });
 
-    if (!signature || !DollarPayService.verifyWebhookSignature(req.body, signature)) {
+    if (!signature || !GgusOnePayService.verifyWebhookSignature(req.body, signature)) {
       await prisma.paymentWebhook.update({ where: { id: webhookLog.id }, data: { status: 'failed', error: 'Invalid signature' } });
-      return res.send('fail'); // Not sure if DollarPay requires specific string, document says respond SUCCESS on success.
+      return res.send('fail');
     }
 
-    const { outer_order_sn, pay_status, amount, transaction_id } = req.body;
+    const { mchOrderNo, state, amount, orderNo } = req.body;
 
     const deposit = await prisma.deposit.findFirst({
-      where: { paymentReference: outer_order_sn },
+      where: { paymentReference: mchOrderNo },
       include: { user: true }
     });
 
     if (deposit) {
       // It's a deposit (pay-in)
       if (deposit.status === 'approved') {
-        return res.send('SUCCESS');
+        return res.send('success');
       }
 
-      if (pay_status === '1') { // 1: Successful
+      // state: 2 = Payment Successful
+      if (state == '2') {
         // Call Provider Recharge API
         const providerUser = await prisma.providerUser.findFirst({ where: { userId: deposit.userId } });
         if (providerUser) {
@@ -394,7 +395,7 @@ router.post('/dollarpay', async (req: Request, res: Response) => {
             await prisma.$transaction([
               prisma.deposit.update({
                 where: { id: deposit.id },
-                data: { status: 'approved', transactionId: transaction_id || rechargeResult.pay_order_id || String(transaction_id), approvedAt: new Date(), webhookData: req.body }
+                data: { status: 'approved', transactionId: orderNo || rechargeResult.pay_order_id || String(orderNo), approvedAt: new Date(), webhookData: req.body }
               }),
               prisma.providerTransaction.create({
                 data: {
@@ -403,7 +404,7 @@ router.post('/dollarpay', async (req: Request, res: Response) => {
                   type: 'recharge',
                   amount: deposit.amount,
                   orderId: deposit.paymentReference!,
-                  providerOrderId: rechargeResult.pay_order_id || String(transaction_id),
+                  providerOrderId: rechargeResult.pay_order_id || String(orderNo),
                   status: 'success'
                 }
               })
@@ -420,11 +421,11 @@ router.post('/dollarpay', async (req: Request, res: Response) => {
             // Handle if no providerUser (fallback)
             await prisma.deposit.update({
               where: { id: deposit.id },
-              data: { status: 'approved', transactionId: String(transaction_id), approvedAt: new Date(), webhookData: req.body }
+              data: { status: 'approved', transactionId: String(orderNo), approvedAt: new Date(), webhookData: req.body }
             });
         }
-      } else if (pay_status === '4' || pay_status === '5') {
-        // Refunded or failed
+      } else if (state == '3' || state == '4' || state == '5' || state == '6') {
+        // Failed, Revoked, Refunded, Closed
         if (deposit.status === 'pending') {
           await prisma.deposit.update({
             where: { id: deposit.id },
@@ -435,16 +436,16 @@ router.post('/dollarpay', async (req: Request, res: Response) => {
     } else {
       // Could be a withdrawal (payout)
       const withdrawal = await prisma.withdrawal.findFirst({
-        where: { requestId: outer_order_sn }
+        where: { requestId: mchOrderNo }
       });
       
       if (withdrawal) {
-        if (pay_status === '1' && withdrawal.status === 'pending') {
+        if (state == '2' && withdrawal.status === 'pending') {
           await prisma.withdrawal.update({
             where: { id: withdrawal.id },
             data: { status: 'approved', approvedAt: new Date() }
           });
-        } else if (pay_status === '5' && withdrawal.status === 'pending') {
+        } else if (state == '3' && withdrawal.status === 'pending') {
           await prisma.withdrawal.update({
             where: { id: withdrawal.id },
             data: { status: 'rejected', rejectionReason: 'Payout failed at gateway', rejectedAt: new Date() }
@@ -452,15 +453,15 @@ router.post('/dollarpay', async (req: Request, res: Response) => {
         }
       } else {
         await prisma.paymentWebhook.update({ where: { id: webhookLog.id }, data: { status: 'ignored', error: 'Order not found' } });
-        return res.send('SUCCESS'); // Still send SUCCESS to ack receipt
+        return res.send('success'); // Ack receipt
       }
     }
 
     await prisma.paymentWebhook.update({ where: { id: webhookLog.id }, data: { status: 'processed' } });
-    res.send('SUCCESS');
+    res.send('success');
   } catch (error: any) {
-    console.error('DollarPay Webhook Error:', error);
-    res.status(500).send('ERROR');
+    console.error('GgusOnePay Webhook Error:', error);
+    res.status(500).send('error');
   }
 });
 
