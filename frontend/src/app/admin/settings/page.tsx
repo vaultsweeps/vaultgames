@@ -34,6 +34,10 @@ const DEFAULTS = {
   ip_whitelist_admin: '',
   max_login_attempts: '5',
   session_timeout_hours: '24',
+  show_home_bonuses: false,
+  show_home_faq: false,
+  show_home_why_us: false,
+  show_home_testimonials: false,
 }
 
 export default function AdminSettingsPage() {
@@ -132,6 +136,15 @@ export default function AdminSettingsPage() {
           </div>
           <div className="border-t border-border-subtle pt-4">
             <Toggle label="Maintenance Mode" k="maintenance_mode" desc="Show maintenance page to all users except admins" />
+          </div>
+          <div className="border-t border-border-subtle pt-4">
+            <h4 className="text-xs font-mono tracking-wider text-secondary uppercase mb-3">Homepage Sections</h4>
+            <div className="space-y-3">
+              <Toggle label="Show Hot Bonuses" k="show_home_bonuses" desc="Display the Hot Bonuses section on the homepage" />
+              <Toggle label="Show FAQ" k="show_home_faq" desc="Display the Frequently Asked Questions section on the homepage" />
+              <Toggle label="Show Why Vault Sweeps" k="show_home_why_us" desc="Display the 'Why Vault Sweeps' features section on the homepage" />
+              <Toggle label="Show Player Reviews" k="show_home_testimonials" desc="Display the community testimonials section on the homepage" />
+            </div>
           </div>
         </motion.div>
       )}

@@ -6,6 +6,9 @@ import { useState, useEffect } from 'react'
 import { publicApi } from '@/lib/api'
 import { useAuthStore } from '@/store/authStore'
 import { getSignalUrl } from '@/lib/signal'
+import dynamic from 'next/dynamic'
+
+const WelcomeBonusPopup = dynamic(() => import('@/components/modals/WelcomeBonusPopup'), { ssr: false })
 
 const FEATURES = [
   { icon: Shield, title: 'Enterprise Security', desc: 'Bank-grade encryption and multi-layer security protecting your account 24/7.', color: '#00D4FF' },
@@ -55,6 +58,7 @@ export default function HomePageClient() {
   const [settings, setSettings] = useState<any>({})
   const [mounted, setMounted] = useState(false)
   const [signalUrl, setSignalUrl] = useState('')
+  const [showWelcomePopup, setShowWelcomePopup] = useState(false)
   const { isAuthenticated, openAuthModal } = useAuthStore()
 
   const handleFeatureClick = (e: React.MouseEvent) => {
@@ -76,35 +80,50 @@ export default function HomePageClient() {
       .then(res => setSettings(res.data.data || {}))
       .catch(() => {})
 
+    // Check if we need to show the welcome bonus popup
+    if (isAuthenticated && localStorage.getItem('vs_welcome_popup') === '1') {
+      setTimeout(() => setShowWelcomePopup(true), 500) // slight delay for effect
+    }
+
     return () => clearInterval(t)
-  }, [])
+  }, [isAuthenticated])
+
+  const handleCloseWelcomePopup = () => {
+    setShowWelcomePopup(false)
+    localStorage.removeItem('vs_welcome_popup')
+  }
 
   return (
     <>
+      <WelcomeBonusPopup isOpen={showWelcomePopup} onClose={handleCloseWelcomePopup} />
+      
       {/* Why Choose Us */}
-      <section className="py-20 relative">
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-neon-purple/5 to-transparent" />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-16">
-            <p className="font-mono text-xs tracking-[0.3em] text-neon-blue uppercase mb-3">Why Us</p>
-            <h2 className="font-display font-bold text-4xl sm:text-5xl text-primary">WHY <span className="gradient-text">VAULT SWEEPS</span></h2>
-          </motion.div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {FEATURES.map((f, i) => (
-              <motion.div key={i} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }} whileHover={{ y: -5 }} style={{ willChange: 'transform' }} className="glass-card p-6 text-center group">
-                <div className="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center group-hover:scale-110 transition-transform" style={{ background: `${f.color}15`, border: `1px solid ${f.color}30` }}>
-                  <f.icon className="w-6 h-6" style={{ color: f.color }} />
-                </div>
-                <h3 className="font-display text-sm font-bold text-primary mb-2">{f.title}</h3>
-                <p className="text-muted text-xs leading-relaxed">{f.desc}</p>
-              </motion.div>
-            ))}
+      {(settings.show_home_why_us === 'true' || settings.show_home_why_us === true) && (
+        <section className="py-20 relative">
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-neon-purple/5 to-transparent" />
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-16">
+              <p className="font-mono text-xs tracking-[0.3em] text-neon-blue uppercase mb-3">Why Us</p>
+              <h2 className="font-display font-bold text-4xl sm:text-5xl text-primary">WHY <span className="gradient-text">VAULT SWEEPS</span></h2>
+            </motion.div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {FEATURES.map((f, i) => (
+                <motion.div key={i} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }} whileHover={{ y: -5 }} style={{ willChange: 'transform' }} className="glass-card p-6 text-center group">
+                  <div className="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center group-hover:scale-110 transition-transform" style={{ background: `${f.color}15`, border: `1px solid ${f.color}30` }}>
+                    <f.icon className="w-6 h-6" style={{ color: f.color }} />
+                  </div>
+                  <h3 className="font-display text-sm font-bold text-primary mb-2">{f.title}</h3>
+                  <p className="text-muted text-xs leading-relaxed">{f.desc}</p>
+                </motion.div>
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* Bonuses */}
-      <section className="py-20">
+      {(settings.show_home_bonuses === 'true' || settings.show_home_bonuses === true) && (
+        <section className="py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-end justify-between mb-12">
             <motion.div initial={{ opacity: 0, x: -30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}>
@@ -141,32 +160,36 @@ export default function HomePageClient() {
           </div>
         </div>
       </section>
+      )}
 
       {/* Testimonials */}
-      <section className="py-20 relative">
-        <div className="absolute inset-0 bg-gradient-to-r from-neon-blue/5 via-transparent to-neon-purple/5" />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-12">
-            <p className="font-mono text-xs tracking-[0.3em] text-neon-blue uppercase mb-3">Community</p>
-            <h2 className="font-display font-bold text-4xl text-primary">PLAYER <span className="gradient-text">REVIEWS</span></h2>
-          </motion.div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {TESTIMONIALS.map((t, i) => (
-              <motion.div key={i} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }} className="glass-card p-6">
-                <div className="flex gap-1 mb-4">{Array.from({ length: t.rating }).map((_, j) => <Star key={j} className="w-4 h-4 text-yellow-400 fill-current" />)}</div>
-                <p className="text-secondary text-sm leading-relaxed mb-4">"{t.text}"</p>
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-neon-blue to-neon-purple flex items-center justify-center text-white text-xs font-bold">{t.name.charAt(0)}</div>
-                  <div><p className="text-primary text-sm font-medium">{t.name}</p><p className="text-muted text-xs">{t.role}</p></div>
-                </div>
-              </motion.div>
-            ))}
+      {(settings.show_home_testimonials === 'true' || settings.show_home_testimonials === true) && (
+        <section className="py-20 relative">
+          <div className="absolute inset-0 bg-gradient-to-r from-neon-blue/5 via-transparent to-neon-purple/5" />
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-12">
+              <p className="font-mono text-xs tracking-[0.3em] text-neon-blue uppercase mb-3">Community</p>
+              <h2 className="font-display font-bold text-4xl text-primary">PLAYER <span className="gradient-text">REVIEWS</span></h2>
+            </motion.div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {TESTIMONIALS.map((t, i) => (
+                <motion.div key={i} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }} className="glass-card p-6">
+                  <div className="flex gap-1 mb-4">{Array.from({ length: t.rating }).map((_, j) => <Star key={j} className="w-4 h-4 text-yellow-400 fill-current" />)}</div>
+                  <p className="text-secondary text-sm leading-relaxed mb-4">"{t.text}"</p>
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-neon-blue to-neon-purple flex items-center justify-center text-white text-xs font-bold">{t.name.charAt(0)}</div>
+                    <div><p className="text-primary text-sm font-medium">{t.name}</p><p className="text-muted text-xs">{t.role}</p></div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* FAQ */}
-      <section className="py-20">
+      {(settings.show_home_faq === 'true' || settings.show_home_faq === true) && (
+        <section className="py-20">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-12">
             <p className="font-mono text-xs tracking-[0.3em] text-neon-blue uppercase mb-3">Help</p>
@@ -177,6 +200,7 @@ export default function HomePageClient() {
           </div>
         </div>
       </section>
+      )}
 
       {/* CTA Banner */}
       <section className="py-20">

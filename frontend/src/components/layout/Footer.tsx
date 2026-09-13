@@ -211,7 +211,59 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="mt-12 pt-6 border-t border-border-subtle flex flex-col md:flex-row items-center justify-between gap-4">
+        {/* Compliance and Payment Methods Banner */}
+        <div className="mt-10 bg-[#16192b]/80 border border-white/5 rounded-2xl p-4 md:p-6 flex flex-col xl:flex-row items-center gap-6 xl:gap-10">
+          <div className="flex-1 flex flex-col sm:flex-row items-center sm:items-start xl:items-center text-center sm:text-left gap-4 xl:gap-6">
+            <div className="w-12 h-12 flex-shrink-0 rounded-full border border-slate-500 flex items-center justify-center">
+              <span className="text-slate-400 font-medium text-lg">18+</span>
+            </div>
+            <p className="text-[10px] sm:text-xs text-slate-400/80 leading-relaxed max-w-4xl">
+              Vault Sweeps is owned and operated by Vault Sweeps Gaming Ltd, registered in accordance with the laws of applicable jurisdictions. Registration number: VS-15734, registered address: Global Gaming Center, Suite 100. Vault Sweeps is licensed and regulated by the appropriate gaming authorities.
+            </p>
+          </div>
+          
+          <div className="flex flex-wrap items-center justify-center gap-2 flex-shrink-0">
+            {/* CashApp */}
+            <div className="w-10 h-10 rounded-xl bg-[#00D632] flex items-center justify-center text-white font-bold text-xl">
+              $
+            </div>
+            {/* Visa */}
+            <div className="w-10 h-10 rounded-xl bg-[#1A1F71] flex items-center justify-center text-white font-bold text-[10px] tracking-wider italic">
+              VISA
+            </div>
+            {/* Mastercard */}
+            <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center relative overflow-hidden">
+              <div className="w-5 h-5 rounded-full bg-[#EB001B] absolute left-1 mix-blend-multiply"></div>
+              <div className="w-5 h-5 rounded-full bg-[#F79E1B] absolute right-1 mix-blend-multiply"></div>
+            </div>
+            {/* Bitcoin */}
+            <div className="w-10 h-10 rounded-xl bg-[#F7931A] flex items-center justify-center text-white font-bold text-xl">
+              ₿
+            </div>
+            {/* Ethereum */}
+            <div className="w-10 h-10 rounded-xl bg-[#627EEA] flex items-center justify-center text-white font-bold text-xl">
+              Ξ
+            </div>
+            {/* Litecoin */}
+            <div className="w-10 h-10 rounded-xl bg-[#BFBBBB] flex items-center justify-center text-white font-bold text-xl italic">
+              Ł
+            </div>
+            {/* Tether */}
+            <div className="w-10 h-10 rounded-xl bg-[#26A17B] flex items-center justify-center text-white font-bold text-xl">
+              ₮
+            </div>
+            {/* USDC */}
+            <div className="w-10 h-10 rounded-xl bg-[#2775CA] flex items-center justify-center text-white font-bold text-lg">
+              <span className="border border-white rounded-full w-6 h-6 flex items-center justify-center text-[10px]">$</span>
+            </div>
+            {/* +21 */}
+            <div className="w-10 h-10 rounded-xl bg-[#1a1f35] flex items-center justify-center text-white font-bold text-xs">
+              +21
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-8 pt-6 border-t border-border-subtle flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex flex-col items-center md:items-start gap-1">
             <p className="text-xs text-slate-400" suppressHydrationWarning>© {year ?? ''} Vault Sweeps. All rights reserved.</p>
             <p className="text-[10px] text-slate-400 flex items-center gap-1">
