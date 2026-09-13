@@ -11,6 +11,10 @@ import { Eye, EyeOff, Zap, Lock, Mail, User, CheckCircle, XCircle, Loader2 } fro
 import Image from 'next/image'
 import { useAuthStore } from '@/store/authStore'
 import apiClient from '@/lib/api'
+import { AuthBackground } from '@/components/auth/AuthBackground'
+import { AuthCard } from '@/components/auth/AuthCard'
+import { AuthInput } from '@/components/auth/AuthInput'
+import { AuthButton } from '@/components/auth/AuthButton'
 
 const schema = z.object({
   username: z.string().min(3, 'Username must be at least 3 characters').max(20, 'Username too long').regex(/^[a-zA-Z0-9_]+$/, 'Only letters, numbers, underscores'),
@@ -108,203 +112,201 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
-      <div className="absolute inset-0 cyber-grid opacity-20" />
-      <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-neon-purple/10 rounded-full blur-3xl" />
-      <div className="absolute bottom-1/4 left-1/4 w-72 h-72 bg-neon-blue/10 rounded-full blur-3xl" />
-
-      <div className="w-full max-w-4xl relative z-10 grid lg:grid-cols-2 gap-8 items-center">
-        {/* Left - Perks */}
-        <motion.div initial={{ opacity: 0, x: -30 }} animate={{ opacity: 1, x: 0 }} className="hidden lg:block">
-          <Link href="/" className="inline-flex items-center gap-2 mb-8">
-            <Image src="/images/vault-sweeps-logo.png" alt="Vault Sweeps" width={551} height={488} className="h-10 w-auto object-contain drop-shadow-md" priority />
-            <span className="font-display font-bold text-xl gradient-text">VAULT SWEEPS</span>
+    <AuthBackground>
+      <div className="w-full max-w-6xl relative z-10 grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+        {/* Left - Perks & Branding */}
+        <motion.div initial={{ opacity: 0, x: -30 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }} className="hidden lg:block">
+          <Link href="/" className="inline-flex items-center gap-3 mb-10 group">
+            <Image src="/images/vault-sweeps-logo.png" alt="Vault Sweeps" width={551} height={488} className="h-12 w-auto object-contain drop-shadow-[0_0_15px_rgba(255,255,255,0.2)] group-hover:scale-105 transition-transform duration-500" priority />
+            <span className="font-display font-bold text-2xl tracking-wide text-transparent bg-clip-text bg-gradient-to-b from-white to-white/60">
+              VAULT SWEEPS
+            </span>
           </Link>
-          <h1 className="font-display font-black text-5xl text-white mb-4 leading-tight">JOIN THE<br /><span className="gradient-text">VAULT SWEEPS</span></h1>
-          <p className="text-secondary text-lg mb-8 leading-relaxed">Create your free account and start your gaming journey today.</p>
-          <div className="space-y-3">
+          <h1 className="font-display font-black text-5xl text-white mb-6 leading-tight tracking-tight drop-shadow-md">
+            JOIN THE<br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600">PREMIUM VAULT</span>
+          </h1>
+          <p className="text-slate-400 text-lg mb-10 leading-relaxed font-medium max-w-md">
+            Create your free account to access an exclusive, high-end gaming experience with unparalleled rewards.
+          </p>
+          <div className="space-y-5">
             {PERKS.map((perk, i) => (
-              <motion.div key={i} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 * i }} className="flex items-center gap-3">
-                <div className="w-5 h-5 rounded-full bg-neon-blue/20 border border-neon-blue/40 flex items-center justify-center">
-                  <div className="w-2 h-2 rounded-full bg-neon-blue" />
+              <motion.div key={i} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 * i + 0.3 }} className="flex items-center gap-4">
+                <div className="w-8 h-8 rounded-full bg-cyan-950/40 border border-cyan-500/30 flex items-center justify-center shadow-[0_0_15px_rgba(34,211,238,0.1)]">
+                  <div className="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.8)]" />
                 </div>
-                <span className="text-secondary text-sm">{perk}</span>
+                <span className="text-slate-300 text-[15px] font-medium tracking-wide">{perk}</span>
               </motion.div>
             ))}
           </div>
 
-          {/* Username rules info box */}
-          <div className="mt-10 glass-card p-5 border border-neon-blue/10">
-            <p className="text-neon-blue text-xs font-mono uppercase tracking-widest mb-3 flex items-center gap-2">
-              <Zap className="w-3.5 h-3.5" /> Username Rules
+          {/* Username rules info box (Premium HUD style) */}
+          <div className="mt-12 rounded-[24px] bg-[#0a0f1c]/60 backdrop-blur-md p-7 border border-white/5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]">
+            <p className="text-cyan-400 text-[10px] font-mono font-bold uppercase tracking-widest mb-5 flex items-center gap-2">
+              <Zap className="w-4 h-4" /> SYSTEM REQUIREMENTS
             </p>
-            <ul className="space-y-2">
+            <ul className="space-y-3.5">
               {CRITERIA.map(c => (
-                <li key={c.id} className="flex items-center gap-2 text-xs text-secondary">
-                  <div className="w-1.5 h-1.5 rounded-full bg-neon-blue/50" />
+                <li key={c.id} className="flex items-center gap-3 text-[11px] font-mono tracking-wide text-slate-400">
+                  <div className="w-1.5 h-1.5 rounded-full bg-cyan-500/30" />
                   {c.label}
                 </li>
               ))}
-              <li className="flex items-center gap-2 text-xs text-secondary">
-                <div className="w-1.5 h-1.5 rounded-full bg-neon-blue/50" />
-                Must be unique — not already used on this platform or in the game
+              <li className="flex items-center gap-3 text-[11px] font-mono tracking-wide text-slate-400">
+                <div className="w-1.5 h-1.5 rounded-full bg-cyan-500/30" />
+                Must be unique across the platform
               </li>
             </ul>
           </div>
         </motion.div>
 
         {/* Right - Form */}
-        <motion.div initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }}>
-          <div className="glass-card p-8">
-            <div className="lg:hidden text-center mb-6">
-              <Link href="/" className="inline-flex items-center gap-2 mb-2">
-                <Image src="/images/vault-sweeps-logo.png" alt="Vault Sweeps" width={551} height={488} className="h-10 w-auto object-contain drop-shadow-md" priority />
-                <span className="font-display font-bold gradient-text">VAULT SWEEPS</span>
+        <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}>
+          <AuthCard>
+            <div className="lg:hidden text-center mb-8">
+              <Link href="/" className="inline-flex items-center gap-3 mb-2 group">
+                <Image src="/images/vault-sweeps-logo.png" alt="Vault Sweeps" width={551} height={488} className="h-10 w-auto object-contain drop-shadow-[0_0_10px_rgba(255,255,255,0.2)] group-hover:scale-105 transition-transform" priority />
+                <span className="font-display font-bold text-xl tracking-wide text-transparent bg-clip-text bg-gradient-to-b from-white to-white/60">
+                  VAULT SWEEPS
+                </span>
               </Link>
             </div>
-            <h2 className="font-display font-bold text-xl text-white mb-6">CREATE ACCOUNT</h2>
+            
+            <h2 className="font-display font-bold text-2xl text-white mb-8 tracking-wide drop-shadow-md">CREATE ACCOUNT</h2>
 
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-2 relative z-10">
               {/* Username field */}
-              <div>
-                <label className="block text-xs font-mono tracking-wider text-secondary uppercase mb-2">Username</label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-                  <input
-                    {...register('username')}
-                    type="text"
-                    placeholder="coolplayer99"
-                    className={`input-neon pl-10 pr-10 transition-all ${
-                      availStatus === 'available' ? 'border-emerald-500/50 focus:border-emerald-500' :
-                      availStatus === 'taken' ? 'border-red-500/50 focus:border-red-500' : ''
-                    }`}
-                  />
-                  {/* Status icon */}
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                    {availStatus === 'checking' && <Loader2 className="w-4 h-4 text-secondary animate-spin" />}
-                    {availStatus === 'available' && <CheckCircle className="w-4 h-4 text-emerald-400" />}
-                    {availStatus === 'taken' && <XCircle className="w-4 h-4 text-red-400" />}
-                  </div>
-                </div>
+              <div className="relative">
+                <AuthInput
+                  {...register('username')}
+                  type="text"
+                  label="Username"
+                  placeholder="coolplayer99"
+                  icon={<User className="w-5 h-5" />}
+                  error={(!availReason && errors.username) ? errors.username.message : undefined}
+                  className={`
+                    ${availStatus === 'available' ? '!border-emerald-500/50 focus:!border-emerald-500/50 !shadow-[0_0_15px_rgba(16,185,129,0.1)]' : ''}
+                    ${availStatus === 'taken' ? '!border-red-500/50 focus:!border-red-500/50 !shadow-[0_0_15px_rgba(239,68,68,0.1)]' : ''}
+                  `}
+                  rightElement={
+                    availStatus === 'checking' ? <Loader2 className="w-5 h-5 animate-spin text-cyan-400" /> :
+                    availStatus === 'available' ? <CheckCircle className="w-5 h-5 text-emerald-400 drop-shadow-[0_0_8px_rgba(16,185,129,0.5)]" /> :
+                    availStatus === 'taken' ? <XCircle className="w-5 h-5 text-red-400 drop-shadow-[0_0_8px_rgba(239,68,68,0.5)]" /> : undefined
+                  }
+                />
 
                 {/* Availability message */}
                 <AnimatePresence mode="wait">
                   {availStatus === 'available' && (
                     <motion.p key="avail" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                      className="text-emerald-400 text-xs mt-1.5 flex items-center gap-1">
-                      <CheckCircle className="w-3 h-3" /> Username is available!
+                      className="text-emerald-400 text-[11px] font-medium mt-[-4px] mb-4 flex items-center gap-1.5 ml-1">
+                      <CheckCircle className="w-3.5 h-3.5" /> Username is available!
                     </motion.p>
                   )}
                   {availStatus === 'taken' && (
                     <motion.p key="taken" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                      className="text-red-400 text-xs mt-1.5 flex items-center gap-1">
-                      <XCircle className="w-3 h-3" /> {availReason}
+                      className="text-red-400 text-[11px] font-medium mt-[-4px] mb-4 flex items-center gap-1.5 ml-1">
+                      <XCircle className="w-3.5 h-3.5" /> {availReason}
                     </motion.p>
                   )}
                 </AnimatePresence>
 
-                {errors.username && !availReason && (
-                  <p className="text-red-400 text-xs mt-1">{errors.username.message}</p>
-                )}
-
-                {/* Live criteria checklist — show when typing */}
+                {/* Live criteria checklist — show when typing on mobile (since desktop has it on left) */}
                 {usernameVal.length > 0 && (
                   <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
-                    className="mt-2 p-3 bg-white/3 rounded-xl border border-border-subtle space-y-1.5">
+                    className="lg:hidden mt-2 mb-4 p-5 bg-[#0a0f1c]/80 rounded-[20px] border border-white/5 space-y-2.5">
                     {CRITERIA.map(c => {
                       const pass = c.test(usernameVal)
                       return (
-                        <div key={c.id} className={`flex items-center gap-2 text-[11px] transition-colors ${pass ? 'text-emerald-400' : 'text-muted'}`}>
-                          {pass
-                            ? <CheckCircle className="w-3 h-3 flex-shrink-0" />
-                            : <div className="w-3 h-3 rounded-full border border-slate-600 flex-shrink-0" />}
+                        <div key={c.id} className={`flex items-center gap-3 text-[10px] font-mono tracking-wide transition-colors ${pass ? 'text-emerald-400' : 'text-slate-500'}`}>
+                          {pass ? <CheckCircle className="w-3 h-3 flex-shrink-0" /> : <div className="w-3 h-3 rounded-full border border-slate-700 flex-shrink-0" />}
                           {c.label}
                         </div>
                       )
                     })}
-                    <div className={`flex items-center gap-2 text-[11px] transition-colors ${
-                      availStatus === 'available' ? 'text-emerald-400' : availStatus === 'taken' ? 'text-red-400' : 'text-muted'
+                    <div className={`flex items-center gap-3 text-[10px] font-mono tracking-wide transition-colors ${
+                      availStatus === 'available' ? 'text-emerald-400' : availStatus === 'taken' ? 'text-red-400' : 'text-slate-500'
                     }`}>
-                      {availStatus === 'available'
-                        ? <CheckCircle className="w-3 h-3 flex-shrink-0" />
-                        : availStatus === 'taken'
-                          ? <XCircle className="w-3 h-3 flex-shrink-0" />
-                          : <div className="w-3 h-3 rounded-full border border-slate-600 flex-shrink-0" />}
-                      Unique — not taken on platform or in game
+                      {availStatus === 'available' ? <CheckCircle className="w-3 h-3 flex-shrink-0" /> : availStatus === 'taken' ? <XCircle className="w-3 h-3 flex-shrink-0" /> : <div className="w-3 h-3 rounded-full border border-slate-700 flex-shrink-0" />}
+                      Unique across platform
                     </div>
                   </motion.div>
                 )}
               </div>
 
-              <div>
-                <label className="block text-xs font-mono tracking-wider text-secondary uppercase mb-2">Email</label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
-                  <input {...register('email')} type="email" placeholder="you@email.com" className="input-neon" style={{ paddingLeft: '2.5rem' }} />
-                </div>
-                {errors.email && <p className="text-red-400 text-xs mt-1">{errors.email.message}</p>}
+              <AuthInput
+                {...register('email')}
+                type="email"
+                label="Email Address"
+                placeholder="you@email.com"
+                icon={<Mail className="w-5 h-5" />}
+                error={errors.email?.message}
+              />
+
+              <div className="relative">
+                <AuthInput
+                  {...register('password')}
+                  type={showPassword ? 'text' : 'password'}
+                  label="Password"
+                  placeholder="••••••••"
+                  icon={<Lock className="w-5 h-5" />}
+                  error={errors.password?.message}
+                  rightElement={
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="focus:outline-none p-1">
+                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  }
+                />
               </div>
 
-              <div>
-                <label className="block text-xs font-mono tracking-wider text-secondary uppercase mb-2">Password</label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
-                  <input {...register('password')} type={showPassword ? 'text' : 'password'} placeholder="••••••••" className="input-neon" style={{ paddingLeft: '2.5rem', paddingRight: '2.5rem' }} />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-secondary">
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-                {errors.password && <p className="text-red-400 text-xs mt-1">{errors.password.message}</p>}
+              <AuthInput
+                {...register('confirmPassword')}
+                type="password"
+                label="Confirm Password"
+                placeholder="••••••••"
+                icon={<Lock className="w-5 h-5" />}
+                error={errors.confirmPassword?.message}
+              />
+
+              <AuthInput
+                {...register('couponCode')}
+                type="text"
+                label="Coupon Code (Optional)"
+                placeholder="ENTER PROMO CODE"
+                icon={<Zap className="w-5 h-5" />}
+                error={errors.couponCode?.message}
+                className="uppercase placeholder:normal-case"
+              />
+
+              <div className="pt-3 pb-7">
+                <p className="text-[11px] text-slate-500 leading-relaxed font-medium">
+                  By creating an account, you agree to our{' '}
+                  <Link href="#" className="text-cyan-400 hover:text-cyan-300 hover:drop-shadow-[0_0_8px_rgba(34,211,238,0.5)] transition-all">Terms of Service</Link> and{' '}
+                  <Link href="#" className="text-cyan-400 hover:text-cyan-300 hover:drop-shadow-[0_0_8px_rgba(34,211,238,0.5)] transition-all">Privacy Policy</Link>.
+                </p>
               </div>
 
-              <div>
-                <label className="block text-xs font-mono tracking-wider text-secondary uppercase mb-2">Confirm Password</label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
-                  <input {...register('confirmPassword')} type="password" placeholder="••••••••" className="input-neon" style={{ paddingLeft: '2.5rem' }} />
-                </div>
-                {errors.confirmPassword && <p className="text-red-400 text-xs mt-1">{errors.confirmPassword.message}</p>}
-              </div>
-
-              <div>
-                <label className="block text-xs font-mono tracking-wider text-secondary uppercase mb-2">Coupon Code (Optional)</label>
-                <div className="relative">
-                  <Zap className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
-                  <input {...register('couponCode')} type="text" placeholder="Enter code for freeplay" className="input-neon uppercase" style={{ paddingLeft: '2.5rem' }} />
-                </div>
-                {errors.couponCode && <p className="text-red-400 text-xs mt-1">{errors.couponCode.message}</p>}
-              </div>
-
-              <p className="text-xs text-slate-600 leading-relaxed">
-                By creating an account, you agree to our{' '}
-                <Link href="#" className="text-neon-blue hover:underline">Terms of Service</Link> and{' '}
-                <Link href="#" className="text-neon-blue hover:underline">Privacy Policy</Link>.
-              </p>
-
-              <button
+              <AuthButton
                 type="submit"
                 disabled={isLoading || availStatus === 'taken' || availStatus === 'checking'}
-                className="btn-primary w-full py-3 text-sm disabled:opacity-50"
+                isLoading={isLoading || availStatus === 'checking'}
+                loadingText={isLoading ? "CREATING ACCOUNT..." : "CHECKING USERNAME..."}
               >
-                {isLoading ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Creating account...
-                  </span>
-                ) : availStatus === 'checking' ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <Loader2 className="w-4 h-4 animate-spin" /> Checking username...
-                  </span>
-                ) : 'CREATE FREE ACCOUNT'}
-              </button>
+                CREATE FREE ACCOUNT
+              </AuthButton>
             </form>
 
-            <div className="mt-5 pt-5 border-t border-border-subtle text-center">
-              <p className="text-muted text-sm">Already have an account? <Link href="/login" className="text-neon-blue hover:underline font-medium">Sign in</Link></p>
+            <div className="mt-8 pt-6 border-t border-white/5 text-center relative z-10">
+              <p className="text-slate-400 text-sm font-medium">
+                Already have an account?{' '}
+                <Link href="/login" className="text-cyan-400 hover:text-cyan-300 hover:drop-shadow-[0_0_8px_rgba(34,211,238,0.5)] transition-all font-bold">
+                  Sign in
+                </Link>
+              </p>
             </div>
-          </div>
+          </AuthCard>
         </motion.div>
       </div>
-    </div>
+    </AuthBackground>
   )
 }
