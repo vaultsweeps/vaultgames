@@ -16,6 +16,9 @@ type QuickLink = {
   action?: string
   gradient: string
   glow: string
+  border: string
+  accent: string
+  image: string
 }
 
 const LINKS: QuickLink[] = [
@@ -24,8 +27,11 @@ const LINKS: QuickLink[] = [
     subtitle: 'Exclusive perks',
     icon: Crown,
     href: '/vip',
-    gradient: 'linear-gradient(150deg, #1B3FAE 0%, #3E7BFF 100%)',
-    glow: 'rgba(47,107,255,0.4)',
+    gradient: 'linear-gradient(145deg, #0f172a 0%, #1d4ed8 50%, #8b5cf6 100%)',
+    glow: 'rgba(59, 130, 246, 0.4)',
+    border: 'rgba(59, 130, 246, 0.3)',
+    accent: '#8b5cf6',
+    image: '/images/3d_crown.jpg',
   },
   {
     title: 'Daily Spin',
@@ -33,24 +39,33 @@ const LINKS: QuickLink[] = [
     icon: RotateCw,
     href: '#',
     action: 'modal',
-    gradient: 'linear-gradient(150deg, #C2540A 0%, #FFA338 100%)',
-    glow: 'rgba(242,129,30,0.4)',
+    gradient: 'linear-gradient(145deg, #431407 0%, #c2410c 50%, #facc15 100%)',
+    glow: 'rgba(245, 158, 11, 0.4)',
+    border: 'rgba(245, 158, 11, 0.3)',
+    accent: '#facc15',
+    image: '/images/3d_wheel.jpg',
   },
   {
     title: 'Bonus Zone',
     subtitle: 'Live promotions',
     icon: Gem,
     href: '/bonuses',
-    gradient: 'linear-gradient(150deg, #00695E 0%, #00CBB4 100%)',
-    glow: 'rgba(0,169,154,0.4)',
+    gradient: 'linear-gradient(145deg, #2e1065 0%, #6d28d9 50%, #ec4899 100%)',
+    glow: 'rgba(168, 85, 247, 0.4)',
+    border: 'rgba(168, 85, 247, 0.3)',
+    accent: '#ec4899',
+    image: '/images/3d_gift.jpg',
   },
   {
     title: 'Refer & Earn',
     subtitle: 'Earn up to $10',
     icon: Users,
     href: '/dashboard/invite',
-    gradient: 'linear-gradient(150deg, #0F6A36 0%, #34D06A 100%)',
-    glow: 'rgba(31,174,85,0.4)',
+    gradient: 'linear-gradient(145deg, #022c22 0%, #059669 50%, #22d3ee 100%)',
+    glow: 'rgba(16, 185, 129, 0.4)',
+    border: 'rgba(16, 185, 129, 0.3)',
+    accent: '#22d3ee',
+    image: '/images/3d_people.jpg',
   }
 ]
 
@@ -91,41 +106,65 @@ export default function QuickLinks() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.4, delay: i * 0.06 }}
-                whileHover={{ y: -3 }}
+                whileHover={{ y: -3, filter: 'brightness(1.15)' }}
                 whileTap={{ scale: 0.98 }}
-                className="group relative overflow-hidden rounded-2xl p-4 sm:p-5 h-28 sm:h-32 lg:h-36 flex flex-col justify-between cursor-pointer"
-                style={{ background: link.gradient, boxShadow: `0 10px 24px -8px ${link.glow}` }}
+                className="group relative overflow-hidden rounded-2xl p-4 sm:p-5 h-28 sm:h-32 lg:h-36 flex flex-col justify-between cursor-pointer border border-transparent transition-all duration-300"
+                style={{ 
+                  background: link.gradient, 
+                  boxShadow: `0 8px 24px -8px ${link.glow}, inset 0 1px 1px 0 rgba(255,255,255,0.2)`,
+                  borderColor: link.border 
+                }}
               >
-                {/* Spotlight glow behind the icon, plus a top sheen for depth */}
-                <div aria-hidden className="absolute -top-6 -left-6 w-24 h-24 rounded-full bg-white blur-2xl opacity-30" />
-                <div
-                  aria-hidden
-                  className="absolute inset-0"
-                  style={{ background: 'linear-gradient(160deg, rgba(255,255,255,0.16) 0%, transparent 40%, rgba(0,0,0,0.12) 100%)' }}
+                {/* Radial background glow/lighting */}
+                <div 
+                  aria-hidden 
+                  className="absolute inset-0 opacity-40 transition-opacity duration-300 group-hover:opacity-70"
+                  style={{ background: `radial-gradient(100% 100% at 100% 0%, ${link.accent}40 0%, transparent 60%)` }} 
+                />
+
+                {/* Subtle bottom-left lighting */}
+                <div 
+                  aria-hidden 
+                  className="absolute inset-0 opacity-20"
+                  style={{ background: `radial-gradient(100% 100% at 0% 100%, #ffffff20 0%, transparent 50%)` }} 
                 />
 
                 {/* Hover sheen sweep */}
                 <div
                   aria-hidden
-                  className="absolute inset-0 -translate-x-[120%] group-hover:translate-x-[120%] transition-transform duration-700 ease-out"
-                  style={{ background: 'linear-gradient(115deg, transparent 42%, rgba(255,255,255,0.22) 50%, transparent 58%)' }}
+                  className="absolute inset-0 -translate-x-[120%] group-hover:translate-x-[120%] transition-transform duration-700 ease-out z-0"
+                  style={{ background: 'linear-gradient(115deg, transparent 42%, rgba(255,255,255,0.15) 50%, transparent 58%)' }}
                 />
+
+                {/* 3D Decorative Image */}
+                <div 
+                  className="absolute -right-4 top-1/2 -translate-y-1/2 w-32 h-32 sm:w-40 sm:h-40 lg:w-44 lg:h-44 opacity-90 group-hover:scale-110 group-hover:-rotate-3 group-hover:opacity-100 transition-all duration-500 ease-out pointer-events-none z-0"
+                  style={{ mixBlendMode: 'screen' }}
+                >
+                  <img src={link.image} alt="" className="w-full h-full object-contain opacity-90" />
+                </div>
 
                 <div className="relative z-10 flex items-start justify-between">
                   <div
-                    className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-white/20 border border-white/25 backdrop-blur-sm flex items-center justify-center transition-transform duration-300 group-hover:scale-105"
-                    style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.4)' }}
+                    className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center transition-all duration-300 group-hover:scale-105 group-hover:shadow-[0_0_20px_rgba(255,255,255,0.25)] relative overflow-hidden backdrop-blur-md"
+                    style={{ 
+                      background: `linear-gradient(135deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.05) 100%)`,
+                      boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.4)',
+                      border: '1px solid rgba(255,255,255,0.15)'
+                    }}
                   >
-                    <link.icon className="w-5 h-5 sm:w-6 sm:h-6 text-white" strokeWidth={2} />
+                    {/* Inner glass highlight */}
+                    <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent pointer-events-none" />
+                    <link.icon className="w-5 h-5 sm:w-6 sm:h-6 text-white drop-shadow-md relative z-10" strokeWidth={2.5} />
                   </div>
-                  <ArrowRight className="w-4 h-4 text-white/50 group-hover:text-white group-hover:translate-x-0.5 transition-all duration-300" />
+                  <ArrowRight className="w-4 h-4 text-white/60 group-hover:text-white group-hover:translate-x-1 group-hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.6)] transition-all duration-300" />
                 </div>
 
                 <div className="relative z-10">
-                  <h3 className="font-display font-bold text-white text-sm sm:text-base leading-tight tracking-wide drop-shadow-sm">
+                  <h3 className="font-display font-bold text-white text-sm sm:text-base leading-tight tracking-wide drop-shadow-md">
                     {link.title}
                   </h3>
-                  <p className="text-[11px] sm:text-xs text-white/75 mt-0.5 leading-tight">
+                  <p className="text-[11px] sm:text-xs text-white/80 mt-0.5 leading-tight drop-shadow-sm font-medium">
                     {link.subtitle}
                   </p>
                 </div>
