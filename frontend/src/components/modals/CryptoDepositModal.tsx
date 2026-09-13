@@ -20,9 +20,7 @@ interface CryptoDepositModalProps {
 }
 
 export default function CryptoDepositModal({ isOpen, onClose, amount: propAmount, paymentMethodId: propMethodId }: CryptoDepositModalProps) {
-  const [step, setStep] = useState<'enter_amount' | 'select_coin' | 'payment_details' | 'success'>(
-    propAmount && propMethodId ? 'select_coin' : 'enter_amount'
-  )
+  const [step, setStep] = useState<'select_coin' | 'enter_amount' | 'payment_details' | 'success'>('select_coin')
   const [depositAmount, setDepositAmount] = useState(propAmount ? String(propAmount) : '')
   const [paymentMethodId, setPaymentMethodId] = useState(propMethodId || '')
 
@@ -76,7 +74,7 @@ export default function CryptoDepositModal({ isOpen, onClose, amount: propAmount
     if (!isOpen) {
       stopPolling()
       setTimeout(() => {
-        setStep(propAmount && propMethodId ? 'select_coin' : 'enter_amount')
+        setStep('select_coin')
         setDepositAmount(propAmount ? String(propAmount) : '')
         setPaymentMethodId(propMethodId || '')
         setSelectedCoin(null)
@@ -93,11 +91,10 @@ export default function CryptoDepositModal({ isOpen, onClose, amount: propAmount
     if (propMethodId) setPaymentMethodId(propMethodId)
   }, [propAmount, propMethodId])
 
+  // Pre-fetch coins as soon as modal opens on select_coin step
   useEffect(() => {
     if (!isOpen || step !== 'select_coin') return
-    const amount = parseFloat(depositAmount)
-    if (!amount || isNaN(amount)) return
-    fetchCoins(amount)
+    fetchCoins(parseFloat(depositAmount) || 0)
   }, [step, isOpen])
 
   const fetchCoins = async (amount: number) => {
@@ -139,60 +136,61 @@ export default function CryptoDepositModal({ isOpen, onClose, amount: propAmount
       }
     }
 
-    setStep('select_coin')
+    // After entering amount, go straight to payment details using already-selected coin
+    // (this is called from enter_amount step which comes AFTER coin selection)
+    if (selectedCoin) {
+      // Re-use handleCoinSelect logic with the already chosen coin
+      await handleCoinSelectWithAmount(selectedCoin, amount)
+    }
   }
 
-  const handleCoinSelect = async (coin: CoinInfo) => {
-    if (!coin.available) {
-      toast.error(`${coin.currency.toUpperCase()} is not available for this deposit amount`)
-      return
-    }
-
-    const amount = parseFloat(depositAmount)
-
-    // For USDTTRC20, check the minimum amount before attempting
-    if (coin.currency.toLowerCase() === 'usdttrc20') {
-      setIsSubmitting(true)
-      setSelectedCoin(coin.currency)
-      try {
-        const minRes = await depositApi.getCoinMinAmount(coin.currency)
-        const minAmount: number = minRes.data.data?.minAmount || 0
-        if (amount < minAmount) {
-          toast.error(
-            `USDT TRC20 requires a minimum deposit of $${Math.ceil(minAmount)} due to Tron network fees. Please increase your amount or choose another coin.`,
-            { duration: 6000 }
-          )
-          setIsSubmitting(false)
-          setSelectedCoin(null)
-          return
-        }
-      } catch {
-        // If min check fails, proceed anyway — payment API will handle it
-      }
-    }
-
-    setSelectedCoin(coin.currency)
+  const handleCoinSelectWithAmount = async (coinCurrency: string, amount: number) => {
+    setSelectedCoin(coinCurrency)
     setIsSubmitting(true)
     try {
-      const res = await depositApi.create({
-        amount,
-        paymentMethodId,
-        cryptoCurrency: coin.currency
-      })
+      if (coinCurrency.toLowerCase() === 'usdttrc20') {
+        const minRes = await depositApi.getCoinMinAmount(coinCurrency)
+        const minAmount: number = minRes.data.data?.minAmount || 0
+        if (amount < minAmount) {
+          toast.error(`USDT TRC20 requires a minimum of $${Math.ceil(minAmount)}. Please increase your amount or choose another coin.`, { duration: 6000 })
+          setIsSubmitting(false)
+          setSelectedCoin(null)
+          setStep('enter_amount')
+          return
+        }
+      }
+      const res = await depositApi.create({ amount, paymentMethodId, cryptoCurrency: coinCurrency })
       const details = res.data.data?.cryptoDetails
       const id = res.data.data?.id
       if (!details) throw new Error('Payment details missing from response')
       setPaymentDetails(details)
       setDepositId(id)
       setStep('payment_details')
-      // Start polling for payment confirmation
       if (id) startPolling(id, amount)
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Failed to generate crypto payment address')
       setSelectedCoin(null)
+      setStep('enter_amount')
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  const handleCoinSelect = (coin: CoinInfo) => {
+    if (!coin.available) {
+      toast.error(`${coin.currency.toUpperCase()} is not available`)
+      return
+    }
+    // Resolve payment method ID if not already set
+    if (!paymentMethodId) {
+      depositApi.getPaymentMethods().then(res => {
+        const methods: any[] = res.data.data || []
+        const cryptoMethod = methods.find((m: any) => m.code?.toLowerCase() === 'crypto')
+        if (cryptoMethod) setPaymentMethodId(cryptoMethod.id)
+      }).catch(() => {})
+    }
+    setSelectedCoin(coin.currency)
+    setStep('enter_amount')
   }
 
   const handleCopy = (text: string, field: string) => {
@@ -210,18 +208,17 @@ export default function CryptoDepositModal({ isOpen, onClose, amount: propAmount
   const handleBack = () => {
     if (step === 'payment_details') {
       stopPolling()
-      setStep('select_coin')
-      setSelectedCoin(null)
+      setStep('enter_amount')
       setPaymentDetails(null)
       setDepositId(null)
-    } else if (step === 'select_coin') {
-      setStep(propAmount && propMethodId ? 'select_coin' : 'enter_amount')
+    } else if (step === 'enter_amount') {
+      setStep('select_coin')
     }
   }
 
   if (!isOpen) return null
 
-  const showBack = (step === 'select_coin' && !propAmount) || step === 'payment_details'
+  const showBack = step === 'enter_amount' || step === 'payment_details'
 
   return (
     <AnimatePresence>
@@ -241,8 +238,8 @@ export default function CryptoDepositModal({ isOpen, onClose, amount: propAmount
                 </button>
               )}
               <h3 className="font-display font-bold text-lg text-white">
-                {step === 'enter_amount' ? 'Crypto Deposit' :
-                 step === 'select_coin' ? 'Select Cryptocurrency' :
+                {step === 'select_coin' ? 'Select Cryptocurrency' :
+                 step === 'enter_amount' ? 'Enter Amount' :
                  step === 'payment_details' ? 'Send Payment' : 'Payment Received!'}
               </h3>
             </div>
@@ -257,11 +254,11 @@ export default function CryptoDepositModal({ isOpen, onClose, amount: propAmount
           {/* Content */}
           <div className="p-6 max-h-[75vh] overflow-y-auto">
 
-            {/* ── STEP 1: Amount Entry ── */}
+            {/* ── STEP 2: Amount Entry ── */}
             {step === 'enter_amount' && (
               <div className="space-y-5">
                 <p className="text-sm text-secondary text-center">
-                  Enter the amount you want to deposit in USD.
+                  Enter the amount you want to deposit via <span className="text-white font-bold">{selectedCoin?.toUpperCase()}</span>.
                 </p>
                 <div>
                   <label className="text-xs font-mono text-secondary uppercase ml-1 mb-1.5 block">Amount (USD)</label>
@@ -290,11 +287,11 @@ export default function CryptoDepositModal({ isOpen, onClose, amount: propAmount
               </div>
             )}
 
-            {/* ── STEP 2: Coin Selection ── */}
+            {/* ── STEP 1: Coin Selection ── */}
             {step === 'select_coin' && (
               <div className="space-y-4">
                 <p className="text-sm text-secondary text-center mb-4">
-                  Depositing <span className="text-white font-bold">${parseFloat(depositAmount).toFixed(2)}</span> · Select a coin
+                  Choose which cryptocurrency you'd like to deposit with
                 </p>
 
                 {loadingCoins ? (
