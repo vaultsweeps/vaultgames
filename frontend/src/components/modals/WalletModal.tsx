@@ -231,7 +231,7 @@ export default function WalletModal({ isOpen, onClose, balance }: WalletModalPro
                     <>
                       <div className="grid grid-cols-2 gap-3">
                         {paymentMethods.map((method) => {
-                          // Special card for Payment Apps with overlapping icons
+                          // Special card for Payment Apps with overlapping icons - v2
                           if (method.id === 'ggusonepay') {
                             return (
                               <button
@@ -240,11 +240,19 @@ export default function WalletModal({ isOpen, onClose, balance }: WalletModalPro
                                 className="bg-surface rounded-2xl p-4 flex flex-col transition-all border border-border-subtle relative overflow-hidden text-left hover:bg-surface-elevated hover:-translate-y-1"
                               >
                                 <div className="flex justify-between items-start mb-3">
-                                  <div className="flex -space-x-2">
-                                    <div className="w-8 h-8 rounded-full bg-green-500 border-2 border-[#1a1f2e] flex items-center justify-center text-white font-bold text-xs" style={{ zIndex: 3 }}>$</div>
-                                    <div className="w-8 h-8 rounded-full bg-sky-500 border-2 border-[#1a1f2e] flex items-center justify-center text-white font-bold text-xs" style={{ zIndex: 2 }}>Z</div>
-                                    <div className="w-8 h-8 rounded-full bg-blue-700 border-2 border-[#1a1f2e] flex items-center justify-center text-white font-bold text-xs" style={{ zIndex: 1 }}>P</div>
-                                    <div className="w-8 h-8 rounded-full bg-slate-600 border-2 border-[#1a1f2e] flex items-center justify-center text-white font-bold text-[10px]" style={{ zIndex: 0 }}>+4</div>
+                                  <div className="flex" style={{ gap: '-8px' }}>
+                                    {[
+                                      { bg: 'bg-green-500', label: '$', z: 3 },
+                                      { bg: 'bg-sky-500',   label: 'Z', z: 2 },
+                                      { bg: 'bg-blue-700',  label: 'P', z: 1 },
+                                      { bg: 'bg-slate-600', label: '+4', z: 0 },
+                                    ].map((a, i) => (
+                                      <div
+                                        key={i}
+                                        className={`w-8 h-8 rounded-full ${a.bg} flex items-center justify-center text-white font-bold text-xs border-2 border-[#12121c]`}
+                                        style={{ zIndex: a.z, marginLeft: i === 0 ? 0 : -8 }}
+                                      >{a.label}</div>
+                                    ))}
                                   </div>
                                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400">
                                     Fast &amp; Auto
