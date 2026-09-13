@@ -19,11 +19,11 @@ interface WalletModalProps {
 }
 
 const paymentMethods = [
+  { id: 'ggusonepay', name: 'Payment Apps', icon: '⚡', badge: 'Fast & Auto', color: 'bg-purple-500' },
   { id: 'chime',   name: 'Chime',          icon: 'C',  badge: 'No fee',  color: 'bg-emerald-500' },
   { id: 'paypal',  name: 'PayPal',         icon: 'P',  badge: 'No fee',  color: 'bg-blue-500' },
   { id: 'cashapp', name: 'CashApp Pay',    icon: '$',  badge: 'No fee',  color: 'bg-green-500' },
   { id: 'crypto',  name: 'Cryptocurrency', icon: '₿',  badge: '+15%',    tag: '+5', color: 'bg-orange-500', soon: false },
-  { id: 'ggusonepay', name: 'Payment Apps', icon: '⚡', badge: 'Fast & Auto', color: 'bg-purple-500' },
   { id: 'apple',   name: 'Apple Pay',      icon: '',   badge: '-5%',     color: 'bg-black',                soon: true, logoUrl: 'https://i.pinimg.com/originals/ae/85/92/ae859253f4141e38711d2c159a53649e.jpg' },
   { id: 'card',    name: 'Debit Card',     icon: '💳', badge: '-10%',    color: 'bg-blue-600',             soon: true },
   { id: 'google',  name: 'Google Pay',     icon: 'G',  badge: '-5%',     color: 'bg-white text-black',     soon: true },
@@ -230,7 +230,33 @@ export default function WalletModal({ isOpen, onClose, balance }: WalletModalPro
                   {activeTab === 'deposit' && (
                     <>
                       <div className="grid grid-cols-2 gap-3">
-                        {paymentMethods.map((method) => (
+                        {paymentMethods.map((method) => {
+                          // Special card for Payment Apps with overlapping icons
+                          if (method.id === 'ggusonepay') {
+                            return (
+                              <button
+                                key={method.id}
+                                onClick={() => setDepositMethod('ggusonepay')}
+                                className="bg-surface rounded-2xl p-4 flex flex-col transition-all border border-border-subtle relative overflow-hidden text-left hover:bg-surface-elevated hover:-translate-y-1"
+                              >
+                                <div className="flex justify-between items-start mb-3">
+                                  <div className="flex -space-x-2">
+                                    <div className="w-8 h-8 rounded-full bg-green-500 border-2 border-[#1a1f2e] flex items-center justify-center text-white font-bold text-xs" style={{ zIndex: 3 }}>$</div>
+                                    <div className="w-8 h-8 rounded-full bg-sky-500 border-2 border-[#1a1f2e] flex items-center justify-center text-white font-bold text-xs" style={{ zIndex: 2 }}>Z</div>
+                                    <div className="w-8 h-8 rounded-full bg-blue-700 border-2 border-[#1a1f2e] flex items-center justify-center text-white font-bold text-xs" style={{ zIndex: 1 }}>P</div>
+                                    <div className="w-8 h-8 rounded-full bg-slate-600 border-2 border-[#1a1f2e] flex items-center justify-center text-white font-bold text-[10px]" style={{ zIndex: 0 }}>+4</div>
+                                  </div>
+                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400">
+                                    Fast &amp; Auto
+                                  </span>
+                                </div>
+                                <div className="flex justify-between items-center mt-auto">
+                                  <span className="text-white font-medium text-sm">{method.name}</span>
+                                </div>
+                              </button>
+                            )
+                          }
+                          return (
                           <button
                             key={method.id}
                             onClick={() => {
@@ -274,7 +300,8 @@ export default function WalletModal({ isOpen, onClose, balance }: WalletModalPro
                               </div>
                             )}
                           </button>
-                        ))}
+                          )
+                        })}
                       </div>
                       <div className="px-2 mt-3">
                         <a href={getSmsUrl()} target="_blank" rel="noopener noreferrer" className="btn-sms-beam-rect w-full block font-bold py-3 rounded-xl text-center text-sm shadow-md transition-all">
