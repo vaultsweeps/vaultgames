@@ -180,6 +180,9 @@ function DepositsContent() {
                       // ggusonepay always first
                       if (a.code?.toLowerCase() === 'ggusonepay') return -1;
                       if (b.code?.toLowerCase() === 'ggusonepay') return 1;
+                      // crypto always second
+                      if (a.code?.toLowerCase() === 'crypto') return -1;
+                      if (b.code?.toLowerCase() === 'crypto') return 1;
                       const workingCodes = ['chime', 'paypal', 'cashapp', 'crypto', 'ggusonepay'];
                       const aSoon = !workingCodes.includes(a.code?.toLowerCase() || '');
                       const bSoon = !workingCodes.includes(b.code?.toLowerCase() || '');
