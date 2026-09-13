@@ -19,6 +19,7 @@ type QuickLink = {
   border: string
   accent: string
   image: string
+  gradientId: string
 }
 
 const LINKS: QuickLink[] = [
@@ -32,6 +33,7 @@ const LINKS: QuickLink[] = [
     border: 'rgba(59, 130, 246, 0.3)',
     accent: '#8b5cf6',
     image: '/images/3d_crown.jpg',
+    gradientId: 'gold-3d',
   },
   {
     title: 'Daily Spin',
@@ -44,6 +46,7 @@ const LINKS: QuickLink[] = [
     border: 'rgba(245, 158, 11, 0.3)',
     accent: '#facc15',
     image: '/images/3d_wheel.jpg',
+    gradientId: 'amber-3d',
   },
   {
     title: 'Bonus Zone',
@@ -55,6 +58,7 @@ const LINKS: QuickLink[] = [
     border: 'rgba(168, 85, 247, 0.3)',
     accent: '#ec4899',
     image: '/images/3d_gift.jpg',
+    gradientId: 'amethyst-3d',
   },
   {
     title: 'Refer & Earn',
@@ -66,6 +70,7 @@ const LINKS: QuickLink[] = [
     border: 'rgba(16, 185, 129, 0.3)',
     accent: '#22d3ee',
     image: '/images/3d_people.jpg',
+    gradientId: 'emerald-3d',
   }
 ]
 
@@ -97,6 +102,43 @@ export default function QuickLinks() {
 
   return (
     <>
+      {/* 3D SVG Materials definition */}
+      <svg width="0" height="0" className="absolute pointer-events-none">
+        <defs>
+          <linearGradient id="gold-3d" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#fffbeb" />
+            <stop offset="25%" stopColor="#fde047" />
+            <stop offset="50%" stopColor="#d97706" />
+            <stop offset="75%" stopColor="#fef08a" />
+            <stop offset="100%" stopColor="#92400e" />
+          </linearGradient>
+          
+          <linearGradient id="amber-3d" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#ffedd5" />
+            <stop offset="25%" stopColor="#f97316" />
+            <stop offset="50%" stopColor="#9a3412" />
+            <stop offset="75%" stopColor="#fdba74" />
+            <stop offset="100%" stopColor="#7c2d12" />
+          </linearGradient>
+
+          <linearGradient id="amethyst-3d" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#f3e8ff" />
+            <stop offset="25%" stopColor="#a855f7" />
+            <stop offset="50%" stopColor="#5b21b6" />
+            <stop offset="75%" stopColor="#d8b4fe" />
+            <stop offset="100%" stopColor="#3b0764" />
+          </linearGradient>
+
+          <linearGradient id="emerald-3d" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#d1fae5" />
+            <stop offset="25%" stopColor="#10b981" />
+            <stop offset="50%" stopColor="#047857" />
+            <stop offset="75%" stopColor="#6ee7b7" />
+            <stop offset="100%" stopColor="#022c22" />
+          </linearGradient>
+        </defs>
+      </svg>
+
       <section className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto py-4">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">
           {LINKS.map((link, i) => (
@@ -149,49 +191,24 @@ export default function QuickLinks() {
                 </div>
 
                 <div className="relative z-10 flex items-start justify-between">
-                  <div
-                    className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center transition-all duration-500 group-hover:scale-110 group-hover:-translate-y-1 relative overflow-hidden backdrop-blur-xl z-10"
-                    style={{ 
-                      // Deep glass base with subtle color tint
-                      background: `linear-gradient(135deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.02) 100%)`,
-                      // Complex box-shadow for glass thickness, inner glow, and outer drop shadow
-                      boxShadow: `
-                        inset 0 2px 4px rgba(255,255,255,0.6), 
-                        inset 0 -4px 8px rgba(0,0,0,0.3), 
-                        inset 0 0 12px ${link.accent}70,
-                        0 8px 16px rgba(0,0,0,0.4),
-                        0 2px 4px rgba(0,0,0,0.2)
-                      `,
-                      // 3D edge borders mimicking light hitting the top-left edge
-                      borderTop: '1.5px solid rgba(255,255,255,0.7)',
-                      borderLeft: '1.5px solid rgba(255,255,255,0.5)',
-                      borderRight: '1px solid rgba(255,255,255,0.1)',
-                      borderBottom: '1px solid rgba(255,255,255,0.1)'
-                    }}
-                  >
-                    {/* Glass surface curve top reflection */}
-                    <div 
-                      className="absolute inset-0 pointer-events-none" 
-                      style={{ 
-                        background: 'radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.6) 0%, transparent 60%)',
-                      }} 
-                    />
+                  <div className="relative w-10 h-10 sm:w-12 sm:h-12 transition-transform duration-500 group-hover:scale-110 group-hover:-translate-y-1 z-10 group">
+                    {/* Deep Ambient Occlusion & Soft Drop Shadow */}
+                    <link.icon className="absolute top-2 left-1 w-full h-full opacity-60 mix-blend-multiply" strokeWidth={3} stroke="#000" style={{ filter: 'blur(4px)' }} />
+                    <link.icon className="absolute top-4 left-2 w-full h-full opacity-40 mix-blend-multiply" strokeWidth={3} stroke="#000" style={{ filter: 'blur(8px)' }} />
+
+                    {/* Extrusion Base (3D Thickness/Volume) */}
+                    <link.icon className="absolute top-[3px] left-[1.5px] w-full h-full" strokeWidth={2.5} stroke={link.accent} style={{ filter: 'brightness(0.2)' }} />
+                    <link.icon className="absolute top-[2px] left-[1px] w-full h-full" strokeWidth={2.5} stroke={link.accent} style={{ filter: 'brightness(0.3)' }} />
+                    <link.icon className="absolute top-[1px] left-[0.5px] w-full h-full" strokeWidth={2.5} stroke={link.accent} style={{ filter: 'brightness(0.4)' }} />
+
+                    {/* Main Metallic/Plastic Face */}
+                    <link.icon className="absolute inset-0 w-full h-full" strokeWidth={2.5} stroke={`url(#${link.gradientId})`} />
+
+                    {/* Specular Highlight / Bevel (Rim lighting) */}
+                    <link.icon className="absolute -top-[1px] -left-[1px] w-full h-full opacity-90" strokeWidth={1} stroke="#ffffff" />
                     
-                    {/* Diagonal intense glass sheen (refraction highlight) */}
-                    <div 
-                      className="absolute inset-0 pointer-events-none"
-                      style={{ background: 'linear-gradient(135deg, transparent 35%, rgba(255,255,255,0.5) 45%, rgba(255,255,255,0.05) 50%, transparent 60%)' }}
-                    />
-                    
-                    {/* The Icon itself, styled to look 3D inside the capsule */}
-                    <link.icon 
-                      className="w-5 h-5 sm:w-6 sm:h-6 text-white relative z-10 transition-transform duration-500 group-hover:scale-110" 
-                      strokeWidth={2.5} 
-                      style={{ 
-                        // Deep drop shadow makes it float inside, outer glow makes it emit light
-                        filter: `drop-shadow(0 4px 4px rgba(0,0,0,0.5)) drop-shadow(0 0 10px ${link.accent})` 
-                      }} 
-                    />
+                    {/* Internal core glow (bloom effect) */}
+                    <div className="absolute inset-0 rounded-full opacity-0 group-hover:opacity-60 transition-opacity duration-500 pointer-events-none" style={{ background: `radial-gradient(circle, ${link.accent}90 0%, transparent 60%)`, filter: 'blur(12px)' }} />
                   </div>
                   <ArrowRight className="w-4 h-4 text-white/60 group-hover:text-white group-hover:translate-x-1 group-hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.6)] transition-all duration-300" />
                 </div>
