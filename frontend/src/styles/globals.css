@@ -438,7 +438,7 @@ body {
 }
 
 /* --- Signal Rectangular Beam --- */
-.btn-signal-beam-rect {
+.btn-sms-beam-rect {
   position: relative;
   overflow: hidden;
   isolation: isolate;
@@ -446,7 +446,7 @@ body {
   border: none !important;
 }
 
-.btn-signal-beam-rect::before {
+.btn-sms-beam-rect::before {
   content: '';
   position: absolute;
   top: 0; left: 0;
@@ -458,7 +458,7 @@ body {
   z-index: -2;
 }
 
-.btn-signal-beam-rect::after {
+.btn-sms-beam-rect::after {
   content: '';
   position: absolute;
   inset: 2px;
@@ -468,7 +468,7 @@ body {
   z-index: -1;
 }
 
-.btn-signal-beam-rect:hover::after {
+.btn-sms-beam-rect:hover::after {
   background: #2563eb;
 }
 

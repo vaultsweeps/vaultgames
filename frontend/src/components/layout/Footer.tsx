@@ -7,13 +7,13 @@ import { publicApi, userApi } from '@/lib/api'
 import toast from 'react-hot-toast'
 import { useAuthStore } from '@/store/authStore'
 import { getTelegramUrl } from '@/lib/telegram'
-import { getSignalUrl } from '@/lib/signal'
+import { getSmsUrl } from '@/lib/sms'
 
 export default function Footer() {
   const [year, setYear] = useState<number | null>(null)
   const [settings, setSettings] = useState<any>({})
   const [mounted, setMounted] = useState(false)
-  const [signalUrl, setSignalUrl] = useState('')
+  const [smsUrl, setsmsUrl] = useState('')
   const [couponCode, setCouponCode] = useState('')
   const [claiming, setClaiming] = useState(false)
   const { user } = useAuthStore()
@@ -43,8 +43,8 @@ export default function Footer() {
   useEffect(() => {
     setYear(new Date().getFullYear())
     setMounted(true)
-    setSignalUrl(getSignalUrl())
-    const t = setInterval(() => setSignalUrl(getSignalUrl()), 60_000)
+    setsmsUrl(getSmsUrl())
+    const t = setInterval(() => setsmsUrl(getSmsUrl()), 60_000)
     publicApi.getSettings().then(res => setSettings(res.data.data || {})).catch(() => {})
     return () => clearInterval(t)
   }, [])
@@ -166,8 +166,8 @@ export default function Footer() {
             <h4 className="font-display text-xs tracking-widest text-neon-blue uppercase mb-4">Contact Us</h4>
             {mounted ? (
             <div className="space-y-3">
-              {signalUrl && (
-                <a href={signalUrl} target="_blank" rel="noopener noreferrer"
+              {smsUrl && (
+                <a href={smsUrl} target="_blank" rel="noopener noreferrer"
                   className="flex items-center gap-3 glass rounded-lg px-4 py-3 text-sm text-secondary hover:text-[#3a76f0] hover:border-[#3a76f0]/30 border border-transparent transition-all relative overflow-hidden group">
                   <div className="absolute inset-0 bg-[#3a76f0]/5 opacity-0 group-hover:opacity-100 transition-opacity" />
                   <svg viewBox="0 0 48 48" className="w-4 h-4 text-[#3a76f0]" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -175,7 +175,7 @@ export default function Footer() {
                     <path d="M24 12a12 12 0 1 0 7.39 21.39l3.14 1.06-1.06-3.14A12 12 0 0 0 24 12z" fill="white"/>
                     <path d="M19 23h10M19 27h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
                   </svg>
-                  <span className="flex-1">Signal Support</span>
+                  <span className="flex-1">Text Support</span>
                   <span className="text-[9px] font-bold text-emerald-400 bg-emerald-400/10 px-1.5 py-0.5 rounded ml-auto">FASTEST</span>
                 </a>
               )}

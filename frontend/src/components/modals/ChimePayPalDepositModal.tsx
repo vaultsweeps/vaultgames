@@ -1,7 +1,7 @@
 'use client'
 import { useAuthStore } from '@/store/authStore'
 import { getTelegramUrl } from '@/lib/telegram'
-import { getSignalUrl } from '@/lib/signal'
+import { getSmsUrl } from '@/lib/sms'
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, CheckCircle, ArrowRight, Copy } from 'lucide-react'
@@ -21,13 +21,13 @@ export default function ChimePayPalDepositModal({ isOpen, onClose, method }: Chi
   const [profileName, setProfileName] = useState('')
   const [methods, setMethods] = useState<any[]>([])
   const [settings, setSettings] = useState<any>({})
-  const [signalUrl, setSignalUrl] = useState('')
+  const [smsUrl, setsmsUrl] = useState('')
 
   useEffect(() => {
     if (isOpen && method) {
       depositApi.getPaymentMethods().then(res => setMethods(res.data.data)).catch(() => {})
       publicApi.getSettings().then(res => setSettings(res.data.data || {})).catch(() => {})
-      setSignalUrl(getSignalUrl())
+      setsmsUrl(getSmsUrl())
       setStep(1)
       setStatus('idle')
       setAmount('0.00')
@@ -37,8 +37,8 @@ export default function ChimePayPalDepositModal({ isOpen, onClose, method }: Chi
 
   // Keep signal URL up to date as shifts change
   useEffect(() => {
-    setSignalUrl(getSignalUrl())
-    const t = setInterval(() => setSignalUrl(getSignalUrl()), 60_000)
+    setsmsUrl(getSmsUrl())
+    const t = setInterval(() => setsmsUrl(getSmsUrl()), 60_000)
     return () => clearInterval(t)
   }, [])
 
@@ -352,8 +352,8 @@ export default function ChimePayPalDepositModal({ isOpen, onClose, method }: Chi
                     <h3 className="text-white font-bold text-2xl">Verification Failed</h3>
                     <p className="text-secondary text-sm">We could not find a matching payment. If you already sent it, please wait a few minutes and check your history.</p>
                     <div className="grid grid-cols-3 gap-2 mt-2 w-full">
-                      {signalUrl && (
-                        <a href={signalUrl} target="_blank" rel="noreferrer" className="flex flex-col items-center justify-center gap-1 bg-[#3a76f0]/10 text-[#3a76f0] hover:bg-[#3a76f0]/20 font-bold py-2 rounded-xl transition-all border border-[#3a76f0]/30 text-xs relative overflow-hidden group">
+                      {smsUrl && (
+                        <a href={smsUrl} target="_blank" rel="noreferrer" className="flex flex-col items-center justify-center gap-1 bg-[#3a76f0]/10 text-[#3a76f0] hover:bg-[#3a76f0]/20 font-bold py-2 rounded-xl transition-all border border-[#3a76f0]/30 text-xs relative overflow-hidden group">
                           <div className="absolute inset-0 bg-[#3a76f0]/5 opacity-0 group-hover:opacity-100 transition-opacity" />
                           <div className="flex items-center gap-1.5 z-10">
                             <svg viewBox="0 0 48 48" className="w-4 h-4" fill="none" xmlns="http://www.w3.org/2000/svg">
