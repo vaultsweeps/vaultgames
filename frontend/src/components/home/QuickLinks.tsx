@@ -138,10 +138,14 @@ export default function QuickLinks() {
 
                 {/* 3D Decorative Image */}
                 <div 
-                  className="absolute -right-4 top-1/2 -translate-y-1/2 w-32 h-32 sm:w-40 sm:h-40 lg:w-44 lg:h-44 opacity-90 group-hover:scale-110 group-hover:-rotate-3 group-hover:opacity-100 transition-all duration-500 ease-out pointer-events-none z-0"
-                  style={{ mixBlendMode: 'screen' }}
+                  className="absolute -right-4 top-1/2 -translate-y-1/2 w-36 h-36 sm:w-44 sm:h-44 lg:w-48 lg:h-48 opacity-90 group-hover:scale-110 group-hover:-rotate-3 group-hover:opacity-100 transition-all duration-700 ease-out pointer-events-none z-0"
+                  style={{ 
+                    mixBlendMode: 'screen',
+                    WebkitMaskImage: 'radial-gradient(circle at 50% 50%, black 40%, transparent 70%)',
+                    maskImage: 'radial-gradient(circle at 50% 50%, black 40%, transparent 70%)'
+                  }}
                 >
-                  <img src={link.image} alt="" className="w-full h-full object-contain opacity-90" />
+                  <img src={link.image} alt="" className="w-full h-full object-contain opacity-90 drop-shadow-2xl" />
                 </div>
 
                 <div className="relative z-10 flex items-start justify-between">
