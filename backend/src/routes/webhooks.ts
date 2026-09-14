@@ -355,11 +355,13 @@ router.post('/zappay', async (req: Request, res: Response) => {
   }
 });
 
-// GgusOnePay webhook
+// GgusOnePay pay-in (deposit) webhook
+// Per API docs §05: gateway POSTs application/x-www-form-urlencoded
+// Must return lowercase 'success' — any other response triggers retries at 0/30/60/90/120/150 s
 router.post('/ggusonepay', async (req: Request, res: Response) => {
   try {
     const signature = req.body.sign as string;
-    
+
     // Save raw webhook log
     const webhookLog = await prisma.paymentWebhook.create({
       data: { provider: 'ggusonepay', payload: req.body, status: 'received' }
@@ -370,7 +372,10 @@ router.post('/ggusonepay', async (req: Request, res: Response) => {
       return res.send('fail');
     }
 
-    const { mchOrderNo, state, amount, orderNo } = req.body;
+    // Coerce state to number — gateway may send string or number
+    const mchOrderNo = req.body.mchOrderNo as string;
+    const orderNo = req.body.orderNo as string;   // gateway order number
+    const state = Number(req.body.state);          // 0=Created 1=InPayment 2=Success 3=Failed 4=Revoked 5=Refunded 6=Closed
 
     const deposit = await prisma.deposit.findFirst({
       where: { paymentReference: mchOrderNo },
@@ -378,24 +383,33 @@ router.post('/ggusonepay', async (req: Request, res: Response) => {
     });
 
     if (deposit) {
-      // It's a deposit (pay-in)
+      // Pay-in order
       if (deposit.status === 'approved') {
+        await prisma.paymentWebhook.update({ where: { id: webhookLog.id }, data: { status: 'ignored', error: 'Already approved' } });
         return res.send('success');
       }
 
-      // state: 2 = Payment Successful
-      if (state == '2') {
-        // Call Provider Recharge API
+      if (state === 2) {
+        // Payment Successful — credit the user
         const providerUser = await prisma.providerUser.findFirst({ where: { userId: deposit.userId } });
         if (providerUser) {
           const providerService = await ProviderFactory.getProviderById(providerUser.providerId);
           if (providerService) {
-            const rechargeResult = await providerService.rechargePlayer(providerUser.providerUserId, deposit.amount, deposit.paymentReference!);
-            
+            const rechargeResult = await providerService.rechargePlayer(
+              providerUser.providerUserId,
+              deposit.amount,
+              deposit.paymentReference!
+            );
+
             await prisma.$transaction([
               prisma.deposit.update({
                 where: { id: deposit.id },
-                data: { status: 'approved', transactionId: orderNo || rechargeResult.pay_order_id || String(orderNo), approvedAt: new Date(), webhookData: req.body }
+                data: {
+                  status: 'approved',
+                  transactionId: orderNo || rechargeResult.pay_order_id || '',
+                  approvedAt: new Date(),
+                  webhookData: req.body
+                }
               }),
               prisma.providerTransaction.create({
                 data: {
@@ -404,48 +418,59 @@ router.post('/ggusonepay', async (req: Request, res: Response) => {
                   type: 'recharge',
                   amount: deposit.amount,
                   orderId: deposit.paymentReference!,
-                  providerOrderId: rechargeResult.pay_order_id || String(orderNo),
+                  providerOrderId: rechargeResult.pay_order_id || orderNo || '',
                   status: 'success'
                 }
               })
             ]);
-
-            await createNotification(deposit.userId, {
-              title: '✅ Deposit Confirmed!',
-              message: `Your deposit of $${deposit.amount} has been successfully credited to your game account.`,
-              type: 'success',
-              link: '/dashboard/deposits'
+          } else {
+            // No provider service — still mark approved
+            await prisma.deposit.update({
+              where: { id: deposit.id },
+              data: { status: 'approved', transactionId: orderNo || '', approvedAt: new Date(), webhookData: req.body }
             });
           }
         } else {
-            // Handle if no providerUser (fallback)
-            await prisma.deposit.update({
-              where: { id: deposit.id },
-              data: { status: 'approved', transactionId: String(orderNo), approvedAt: new Date(), webhookData: req.body }
-            });
+          // No provider user — mark approved (wallet-only mode)
+          await prisma.deposit.update({
+            where: { id: deposit.id },
+            data: { status: 'approved', transactionId: orderNo || '', approvedAt: new Date(), webhookData: req.body }
+          });
         }
-      } else if (state == '3' || state == '4' || state == '5' || state == '6') {
-        // Failed, Revoked, Refunded, Closed
+
+        await createNotification(deposit.userId, {
+          title: '✅ Deposit Confirmed!',
+          message: `Your deposit of $${deposit.amount} has been successfully credited.`,
+          type: 'success',
+          link: '/dashboard/deposits'
+        });
+
+      } else if (state === 3 || state === 4 || state === 5 || state === 6) {
+        // Failed / Revoked / Refunded / Closed
         if (deposit.status === 'pending') {
           await prisma.deposit.update({
             where: { id: deposit.id },
             data: { status: 'failed', webhookData: req.body }
           });
+          await createNotification(deposit.userId, {
+            title: '❌ Deposit Failed',
+            message: `Your deposit of $${deposit.amount} could not be processed. Please try again.`,
+            type: 'error',
+            link: '/dashboard/deposits'
+          });
         }
       }
+      // states 0, 1 are informational — no action needed
     } else {
-      // Could be a withdrawal (payout)
-      const withdrawal = await prisma.withdrawal.findFirst({
-        where: { requestId: mchOrderNo }
-      });
-      
+      // Not a deposit — check withdrawals
+      const withdrawal = await prisma.withdrawal.findFirst({ where: { requestId: mchOrderNo } });
       if (withdrawal) {
-        if (state == '2' && withdrawal.status === 'pending') {
+        if (state === 2 && withdrawal.status === 'pending') {
           await prisma.withdrawal.update({
             where: { id: withdrawal.id },
             data: { status: 'approved', approvedAt: new Date() }
           });
-        } else if (state == '3' && withdrawal.status === 'pending') {
+        } else if (state === 3 && withdrawal.status === 'pending') {
           await prisma.withdrawal.update({
             where: { id: withdrawal.id },
             data: { status: 'rejected', rejectionReason: 'Payout failed at gateway', rejectedAt: new Date() }
@@ -453,15 +478,59 @@ router.post('/ggusonepay', async (req: Request, res: Response) => {
         }
       } else {
         await prisma.paymentWebhook.update({ where: { id: webhookLog.id }, data: { status: 'ignored', error: 'Order not found' } });
-        return res.send('success'); // Ack receipt
+        return res.send('success'); // Ack receipt even if unknown order
       }
     }
 
     await prisma.paymentWebhook.update({ where: { id: webhookLog.id }, data: { status: 'processed' } });
     res.send('success');
   } catch (error: any) {
-    console.error('GgusOnePay Webhook Error:', error);
-    res.status(500).send('error');
+    console.error('[GgusOnePay Webhook] Error:', error);
+    res.status(500).send('fail');
+  }
+});
+
+// GgusOnePay transfer (payout) webhook
+// Per API docs §08: Asynchronous Transfer Notification — POST {notifyUrl}, application/x-www-form-urlencoded
+router.post('/ggusonepay/transfer', async (req: Request, res: Response) => {
+  try {
+    const signature = req.body.sign as string;
+
+    const webhookLog = await prisma.paymentWebhook.create({
+      data: { provider: 'ggusonepay_transfer', payload: req.body, status: 'received' }
+    });
+
+    if (!signature || !GgusOnePayService.verifyWebhookSignature(req.body, signature)) {
+      await prisma.paymentWebhook.update({ where: { id: webhookLog.id }, data: { status: 'failed', error: 'Invalid signature' } });
+      return res.send('fail');
+    }
+
+    const mchOrderNo = req.body.mchOrderNo as string;
+    const state = Number(req.body.state); // 0=Created 1=Transferring 2=Successful 3=Failed 4=Cancelled
+
+    const withdrawal = await prisma.withdrawal.findFirst({ where: { requestId: mchOrderNo } });
+    if (!withdrawal) {
+      await prisma.paymentWebhook.update({ where: { id: webhookLog.id }, data: { status: 'ignored', error: 'Withdrawal not found' } });
+      return res.send('success');
+    }
+
+    if (state === 2 && withdrawal.status === 'pending') {
+      await prisma.withdrawal.update({
+        where: { id: withdrawal.id },
+        data: { status: 'approved', approvedAt: new Date() }
+      });
+    } else if ((state === 3 || state === 4) && withdrawal.status === 'pending') {
+      await prisma.withdrawal.update({
+        where: { id: withdrawal.id },
+        data: { status: 'rejected', rejectionReason: state === 4 ? 'Transfer cancelled' : 'Transfer failed at gateway', rejectedAt: new Date() }
+      });
+    }
+
+    await prisma.paymentWebhook.update({ where: { id: webhookLog.id }, data: { status: 'processed' } });
+    res.send('success');
+  } catch (error: any) {
+    console.error('[GgusOnePay Transfer Webhook] Error:', error);
+    res.status(500).send('fail');
   }
 });
 

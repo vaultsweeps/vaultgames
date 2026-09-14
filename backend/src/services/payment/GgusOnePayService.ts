@@ -2,72 +2,115 @@ import axios from 'axios';
 import crypto from 'crypto';
 import { logger } from '../../utils/logger';
 
-const GGUSONEPAY_MERCHANT_ID = process.env.GGUSONEPAY_MERCHANT_ID || 'nicks1911';
+const GGUSONEPAY_MERCHANT_ID = process.env.GGUSONEPAY_MERCHANT_ID || '2026096053';
 const GGUSONEPAY_API_KEY = process.env.GGUSONEPAY_API_KEY || 'Pi4DJP5l9A3bhE41265s3d5Nb9l86P1a';
 const GGUSONEPAY_BASE_URL = process.env.GGUSONEPAY_BASE_URL || 'https://www.ggusonepay.com';
-const BACKEND_URL = process.env.BACKEND_URL || 'https://api.vaultsweeps.com'; // Adjust to env
+const BACKEND_URL = process.env.BACKEND_URL || 'https://api.vaultsweeps.com';
 
 export class GgusOnePayService {
   /**
-   * Generates the signature for GgusOnePay requests and webhooks.
-   * Collect all non-empty parameters (exclude `sign`). Sort by parameter name in ASCII order.
-   * Concatenate as URL key=value pairs separated by `&` to form `stringA`.
-   * Append `&key=API_KEY`, MD5, and convert to uppercase.
+   * Generates the MD5 signature for GgusOnePay requests and webhooks.
+   *
+   * Algorithm (per API docs §02):
+   *  1. Collect all non-empty params, exclude `sign` itself.
+   *  2. Sort keys by ASCII/lexicographic order.
+   *  3. For nested objects: sort their keys recursively (same rule).
+   *  4. Concatenate as `key=value&key=value` → stringA
+   *  5. Append `&key=API_KEY` → stringSignTemp
+   *  6. MD5(stringSignTemp).toUpperCase() → sign
+   *
+   * Note: amounts are integer cents; timestamp is 13-digit ms epoch.
    */
-  static generateSignature(params: Record<string, any>): string {
+  static generateSignature(params: Record<string, any>, signType: 'MD5' | 'SHA1' | 'SHA256' = 'MD5'): string {
     const sortedKeys = Object.keys(params).sort();
     const queryParts: string[] = [];
 
     for (const key of sortedKeys) {
       if (key === 'sign') continue;
-      
+
       const value = params[key];
-      // Exclude null or empty strings
+      // Exclude null, undefined, and empty strings
       if (value === null || value === undefined || value === '') {
         continue;
       }
-      
-      // If it's an object, stringify it
-      const stringValue = typeof value === 'object' ? JSON.stringify(value) : String(value);
+
+      let stringValue: string;
+      if (typeof value === 'object') {
+        // Nested objects: sort keys recursively before serialising
+        stringValue = GgusOnePayService.serializeObject(value);
+      } else {
+        stringValue = String(value);
+      }
       queryParts.push(`${key}=${stringValue}`);
     }
-    
+
     const stringA = queryParts.join('&');
     const stringSignTemp = `${stringA}&key=${GGUSONEPAY_API_KEY}`;
-    
-    return crypto.createHash('md5').update(stringSignTemp).digest('hex').toUpperCase();
+
+    const algo = signType === 'SHA1' ? 'sha1' : signType === 'SHA256' ? 'sha256' : 'md5';
+    return crypto.createHash(algo).update(stringSignTemp, 'utf8').digest('hex').toUpperCase();
   }
 
   /**
-   * Verifies the signature from a GgusOnePay webhook notification.
+   * Recursively sorts object keys in ASCII order and serialises to JSON.
+   * Matches the worked example in §02 of the API docs.
+   */
+  private static serializeObject(obj: any): string {
+    if (Array.isArray(obj)) {
+      return JSON.stringify(obj);
+    }
+    if (obj && typeof obj === 'object') {
+      const sorted: any = {};
+      Object.keys(obj).sort().forEach(k => {
+        const v = obj[k];
+        sorted[k] = (v && typeof v === 'object') ? JSON.parse(GgusOnePayService.serializeObject(v)) : v;
+      });
+      return JSON.stringify(sorted);
+    }
+    return JSON.stringify(obj);
+  }
+
+  /**
+   * Verifies the signature from a GgusOnePay webhook callback.
+   * The gateway POSTs application/x-www-form-urlencoded; verify sign before processing.
    */
   static verifyWebhookSignature(payload: Record<string, any>, signature: string): boolean {
-    const expectedSignature = this.generateSignature(payload);
-    return expectedSignature === signature;
+    const signType = (payload.signType as 'MD5' | 'SHA1' | 'SHA256') || 'MD5';
+    const expectedSignature = this.generateSignature(payload, signType);
+    return expectedSignature === signature.toUpperCase();
   }
 
   /**
-   * Create a Pay-in Order (Deposit)
+   * POST /api/pay/create — Initiate a payment collection for a customer.
+   *
+   * @param amountCents   Amount in integer cents (e.g. $10.00 → 1000)
+   * @param orderSn       Unique merchant order number (cannot be reused)
+   * @param userId        Merchant-side user ID (used as wayParam.clientId)
+   * @param ip            IPv4 of end user
+   * @param wayCode       Payment method code: cashapp | zelle | paypal | applepay | googlepay | card | chime
+   * @param returnUrl     Optional redirect URL after payment
    */
   static async createPayInOrder(
     amountCents: number,
     orderSn: string,
     userId: string,
     ip: string,
-    paymentMethodCode: string, // e.g., cashapp, zelle, paypal, applepay, googlepay, card, chime
+    wayCode: string,
     returnUrl?: string
   ): Promise<any> {
+    const timestamp = Date.now(); // 13-digit ms epoch
+
     const params: Record<string, any> = {
       mchNo: GGUSONEPAY_MERCHANT_ID,
       mchOrderNo: orderSn,
-      amount: amountCents, // Amount in cents
+      amount: Math.round(amountCents),   // integer cents, no decimals
       currency: 'usd',
-      wayCode: paymentMethodCode.toLowerCase(),
+      wayCode: wayCode.toLowerCase(),
       clientIp: ip || '1.1.1.1',
       notifyUrl: `${BACKEND_URL}/api/webhooks/ggusonepay`,
-      timestamp: Date.now(),
+      timestamp,
       signType: 'MD5',
-      wayParam: { clientId: userId } // Required as a JSON object per docs
+      wayParam: { clientId: userId },     // JSONObject — clientId required per docs
     };
 
     if (returnUrl) {
@@ -76,46 +119,99 @@ export class GgusOnePayService {
 
     params.sign = this.generateSignature(params);
 
+    logger.info(`[GgusOnePay] Creating pay-in order: mchNo=${GGUSONEPAY_MERCHANT_ID} orderSn=${orderSn} amount=${amountCents} wayCode=${wayCode}`);
+
     try {
       const response = await axios.post(`${GGUSONEPAY_BASE_URL}/api/pay/create`, params, {
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 15000,
       });
-      
-      logger.info(`[GgusOnePay] Pay-in order created: ${orderSn}, response: ${JSON.stringify(response.data)}`);
-      
-      if (response.data.code !== 0 && response.data.code !== 200) {
-        throw new Error(`Gateway Error: ${response.data.msg || JSON.stringify(response.data)}`);
+
+      logger.info(`[GgusOnePay] Pay-in response for ${orderSn}: ${JSON.stringify(response.data)}`);
+
+      // API returns code=0 for success (see Response Codes §01)
+      if (response.data.code !== 0) {
+        throw new Error(`[GgusOnePay] Gateway error code=${response.data.code}: ${response.data.msg || JSON.stringify(response.data)}`);
       }
-      
+
       return response.data;
     } catch (error: any) {
-      logger.error(`[GgusOnePay] Error creating pay-in order: ${JSON.stringify(error?.response?.data) || error.message}`);
+      const detail = error?.response?.data ? JSON.stringify(error.response.data) : error.message;
+      logger.error(`[GgusOnePay] Error creating pay-in order ${orderSn}: ${detail}`);
       throw error;
     }
   }
 
   /**
-   * Create a Transfer Order (Payout)
+   * POST /api/pay/query — Retrieve the latest status of a payment order.
+   * Either payOrderNo (gateway) or mchOrderNo (merchant) is required.
+   *
+   * Order state codes:
+   *  0 = Created, 1 = In Payment, 2 = Successful, 3 = Failed, 4 = Revoked, 5 = Refunded, 6 = Closed
+   */
+  static async queryPayInOrder(mchOrderNo: string): Promise<any> {
+    const timestamp = Date.now();
+
+    const params: Record<string, any> = {
+      mchNo: GGUSONEPAY_MERCHANT_ID,
+      mchOrderNo,
+      timestamp,
+      signType: 'MD5',
+    };
+
+    params.sign = this.generateSignature(params);
+
+    try {
+      const response = await axios.post(`${GGUSONEPAY_BASE_URL}/api/pay/query`, params, {
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 10000,
+      });
+
+      if (response.data.code !== 0) {
+        throw new Error(`[GgusOnePay] Query error code=${response.data.code}: ${response.data.msg}`);
+      }
+
+      return response.data;
+    } catch (error: any) {
+      logger.error(`[GgusOnePay] Error querying pay-in order ${mchOrderNo}: ${error?.response?.data ? JSON.stringify(error.response.data) : error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * POST /api/transfer/create — Send a payout to a customer.
+   *
+   * @param amountCents         Amount in integer cents
+   * @param orderSn             Unique merchant order number
+   * @param wayCode             Transfer method: ecashapp | paypal | venmo | card | ach | chime | zelle
+   * @param wayParam            Method-specific params:
+   *                              ecashapp: { cashtag: '$tag' }
+   *                              paypal/venmo: { email: '...' }
+   *                              card: { cardNumber: '...', cardValid: 'MM/YYYY' }
+   *                              ach: { accountNumber: '...', routingNumber: '...' }
+   *                              chime: { chimeSign: '$...' }
+   *                              zelle: { zelleSign: 'email or phone' }
+   * @param ip                  IPv4 of requester
    */
   static async createPayoutOrder(
     amountCents: number,
     orderSn: string,
-    paymentMethodCode: string, // e.g., ecashapp, paypal, card, ach, chime, zelle
-    wayParam: Record<string, any>, // Method-specific params (e.g., cashtag, email, routingNumber)
-    ip: string
+    wayCode: string,
+    wayParam: Record<string, any>,
+    ip?: string
   ): Promise<any> {
+    const timestamp = Date.now();
+
     const params: Record<string, any> = {
       mchNo: GGUSONEPAY_MERCHANT_ID,
       mchOrderNo: orderSn,
-      amount: amountCents,
+      amount: Math.round(amountCents),
       currency: 'usd',
-      wayCode: paymentMethodCode.toLowerCase(),
-      wayParam,
+      wayCode: wayCode.toLowerCase(),
+      wayParam,                            // JSONObject per docs
       notifyUrl: `${BACKEND_URL}/api/webhooks/ggusonepay/transfer`,
-      timestamp: Date.now(),
-      signType: 'MD5'
+      timestamp,
+      signType: 'MD5',
     };
 
     if (ip) {
@@ -124,21 +220,132 @@ export class GgusOnePayService {
 
     params.sign = this.generateSignature(params);
 
+    logger.info(`[GgusOnePay] Creating payout order: mchNo=${GGUSONEPAY_MERCHANT_ID} orderSn=${orderSn} amount=${amountCents} wayCode=${wayCode}`);
+
     try {
       const response = await axios.post(`${GGUSONEPAY_BASE_URL}/api/transfer/create`, params, {
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 15000,
       });
-      
-      logger.info(`[GgusOnePay] Payout order created: ${orderSn}`);
 
-      if (response.data.code !== 0 && response.data.code !== 200) {
-        throw new Error(`Gateway Error: ${response.data.msg || JSON.stringify(response.data)}`);
+      logger.info(`[GgusOnePay] Payout response for ${orderSn}: ${JSON.stringify(response.data)}`);
+
+      if (response.data.code !== 0) {
+        throw new Error(`[GgusOnePay] Payout gateway error code=${response.data.code}: ${response.data.msg || JSON.stringify(response.data)}`);
       }
 
       return response.data;
     } catch (error: any) {
-      logger.error(`[GgusOnePay] Error creating payout order: ${JSON.stringify(error?.response?.data) || error.message}`);
+      logger.error(`[GgusOnePay] Error creating payout order ${orderSn}: ${error?.response?.data ? JSON.stringify(error.response.data) : error.message}`);
       throw error;
+    }
+  }
+
+  /**
+   * POST /api/transfer/query — Retrieve the status of a transfer (payout) order.
+   * Either transferOrderNo or mchOrderNo required.
+   *
+   * Transfer state: 0=Created 1=Transferring 2=Successful 3=Failed 4=Cancelled 5=Refunded 6=Closed
+   */
+  static async queryPayoutOrder(mchOrderNo: string): Promise<any> {
+    const timestamp = Date.now();
+
+    const params: Record<string, any> = {
+      mchNo: GGUSONEPAY_MERCHANT_ID,
+      mchOrderNo,
+      timestamp,
+      signType: 'MD5',
+    };
+
+    params.sign = this.generateSignature(params);
+
+    try {
+      const response = await axios.post(`${GGUSONEPAY_BASE_URL}/api/transfer/query`, params, {
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 10000,
+      });
+
+      if (response.data.code !== 0) {
+        throw new Error(`[GgusOnePay] Transfer query error code=${response.data.code}: ${response.data.msg}`);
+      }
+
+      return response.data;
+    } catch (error: any) {
+      logger.error(`[GgusOnePay] Error querying payout order ${mchOrderNo}: ${error?.response?.data ? JSON.stringify(error.response.data) : error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * POST /api/transfer/close — Cancel a pending transfer order.
+   * Applicable to Standard Merchants. On success, state becomes 4 (Cancelled).
+   */
+  static async closePayoutOrder(mchOrderNo: string): Promise<any> {
+    const timestamp = Date.now();
+
+    const params: Record<string, any> = {
+      mchNo: GGUSONEPAY_MERCHANT_ID,
+      mchOrderNo,
+      timestamp,
+      signType: 'MD5',
+    };
+
+    params.sign = this.generateSignature(params);
+
+    try {
+      const response = await axios.post(`${GGUSONEPAY_BASE_URL}/api/transfer/close`, params, {
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 10000,
+      });
+
+      if (response.data.code !== 0) {
+        throw new Error(`[GgusOnePay] Close transfer error code=${response.data.code}: ${response.data.msg}`);
+      }
+
+      return response.data;
+    } catch (error: any) {
+      logger.error(`[GgusOnePay] Error closing payout order ${mchOrderNo}: ${error?.response?.data ? JSON.stringify(error.response.data) : error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * POST /api/balance/query — Check merchant balance.
+   * Rate limited: once every 5 seconds.
+   */
+  static async queryBalance(): Promise<{ currency: string; balance: number; availableBalance: number; transferPendingAmount: number; delayAmount: number }> {
+    const timestamp = Date.now();
+
+    const params: Record<string, any> = {
+      mchNo: GGUSONEPAY_MERCHANT_ID,
+      timestamp,
+      signType: 'MD5',
+    };
+
+    params.sign = this.generateSignature(params);
+
+    const response = await axios.post(`${GGUSONEPAY_BASE_URL}/api/balance/query`, params, {
+      headers: { 'Content-Type': 'application/json' },
+      timeout: 10000,
+    });
+
+    if (response.data.code !== 0) {
+      throw new Error(`[GgusOnePay] Balance query error code=${response.data.code}: ${response.data.msg}`);
+    }
+
+    return response.data.data;
+  }
+
+  /**
+   * GET /api/health — Platform health check. No authentication required.
+   * Returns code=0 if the service is running normally.
+   */
+  static async healthCheck(): Promise<boolean> {
+    try {
+      const response = await axios.get(`${GGUSONEPAY_BASE_URL}/api/health`, { timeout: 5000 });
+      return response.data?.code === 0;
+    } catch {
+      return false;
     }
   }
 }
