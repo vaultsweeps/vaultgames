@@ -50,7 +50,14 @@ export const createDeposit = asyncHandler(async (req: AuthRequest, res: Response
     where: { id: paymentMethodId, isActive: true }
   })
   if (!paymentMethod) throw new AppError('Invalid payment method', 400)
-  if (amount < paymentMethod.minAmount) throw new AppError(`Minimum deposit for this method is $${paymentMethod.minAmount}`, 400)
+  
+  // Allow $9.99 minimum for GgusOnePay specifically regardless of DB config
+  if (paymentMethod.code.toLowerCase() === 'ggusonepay') {
+    if (amount < 9.99) throw new AppError(`Minimum deposit for this method is $9.99`, 400)
+  } else if (amount < paymentMethod.minAmount) {
+    throw new AppError(`Minimum deposit for this method is $${paymentMethod.minAmount}`, 400)
+  }
+
   if (amount > paymentMethod.maxAmount) throw new AppError(`Maximum deposit for this method is $${paymentMethod.maxAmount}`, 400)
 
   const paymentReference = `DEP-${Date.now()}-${uuidv4().slice(0, 8).toUpperCase()}`

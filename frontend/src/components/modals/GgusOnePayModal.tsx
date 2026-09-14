@@ -175,11 +175,14 @@ export default function GgusOnePayModal({ isOpen, onClose, paymentMethodId, onSu
                 className="grid grid-cols-3 gap-2 overflow-y-auto pr-1"
                 style={{ maxHeight: '180px' }}
               >
-                {[
+                {(payType === 'chime' ? [
+                  '20', '25', '30', '31', '40', '50', '60', '100', 
+                  '125', '130', '150', '200', '300', '400', '500'
+                ] : [
                   '9.99', '14.99', '17.99', '19.99', '24.99', '29.99', '30.99',
                   '39.99', '49.99', '59.99', '99.99', '124.99', '129.99',
                   '149.99', '199.99', '249.99', '299.99', '399.99', '499.99'
-                ].map(val => (
+                ]).map(val => (
                   <button
                     key={val}
                     type="button"
