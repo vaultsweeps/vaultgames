@@ -168,19 +168,32 @@ export default function GgusOnePayModal({ isOpen, onClose, paymentMethodId, onSu
               </div>
             </div>
 
-            {/* Amount */}
+            {/* Amount Selection */}
             <div>
-              <label style={labelStyle}>Amount (USD)</label>
-              <input
-                type="number"
-                value={amount}
-                onChange={e => setAmount(e.target.value)}
-                placeholder="Enter deposit amount"
-                style={inputStyle}
-                min="1"
-                onFocus={e => (e.target.style.borderColor = '#22c55e')}
-                onBlur={e => (e.target.style.borderColor = 'rgba(255,255,255,0.12)')}
-              />
+              <label style={labelStyle}>Select Amount (USD)</label>
+              <div 
+                className="grid grid-cols-3 gap-2 overflow-y-auto pr-1"
+                style={{ maxHeight: '180px' }}
+              >
+                {[
+                  '9.99', '14.99', '17.99', '19.99', '24.99', '29.99', '30.99',
+                  '39.99', '49.99', '59.99', '99.99', '124.99', '129.99',
+                  '149.99', '199.99', '249.99', '299.99', '399.99', '499.99'
+                ].map(val => (
+                  <button
+                    key={val}
+                    type="button"
+                    onClick={() => setAmount(val)}
+                    className={`py-2.5 rounded-xl text-sm font-bold transition-all border ${
+                      amount === val 
+                        ? 'bg-[#22c55e] border-[#22c55e] text-[#000] shadow-[0_0_12px_rgba(34,197,94,0.3)]' 
+                        : 'bg-transparent border-white/10 text-white/70 hover:border-white/30 hover:bg-white/5'
+                    }`}
+                  >
+                    ${val}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Submit */}
