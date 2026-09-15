@@ -6,7 +6,7 @@ import { ThemeProvider } from '@/components/ThemeProvider'
 import NavigationLoader from '@/components/ui/NavigationLoader'
 import FrustrationDetector from '@/components/ui/FrustrationDetector'
 import { Orbitron, Inter, JetBrains_Mono } from 'next/font/google'
-import VaultIntroWrapper from '@/components/ui/VaultIntroWrapper'
+import VaultIntro from '@/components/ui/VaultIntro'
 
 const orbitron = Orbitron({ subsets: ['latin'], weight: ['400', '500', '600', '700', '800', '900'], variable: '--font-orbitron', display: 'swap' })
 const inter = Inter({ subsets: ['latin'], weight: ['300', '400', '500', '600', '700'], variable: '--font-inter', display: 'swap' })
@@ -39,10 +39,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className="dark" suppressHydrationWarning>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link rel="preload" as="image" href="/intro.png" />
+        <link rel="preload" as="image" href="/images/slide1.png" />
+        {/* Inline script: synchronously hide the pre-screen if vault was already seen.
+            Runs before first paint — eliminates homepage flash for returning users. */}
+        <script dangerouslySetInnerHTML={{ __html: `(function(){try{if(sessionStorage.getItem('vaultIntroSeen')){var s=document.getElementById('vs-prescreen');if(s)s.style.display='none';}}catch(e){}})();` }} />
       </head>
       <body className={`bg-background text-primary antialiased transition-colors duration-300 ${orbitron.variable} ${inter.variable} ${jetbrains.variable}`} suppressHydrationWarning>
+        {/* Pre-screen: server-rendered dark overlay — blocks homepage from showing before vault intro.
+            Hidden immediately by inline script above if the vault was already seen this session. */}
+        <div
+          id="vs-prescreen"
+          style={{ position: 'fixed', inset: 0, zIndex: 99998, backgroundColor: '#020710', pointerEvents: 'none' }}
+        />
         <ThemeProvider>
-          <VaultIntroWrapper />
+          <VaultIntro />
           {/* Global navigation progress loader — shown on every route change */}
           <Suspense fallback={null}>
             <NavigationLoader />

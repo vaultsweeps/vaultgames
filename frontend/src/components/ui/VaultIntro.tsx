@@ -1,44 +1,65 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+// useLayoutEffect fires synchronously BEFORE browser paint on the client.
+// This means we can show the dark vault screen in the SAME frame as hydration
+// — eliminating the homepage flash entirely for first-time visitors.
+import { useState, useLayoutEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 
-// ─── CONFIG ─────────────────────────────────────────────────────────────────
+// ─── CONFIG ──────────────────────────────────────────────────────────────────
 const N_BLADES = 10
 const CX = 500, CY = 500
-const OUTER_R  = 448   // outer ring radius
-const INNER_R  = 408   // opening radius — larger so logo shows fully
-const PIVOT_R  = 248   // blade pivot ring radius
-const OPEN_DEG = 84    // degrees each blade rotates open
+const OUTER_R  = 448
+const INNER_R  = 408
+const PIVOT_R  = 248
+const OPEN_DEG = 84
 
-// Blade local shape (pivot = origin, blade reaches toward center = –x direction)
 const BLADE_PTS: [number, number][] = [
-  [   0,    0],   // pivot
-  [-265, -148],   // upper reach
-  [-432,    0],   // deepest reach (past center)
-  [-265,  148],   // lower reach
+  [   0,    0],
+  [-265, -148],
+  [-432,    0],
+  [-265,  148],
 ]
 
 function d2r(d: number) { return (d * Math.PI) / 180 }
 
+/** Fades out and removes the server-rendered pre-screen div */
+function dismissPreScreen() {
+  const el = document.getElementById('vs-prescreen')
+  if (!el) return
+  el.style.transition = 'opacity 0.5s ease'
+  el.style.opacity = '0'
+  setTimeout(() => el.remove(), 550)
+}
+
 export default function VaultIntro() {
+  // 0 = skip/done  1–5 = animation phases
   const [phase, setPhase] = useState(0)
-  // 0=hidden  1=vault-in  2=activating  3=opening  4=open/hold  5=exit  6=done
 
-  useEffect(() => {
-    const seen = sessionStorage.getItem('vaultIntroSeen')
-    if (seen) return
+  useLayoutEffect(() => {
+    // Runs client-side, synchronously before first paint
+    try {
+      const seen = sessionStorage.getItem('vaultIntroSeen')
+      if (seen) {
+        // Already seen — dismiss the static pre-screen instantly and stop
+        dismissPreScreen()
+        return
+      }
+    } catch (_) { /* sessionStorage blocked (incognito restrictions etc.) */ }
 
+    // First visit — begin the animation sequence
     setPhase(1)
+
     const T = [
-      setTimeout(() => setPhase(2),  900),
-      setTimeout(() => setPhase(3), 1700),
-      setTimeout(() => setPhase(4), 3700),
-      setTimeout(() => setPhase(5), 4700),
+      setTimeout(() => setPhase(2),  400),
+      setTimeout(() => setPhase(3),  800),
+      setTimeout(() => setPhase(4), 2200),
+      setTimeout(() => setPhase(5), 2900),
       setTimeout(() => {
-        setPhase(6)
-        sessionStorage.setItem('vaultIntroSeen', 'true')
-      }, 5800),
+        setPhase(0)
+        dismissPreScreen()
+        try { sessionStorage.setItem('vaultIntroSeen', 'true') } catch (_) {}
+      }, 3800),
     ]
     return () => T.forEach(clearTimeout)
   }, [])
@@ -48,61 +69,62 @@ export default function VaultIntro() {
   const isOpen       = phase >= 4
   const isExiting    = phase >= 5
 
-  const blades = useMemo(() =>
-    Array.from({ length: N_BLADES }, (_, i) => ({
-      i,
-      baseDeg: (i * 360) / N_BLADES,
-      px: CX + PIVOT_R * Math.cos((i * Math.PI * 2) / N_BLADES),
-      py: CY + PIVOT_R * Math.sin((i * Math.PI * 2) / N_BLADES),
-    })), [])
+  // Blades (stable — no deps change)
+  const blades = Array.from({ length: N_BLADES }, (_, i) => ({
+    i,
+    baseDeg: (i * 360) / N_BLADES,
+    px: CX + PIVOT_R * Math.cos((i * Math.PI * 2) / N_BLADES),
+    py: CY + PIVOT_R * Math.sin((i * Math.PI * 2) / N_BLADES),
+  }))
 
-  if (phase === 0 || phase === 6) return null
+  if (phase === 0) return null
 
   return (
     <AnimatePresence>
-      {phase < 6 && (
+      {phase > 0 && (
         <motion.div
           key="vault-intro"
           className="fixed inset-0 z-[99999] flex items-center justify-center overflow-hidden select-none"
-          style={{ backgroundColor: '#020710' }}
+          style={{ backgroundColor: '#020710', willChange: 'opacity' }}
           initial={{ opacity: 0 }}
           animate={{ opacity: isExiting ? 0 : 1 }}
-          transition={{ duration: isExiting ? 1.2 : 0.6, ease: 'easeInOut' }}
+          transition={{ duration: isExiting ? 0.9 : 0.4, ease: 'easeInOut' }}
         >
-          {/* ── deep space bg ── */}
-          <div className="absolute inset-0 pointer-events-none" style={{
-            background: 'radial-gradient(ellipse 85% 75% at 50% 50%, #04142c 0%, #020710 72%)',
-          }} />
-
-          {/* ── subtle ambient light bloom behind vault when open ── */}
-          <motion.div
-            className="absolute rounded-full pointer-events-none"
-            style={{ width: '65%', aspectRatio: '1' }}
-            animate={{
-              background: isOpen
-                ? 'radial-gradient(circle, rgba(0,100,255,0.18) 0%, rgba(80,0,200,0.08) 50%, transparent 75%)'
-                : 'radial-gradient(circle, rgba(0,40,120,0.05) 0%, transparent 70%)',
-              filter: isOpen ? 'blur(40px)' : 'blur(20px)',
+          {/* Deep atmospheric background */}
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background:
+                'radial-gradient(ellipse 85% 75% at 50% 50%, #04142c 0%, #020710 72%)',
             }}
-            transition={{ duration: 2.0 }}
           />
 
-          {/* ── vault container ── */}
+          {/* Ambient light bloom (when open) */}
+          <motion.div
+            className="absolute rounded-full pointer-events-none"
+            style={{ width: '65%', aspectRatio: '1', willChange: 'opacity, filter' }}
+            animate={{
+              background: isOpen
+                ? 'radial-gradient(circle, rgba(0,100,255,0.2) 0%, rgba(80,0,200,0.1) 55%, transparent 75%)'
+                : 'radial-gradient(circle, rgba(0,40,120,0.04) 0%, transparent 70%)',
+              filter: isOpen ? 'blur(45px)' : 'blur(20px)',
+            }}
+            transition={{ duration: 1.2 }}
+          />
+
+          {/* ── Vault container ── */}
           <motion.div
             className="relative"
             style={{ width: 'min(88vw, 88vh, 560px)', aspectRatio: '1' }}
-            // Subtle camera push-in over the full duration
             initial={{ scale: 1.07 }}
             animate={{ scale: 1.0 }}
             transition={{ duration: 5.5, ease: 'easeOut' }}
           >
-            {/* ══ LAYER 1: intro.png — stationary, revealed by expanding clip-path ══ */}
+            {/* ══ LAYER 1: intro.png — stationary, revealed by iris opening ══ */}
             <motion.div
               className="absolute"
               style={{
-                // Make the logo container slightly LARGER than the vault frame
-                // so the logo fully fills the inner ring opening
-                inset: '-2%',
+                inset: '-1%',
                 zIndex: 1,
                 display: 'flex',
                 alignItems: 'center',
@@ -110,13 +132,11 @@ export default function VaultIntro() {
                 clipPath: 'circle(0% at 50% 50%)',
               }}
               animate={{
-                // Expand to 48% so it fills the inner ring (INNER_R/OUTER_R ≈ 91%)
-                // We add a little extra so no edge is clipped by the blade ring
                 clipPath: isOpening
                   ? 'circle(50% at 50% 50%)'
                   : 'circle(0% at 50% 50%)',
               }}
-              transition={{ duration: 2.0, ease: [0.22, 0.08, 0.12, 1.0] }}
+              transition={{ duration: 1.4, ease: [0.22, 0.08, 0.12, 1.0] }}
             >
               <img
                 src="/intro.png"
@@ -138,38 +158,32 @@ export default function VaultIntro() {
               style={{ zIndex: 2, overflow: 'visible' }}
             >
               <defs>
-                {/* Metal gradients */}
                 <radialGradient id="vi-blade" cx="42%" cy="28%" r="78%">
                   <stop offset="0%"   stopColor="#304e6a" />
                   <stop offset="25%"  stopColor="#1a3048" />
                   <stop offset="60%"  stopColor="#0d1e30" />
                   <stop offset="100%" stopColor="#050c18" />
                 </radialGradient>
-
                 <radialGradient id="vi-ring" cx="50%" cy="12%" r="95%">
                   <stop offset="0%"   stopColor="#607890" />
                   <stop offset="20%"  stopColor="#324c64" />
                   <stop offset="52%"  stopColor="#1a2e40" />
                   <stop offset="100%" stopColor="#070f1c" />
                 </radialGradient>
-
                 <radialGradient id="vi-bolt" cx="30%" cy="25%" r="72%">
                   <stop offset="0%"   stopColor="#b0d0f0" />
                   <stop offset="35%"  stopColor="#3e6e92" />
                   <stop offset="100%" stopColor="#0c1c2e" />
                 </radialGradient>
-
                 <radialGradient id="vi-center" cx="50%" cy="50%" r="55%">
                   <stop offset="0%"   stopColor="#101e32" />
                   <stop offset="100%" stopColor="#040a16" />
                 </radialGradient>
-
                 <radialGradient id="vi-lbolt" cx="35%" cy="25%" r="70%">
                   <stop offset="0%"   stopColor="#648ab0" />
                   <stop offset="55%"  stopColor="#1e3a50" />
                   <stop offset="100%" stopColor="#0a1826" />
                 </radialGradient>
-
                 <filter id="vi-shadow">
                   <feDropShadow dx="0" dy="3" stdDeviation="10" floodColor="rgba(0,0,0,0.95)" />
                 </filter>
@@ -183,36 +197,33 @@ export default function VaultIntro() {
                 <filter id="vi-ringshadow">
                   <feDropShadow dx="0" dy="0" stdDeviation="22" floodColor="rgba(0,0,0,1)" />
                 </filter>
-
-                {/* Clip blades so they never escape the vault boundary */}
+                {/* Hard clip: blades never escape the vault boundary */}
                 <clipPath id="vi-iris-clip">
-                  <circle cx={CX} cy={CY} r={INNER_R + 5} />
+                  <circle cx={CX} cy={CY} r={INNER_R + 6} />
                 </clipPath>
               </defs>
 
-              {/* ── Iris blades (clipped to inner ring) ── */}
+              {/* ── Iris blades ── */}
               <g clipPath="url(#vi-iris-clip)">
                 {blades.map(({ i, baseDeg, px, py }) => (
                   <motion.g
                     key={i}
                     initial={{ rotate: 0 }}
                     animate={{ rotate: isOpening ? OPEN_DEG : 0 }}
-                    transition={{
-                      duration: 2.0,
-                      ease: [0.18, 0.05, 0.08, 1.0],  // mechanical: slow start, release
-                    }}
+                    transition={{ duration: 1.4, ease: [0.18, 0.05, 0.08, 1.0] }}
+                    style={{ willChange: 'transform' }}
                     transformTemplate={({ rotate: r }) => {
                       const deg = typeof r === 'number' ? r : 0
                       return `translate(${px} ${py}) rotate(${baseDeg + deg})`
                     }}
                   >
-                    {/* Blade shadow */}
+                    {/* Shadow layer */}
                     <polygon
                       points={BLADE_PTS.map(([x, y]) => `${x + 4},${y + 6}`).join(' ')}
-                      fill="rgba(0,0,0,0.55)"
+                      fill="rgba(0,0,0,0.5)"
                       style={{ filter: 'blur(7px)' }}
                     />
-                    {/* Main blade body */}
+                    {/* Blade body */}
                     <polygon
                       points={BLADE_PTS.map(([x, y]) => `${x},${y}`).join(' ')}
                       fill="url(#vi-blade)"
@@ -230,7 +241,7 @@ export default function VaultIntro() {
                       x2={BLADE_PTS[3][0]} y2={BLADE_PTS[3][1]}
                       stroke="rgba(0,0,0,0.8)" strokeWidth="2"
                     />
-                    {/* Far tip edges */}
+                    {/* Tip edges */}
                     <line
                       x1={BLADE_PTS[1][0]} y1={BLADE_PTS[1][1]}
                       x2={BLADE_PTS[2][0]} y2={BLADE_PTS[2][1]}
@@ -244,11 +255,6 @@ export default function VaultIntro() {
                     {/* Center groove */}
                     <line x1="-38" y1="0" x2="-390" y2="0"
                       stroke="rgba(55,105,150,0.18)" strokeWidth="1.5" />
-                    {/* Surface scratches */}
-                    <line x1="-95" y1="-48" x2="-225" y2="-36"
-                      stroke="rgba(90,155,205,0.08)" strokeWidth="1" />
-                    <line x1="-115" y1="52" x2="-285" y2="42"
-                      stroke="rgba(0,0,0,0.28)" strokeWidth="1" />
                     {/* Pivot joint */}
                     <circle cx="0" cy="0" r="14" fill="url(#vi-bolt)" />
                     <circle cx="0" cy="0" r="6" fill="#050c1a" />
@@ -257,11 +263,11 @@ export default function VaultIntro() {
                 ))}
               </g>
 
-              {/* ── Center disk (fades out as iris opens) ── */}
+              {/* ── Center disk ── */}
               <motion.g
+                style={{ transformOrigin: `${CX}px ${CY}px`, willChange: 'opacity, transform' }}
                 animate={{ opacity: isOpening ? 0 : 1, scale: isOpening ? 0.85 : 1 }}
-                style={{ transformOrigin: `${CX}px ${CY}px` }}
-                transition={{ duration: 0.7, delay: 0.25 }}
+                transition={{ duration: 0.5, delay: 0.1 }}
               >
                 <circle cx={CX} cy={CY} r={78}
                   fill="url(#vi-center)" stroke="rgba(45,90,130,0.4)" strokeWidth="2.5" />
@@ -286,25 +292,24 @@ export default function VaultIntro() {
               <circle cx={CX} cy={CY} r={INNER_R + 28}
                 fill="none" stroke="rgba(32,62,100,0.22)" strokeWidth="1.2" />
 
-              {/* ── 8 locking bolts on inner ring (retract) ── */}
+              {/* ── 8 locking bolts (retract on activation) ── */}
               {Array.from({ length: 8 }, (_, i) => {
-                const a  = (i * Math.PI * 2) / 8
+                const a = (i * Math.PI * 2) / 8
                 const br = INNER_R + 16
                 const bx = CX + br * Math.cos(a), by = CY + br * Math.sin(a)
                 const ex = CX + (br - 28) * Math.cos(a), ey = CY + (br - 28) * Math.sin(a)
                 return (
                   <motion.g key={i}
+                    style={{ willChange: 'opacity, transform' }}
                     animate={{ opacity: isOpening ? 0 : 1 }}
-                    transition={{ duration: 0.2, delay: i * 0.065 + 0.1 }}
+                    transition={{ duration: 0.15, delay: i * 0.03 + 0.05 }}
                   >
                     <motion.line
                       x1={bx} y1={by} x2={ex} y2={ey}
                       stroke="#3a6888" strokeWidth="5.5" strokeLinecap="round"
-                      animate={{
-                        x2: isActivating ? bx : ex,
-                        y2: isActivating ? by : ey,
-                      }}
-                      transition={{ duration: 0.28, delay: i * 0.065 + 0.08 }}
+                      style={{ willChange: 'x2, y2' }}
+                      animate={{ x2: isActivating ? bx : ex, y2: isActivating ? by : ey }}
+                      transition={{ duration: 0.2, delay: i * 0.03 + 0.04 }}
                     />
                     <circle cx={bx} cy={by} r={8} fill="url(#vi-lbolt)" />
                     <circle cx={bx} cy={by} r={3.5} fill="#040e1c" />
@@ -316,12 +321,10 @@ export default function VaultIntro() {
               <circle cx={CX} cy={CY} r={OUTER_R}
                 fill="none" stroke="url(#vi-ring)" strokeWidth="52"
                 filter="url(#vi-ringshadow)" />
-              {/* Rim highlights */}
               <circle cx={CX} cy={CY} r={OUTER_R + 24}
                 fill="none" stroke="rgba(60,105,160,0.14)" strokeWidth="3" />
               <circle cx={CX} cy={CY} r={OUTER_R - 24}
                 fill="none" stroke="rgba(10,22,44,0.9)" strokeWidth="2.5" />
-              {/* Machining grooves */}
               <circle cx={CX} cy={CY} r={OUTER_R + 10}
                 fill="none" stroke="rgba(35,65,105,0.2)" strokeWidth="1.2" />
               <circle cx={CX} cy={CY} r={OUTER_R - 10}
@@ -329,9 +332,8 @@ export default function VaultIntro() {
 
               {/* ── 12 outer bolts ── */}
               {Array.from({ length: 12 }, (_, i) => {
-                const a  = (i * Math.PI * 2) / 12
-                const bx = CX + OUTER_R * Math.cos(a)
-                const by = CY + OUTER_R * Math.sin(a)
+                const a = (i * Math.PI * 2) / 12
+                const bx = CX + OUTER_R * Math.cos(a), by = CY + OUTER_R * Math.sin(a)
                 return (
                   <g key={i}>
                     <circle cx={bx} cy={by} r={22} fill="url(#vi-ring)" />
@@ -344,10 +346,11 @@ export default function VaultIntro() {
                 )
               })}
 
-              {/* ── Blue seam neon (activating, disappears when opening starts) ── */}
+              {/* ── Blue neon seam light ── */}
               <motion.circle
                 cx={CX} cy={CY} r={INNER_R - 2}
                 fill="none" strokeWidth="4" filter="url(#vi-glow)"
+                style={{ willChange: 'stroke, opacity' }}
                 animate={{
                   stroke: isOpening
                     ? 'rgba(0,140,255,0.0)'
@@ -356,36 +359,35 @@ export default function VaultIntro() {
                       : 'rgba(0,140,255,0.0)',
                   opacity: isOpening ? 0 : 1,
                 }}
-                transition={{ duration: 0.7 }}
+                transition={{ duration: 0.4 }}
               />
 
-              {/* ── Light from inside when fully open ── */}
+              {/* ── Interior ambient glow (when fully open) ── */}
               <motion.circle
                 cx={CX} cy={CY} r={INNER_R - 15}
-                fill="none" stroke="rgba(40,100,255,0.12)"
+                fill="none" stroke="rgba(40,100,255,0.1)"
                 strokeWidth={INNER_R * 0.25}
+                style={{ willChange: 'opacity' }}
                 animate={{ opacity: isOpen ? 1 : 0 }}
-                transition={{ duration: 1.8 }}
+                transition={{ duration: 0.8 }}
               />
 
-              {/* ── Subtle outer ring slow rotation (premium feel) ── */}
+              {/* ── Subtle rotating detail ring ── */}
               <motion.g
-                style={{ transformOrigin: `${CX}px ${CY}px` }}
-                initial={{ rotate: 0 }}
+                style={{ transformOrigin: `${CX}px ${CY}px`, willChange: 'transform' }}
                 animate={{ rotate: isOpen ? 8 : isActivating ? 4 : 0 }}
-                transition={{ duration: 3.5, ease: [0.3, 0, 0.1, 1] }}
+                transition={{ duration: 2.0, ease: [0.3, 0, 0.1, 1] }}
               >
-                {/* Second inner detail ring that rotates — very subtle */}
                 <circle cx={CX} cy={CY} r={INNER_R + 38}
                   fill="none" stroke="rgba(40,75,115,0.12)" strokeWidth="1"
                   strokeDasharray="4 20" />
               </motion.g>
             </svg>
 
-            {/* ── Ambient outer glow (HTML layer, outside SVG) ── */}
+            {/* ── Ambient outer glow ── */}
             <motion.div
               className="absolute rounded-full pointer-events-none"
-              style={{ inset: '-12%', zIndex: 0 }}
+              style={{ inset: '-12%', zIndex: 0, willChange: 'box-shadow' }}
               animate={{
                 boxShadow: isOpen
                   ? '0 0 160px 60px rgba(0,80,220,0.12), 0 0 300px 120px rgba(60,0,180,0.06)'
@@ -393,7 +395,7 @@ export default function VaultIntro() {
                     ? '0 0 70px 25px rgba(0,60,160,0.08)'
                     : '0 0 0 0 transparent',
               }}
-              transition={{ duration: 1.8 }}
+              transition={{ duration: 1.2 }}
             />
           </motion.div>
 
@@ -408,13 +410,15 @@ export default function VaultIntro() {
                 transition={{ duration: 0.55 }}
               >
                 <div className="flex items-center gap-3 font-mono text-[9px] tracking-[0.55em] text-[#1e4060] uppercase">
-                  <motion.span animate={{ opacity: [1, 0.2, 1] }} transition={{ duration: 1.6, repeat: Infinity }}>
-                    ●
-                  </motion.span>
+                  <motion.span
+                    animate={{ opacity: [1, 0.2, 1] }}
+                    transition={{ duration: 1.6, repeat: Infinity }}
+                  >●</motion.span>
                   {phase === 1 ? 'Security Protocol Active' : 'Unlocking Vault'}
-                  <motion.span animate={{ opacity: [0.2, 1, 0.2] }} transition={{ duration: 1.6, repeat: Infinity }}>
-                    ●
-                  </motion.span>
+                  <motion.span
+                    animate={{ opacity: [0.2, 1, 0.2] }}
+                    transition={{ duration: 1.6, repeat: Infinity }}
+                  >●</motion.span>
                 </div>
               </motion.div>
             )}

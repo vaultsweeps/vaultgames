@@ -72,13 +72,19 @@ export default function HomePageClient() {
     setMounted(true)
     setsmsUrl(getSmsUrl())
     const t = setInterval(() => setsmsUrl(getSmsUrl()), 60_000)
-    publicApi.getBonuses()
-      .then(res => setBonuses((res.data.data || []).slice(0, 4)))
-      .catch(() => {})
-      
-    publicApi.getSettings()
-      .then(res => setSettings(res.data.data || {}))
-      .catch(() => {})
+
+    // Fetch data in parallel immediately
+    Promise.allSettled([
+      publicApi.getBonuses(),
+      publicApi.getSettings()
+    ]).then(([bonusesRes, settingsRes]) => {
+      if (bonusesRes.status === 'fulfilled') {
+        setBonuses((bonusesRes.value.data.data || []).slice(0, 4))
+      }
+      if (settingsRes.status === 'fulfilled') {
+        setSettings(settingsRes.value.data.data || {})
+      }
+    })
 
     // Check if we need to show the welcome bonus popup
     if (isAuthenticated && localStorage.getItem('vs_welcome_popup') === '1') {
