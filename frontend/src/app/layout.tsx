@@ -6,6 +6,7 @@ import { ThemeProvider } from '@/components/ThemeProvider'
 import NavigationLoader from '@/components/ui/NavigationLoader'
 import FrustrationDetector from '@/components/ui/FrustrationDetector'
 import { Orbitron, Inter, JetBrains_Mono } from 'next/font/google'
+import VaultIntroWrapper from '@/components/ui/VaultIntroWrapper'
 
 const orbitron = Orbitron({ subsets: ['latin'], weight: ['400', '500', '600', '700', '800', '900'], variable: '--font-orbitron', display: 'swap' })
 const inter = Inter({ subsets: ['latin'], weight: ['300', '400', '500', '600', '700'], variable: '--font-inter', display: 'swap' })
@@ -41,6 +42,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className={`bg-background text-primary antialiased transition-colors duration-300 ${orbitron.variable} ${inter.variable} ${jetbrains.variable}`} suppressHydrationWarning>
         <ThemeProvider>
+          <VaultIntroWrapper />
           {/* Global navigation progress loader — shown on every route change */}
           <Suspense fallback={null}>
             <NavigationLoader />
