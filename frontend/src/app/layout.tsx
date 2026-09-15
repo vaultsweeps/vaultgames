@@ -50,6 +50,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             Hidden immediately by inline script above if the vault was already seen this session. */}
         <div
           id="vs-prescreen"
+          suppressHydrationWarning
           style={{ position: 'fixed', inset: 0, zIndex: 99998, backgroundColor: '#020710', pointerEvents: 'none' }}
         />
         <ThemeProvider>

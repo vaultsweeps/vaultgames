@@ -79,10 +79,10 @@ export default function HomePageClient() {
       publicApi.getSettings()
     ]).then(([bonusesRes, settingsRes]) => {
       if (bonusesRes.status === 'fulfilled') {
-        setBonuses((bonusesRes.value.data.data || []).slice(0, 4))
+        setBonuses((bonusesRes.value?.data?.data || []).slice(0, 4))
       }
       if (settingsRes.status === 'fulfilled') {
-        setSettings(settingsRes.value.data.data || {})
+        setSettings(settingsRes.value?.data?.data || {})
       }
     })
 
