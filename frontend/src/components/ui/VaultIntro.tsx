@@ -3,7 +3,7 @@
 // useLayoutEffect fires synchronously BEFORE browser paint on the client.
 // This means we can show the dark vault screen in the SAME frame as hydration
 // — eliminating the homepage flash entirely for first-time visitors.
-import { useState, useLayoutEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 // ─── CONFIG ──────────────────────────────────────────────────────────────────
@@ -23,21 +23,24 @@ const BLADE_PTS: [number, number][] = [
 
 function d2r(d: number) { return (d * Math.PI) / 180 }
 
-/** Fades out and removes the server-rendered pre-screen div */
+/** Fades out and hides the server-rendered pre-screen div */
 function dismissPreScreen() {
   const el = document.getElementById('vs-prescreen')
   if (!el) return
   el.style.transition = 'opacity 0.5s ease'
   el.style.opacity = '0'
-  setTimeout(() => el.remove(), 550)
+  setTimeout(() => {
+    if (el) el.style.display = 'none'
+  }, 550)
 }
 
 export default function VaultIntro() {
   // 0 = skip/done  1–5 = animation phases
   const [phase, setPhase] = useState(0)
 
-  useLayoutEffect(() => {
-    // Runs client-side, synchronously before first paint
+  useEffect(() => {
+    // Runs client-side after first paint
+
     try {
       const seen = sessionStorage.getItem('vaultIntroSeen')
       if (seen) {
@@ -307,7 +310,6 @@ export default function VaultIntro() {
                     <motion.line
                       x1={bx} y1={by} x2={ex} y2={ey}
                       stroke="#3a6888" strokeWidth="5.5" strokeLinecap="round"
-                      style={{ willChange: 'x2, y2' }}
                       animate={{ x2: isActivating ? bx : ex, y2: isActivating ? by : ey }}
                       transition={{ duration: 0.2, delay: i * 0.03 + 0.04 }}
                     />
