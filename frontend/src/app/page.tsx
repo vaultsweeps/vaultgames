@@ -5,9 +5,8 @@ import HeroSlider from '@/components/home/HeroSlider'
 import QuickLinks from '@/components/home/QuickLinks'
 import FeaturedGames from '@/components/home/FeaturedGames'
 
-// Lazy-load heavy below-the-fold components to reduce initial JS bundle
-const HomePageClient = dynamic(() => import('@/components/home/HomePageClient'))
-const Footer = dynamic(() => import('@/components/layout/Footer'))
+import HomePageClient from '@/components/home/HomePageClient'
+import Footer from '@/components/layout/Footer'
 
 export default function HomePage() {
   return (
