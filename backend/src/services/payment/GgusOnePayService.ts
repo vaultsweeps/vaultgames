@@ -81,6 +81,26 @@ export class GgusOnePayService {
   }
 
   /**
+   * Maps user-facing method names to the exact wayCode strings GgusOnePay expects.
+   * Using .toLowerCase() was causing "Channel Maintenance" for CASHAPP/ZELLE/PAYPAL
+   * because GgusOnePay is case-sensitive for those channel codes.
+   */
+  private static readonly WAY_CODE_MAP: Record<string, string> = {
+    cashapp:   'CASHAPP',
+    zelle:     'ZELLE',
+    paypal:    'PAYPAL',
+    applepay:  'APPLEPAY',
+    googlepay: 'GOOGLEPAY',
+    card:      'CARD',
+    chime:     'CHIME',
+  };
+
+  private static resolveWayCode(raw: string): string {
+    const normalized = raw.toLowerCase();
+    return GgusOnePayService.WAY_CODE_MAP[normalized] || raw.toUpperCase();
+  }
+
+  /**
    * POST /api/pay/create — Initiate a payment collection for a customer.
    *
    * @param amountCents   Amount in integer cents (e.g. $10.00 → 1000)
@@ -105,7 +125,7 @@ export class GgusOnePayService {
       mchOrderNo: orderSn,
       amount: Math.round(amountCents),   // integer cents, no decimals
       currency: 'usd',
-      wayCode: wayCode.toLowerCase(),
+      wayCode: GgusOnePayService.resolveWayCode(wayCode),
       clientIp: ip || '1.1.1.1',
       notifyUrl: `${BACKEND_URL}/api/webhooks/ggusonepay`,
       timestamp,
@@ -120,6 +140,7 @@ export class GgusOnePayService {
     params.sign = this.generateSignature(params);
 
     logger.info(`[GgusOnePay] Creating pay-in order: mchNo=${GGUSONEPAY_MERCHANT_ID} orderSn=${orderSn} amount=${amountCents} wayCode=${wayCode}`);
+    logger.info(`[GgusOnePay] Request Parameters (Pay-In): ${JSON.stringify(params)}`);
 
     try {
       const response = await axios.post(`${GGUSONEPAY_BASE_URL}/api/pay/create`, params, {
@@ -131,6 +152,7 @@ export class GgusOnePayService {
 
       // API returns code=0 for success (see Response Codes §01)
       if (response.data.code !== 0) {
+        logger.error(`[GgusOnePay] Gateway error code=${response.data.code}: ${response.data.msg || JSON.stringify(response.data)}\n[GgusOnePay] FAILED REQUEST PARAMS: ${JSON.stringify(params)}`);
         throw new Error(`[GgusOnePay] Gateway error code=${response.data.code}: ${response.data.msg || JSON.stringify(response.data)}`);
       }
 
@@ -207,7 +229,7 @@ export class GgusOnePayService {
       mchOrderNo: orderSn,
       amount: Math.round(amountCents),
       currency: 'usd',
-      wayCode: wayCode.toLowerCase(),
+      wayCode: GgusOnePayService.resolveWayCode(wayCode),
       wayParam,                            // JSONObject per docs
       notifyUrl: `${BACKEND_URL}/api/webhooks/ggusonepay/transfer`,
       timestamp,
