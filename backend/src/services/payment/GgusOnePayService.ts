@@ -80,25 +80,6 @@ export class GgusOnePayService {
     return expectedSignature === signature.toUpperCase();
   }
 
-  /**
-   * Maps user-facing method names to the exact wayCode strings GgusOnePay expects.
-   * Using .toLowerCase() was causing "Channel Maintenance" for CASHAPP/ZELLE/PAYPAL
-   * because GgusOnePay is case-sensitive for those channel codes.
-   */
-  private static readonly WAY_CODE_MAP: Record<string, string> = {
-    cashapp:   'CASHAPP',
-    zelle:     'ZELLE',
-    paypal:    'PAYPAL',
-    applepay:  'APPLEPAY',
-    googlepay: 'GOOGLEPAY',
-    card:      'CARD',
-    chime:     'CHIME',
-  };
-
-  private static resolveWayCode(raw: string): string {
-    const normalized = raw.toLowerCase();
-    return GgusOnePayService.WAY_CODE_MAP[normalized] || raw.toUpperCase();
-  }
 
   /**
    * POST /api/pay/create — Initiate a payment collection for a customer.
@@ -125,7 +106,7 @@ export class GgusOnePayService {
       mchOrderNo: orderSn,
       amount: Math.round(amountCents),   // integer cents, no decimals
       currency: 'usd',
-      wayCode: GgusOnePayService.resolveWayCode(wayCode),
+      wayCode: wayCode.toLowerCase(),
       clientIp: ip || '1.1.1.1',
       notifyUrl: `${BACKEND_URL}/api/webhooks/ggusonepay`,
       timestamp,
@@ -229,7 +210,7 @@ export class GgusOnePayService {
       mchOrderNo: orderSn,
       amount: Math.round(amountCents),
       currency: 'usd',
-      wayCode: GgusOnePayService.resolveWayCode(wayCode),
+      wayCode: wayCode.toLowerCase(),
       wayParam,                            // JSONObject per docs
       notifyUrl: `${BACKEND_URL}/api/webhooks/ggusonepay/transfer`,
       timestamp,
