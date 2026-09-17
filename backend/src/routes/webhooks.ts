@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express'
 import crypto from 'crypto'
 import prisma from '../lib/prisma'
 import { createNotification } from '../services/notificationService'
+import { WalletService, invalidateWalletCache } from '../services/WalletService'
 import { ProviderFactory } from '../services/provider/ProviderFactory'
 import { ZappayService } from '../services/payment/ZappayService'
 import { GgusOnePayService } from '../services/payment/GgusOnePayService'
@@ -391,56 +392,17 @@ router.post('/ggusonepay', async (req: Request, res: Response) => {
 
       if (state === 2) {
         // Payment Successful — credit the user
-        const providerUser = await prisma.providerUser.findFirst({ where: { userId: deposit.userId } });
-        if (providerUser) {
-          const providerService = await ProviderFactory.getProviderById(providerUser.providerId);
-          if (providerService) {
-            const rechargeResult = await providerService.rechargePlayer(
-              providerUser.providerUserId,
-              deposit.amount,
-              deposit.paymentReference!
-            );
+        // Wallet-only mode for GgusOnePay (don't push to provider automatically)
+        await prisma.deposit.update({
+          where: { id: deposit.id },
+          data: { status: 'approved', transactionId: orderNo || '', approvedAt: new Date(), webhookData: req.body }
+        });
 
-            await prisma.$transaction([
-              prisma.deposit.update({
-                where: { id: deposit.id },
-                data: {
-                  status: 'approved',
-                  transactionId: orderNo || rechargeResult.pay_order_id || '',
-                  approvedAt: new Date(),
-                  webhookData: req.body
-                }
-              }),
-              prisma.providerTransaction.create({
-                data: {
-                  providerId: providerUser.providerId,
-                  userId: deposit.userId,
-                  type: 'recharge',
-                  amount: deposit.amount,
-                  orderId: deposit.paymentReference!,
-                  providerOrderId: rechargeResult.pay_order_id || orderNo || '',
-                  status: 'success'
-                }
-              })
-            ]);
-          } else {
-            // No provider service — still mark approved
-            await prisma.deposit.update({
-              where: { id: deposit.id },
-              data: { status: 'approved', transactionId: orderNo || '', approvedAt: new Date(), webhookData: req.body }
-            });
-          }
-        } else {
-          // No provider user — mark approved (wallet-only mode)
-          await prisma.deposit.update({
-            where: { id: deposit.id },
-            data: { status: 'approved', transactionId: orderNo || '', approvedAt: new Date(), webhookData: req.body }
-          });
-        }
+        invalidateWalletCache(deposit.userId);
 
         await createNotification(deposit.userId, {
           title: '✅ Deposit Confirmed!',
-          message: `Your deposit of $${deposit.amount} has been successfully credited.`,
+          message: `Your deposit of $${deposit.amount} has been successfully credited to your wallet.`,
           type: 'success',
           link: '/dashboard/deposits'
         });
