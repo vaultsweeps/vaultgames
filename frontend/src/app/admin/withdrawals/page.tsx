@@ -214,7 +214,7 @@ export default function AdminWithdrawalsPage() {
           <select value={methodFilter} onChange={e => setMethodFilter(e.target.value)}
             className="input-neon bg-surface w-40 text-sm">
             <option value="">All Methods</option>
-            {['Cash App','Venmo','Zelle','Crypto','Bank Transfer','Chime','PayPal'].map(m =>
+            {['Cash App','Venmo','Crypto','Bank Transfer','Chime','PayPal'].map(m =>
               <option key={m} value={m}>{m}</option>
             )}
           </select>
