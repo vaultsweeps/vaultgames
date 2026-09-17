@@ -217,7 +217,7 @@ function DepositsContent() {
                             </div>
                           </div>
                           <h3 className="text-white font-bold text-lg mb-1 relative z-10">Payment Apps</h3>
-                          <p className="text-xs text-slate-400 relative z-10">CashApp, Zelle, PayPal &amp; more</p>
+                          <p className="text-xs text-slate-400 relative z-10">CashApp, PayPal &amp; more</p>
                         </button>
                       )
                     }

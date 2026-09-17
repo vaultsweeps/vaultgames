@@ -9,7 +9,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/authStore'
 import Cookies from 'js-cookie'
 
-const PAYMENT_METHODS = ['Cash App', 'Venmo', 'Zelle', 'Crypto', 'Bank Transfer', 'Chime', 'PayPal']
+const PAYMENT_METHODS = ['Cash App', 'Venmo', 'Crypto', 'Bank Transfer', 'Chime', 'PayPal'] // Zelle temporarily unavailable
 
 type Withdrawal = {
   id: string

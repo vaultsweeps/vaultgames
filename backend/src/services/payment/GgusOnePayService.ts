@@ -88,7 +88,8 @@ export class GgusOnePayService {
    * @param orderSn       Unique merchant order number (cannot be reused)
    * @param userId        Merchant-side user ID (used as wayParam.clientId)
    * @param ip            IPv4 of end user
-   * @param wayCode       Payment method code: cashapp | zelle | paypal | applepay | googlepay | card | chime
+   * @param wayCode       Payment method code: ecashapp | paypal | applepay | googlepay | card | chime
+   *                      NOTE: The Zelle channel is temporarily unavailable and is not supported.
    * @param returnUrl     Optional redirect URL after payment
    */
   static async createPayInOrder(
@@ -186,14 +187,14 @@ export class GgusOnePayService {
    *
    * @param amountCents         Amount in integer cents
    * @param orderSn             Unique merchant order number
-   * @param wayCode             Transfer method: ecashapp | paypal | venmo | card | ach | chime | zelle
+   * @param wayCode             Transfer method: ecashapp | paypal | venmo | card | ach | chime
+   *                            NOTE: The Zelle channel is temporarily unavailable and is not supported.
    * @param wayParam            Method-specific params:
    *                              ecashapp: { cashtag: '$tag' }
    *                              paypal/venmo: { email: '...' }
    *                              card: { cardNumber: '...', cardValid: 'MM/YYYY' }
    *                              ach: { accountNumber: '...', routingNumber: '...' }
    *                              chime: { chimeSign: '$...' }
-   *                              zelle: { zelleSign: 'email or phone' }
    * @param ip                  IPv4 of requester
    */
   static async createPayoutOrder(

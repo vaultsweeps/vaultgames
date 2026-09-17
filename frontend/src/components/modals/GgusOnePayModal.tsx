@@ -13,8 +13,8 @@ interface GgusOnePayModalProps {
 }
 
 const GGUSONEPAY_METHODS = [
-  { value: 'cashapp', label: 'Cash App' },
-  { value: 'zelle', label: 'Zelle' },
+  { value: 'ecashapp', label: 'Cash App' },
+  // Zelle is temporarily unavailable and not supported at this time.
   { value: 'paypal', label: 'PayPal' },
   { value: 'applepay', label: 'Apple Pay' },
   { value: 'googlepay', label: 'Google Pay' },
@@ -23,13 +23,13 @@ const GGUSONEPAY_METHODS = [
 ]
 
 export default function GgusOnePayModal({ isOpen, onClose, paymentMethodId, onSuccess }: GgusOnePayModalProps) {
-  const [payType, setPayType] = useState('cashapp')
+  const [payType, setPayType] = useState('ecashapp')
   const [amount, setAmount] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
     if (isOpen) {
-      setPayType('cashapp')
+      setPayType('ecashapp')
       setAmount('')
       setIsSubmitting(false)
     }

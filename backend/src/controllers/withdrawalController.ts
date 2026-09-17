@@ -16,7 +16,8 @@ function isSerializationFailure(err: any): boolean {
 }
 
 // ─── Allowed payment methods ───────────────────────────────────────────────
-const ALLOWED_PAYMENT_METHODS = ['Cash App', 'Venmo', 'Zelle', 'Crypto', 'Bank Transfer', 'Chime', 'PayPal']
+// NOTE: 'Zelle' is temporarily unavailable — the GgusOnePay Zelle channel is not supported at this time.
+const ALLOWED_PAYMENT_METHODS = ['Cash App', 'Venmo', 'Crypto', 'Bank Transfer', 'Chime', 'PayPal']
 
 // ─── Request ID generator (collision-safe, no DB sequence required) ────────
 function generateRequestId(): string {

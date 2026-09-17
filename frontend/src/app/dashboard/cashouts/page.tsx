@@ -210,7 +210,7 @@ const METHOD_ICON: Record<string, { icon: any; color: string; bg: string; custom
   chime:    { icon: <span className="text-white font-bold text-xl">C</span>, color: '#10b981', bg: '#10b981', customUI: true },
   crypto:   { icon: '₿',  color: '#F7931A', bg: '#F7931A15' },
   usdt:     { icon: '₮',  color: '#26A17B', bg: '#26A17B15' },
-  zelle:    { icon: '💜', color: '#6D1ED4', bg: '#6D1ED415' },
+  // zelle: temporarily unavailable — GgusOnePay Zelle channel not supported at this time
   venmo:    { icon: '💙', color: '#3D95CE', bg: '#3D95CE15' },
   paypal:   { icon: '🅿️', color: '#003087', bg: '#00308715' },
   bank:     { icon: '🏛️', color: '#00D4FF', bg: '#00D4FF15' },
