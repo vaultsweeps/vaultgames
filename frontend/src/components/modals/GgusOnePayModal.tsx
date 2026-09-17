@@ -38,7 +38,16 @@ export default function GgusOnePayModal({ isOpen, onClose, paymentMethodId, pres
 
   const handleSubmit = async () => {
     if (!payType) return toast.error('Please select a payment type')
-    if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) return toast.error('Please enter a valid amount')
+    
+    const parsedAmount = parseFloat(amount)
+    if (!amount || isNaN(parsedAmount) || parsedAmount <= 0) return toast.error('Please enter a valid amount')
+
+    // Specific limits for credit card as per GgusOnePay gateway rules
+    if (payType === 'card') {
+      if (parsedAmount < 10.99) return toast.error('Minimum amount for Credit Card is $10.99')
+      if (parsedAmount > 199.99) return toast.error('Maximum amount for Credit Card is $199.99')
+    }
+
     if (!paymentMethodId) return toast.error('Payment method not loaded. Please close and reopen the wallet.')
 
     const payload = { 
