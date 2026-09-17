@@ -18,7 +18,19 @@ interface WalletModalProps {
   balance: number
 }
 
-const paymentMethods = [
+type PaymentMethodType = {
+  id: string;
+  name: string;
+  icon: string;
+  badge?: string;
+  tag?: string;
+  color: string;
+  soon?: boolean;
+  logoUrl?: string;
+  ggusPreset?: string;
+}
+
+const paymentMethods: PaymentMethodType[] = [
   { id: 'ggusonepay',  name: 'Payment Apps',    icon: '⚡', badge: 'Fast & Auto', color: 'bg-purple-500' },
   { id: 'crypto',      name: 'Cryptocurrency',  icon: '₿',  badge: 'Bonus +30%', tag: '+5', color: 'bg-orange-500' },
   { id: 'cashapp',     name: 'CashApp Pay',     icon: '$',  badge: 'No fee',     color: 'bg-green-500' },
