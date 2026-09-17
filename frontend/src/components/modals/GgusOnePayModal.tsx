@@ -9,6 +9,7 @@ interface GgusOnePayModalProps {
   isOpen: boolean
   onClose: () => void
   paymentMethodId: string
+  preset?: string  // pre-select a specific wayCode (e.g. 'applepay', 'googlepay', 'card')
   onSuccess?: () => void
 }
 
@@ -22,18 +23,18 @@ const GGUSONEPAY_METHODS = [
   { value: 'chime', label: 'Chime' }
 ]
 
-export default function GgusOnePayModal({ isOpen, onClose, paymentMethodId, onSuccess }: GgusOnePayModalProps) {
-  const [payType, setPayType] = useState('ecashapp')
+export default function GgusOnePayModal({ isOpen, onClose, paymentMethodId, preset, onSuccess }: GgusOnePayModalProps) {
+  const [payType, setPayType] = useState(preset || 'ecashapp')
   const [amount, setAmount] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
     if (isOpen) {
-      setPayType('ecashapp')
+      setPayType(preset || 'ecashapp')
       setAmount('')
       setIsSubmitting(false)
     }
-  }, [isOpen])
+  }, [isOpen, preset])
 
   const handleSubmit = async () => {
     if (!payType) return toast.error('Please select a payment type')
@@ -150,23 +151,33 @@ export default function GgusOnePayModal({ isOpen, onClose, paymentMethodId, onSu
             </div>
 
             {/* Payment Type */}
-            <div>
-              <label style={labelStyle}>Payment Method</label>
-              <div className="relative">
-                <select
-                  value={payType}
-                  onChange={e => setPayType(e.target.value)}
-                  style={{ ...inputStyle, appearance: 'none', cursor: 'pointer', paddingRight: '36px' }}
-                  onFocus={e => (e.target.style.borderColor = '#22c55e')}
-                  onBlur={e => (e.target.style.borderColor = 'rgba(255,255,255,0.12)')}
-                >
-                  {GGUSONEPAY_METHODS.map(t => (
-                    <option key={t.value} value={t.value} style={{ background: '#0d1117' }}>{t.label}</option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'rgba(255,255,255,0.3)' }} />
+            {preset ? (
+              <div>
+                <label style={labelStyle}>Payment Method</label>
+                <div style={{ ...inputStyle, display: 'flex', alignItems: 'center', gap: '8px', opacity: 0.8 }}>
+                  <span style={{ color: '#22c55e', fontSize: '16px' }}>✓</span>
+                  <span>{GGUSONEPAY_METHODS.find(m => m.value === preset)?.label || preset}</span>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div>
+                <label style={labelStyle}>Payment Method</label>
+                <div className="relative">
+                  <select
+                    value={payType}
+                    onChange={e => setPayType(e.target.value)}
+                    style={{ ...inputStyle, appearance: 'none', cursor: 'pointer', paddingRight: '36px' }}
+                    onFocus={e => (e.target.style.borderColor = '#22c55e')}
+                    onBlur={e => (e.target.style.borderColor = 'rgba(255,255,255,0.12)')}
+                  >
+                    {GGUSONEPAY_METHODS.map(t => (
+                      <option key={t.value} value={t.value} style={{ background: '#0d1117' }}>{t.label}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'rgba(255,255,255,0.3)' }} />
+                </div>
+              </div>
+            )}
 
             {/* Amount Selection */}
             <div>

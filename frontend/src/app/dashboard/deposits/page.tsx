@@ -56,6 +56,7 @@ function DepositsContent() {
   const [chimePayPalMethod, setChimePayPalMethod] = useState<'chime'|'paypal'|'cashapp'|null>(null)
   const [cryptoModalOpen, setCryptoModalOpen] = useState(false)
   const [ggusOnePayModalOpen, setGgusOnePayModalOpen] = useState(false)
+  const [ggusOnePayPreset, setGgusOnePayPreset] = useState<string | undefined>(undefined)
   const searchParams = useSearchParams()
 
   const fetchHistory = async () => {
@@ -183,7 +184,7 @@ function DepositsContent() {
                       // crypto always second
                       if (a.code?.toLowerCase() === 'crypto') return -1;
                       if (b.code?.toLowerCase() === 'crypto') return 1;
-                      const workingCodes = ['chime', 'paypal', 'cashapp', 'crypto', 'ggusonepay'];
+                      const workingCodes = ['chime', 'paypal', 'cashapp', 'crypto', 'ggusonepay', 'applepay', 'googlepay', 'card', 'apple', 'debitcard'];
                       const aSoon = !workingCodes.includes(a.code?.toLowerCase() || '');
                       const bSoon = !workingCodes.includes(b.code?.toLowerCase() || '');
                       if (aSoon === bSoon) return 0;
@@ -191,34 +192,95 @@ function DepositsContent() {
                     })
                     .map(m => {
                     const meta = getMeta(m.code)
-                    const workingCodes = ['chime', 'paypal', 'cashapp', 'crypto', 'ggusonepay'];
+                    const workingCodes = ['chime', 'paypal', 'cashapp', 'crypto', 'ggusonepay', 'applepay', 'googlepay', 'card', 'apple', 'debitcard'];
                     const isSoon = !workingCodes.includes(m.code?.toLowerCase() || '');
                     
                     if (m.code?.toLowerCase() === 'ggusonepay') {
+                      // Render: Payment Apps card (all methods) + separate Apple Pay, Google Pay, Card cards
+                      const ggusMethod = m;
+                      const openGgusWith = (preset?: string) => {
+                        setSelectedMethod(ggusMethod);
+                        setGgusOnePayPreset(preset);
+                        setGgusOnePayModalOpen(true);
+                      };
                       return (
-                        <button key={m.id}
-                          onClick={() => {
-                            setSelectedMethod(m)
-                            setGgusOnePayModalOpen(true)
-                          }}
-                          className="p-5 text-left transition-all group flex flex-col justify-center items-start hover:-translate-y-1 relative overflow-hidden"
-                          style={{ 
-                            background: '#1a1f2e', 
-                            borderRadius: '20px', 
-                            border: '1px solid rgba(255,255,255,0.05)',
-                            boxShadow: '0 4px 20px rgba(0,0,0,0.2)' 
-                          }}>
-                          <div className="flex items-center mb-3">
-                            <div className="flex -space-x-2 relative z-10">
-                              <div className="w-10 h-10 rounded-full flex items-center justify-center bg-green-500 border-2 border-[#1a1f2e] text-white font-bold text-lg" style={{ zIndex: 3 }}>$</div>
-                              <div className="w-10 h-10 rounded-full flex items-center justify-center bg-sky-500 border-2 border-[#1a1f2e] text-white font-bold text-lg" style={{ zIndex: 2 }}>Z</div>
-                              <div className="w-10 h-10 rounded-full flex items-center justify-center bg-blue-700 border-2 border-[#1a1f2e] text-white font-bold text-lg" style={{ zIndex: 1 }}>P</div>
-                              <div className="w-10 h-10 rounded-full flex items-center justify-center bg-slate-700 border-2 border-[#1a1f2e] text-white font-bold text-sm" style={{ zIndex: 0 }}>+4</div>
+                        <>
+                          {/* Payment Apps — all methods */}
+                          <button key={m.id}
+                            onClick={() => openGgusWith(undefined)}
+                            className="p-5 text-left transition-all group flex flex-col justify-center items-start hover:-translate-y-1 relative overflow-hidden"
+                            style={{ 
+                              background: '#1a1f2e', 
+                              borderRadius: '20px', 
+                              border: '1px solid rgba(255,255,255,0.05)',
+                              boxShadow: '0 4px 20px rgba(0,0,0,0.2)' 
+                            }}>
+                            <div className="flex items-center mb-3">
+                              <div className="flex -space-x-2 relative z-10">
+                                <div className="w-10 h-10 rounded-full flex items-center justify-center bg-green-500 border-2 border-[#1a1f2e] text-white font-bold text-lg" style={{ zIndex: 4 }}>$</div>
+                                <div className="w-10 h-10 rounded-full flex items-center justify-center bg-black border-2 border-[#1a1f2e] text-white font-bold text-sm" style={{ zIndex: 3 }}></div>
+                                <div className="w-10 h-10 rounded-full flex items-center justify-center bg-blue-600 border-2 border-[#1a1f2e] text-white font-bold text-sm" style={{ zIndex: 2 }}>G</div>
+                                <div className="w-10 h-10 rounded-full flex items-center justify-center bg-blue-700 border-2 border-[#1a1f2e] text-white font-bold text-sm" style={{ zIndex: 1 }}>💳</div>
+                              </div>
                             </div>
-                          </div>
-                          <h3 className="text-white font-bold text-lg mb-1 relative z-10">Payment Apps</h3>
-                          <p className="text-xs text-slate-400 relative z-10">CashApp, PayPal &amp; more</p>
-                        </button>
+                            <h3 className="text-white font-bold text-lg mb-1 relative z-10">Payment Apps</h3>
+                            <p className="text-xs text-slate-400 relative z-10">CashApp, Apple Pay, Google Pay &amp; more</p>
+                          </button>
+
+                          {/* Apple Pay — direct */}
+                          <button
+                            key="ggus-applepay"
+                            onClick={() => openGgusWith('applepay')}
+                            className="p-5 text-left transition-all group flex flex-col gap-3 hover:-translate-y-1 glass-card"
+                          >
+                            <div className="flex justify-between items-start">
+                              <div className="w-12 h-12 rounded-2xl flex items-center justify-center overflow-hidden" style={{ background: '#00000020', border: '1px solid #00000040' }}>
+                                <img src="https://i.pinimg.com/originals/ae/85/92/ae859253f4141e38711d2c159a53649e.jpg" alt="Apple Pay" className="w-full h-full object-cover rounded-2xl" />
+                              </div>
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-white font-semibold">Apple Pay</p>
+                              <p className="text-xs text-muted mt-0.5">Tap &amp; pay instantly with Apple Pay</p>
+                            </div>
+                            <ChevronRight className="w-4 h-4 text-slate-600 group-hover:text-neon-blue transition-colors self-end" />
+                          </button>
+
+                          {/* Google Pay — direct */}
+                          <button
+                            key="ggus-googlepay"
+                            onClick={() => openGgusWith('googlepay')}
+                            className="p-5 text-left transition-all group flex flex-col gap-3 hover:-translate-y-1 glass-card"
+                          >
+                            <div className="flex justify-between items-start">
+                              <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl" style={{ background: '#4285F420', border: '1px solid #4285F440' }}>
+                                G
+                              </div>
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-white font-semibold">Google Pay</p>
+                              <p className="text-xs text-muted mt-0.5">Fast checkout with Google Pay</p>
+                            </div>
+                            <ChevronRight className="w-4 h-4 text-slate-600 group-hover:text-neon-blue transition-colors self-end" />
+                          </button>
+
+                          {/* Credit / Debit Card — direct */}
+                          <button
+                            key="ggus-card"
+                            onClick={() => openGgusWith('card')}
+                            className="p-5 text-left transition-all group flex flex-col gap-3 hover:-translate-y-1 glass-card"
+                          >
+                            <div className="flex justify-between items-start">
+                              <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl" style={{ background: '#2563EB20', border: '1px solid #2563EB40' }}>
+                                💳
+                              </div>
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-white font-semibold">Debit Card</p>
+                              <p className="text-xs text-muted mt-0.5">Pay securely with your debit card</p>
+                            </div>
+                            <ChevronRight className="w-4 h-4 text-slate-600 group-hover:text-neon-blue transition-colors self-end" />
+                          </button>
+                        </>
                       )
                     }
 
@@ -443,7 +505,7 @@ function DepositsContent() {
         />
       )}
       
-      {selectedMethod && selectedMethod.code?.toLowerCase() === 'ggusonepay' && (
+      {selectedMethod && (
         <GgusOnePayModal
           isOpen={ggusOnePayModalOpen}
           onClose={() => {
@@ -452,6 +514,7 @@ function DepositsContent() {
             resetForm()
           }}
           paymentMethodId={selectedMethod.id}
+          preset={ggusOnePayPreset}
           onSuccess={() => {
             setGgusOnePayModalOpen(false)
             setTab('history')
