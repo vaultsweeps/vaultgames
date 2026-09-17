@@ -15,7 +15,7 @@ interface GgusOnePayModalProps {
 const GGUSONEPAY_METHODS = [
   { value: 'ecashapp', label: 'Cash App' },
   // Zelle is temporarily unavailable and not supported at this time.
-  { value: 'paypal', label: 'PayPal' },
+  // PayPal channel is also undergoing maintenance
   { value: 'applepay', label: 'Apple Pay' },
   { value: 'googlepay', label: 'Google Pay' },
   { value: 'card', label: 'Credit Card' },
