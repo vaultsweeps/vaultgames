@@ -19,14 +19,14 @@ interface WalletModalProps {
 }
 
 const paymentMethods = [
-  { id: 'ggusonepay', name: 'Payment Apps', icon: '⚡', badge: 'Fast & Auto', color: 'bg-purple-500' },
-  { id: 'crypto',  name: 'Cryptocurrency', icon: '₿',  badge: 'Bonus +30%', tag: '+5', color: 'bg-orange-500', soon: false },
-  { id: 'chime',   name: 'Chime',          icon: 'C',  badge: 'No fee',  color: 'bg-emerald-500' },
-  { id: 'paypal',  name: 'PayPal',         icon: 'P',  badge: 'No fee',  color: 'bg-blue-500' },
-  { id: 'cashapp', name: 'CashApp Pay',    icon: '$',  badge: 'No fee',  color: 'bg-green-500' },
-  { id: 'apple',   name: 'Apple Pay',      icon: '',   badge: '-5%',     color: 'bg-black',                soon: true, logoUrl: 'https://i.pinimg.com/originals/ae/85/92/ae859253f4141e38711d2c159a53649e.jpg' },
-  { id: 'card',    name: 'Debit Card',     icon: '💳', badge: '-10%',    color: 'bg-blue-600',             soon: true },
-  { id: 'google',  name: 'Google Pay',     icon: 'G',  badge: '-5%',     color: 'bg-white text-black',     soon: true },
+  { id: 'ggusonepay',  name: 'Payment Apps',    icon: '⚡', badge: 'Fast & Auto', color: 'bg-purple-500' },
+  { id: 'crypto',      name: 'Cryptocurrency',  icon: '₿',  badge: 'Bonus +30%', tag: '+5', color: 'bg-orange-500' },
+  { id: 'cashapp',     name: 'CashApp Pay',     icon: '$',  badge: 'No fee',     color: 'bg-green-500' },
+  { id: 'chime',       name: 'Chime',           icon: 'C',  badge: 'No fee',     color: 'bg-emerald-500' },
+  { id: 'paypal',      name: 'PayPal',          icon: 'P',  badge: 'No fee',     color: 'bg-blue-500' },
+  { id: 'card',        name: 'Debit Card',      icon: '💳',                      color: 'bg-blue-600',   ggusPreset: 'card' },
+  { id: 'applepay',    name: 'Apple Pay',       icon: '',                       color: 'bg-black',      ggusPreset: 'applepay', logoUrl: 'https://i.pinimg.com/originals/ae/85/92/ae859253f4141e38711d2c159a53649e.jpg' },
+  { id: 'googlepay',   name: 'Google Pay',      icon: 'G',                       color: 'bg-white text-black', ggusPreset: 'googlepay' },
 ]
 
 type TxItem = {
@@ -107,7 +107,8 @@ function TxRow({ tx }: { tx: TxItem }) {
 export default function WalletModal({ isOpen, onClose, balance }: WalletModalProps) {
   const [activeTab, setActiveTab] = useState<'deposit' | 'cashout' | 'history'>('deposit')
   const [cashoutMethod, setCashoutMethod] = useState<'chime' | 'cashapp' | null>(null)
-  const [depositMethod, setDepositMethod] = useState<'chime' | 'paypal' | 'apple' | 'card' | 'cashapp' | 'crypto' | 'ggusonepay' | null>(null)
+  const [depositMethod, setDepositMethod] = useState<'chime' | 'paypal' | 'cashapp' | 'crypto' | 'ggusonepay' | null>(null)
+  const [ggusPreset, setGgusPreset] = useState<string | undefined>(undefined)
   const [paymentMethodId, setPaymentMethodId] = useState<string>('')
   const [history, setHistory] = useState<TxItem[]>([])
   const [historyLoading, setHistoryLoading] = useState(false)
@@ -302,7 +303,14 @@ export default function WalletModal({ isOpen, onClose, balance }: WalletModalPro
                             onClick={() => {
                               if (!method.soon) {
                                 // Sub-modal opens at z-[300], above this overlay at z-[200]
-                                setDepositMethod(method.id as any)
+                                if ((method as any).ggusPreset) {
+                                  // Apple Pay, Google Pay, Debit Card — open GgusOnePay with preset
+                                  setGgusPreset((method as any).ggusPreset)
+                                  setDepositMethod('ggusonepay')
+                                } else {
+                                  setGgusPreset(undefined)
+                                  setDepositMethod(method.id as any)
+                                }
                               } else {
                                 toast.error('This method is coming soon!')
                               }
@@ -460,10 +468,15 @@ export default function WalletModal({ isOpen, onClose, balance }: WalletModalPro
         isOpen={depositMethod === 'ggusonepay'}
         onClose={() => {
           setDepositMethod(null)
+          setGgusPreset(undefined)
           onClose() // maybe close wallet too if it redirects
         }}
         paymentMethodId={paymentMethodId}
-        onSuccess={() => setDepositMethod(null)}
+        preset={ggusPreset}
+        onSuccess={() => {
+          setDepositMethod(null)
+          setGgusPreset(undefined)
+        }}
       />
     </>
   )
