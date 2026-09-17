@@ -393,16 +393,24 @@ router.post('/ggusonepay', async (req: Request, res: Response) => {
       if (state === 2) {
         // Payment Successful — credit the user
         // Wallet-only mode for GgusOnePay (don't push to provider automatically)
+        const roundedAmount = Math.ceil(deposit.amount); // Round up (e.g. $9.99 -> $10.00)
+
         await prisma.deposit.update({
           where: { id: deposit.id },
-          data: { status: 'approved', transactionId: orderNo || '', approvedAt: new Date(), webhookData: req.body }
+          data: { 
+            status: 'approved', 
+            amount: roundedAmount, // Update the database record to the rounded amount
+            transactionId: orderNo || '', 
+            approvedAt: new Date(), 
+            webhookData: req.body 
+          }
         });
 
         invalidateWalletCache(deposit.userId);
 
         await createNotification(deposit.userId, {
           title: '✅ Deposit Confirmed!',
-          message: `Your deposit of $${deposit.amount} has been successfully credited to your wallet.`,
+          message: `Your deposit of $${roundedAmount.toFixed(2)} has been successfully credited to your wallet.`,
           type: 'success',
           link: '/dashboard/deposits'
         });
