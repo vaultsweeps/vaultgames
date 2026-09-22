@@ -19,7 +19,7 @@ const GGUSONEPAY_METHODS = [
   // { value: 'paypal', label: 'PayPal' }, // Temporarily disabled due to GgusOnePay Channel Maintenance
   { value: 'applepay', label: 'Apple Pay' },
   { value: 'googlepay', label: 'Google Pay' },
-  { value: 'card', label: 'Credit Card' },
+  { value: 'card', label: 'Debit Card' },
   { value: 'chime', label: 'Chime' }
 ]
 
@@ -42,10 +42,10 @@ export default function GgusOnePayModal({ isOpen, onClose, paymentMethodId, pres
     const parsedAmount = parseFloat(amount)
     if (!amount || isNaN(parsedAmount) || parsedAmount <= 0) return toast.error('Please enter a valid amount')
 
-    // Specific limits for credit card as per GgusOnePay gateway rules
+    // Specific limits for debit card as per GgusOnePay gateway rules
     if (payType === 'card') {
-      if (parsedAmount < 10.99) return toast.error('Minimum amount for Credit Card is $10.99')
-      if (parsedAmount > 199.99) return toast.error('Maximum amount for Credit Card is $199.99')
+      if (parsedAmount < 10.99) return toast.error('Minimum amount for Debit Card is $10.99')
+      if (parsedAmount > 199.99) return toast.error('Maximum amount for Debit Card is $199.99')
     }
 
     if (!paymentMethodId) return toast.error('Payment method not loaded. Please close and reopen the wallet.')

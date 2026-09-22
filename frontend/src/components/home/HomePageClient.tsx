@@ -105,7 +105,7 @@ export default function HomePageClient() {
       
       {/* Why Choose Us */}
       {(settings.show_home_why_us === 'true' || settings.show_home_why_us === true) && (
-        <section className="py-20 relative">
+        <section className="py-20 relative section-below-fold">
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-neon-purple/5 to-transparent" />
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-16">
@@ -129,7 +129,7 @@ export default function HomePageClient() {
 
       {/* Bonuses */}
       {(settings.show_home_bonuses === 'true' || settings.show_home_bonuses === true) && (
-        <section className="py-20">
+        <section className="py-20 section-below-fold">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-end justify-between mb-12">
             <motion.div initial={{ opacity: 0, x: -30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}>
@@ -170,7 +170,7 @@ export default function HomePageClient() {
 
       {/* Testimonials */}
       {(settings.show_home_testimonials === 'true' || settings.show_home_testimonials === true) && (
-        <section className="py-20 relative">
+        <section className="py-20 relative section-below-fold">
           <div className="absolute inset-0 bg-gradient-to-r from-neon-blue/5 via-transparent to-neon-purple/5" />
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-12">
@@ -195,7 +195,7 @@ export default function HomePageClient() {
 
       {/* FAQ */}
       {(settings.show_home_faq === 'true' || settings.show_home_faq === true) && (
-        <section className="py-20">
+        <section className="py-20 section-below-fold">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-12">
             <p className="font-mono text-xs tracking-[0.3em] text-neon-blue uppercase mb-3">Help</p>
@@ -208,29 +208,7 @@ export default function HomePageClient() {
       </section>
       )}
 
-      {/* CTA Banner */}
-      <section className="py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div initial={{ opacity: 0, scale: 0.95 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} className="glass-card p-12 text-center relative overflow-hidden">
-            <div className="absolute inset-0 cyber-grid opacity-20" />
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-neon-blue/5 rounded-full blur-3xl" />
-            <div className="relative z-10">
-              <p className="font-mono text-xs tracking-[0.3em] text-neon-blue uppercase mb-3">Ready to play?</p>
-              <h2 className="font-display font-black text-5xl text-primary mb-4">JOIN <span className="gradient-text">VAULT SWEEPS</span> TODAY</h2>
-              <p className="text-secondary text-lg mb-8 max-w-xl mx-auto">Start your gaming journey with the best bonuses, fastest withdrawals, and premium games.</p>
-              <div className="flex flex-wrap justify-center gap-4">
-                {mounted && isAuthenticated ? (
-                  <Link href="/dashboard" className="btn-primary py-3 px-10 text-sm">Go to Dashboard</Link>
-                ) : (
-                  <button onClick={() => openAuthModal('register')} className="btn-primary py-3 px-10 text-sm font-medium">Create Free Account</button>
-                )}
-                <a href={settings.telegram_url || process.env.NEXT_PUBLIC_TELEGRAM_URL || '#'} target="_blank" rel="noopener noreferrer" className="btn-neon py-3 px-8 text-sm flex items-center gap-2"><Send className="w-4 h-4" /> Contact Us</a>
-                <Link href="/dashboard/cashouts" onClick={handleFeatureClick} className="btn-neon py-3 px-8 text-sm flex items-center gap-2" style={{ color: '#F59E0B', borderColor: '#F59E0B' }}>Crypto Withdrawal</Link>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      </section>
+
 
     </>
   )

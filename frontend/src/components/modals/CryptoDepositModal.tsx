@@ -36,7 +36,8 @@ export default function CryptoDepositModal({ isOpen, onClose, amount: propAmount
 
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
-  const PRIORITY = ['btc', 'eth', 'usdttrc20', 'usdterc20', 'ltc', 'sol', 'bnbbsc', 'trx']
+  // Fixed ordered list of coins to always display
+  const FIXED_COINS = ['ltc', 'usdttrc20', 'btc', 'eth']
 
   const stopPolling = useCallback(() => {
     if (pollIntervalRef.current) {
@@ -100,20 +101,11 @@ export default function CryptoDepositModal({ isOpen, onClose, amount: propAmount
   const fetchCoins = async (amount: number) => {
     setLoadingCoins(true)
     try {
-      const res = await depositApi.getCryptoCurrencies()
-      const fetched: string[] = res.data.data || []
-      const sorted = [...fetched].sort((a, b) => {
-        const ai = PRIORITY.indexOf(a.toLowerCase())
-        const bi = PRIORITY.indexOf(b.toLowerCase())
-        if (ai === -1 && bi === -1) return a.localeCompare(b)
-        if (ai === -1) return 1
-        if (bi === -1) return -1
-        return ai - bi
-      })
-      setCoins(sorted.map((c) => ({ currency: c, available: true })))
+      // Always show the fixed list — no API filtering
+      setCoins(FIXED_COINS.map((c) => ({ currency: c, available: true })))
     } catch {
-      toast.error('Failed to load available coins')
-      handleClose()
+      // Fallback: still show all coins
+      setCoins(FIXED_COINS.map((c) => ({ currency: c, available: true })))
     } finally {
       setLoadingCoins(false)
     }
@@ -302,49 +294,113 @@ export default function CryptoDepositModal({ isOpen, onClose, amount: propAmount
                 ) : (
                   <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-3">
-                      {coins.map((coin) => {
-                        const isLtc = coin.currency.toLowerCase() === 'ltc'
-                        const isTrx = coin.currency.toLowerCase() === 'trx'
-                        const isUsdtTrc20 = coin.currency.toLowerCase() === 'usdttrc20'
-                        
-                        // Default to TRX UI if it's usdttrc20 for the requested look, or specific
-                        const bgColor = isLtc ? 'bg-blue-500' : 'bg-red-600'
-                        const icon = isLtc ? (
-                          <svg viewBox="0 0 24 24" fill="white" className="w-6 h-6"><path d="M11.944 2.5L2 9.5l9.944 7L22 9.5l-10.056-7z"/><path d="M2 11.5l9.944 7 10.056-7L11.944 23 2 11.5z"/></svg>
+                      {/* Litecoin — POPULAR featured card */}
+                      <button
+                        disabled={isSubmitting}
+                        onClick={() => handleCoinSelect({ currency: 'ltc', available: true })}
+                        className={`p-4 rounded-2xl border-2 flex flex-col items-center justify-center transition-all relative overflow-hidden ${
+                          selectedCoin === 'ltc'
+                            ? 'border-blue-400 shadow-[0_0_20px_rgba(59,130,246,0.6)]'
+                            : 'border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.3)] hover:border-blue-400 hover:shadow-[0_0_25px_rgba(59,130,246,0.5)]'
+                        } ${isSubmitting && selectedCoin !== 'ltc' ? 'opacity-30 cursor-not-allowed' : ''}`}
+                        style={{ background: 'linear-gradient(180deg, #091325 0%, #030815 100%)' }}
+                      >
+                        <div className="absolute top-0 right-0 bg-gradient-to-r from-yellow-500 to-yellow-400 text-black text-[10px] font-black px-2 py-0.5 rounded-bl-xl flex items-center gap-1 shadow-md z-10 border-b border-l border-yellow-300">👑 POPULAR</div>
+                        <div className="absolute -top-10 -left-10 w-32 h-32 bg-blue-500/20 rounded-full blur-2xl" />
+                        <div className="absolute bottom-0 right-0 w-24 h-24 bg-cyan-400/10 rounded-full blur-2xl" />
+                        {isSubmitting && selectedCoin === 'ltc' ? (
+                          <Loader2 className="w-10 h-10 animate-spin text-blue-400 my-6" />
                         ) : (
-                          <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><path d="M3 12h18"/><path d="M12 3v18"/><path d="M3 12l9-9 9 9-9 9-9-9z"/></svg>
-                        )
-                        
-                        const name = isLtc ? 'Litecoin' : isUsdtTrc20 ? 'USDT' : 'TRX'
-                        const network = isLtc ? 'Mainnet' : 'TRC-20'
-                        
-                        return (
-                          <button
-                            key={coin.currency}
-                            disabled={isSubmitting}
-                            onClick={() => handleCoinSelect(coin)}
-                            className={`p-5 rounded-2xl border flex flex-col items-center justify-center gap-2 transition-all relative ${
-                              selectedCoin === coin.currency
-                                ? 'bg-surface-elevated border-neon-blue text-white'
-                                : 'bg-surface border-border-subtle hover:bg-surface-elevated text-secondary hover:text-white'
-                            } ${isSubmitting && selectedCoin !== coin.currency ? 'opacity-30 cursor-not-allowed' : ''}`}
-                          >
-                            {isSubmitting && selectedCoin === coin.currency ? (
-                              <Loader2 className="w-10 h-10 animate-spin text-neon-blue" />
-                            ) : (
-                              <>
-                                <div className={`w-10 h-10 rounded-full ${bgColor} flex items-center justify-center font-bold text-white text-xl`}>
-                                  {icon}
+                          <>
+                            <div className="w-14 h-14 rounded-full flex items-center justify-center font-black text-white text-3xl italic shadow-[0_0_15px_rgba(59,130,246,0.6)] bg-gradient-to-br from-[#1c5bbd] to-[#0a2f6b] border-2 border-blue-300 relative z-10 mt-2 mb-1">Ł</div>
+                            <div className="text-center relative z-10 w-full">
+                              <span className="text-white font-black text-xl tracking-wide block drop-shadow-md">Litecoin</span>
+                              <span className="text-cyan-400 font-bold text-[11px] block tracking-wider mb-2">Mainnet</span>
+                              <div className="flex items-center justify-between gap-1 w-full mt-1 border-t border-blue-500/30 pt-2">
+                                <div className="flex items-center gap-1 bg-black/40 px-1.5 py-1 rounded text-[7px] font-bold text-white flex-1 justify-center border border-white/5 leading-tight">
+                                  <div className="bg-white rounded-full p-0.5"><svg viewBox="0 0 24 24" fill="currentColor" className="w-2.5 h-2.5 text-blue-600"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>
+                                  QUICK<br/>CONFIRMATIONS
                                 </div>
-                                <div className="text-center mt-1">
-                                  <span className="text-white font-bold text-sm block">{name}</span>
-                                  <span className="text-muted text-[10px] block">{network}</span>
+                                <div className="flex items-center gap-1 bg-black/40 px-1.5 py-1 rounded text-[7px] font-bold text-white flex-1 justify-center border border-white/5 leading-tight">
+                                  <div className="bg-white rounded-full p-0.5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-2.5 h-2.5 text-blue-600"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+                                  LOW NETWORK<br/>FEES
                                 </div>
-                              </>
-                            )}
-                          </button>
-                        )
-                      })}
+                              </div>
+                            </div>
+                          </>
+                        )}
+                      </button>
+
+                      {/* USDT TRC-20 */}
+                      <button
+                        disabled={isSubmitting}
+                        onClick={() => handleCoinSelect({ currency: 'usdttrc20', available: true })}
+                        className={`p-5 rounded-2xl border flex flex-col items-center justify-center gap-2 transition-all relative ${
+                          selectedCoin === 'usdttrc20'
+                            ? 'bg-surface-elevated border-neon-blue text-white'
+                            : 'bg-surface border-border-subtle hover:bg-surface-elevated text-secondary hover:text-white'
+                        } ${isSubmitting && selectedCoin !== 'usdttrc20' ? 'opacity-30 cursor-not-allowed' : ''}`}
+                      >
+                        {isSubmitting && selectedCoin === 'usdttrc20' ? (
+                          <Loader2 className="w-10 h-10 animate-spin text-neon-blue" />
+                        ) : (
+                          <>
+                            <div className="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center font-bold text-white text-xl">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><path d="M3 12h18"/><path d="M12 3v18"/><path d="M3 12l9-9 9 9-9 9-9-9z"/></svg>
+                            </div>
+                            <div className="text-center mt-1">
+                              <span className="text-white font-bold text-sm block">USDT</span>
+                              <span className="text-muted text-[10px] block">TRC-20</span>
+                            </div>
+                          </>
+                        )}
+                      </button>
+
+                      {/* Bitcoin */}
+                      <button
+                        disabled={isSubmitting}
+                        onClick={() => handleCoinSelect({ currency: 'btc', available: true })}
+                        className={`p-5 rounded-2xl border flex flex-col items-center justify-center gap-2 transition-all relative ${
+                          selectedCoin === 'btc'
+                            ? 'bg-surface-elevated border-neon-blue text-white'
+                            : 'bg-surface border-border-subtle hover:bg-surface-elevated text-secondary hover:text-white'
+                        } ${isSubmitting && selectedCoin !== 'btc' ? 'opacity-30 cursor-not-allowed' : ''}`}
+                      >
+                        {isSubmitting && selectedCoin === 'btc' ? (
+                          <Loader2 className="w-10 h-10 animate-spin text-neon-blue" />
+                        ) : (
+                          <>
+                            <div className="w-10 h-10 rounded-full bg-orange-500 flex items-center justify-center font-bold text-white text-xl">₿</div>
+                            <div className="text-center mt-1">
+                              <span className="text-white font-bold text-sm block">Bitcoin</span>
+                              <span className="text-muted text-[10px] block">Mainnet</span>
+                            </div>
+                          </>
+                        )}
+                      </button>
+
+                      {/* Ethereum */}
+                      <button
+                        disabled={isSubmitting}
+                        onClick={() => handleCoinSelect({ currency: 'eth', available: true })}
+                        className={`p-5 rounded-2xl border flex flex-col items-center justify-center gap-2 transition-all relative ${
+                          selectedCoin === 'eth'
+                            ? 'bg-surface-elevated border-neon-blue text-white'
+                            : 'bg-surface border-border-subtle hover:bg-surface-elevated text-secondary hover:text-white'
+                        } ${isSubmitting && selectedCoin !== 'eth' ? 'opacity-30 cursor-not-allowed' : ''}`}
+                      >
+                        {isSubmitting && selectedCoin === 'eth' ? (
+                          <Loader2 className="w-10 h-10 animate-spin text-neon-blue" />
+                        ) : (
+                          <>
+                            <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center font-bold text-white text-xl">Ξ</div>
+                            <div className="text-center mt-1">
+                              <span className="text-white font-bold text-sm block">Ethereum</span>
+                              <span className="text-muted text-[10px] block">ERC-20</span>
+                            </div>
+                          </>
+                        )}
+                      </button>
                     </div>
                     
                     <a href={getSmsUrl()} target="_blank" rel="noopener noreferrer" className="btn-sms-beam-rect w-full block font-bold py-3 rounded-xl text-center text-sm shadow-md transition-all">

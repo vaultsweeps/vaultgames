@@ -88,7 +88,7 @@ export default function VaultIntro() {
         <motion.div
           key="vault-intro"
           className="fixed inset-0 z-[99999] flex items-center justify-center overflow-hidden select-none"
-          style={{ backgroundColor: '#020710', willChange: 'opacity' }}
+          style={{ backgroundColor: '#020710', willChange: 'opacity', contain: 'strict' }}
           initial={{ opacity: 0 }}
           animate={{ opacity: isExiting ? 0 : 1 }}
           transition={{ duration: isExiting ? 0.9 : 0.4, ease: 'easeInOut' }}

@@ -39,10 +39,26 @@ export default function FeaturedGames() {
 
   useEffect(() => {
     const fetchGames = async () => {
+      // Serve from session cache for 5 min — avoids re-fetching on homepage revisit
+      try {
+        const cached = sessionStorage.getItem('vs_featured_games')
+        if (cached) {
+          const { data, ts } = JSON.parse(cached)
+          if (Date.now() - ts < 5 * 60 * 1000) {
+            setGames(data)
+            setLoading(false)
+            return
+          }
+        }
+      } catch (_) {}
+
       try {
         const res = await publicApi.getFeaturedGames()
         const sortedGames = res.data.data.sort((a: Game, b: Game) => (b.providerId ? 1 : 0) - (a.providerId ? 1 : 0))
         setGames(sortedGames)
+        try {
+          sessionStorage.setItem('vs_featured_games', JSON.stringify({ data: sortedGames, ts: Date.now() }))
+        } catch (_) {}
       } catch (err) {
         console.error('Failed to fetch featured games', err)
       } finally {
@@ -106,11 +122,6 @@ export default function FeaturedGames() {
 
                 {/* Top Badges - Premium styling */}
                 <div className="absolute top-3 left-3 right-3 flex justify-between items-start z-30 pointer-events-none">
-                  {game.isFeatured && (
-                    <span className="text-[10px] font-black tracking-widest text-white bg-gradient-to-r from-orange-500 to-red-600 px-2.5 py-1 rounded-md shadow-[0_0_12px_rgba(239,68,68,0.5)] border border-white/20">
-                      HOT
-                    </span>
-                  )}
                   {!game.providerId && (
                     <span className="ml-auto text-[10px] font-bold text-violet-100 bg-violet-600/80 border border-violet-400/50 px-2.5 py-0.5 rounded-full backdrop-blur-md flex items-center gap-1 shadow-[0_0_12px_rgba(139,92,246,0.4)]">
                       🤖 Agent

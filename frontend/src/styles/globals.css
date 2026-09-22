@@ -299,18 +299,28 @@ body {
 /* Hero slider override */
 .hero-swiper .swiper-slide { height: 100vh !important; }
 
-/* Smooth theme transitions */
-*, *::before, *::after {
+/* Smooth theme transitions — targeted only on interactive elements.
+   Previously applied to *, which caused repaints on EVERY element during scroll. */
+button, a, input, select, textarea,
+[class*="btn-"], [class*="badge-"], .glass-card, .glass, nav {
   transition: background-color 0.3s ease, border-color 0.3s ease, color 0.2s ease;
 }
 /* Exclude transitions on things that shouldn't animate */
-.no-transition, button:active, a:active, input, textarea, select, .animate-spin, .animate-pulse {
+.no-transition, button:active, a:active, .animate-spin, .animate-pulse {
   transition: none !important;
 }
 
 /* Light mode: scan-line less aggressive */
 :root .scan-line { opacity: 0.12; }
 .dark .scan-line { opacity: 0.3; }
+
+@media (prefers-reduced-motion: reduce) {
+  .scan-line { animation: none !important; opacity: 0 !important; }
+  .btn-signin-liquid { animation: none !important; }
+  .btn-signup-beam::before, .btn-signup-beam::after { animation: none !important; }
+  .btn-signal-beam::before { animation: none !important; }
+  .btn-sms-beam-rect::before { animation: none !important; }
+}
 
 /* ===== Mobile Bottom Nav — Scroll Jitter Fix =====
  * This class and its descendants are opted OUT of the global * transition rule.
@@ -515,5 +525,33 @@ body {
 }
 .animate-spin-slow {
   animation: spin-slow 2.8s linear infinite;
+}
+
+/* ── Performance Utilities ────────────────────────────────────────────────── */
+
+/* Skip rendering off-screen sections until they're near the viewport.
+   Reduces initial paint cost significantly for pages with many sections. */
+.section-below-fold {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 400px; /* approximate section height to avoid CLS */
+}
+
+/* Pre-allocate GPU layer for hover-animated cards to prevent janky first hover */
+.glass-card {
+  will-change: auto; /* reset; GPU layer only allocated on hover */
+}
+.glass-card:hover {
+  will-change: transform;
+}
+
+/* Smooth image rendering for game thumbnails at small sizes */
+.game-thumbnail {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}
+
+/* Prevent invisible layout work from off-screen images */
+img[loading="lazy"] {
+  content-visibility: auto;
 }
 

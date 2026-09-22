@@ -31,14 +31,14 @@ type PaymentMethodType = {
 }
 
 const paymentMethods: PaymentMethodType[] = [
-  { id: 'ggusonepay',  name: 'Payment Apps',    icon: '⚡', badge: 'Fast & Auto', color: 'bg-purple-500' },
   { id: 'crypto',      name: 'Cryptocurrency',  icon: '₿',  badge: 'Bonus +30%', tag: '+5', color: 'bg-orange-500' },
-  { id: 'cashapp',     name: 'CashApp Pay',     icon: '$',  badge: 'No fee',     color: 'bg-green-500' },
   { id: 'chime',       name: 'Chime',           icon: 'C',  badge: 'No fee',     color: 'bg-emerald-500' },
+  { id: 'cashapp',     name: 'CashApp Pay',     icon: '$',  badge: 'No fee',     color: 'bg-green-500' },
   { id: 'paypal',      name: 'PayPal',          icon: 'P',  badge: 'No fee',     color: 'bg-blue-500' },
-  { id: 'card',        name: 'Debit Card',      icon: '💳',                      color: 'bg-blue-600',   ggusPreset: 'card' },
   { id: 'applepay',    name: 'Apple Pay',       icon: '',                       color: 'bg-black',      ggusPreset: 'applepay', logoUrl: 'https://i.pinimg.com/originals/ae/85/92/ae859253f4141e38711d2c159a53649e.jpg' },
   { id: 'googlepay',   name: 'Google Pay',      icon: 'G',                       color: 'bg-white text-black', ggusPreset: 'googlepay' },
+  { id: 'card',        name: 'Debit Card',      icon: '💳',                      color: 'bg-blue-600',   ggusPreset: 'card' },
+  { id: 'ggusonepay',  name: 'Payment Apps',    icon: '⚡', badge: 'Fast & Auto', color: 'bg-purple-500' },
 ]
 
 type TxItem = {
