@@ -35,9 +35,10 @@ export default function Navbar() {
 
   const lastNotifFetch = useRef(0)
 
-  // Fetch balance once on auth, and again whenever wallet modal closes
-  // We also set up a 10-second polling interval so if an admin approves a deposit in Telegram,
-  // the balance updates instantly for the logged-in user.
+  // Fetch balance once on auth, and again whenever wallet modal closes.
+  // 30-second interval: fast enough to catch approved deposits, but 15× less
+  // API load than the previous 2-second poll. The wallet modal close already
+  // triggers an immediate refresh when it matters most.
   useEffect(() => {
     if (!isAuthenticated) return
     
@@ -45,7 +46,7 @@ export default function Navbar() {
     
     const balanceInterval = setInterval(() => {
       if (fetchBalance) fetchBalance()
-    }, 2000)
+    }, 30000)
     return () => clearInterval(balanceInterval)
   }, [isAuthenticated, walletOpen, fetchBalance]) // walletOpen allows immediate refresh after modal closes
 

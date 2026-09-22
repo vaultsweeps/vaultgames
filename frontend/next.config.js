@@ -34,7 +34,16 @@ const nextConfig = {
         process.env.NEXT_PUBLIC_APP_URL || ''
       ].filter(Boolean)
     },
-    optimizePackageImports: ['lucide-react', 'framer-motion'],
+    optimizePackageImports: [
+      'lucide-react',
+      'framer-motion',
+      'recharts',
+      'date-fns',
+      '@radix-ui/react-dialog',
+      '@radix-ui/react-dropdown-menu',
+      '@radix-ui/react-tabs',
+      '@radix-ui/react-tooltip',
+    ],
   },
   env: {
     // In production, fall back to the Render backend if the env var isn't set
@@ -130,8 +139,9 @@ const nextConfig = {
         ],
       },
       {
-        // API responses - no caching and no indexing
-        source: '/api/:path*',
+        // Private API responses — never cache. Public routes are handled separately
+        // by the backend's Cache-Control headers set in routes/public.ts.
+        source: '/api/((?!public/).*)',
         headers: [
           { key: 'Cache-Control', value: 'no-store, max-age=0' },
           { key: 'X-Robots-Tag', value: 'noindex, nofollow' }

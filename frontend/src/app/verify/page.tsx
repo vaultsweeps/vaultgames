@@ -131,22 +131,25 @@ export default function VerifyPage() {
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="w-full max-w-lg bg-surface-elevated rounded-2xl border border-border-subtle shadow-2xl relative overflow-hidden"
+        className="w-full max-w-lg bg-[#0f1016] rounded-[24px] border border-white/[0.08] shadow-[0_0_80px_rgba(0,212,255,0.15)] relative overflow-hidden"
       >
+        {/* Subtle background glow */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[80%] h-[150px] bg-blue-500/10 blur-[100px] pointer-events-none" />
+        
         {/* Header */}
-        <div className="p-6 border-b border-border-subtle relative flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="p-6 sm:p-8 border-b border-white/[0.05] relative flex items-center justify-between z-10">
+          <div className="flex items-center gap-4">
             {step !== 'select' && (
               <button 
                 onClick={() => setStep('select')}
-                className="text-secondary hover:text-white transition-colors"
+                className="w-10 h-10 rounded-full bg-white/[0.03] flex items-center justify-center text-secondary hover:text-white hover:bg-white/[0.08] hover:scale-105 transition-all duration-300"
               >
                 <ArrowLeft className="w-5 h-5" />
               </button>
             )}
             <div>
-              <h1 className="text-2xl font-bold text-white mb-1">Welcome Bonus</h1>
-              <p className="text-secondary text-sm">
+              <h1 className="text-2xl sm:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 mb-1 tracking-tight">Welcome Bonus</h1>
+              <p className="text-secondary text-sm font-medium">
                 {step === 'select' 
                   ? 'Confirm your details to receive your bonus!' 
                   : step === 'phone_input'
@@ -157,14 +160,14 @@ export default function VerifyPage() {
           </div>
           <button 
             onClick={() => router.push('/')}
-            className="text-secondary hover:text-white transition-colors"
+            className="w-10 h-10 flex items-center justify-center rounded-full text-secondary hover:text-white hover:bg-white/[0.08] hover:rotate-90 transition-all duration-300"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="p-6 relative min-h-[280px]">
+        <div className="p-6 sm:p-8 relative min-h-[280px]">
           <AnimatePresence mode="wait">
             {step === 'select' && (
               <motion.div
@@ -174,36 +177,38 @@ export default function VerifyPage() {
                 exit={{ opacity: 0, x: 20 }}
                 className="space-y-6 h-full flex flex-col justify-center"
               >
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-4 sm:gap-6">
                   {/* Phone Card */}
                   <button 
                     onClick={() => setStep('phone_input')}
-                    className="flex flex-col items-center justify-center gap-3 p-6 rounded-xl border border-border-subtle bg-white/[0.02] hover:bg-white/[0.04] transition-colors"
+                    className="group flex flex-col items-center justify-center gap-4 p-6 sm:p-8 rounded-[20px] border border-white/[0.05] bg-white/[0.02] hover:bg-white/[0.04] hover:border-purple-500/30 hover:shadow-[0_8px_30px_rgba(123,47,255,0.1)] transition-all duration-300 relative overflow-hidden"
                   >
-                    <div className="w-12 h-12 rounded-full border border-border-strong flex items-center justify-center">
-                      <Phone className="w-5 h-5 text-secondary" />
+                    <div className="absolute inset-0 bg-gradient-to-b from-purple-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                    <div className="w-14 h-14 rounded-full border border-white/[0.08] bg-black/40 flex items-center justify-center group-hover:scale-110 group-hover:border-purple-500/50 group-hover:shadow-[0_0_20px_rgba(123,47,255,0.3)] transition-all duration-300 relative z-10">
+                      <Phone className="w-6 h-6 text-purple-400" />
                     </div>
-                    <span className="text-secondary font-medium">Confirm phone<br/>number</span>
+                    <span className="text-white/70 font-semibold group-hover:text-white transition-colors relative z-10">Confirm phone<br/>number</span>
                   </button>
 
                   {/* Email Card */}
                   <button 
                     onClick={handleVerifyEmail}
                     disabled={isSending}
-                    className="flex flex-col items-center justify-center gap-3 p-6 rounded-xl border border-border-subtle bg-white/[0.02] hover:bg-white/[0.04] transition-colors disabled:opacity-50"
+                    className="group flex flex-col items-center justify-center gap-4 p-6 sm:p-8 rounded-[20px] border border-white/[0.05] bg-white/[0.02] hover:bg-white/[0.04] hover:border-blue-500/30 hover:shadow-[0_8px_30px_rgba(59,130,246,0.1)] transition-all duration-300 relative overflow-hidden disabled:opacity-50 disabled:pointer-events-none"
                   >
-                    <div className="w-12 h-12 rounded-full border border-border-strong flex items-center justify-center">
+                    <div className="absolute inset-0 bg-gradient-to-b from-blue-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                    <div className="w-14 h-14 rounded-full border border-white/[0.08] bg-black/40 flex items-center justify-center group-hover:scale-110 group-hover:border-blue-500/50 group-hover:shadow-[0_0_20px_rgba(59,130,246,0.3)] transition-all duration-300 relative z-10">
                       {isSending ? (
-                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                       ) : (
-                        <Mail className="w-5 h-5 text-secondary" />
+                        <Mail className="w-6 h-6 text-blue-400" />
                       )}
                     </div>
-                    <span className="text-secondary font-medium">Confirm email<br/>address</span>
+                    <span className="text-white/70 font-semibold group-hover:text-white transition-colors relative z-10">Confirm email<br/>address</span>
                   </button>
                 </div>
 
-                <div className="text-sm text-yellow-500/80 text-center">
+                <div className="text-sm font-medium text-amber-500/90 text-center bg-amber-500/10 py-3 px-4 rounded-xl border border-amber-500/20 shadow-inner">
                   Note: Please check your Spam or Junk folder if you do not see the email.
                 </div>
               </motion.div>
@@ -219,7 +224,7 @@ export default function VerifyPage() {
                 className="space-y-6"
               >
                 <div>
-                  <label className="block text-sm font-medium text-secondary mb-2">
+                  <label className="block text-sm font-semibold text-white/90 mb-2">
                     Phone Number (with Country Code)
                   </label>
                   <input
@@ -227,10 +232,11 @@ export default function VerifyPage() {
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="+1234567890"
-                    className="w-full bg-background border border-border-subtle rounded-xl px-4 py-3 text-white placeholder-secondary focus:outline-none focus:border-primary transition-colors"
+                    className="input-neon text-lg py-4 px-5 bg-black/20"
                     required
                   />
-                  <p className="text-xs text-secondary mt-2">
+                  <p className="text-xs text-secondary mt-2 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
                     Please include your country code (e.g. +1 for US).
                   </p>
                 </div>
@@ -238,7 +244,7 @@ export default function VerifyPage() {
                 <button 
                   type="submit"
                   disabled={isSending || !phone}
-                  className="w-full py-4 bg-[#3B82F6] hover:bg-blue-600 text-white rounded-xl font-bold text-lg transition-colors flex items-center justify-center disabled:opacity-50"
+                  className="w-full btn-primary py-4 text-lg rounded-[16px] flex items-center justify-center gap-2 group disabled:opacity-50 shadow-[0_0_20px_rgba(0,212,255,0.3)]"
                 >
                   {isSending ? (
                     <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -259,7 +265,7 @@ export default function VerifyPage() {
                 className="space-y-6"
               >
                 <div>
-                  <label className="block text-sm font-medium text-secondary mb-2">
+                  <label className="block text-sm font-semibold text-white/90 mb-2">
                     Enter Verification Code
                   </label>
                   <input
@@ -267,18 +273,19 @@ export default function VerifyPage() {
                     value={otpCode}
                     onChange={(e) => setOtpCode(e.target.value)}
                     placeholder="123456"
-                    className="w-full bg-background border border-border-subtle rounded-xl px-4 py-3 text-white placeholder-secondary focus:outline-none focus:border-primary transition-colors text-center tracking-widest text-lg"
+                    className="input-neon text-lg py-4 px-5 bg-black/20 text-center tracking-[0.5em] font-mono font-bold"
                     required
                   />
-                  <p className="text-xs text-secondary mt-2 text-center">
-                    We sent a code to {phone}
+                  <p className="text-xs text-secondary mt-3 flex items-center justify-center gap-1.5 bg-black/20 py-2 rounded-lg border border-white/5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
+                    We sent a code to <span className="text-white font-semibold">{phone}</span>
                   </p>
                 </div>
 
                 <button 
                   type="submit"
                   disabled={isSending || !otpCode}
-                  className="w-full py-4 bg-[#3B82F6] hover:bg-blue-600 text-white rounded-xl font-bold text-lg transition-colors flex items-center justify-center disabled:opacity-50"
+                  className="w-full btn-primary py-4 text-lg rounded-[16px] flex items-center justify-center gap-2 group disabled:opacity-50 shadow-[0_0_20px_rgba(0,212,255,0.3)]"
                 >
                   {isSending ? (
                     <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />

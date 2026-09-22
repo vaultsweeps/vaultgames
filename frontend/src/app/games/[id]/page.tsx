@@ -13,6 +13,7 @@ import ChooseGameModal from '@/components/modals/ChooseGameModal'
 import Loader from '@/components/ui/Loader'
 import { publicApi, gamesApi, providerApi, authApi } from '@/lib/api'
 import PlayWithAgentModal from '@/components/modals/PlayWithAgentModal'
+import CashoutRulesModal from '@/components/modals/CashoutRulesModal'
 import Cookies from 'js-cookie'
 import { useAuthStore } from '@/store/authStore'
 
@@ -58,6 +59,7 @@ export default function GameDetailsPage() {
   
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date())
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [showCashoutRules, setShowCashoutRules] = useState(false)
   
   const [settings, setSettings] = useState<any>({})
   const [agentModalOpen, setAgentModalOpen] = useState(false)
@@ -268,6 +270,15 @@ export default function GameDetailsPage() {
     try {
       const res = await providerApi.createAccount(id as string)
       toast.success('Game account created!')
+      
+      const user = useAuthStore.getState().user
+      if (user?.id) {
+        const rulesSeenKey = `cashout_rules_seen_${user.id}`
+        if (!localStorage.getItem(rulesSeenKey)) {
+          setShowCashoutRules(true)
+          localStorage.setItem(rulesSeenKey, 'true')
+        }
+      }
       
       // Optimistic UI Update: Skip the slow getAccount API call
       // A brand new account will always have $0.00 balance and 0 totalDeposited.
@@ -728,6 +739,12 @@ export default function GameDetailsPage() {
           </motion.div>
         </div>
       )}
+
+      {/* Cashout Rules Popup — shown once after first game account creation */}
+      <CashoutRulesModal
+        isOpen={showCashoutRules}
+        onClose={() => setShowCashoutRules(false)}
+      />
     </div>
   )
 }
