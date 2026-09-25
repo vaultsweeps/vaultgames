@@ -312,7 +312,7 @@ export class FastApiProviderService implements ProviderAdapter {
     const endpoint = this.getEndpoint('recharge', '/fast/user/deposit');
     return this.makeRequest(endpoint, {
       account: this.getProviderAccount(userId),
-      amount: amount.toFixed(2), // up to 2 decimal places
+      amount: Number(amount.toFixed(2)),
     }, userId);
   }
 
@@ -320,7 +320,7 @@ export class FastApiProviderService implements ProviderAdapter {
     const endpoint = this.getEndpoint('withdraw', '/fast/user/withdrawal');
     return this.makeRequest(endpoint, {
       account: this.getProviderAccount(userId),
-      amount: amount.toFixed(2),
+      amount: Number(amount.toFixed(2)),
     }, userId);
   }
 
