@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Menu, X, Bell, ChevronDown, ChevronRight, User, LogOut, Settings, LayoutDashboard, Moon, Sun, SunMoon, Wallet, Home, Gift, Crown, Users, Gamepad2, Headset, FileText } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useTheme } from '@/components/ThemeProvider'
+import { useShallow } from 'zustand/react/shallow'
 import dynamic from 'next/dynamic'
 import { authApi, notificationsApi } from '@/lib/api'
 
@@ -26,7 +27,20 @@ export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
-  const { user, isAuthenticated, logout, balance, fetchBalance, authModalOpen, authModalView, openAuthModal, closeAuthModal } = useAuthStore()
+  
+  const { user, isAuthenticated, logout, balance, fetchBalance, authModalOpen, authModalView, openAuthModal, closeAuthModal } = useAuthStore(
+    useShallow((state) => ({
+      user: state.user,
+      isAuthenticated: state.isAuthenticated,
+      logout: state.logout,
+      balance: state.balance,
+      fetchBalance: state.fetchBalance,
+      authModalOpen: state.authModalOpen,
+      authModalView: state.authModalView,
+      openAuthModal: state.openAuthModal,
+      closeAuthModal: state.closeAuthModal
+    }))
+  )
   const { theme, setTheme } = useTheme()
   const pathname = usePathname()
   

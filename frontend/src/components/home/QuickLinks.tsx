@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Crown, RotateCw, Gem, Users, Wrench, X, ArrowRight } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
+import { useShallow } from 'zustand/react/shallow'
 import WheelModal from '@/components/wheel/WheelModal'
 
 const MAINTENANCE_KEYS = ['VIP Club']
@@ -78,7 +79,12 @@ export default function QuickLinks() {
   const [showMaintenance, setShowMaintenance] = useState(false)
   const [maintenanceTitle, setMaintenanceTitle] = useState('')
   const [showWheelModal, setShowWheelModal] = useState(false)
-  const { isAuthenticated, openAuthModal } = useAuthStore()
+  const { isAuthenticated, openAuthModal } = useAuthStore(
+    useShallow((state) => ({
+      isAuthenticated: state.isAuthenticated,
+      openAuthModal: state.openAuthModal
+    }))
+  )
 
   const handleClick = (e: React.MouseEvent, link: any) => {
     if (!isAuthenticated) {

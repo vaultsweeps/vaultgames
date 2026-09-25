@@ -6,6 +6,7 @@ import { ChevronRight, Gamepad2 } from 'lucide-react'
 import Image from 'next/image'
 import Loader from '@/components/ui/Loader'
 import { useAuthStore } from '@/store/authStore'
+import { useShallow } from 'zustand/react/shallow'
 
 import { publicApi } from '@/lib/api'
 
@@ -28,7 +29,13 @@ export default function FeaturedGames() {
   const [games, setGames] = useState<Game[]>([])
   const [loading, setLoading] = useState(true)
   const [imgErrors, setImgErrors] = useState<Record<string, boolean>>({})
-  const { isAuthenticated, openAuthModal } = useAuthStore()
+  
+  const { isAuthenticated, openAuthModal } = useAuthStore(
+    useShallow((state) => ({
+      isAuthenticated: state.isAuthenticated,
+      openAuthModal: state.openAuthModal
+    }))
+  )
 
   const handleGameClick = (e: React.MouseEvent) => {
     if (!isAuthenticated) {
@@ -102,14 +109,14 @@ export default function FeaturedGames() {
               {/* Premium Ambient Colored Glow behind the card */}
               <div className={`absolute -inset-1.5 bg-gradient-to-br ${COLORS[i % COLORS.length].replace('/20', '').replace('/20', '')} opacity-0 group-hover:opacity-30 blur-xl rounded-[2.5rem] transition-opacity duration-700 pointer-events-none z-0`}></div>
               
-              <motion.div
+                <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true }}
                 transition={{ delay: Math.min(i * 0.03, 0.3) }}
                 whileHover={{ y: -8, scale: 1.03 }}
                 style={{ willChange: 'transform' }}
-                className="relative z-10 aspect-[4/5] rounded-[22px] overflow-hidden cursor-pointer bg-[#10141d] border border-white/5 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.8)] group-hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,1)] transition-all duration-500 ease-out"
+                className="relative z-10 aspect-[4/5] rounded-[22px] overflow-hidden cursor-pointer bg-[#10141d] border border-white/5 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.8)] transition-transform duration-500 ease-out"
               >
                 <Link href={`/games/${game.name.toLowerCase().replace(/[\s_.-]+/g, '')}`} onClick={handleGameClick} className="absolute inset-0 z-20" aria-label={game.name}></Link>
                 
@@ -119,10 +126,10 @@ export default function FeaturedGames() {
                     <Image
                       src={game.thumbnailUrl}
                       alt={game.name}
-                      width={400}
-                      height={500}
+                      fill
+                      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 20vw"
                       unoptimized={game.thumbnailUrl.startsWith('http')}
-                      className="w-full h-full object-cover saturate-[1.15] contrast-[1.05] group-hover:saturate-[1.3] group-hover:brightness-110 group-hover:scale-110 transition-all duration-700 ease-out"
+                      className="object-cover saturate-[1.15] contrast-[1.05] group-hover:scale-110 transition-transform duration-700 ease-out"
                       onError={() => setImgErrors(prev => ({ ...prev, [game.id]: true }))}
                     />
                   ) : (
@@ -133,7 +140,7 @@ export default function FeaturedGames() {
                 </div>
                 
                 {/* Refined gradient overlay - Only dark at the very bottom for text legibility, transparent above */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/10 to-transparent h-[60%] top-auto group-hover:from-black opacity-90 transition-opacity duration-500"></div>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/10 to-transparent h-[60%] top-auto opacity-90 transition-opacity duration-500"></div>
 
                 {/* Top Badges - Premium styling */}
                 <div className="absolute top-3 left-3 right-3 flex justify-between items-start z-30 pointer-events-none">
