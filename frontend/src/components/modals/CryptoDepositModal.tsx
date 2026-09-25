@@ -332,18 +332,18 @@ export default function CryptoDepositModal({ isOpen, onClose, amount: propAmount
                         {/* Soft blue glow behind the card content */}
                         <div className="absolute -top-10 -left-10 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl pointer-events-none" />
                         
-                        <div className="flex justify-between items-start mb-auto w-full relative z-10">
-                          <div className="w-11 h-11 rounded-full bg-[#345D9D] flex items-center justify-center shadow-[0_0_12px_rgba(52,93,157,0.5)]">
-                            <span className="text-white font-bold text-[22px] italic drop-shadow-md">Ł</span>
+                        <div className="flex justify-between items-start mb-auto w-full relative z-10 gap-1.5 sm:gap-2">
+                          <div className="w-9 h-9 sm:w-11 sm:h-11 flex-shrink-0 rounded-full bg-[#345D9D] flex items-center justify-center shadow-[0_0_12px_rgba(52,93,157,0.5)]">
+                            <span className="text-white font-bold text-[18px] sm:text-[22px] italic drop-shadow-md">Ł</span>
                           </div>
-                          <div className="bg-[#FFB800] text-black text-[10px] font-bold px-2.5 py-1 rounded-full shadow-[0_0_10px_rgba(255,184,0,0.2)] flex items-center gap-1">
-                            <span className="text-xs">🎁</span> +20% Bonus
+                          <div className="bg-[#FFB800] text-black text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-full shadow-[0_0_10px_rgba(255,184,0,0.2)] flex items-center gap-0.5 sm:gap-1 whitespace-nowrap">
+                            +20% Bonus
                           </div>
                         </div>
                         
-                        <div className="flex items-baseline gap-1.5 relative z-10 mt-3">
-                          <span className="text-white font-bold text-[16px] tracking-wide">Litecoin</span>
-                          <span className="text-white/50 text-[12px]">Mainnet</span>
+                        <div className="flex flex-wrap items-baseline gap-x-1 gap-y-0 relative z-10 mt-2 sm:mt-3 w-full">
+                          <span className="text-white font-bold text-[13px] sm:text-[16px] tracking-wide truncate max-w-[100%]">Litecoin</span>
+                          <span className="text-white/50 text-[10px] sm:text-[12px] truncate">Mainnet</span>
                         </div>
                       </button>
 
@@ -357,18 +357,18 @@ export default function CryptoDepositModal({ isOpen, onClose, amount: propAmount
                             : 'border-white/5 shadow-[0_4px_20px_rgba(0,0,0,0.2)] hover:border-white/10 hover:-translate-y-0.5'
                         } ${isSubmitting && selectedCoin !== 'usdttrc20' ? 'opacity-40 cursor-not-allowed' : ''}`}
                       >
-                        <div className="flex justify-between items-start mb-auto w-full relative z-10">
-                          <div className="w-11 h-11 rounded-full bg-[#E51C23] flex items-center justify-center shadow-[0_0_12px_rgba(229,28,35,0.3)]">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><path d="M3 12h18"/><path d="M12 3v18"/><path d="M3 12l9-9 9 9-9 9-9-9z"/></svg>
+                        <div className="flex justify-between items-start mb-auto w-full relative z-10 gap-1.5 sm:gap-2">
+                          <div className="w-9 h-9 sm:w-11 sm:h-11 flex-shrink-0 rounded-full bg-[#E51C23] flex items-center justify-center shadow-[0_0_12px_rgba(229,28,35,0.3)]">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 sm:w-6 sm:h-6"><path d="M3 12h18"/><path d="M12 3v18"/><path d="M3 12l9-9 9 9-9 9-9-9z"/></svg>
                           </div>
-                          <div className="bg-[#FFB800] text-black text-[10px] font-bold px-2.5 py-1 rounded-full shadow-[0_0_10px_rgba(255,184,0,0.2)] flex items-center gap-1">
-                            <span className="text-xs">🎁</span> +20% Bonus
+                          <div className="bg-[#FFB800] text-black text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-full shadow-[0_0_10px_rgba(255,184,0,0.2)] flex items-center gap-0.5 sm:gap-1 whitespace-nowrap">
+                            +20% Bonus
                           </div>
                         </div>
                         
-                        <div className="flex items-baseline gap-1.5 relative z-10 mt-3">
-                          <span className="text-white font-bold text-[16px] tracking-wide">USDT</span>
-                          <span className="text-white/50 text-[12px]">TRC-20</span>
+                        <div className="flex flex-wrap items-baseline gap-x-1 gap-y-0 relative z-10 mt-2 sm:mt-3 w-full">
+                          <span className="text-white font-bold text-[13px] sm:text-[16px] tracking-wide truncate max-w-[100%]">USDT</span>
+                          <span className="text-white/50 text-[10px] sm:text-[12px] truncate">TRC-20</span>
                         </div>
                       </button>
 
@@ -382,18 +382,18 @@ export default function CryptoDepositModal({ isOpen, onClose, amount: propAmount
                             : 'border-white/5 shadow-[0_4px_20px_rgba(0,0,0,0.2)] hover:border-white/10 hover:-translate-y-0.5'
                         } ${isSubmitting && selectedCoin !== 'btc' ? 'opacity-40 cursor-not-allowed' : ''}`}
                       >
-                        <div className="flex justify-between items-start mb-auto w-full relative z-10">
-                          <div className="w-11 h-11 rounded-full bg-[#F7931A] flex items-center justify-center shadow-[0_0_12px_rgba(247,147,26,0.3)]">
-                            <span className="text-white font-bold text-[22px] drop-shadow-md">₿</span>
+                        <div className="flex justify-between items-start mb-auto w-full relative z-10 gap-1.5 sm:gap-2">
+                          <div className="w-9 h-9 sm:w-11 sm:h-11 flex-shrink-0 rounded-full bg-[#F7931A] flex items-center justify-center shadow-[0_0_12px_rgba(247,147,26,0.3)]">
+                            <span className="text-white font-bold text-[18px] sm:text-[22px] drop-shadow-md">₿</span>
                           </div>
-                          <div className="bg-[#FFB800] text-black text-[10px] font-bold px-2.5 py-1 rounded-full shadow-[0_0_10px_rgba(255,184,0,0.2)] flex items-center gap-1">
-                            <span className="text-xs">🎁</span> +20% Bonus
+                          <div className="bg-[#FFB800] text-black text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-full shadow-[0_0_10px_rgba(255,184,0,0.2)] flex items-center gap-0.5 sm:gap-1 whitespace-nowrap">
+                            +20% Bonus
                           </div>
                         </div>
                         
-                        <div className="flex items-baseline gap-1.5 relative z-10 mt-3">
-                          <span className="text-white font-bold text-[16px] tracking-wide">Bitcoin</span>
-                          <span className="text-white/50 text-[12px]">Mainnet</span>
+                        <div className="flex flex-wrap items-baseline gap-x-1 gap-y-0 relative z-10 mt-2 sm:mt-3 w-full">
+                          <span className="text-white font-bold text-[13px] sm:text-[16px] tracking-wide truncate max-w-[100%]">Bitcoin</span>
+                          <span className="text-white/50 text-[10px] sm:text-[12px] truncate">Mainnet</span>
                         </div>
                       </button>
 
@@ -407,21 +407,21 @@ export default function CryptoDepositModal({ isOpen, onClose, amount: propAmount
                             : 'border-white/5 shadow-[0_4px_20px_rgba(0,0,0,0.2)] hover:border-white/10 hover:-translate-y-0.5'
                         } ${isSubmitting && selectedCoin !== 'eth' ? 'opacity-40 cursor-not-allowed' : ''}`}
                       >
-                        <div className="flex justify-between items-start mb-auto w-full relative z-10">
-                          <div className="w-11 h-11 rounded-full bg-[#627EEA] flex items-center justify-center shadow-[0_0_12px_rgba(98,126,234,0.3)]">
-                            <svg viewBox="0 0 24 24" fill="white" className="w-[22px] h-[22px] drop-shadow-md">
+                        <div className="flex justify-between items-start mb-auto w-full relative z-10 gap-1.5 sm:gap-2">
+                          <div className="w-9 h-9 sm:w-11 sm:h-11 flex-shrink-0 rounded-full bg-[#627EEA] flex items-center justify-center shadow-[0_0_12px_rgba(98,126,234,0.3)]">
+                            <svg viewBox="0 0 24 24" fill="white" className="w-[18px] h-[18px] sm:w-[22px] sm:h-[22px] drop-shadow-md">
                               <path d="M11.944 2.5L2 9.5l9.944 7L22 9.5l-10.056-7z"/>
                               <path d="M2 11.5l9.944 7 10.056-7L11.944 23 2 11.5z"/>
                             </svg>
                           </div>
-                          <div className="bg-[#FFB800] text-black text-[10px] font-bold px-2.5 py-1 rounded-full shadow-[0_0_10px_rgba(255,184,0,0.2)] flex items-center gap-1">
-                            <span className="text-xs">🎁</span> +20% Bonus
+                          <div className="bg-[#FFB800] text-black text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-full shadow-[0_0_10px_rgba(255,184,0,0.2)] flex items-center gap-0.5 sm:gap-1 whitespace-nowrap">
+                            +20% Bonus
                           </div>
                         </div>
                         
-                        <div className="flex items-baseline gap-1.5 relative z-10 mt-3">
-                          <span className="text-white font-bold text-[16px] tracking-wide">Ethereum</span>
-                          <span className="text-white/50 text-[12px]">ERC-20</span>
+                        <div className="flex flex-wrap items-baseline gap-x-1 gap-y-0 relative z-10 mt-2 sm:mt-3 w-full">
+                          <span className="text-white font-bold text-[13px] sm:text-[16px] tracking-wide truncate max-w-[100%]">Ethereum</span>
+                          <span className="text-white/50 text-[10px] sm:text-[12px] truncate">ERC-20</span>
                         </div>
                       </button>
                     </div>

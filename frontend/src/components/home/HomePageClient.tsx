@@ -5,6 +5,7 @@ import { Gift, Shield, Zap, Headphones, ChevronDown, Send, MessageCircle, Star, 
 import { useState, useEffect } from 'react'
 import { publicApi } from '@/lib/api'
 import { useAuthStore } from '@/store/authStore'
+import { useShallow } from 'zustand/react/shallow'
 import { getSmsUrl } from '@/lib/sms'
 import dynamic from 'next/dynamic'
 
@@ -59,7 +60,13 @@ export default function HomePageClient() {
   const [mounted, setMounted] = useState(false)
   const [smsUrl, setsmsUrl] = useState('')
   const [showWelcomePopup, setShowWelcomePopup] = useState(false)
-  const { isAuthenticated, openAuthModal } = useAuthStore()
+  
+  const { isAuthenticated, openAuthModal } = useAuthStore(
+    useShallow((state) => ({
+      isAuthenticated: state.isAuthenticated,
+      openAuthModal: state.openAuthModal
+    }))
+  )
 
   const handleFeatureClick = (e: React.MouseEvent) => {
     if (!isAuthenticated) {
@@ -73,18 +80,54 @@ export default function HomePageClient() {
     setsmsUrl(getSmsUrl())
     const t = setInterval(() => setsmsUrl(getSmsUrl()), 60_000)
 
-    // Fetch data in parallel immediately
-    Promise.allSettled([
-      publicApi.getBonuses(),
-      publicApi.getSettings()
-    ]).then(([bonusesRes, settingsRes]) => {
-      if (bonusesRes.status === 'fulfilled') {
-        setBonuses((bonusesRes.value?.data?.data || []).slice(0, 4))
-      }
-      if (settingsRes.status === 'fulfilled') {
-        setSettings(settingsRes.value?.data?.data || {})
-      }
-    })
+    // Fetch data in parallel immediately with session caching
+    const cachedBonuses = sessionStorage.getItem('vs_homepage_bonuses')
+    const cachedSettings = sessionStorage.getItem('vs_homepage_settings')
+    
+    let initialBonuses = []
+    let initialSettings = {}
+    let fetchNeeded = false
+
+    if (cachedBonuses) {
+      try {
+        const { data, ts } = JSON.parse(cachedBonuses)
+        if (Date.now() - ts < 5 * 60 * 1000) initialBonuses = data
+        else fetchNeeded = true
+      } catch { fetchNeeded = true }
+    } else {
+      fetchNeeded = true
+    }
+
+    if (cachedSettings) {
+      try {
+        const { data, ts } = JSON.parse(cachedSettings)
+        if (Date.now() - ts < 5 * 60 * 1000) initialSettings = data
+        else fetchNeeded = true
+      } catch { fetchNeeded = true }
+    } else {
+      fetchNeeded = true
+    }
+
+    if (initialBonuses.length) setBonuses(initialBonuses)
+    if (Object.keys(initialSettings).length) setSettings(initialSettings)
+
+    if (fetchNeeded) {
+      Promise.allSettled([
+        publicApi.getBonuses(),
+        publicApi.getSettings()
+      ]).then(([bonusesRes, settingsRes]) => {
+        if (bonusesRes.status === 'fulfilled') {
+          const b = (bonusesRes.value?.data?.data || []).slice(0, 4)
+          setBonuses(b)
+          sessionStorage.setItem('vs_homepage_bonuses', JSON.stringify({ data: b, ts: Date.now() }))
+        }
+        if (settingsRes.status === 'fulfilled') {
+          const s = settingsRes.value?.data?.data || {}
+          setSettings(s)
+          sessionStorage.setItem('vs_homepage_settings', JSON.stringify({ data: s, ts: Date.now() }))
+        }
+      })
+    }
 
     // Check if we need to show the welcome bonus popup
     if (isAuthenticated && localStorage.getItem('vs_welcome_popup') === '1') {

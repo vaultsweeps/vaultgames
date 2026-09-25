@@ -16,7 +16,7 @@ export default function Footer() {
   const [smsUrl, setsmsUrl] = useState('')
   const [couponCode, setCouponCode] = useState('')
   const [claiming, setClaiming] = useState(false)
-  const { user } = useAuthStore()
+  const user = useAuthStore(state => state.user)
 
   const handleClaimCoupon = async () => {
     if (!user) {

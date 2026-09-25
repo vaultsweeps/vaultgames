@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { publicApi } from '@/lib/api'
 import { useAuthStore } from '@/store/authStore'
+import { useShallow } from 'zustand/react/shallow'
 
 const DEFAULT_BANNERS = [
   {
@@ -48,7 +49,12 @@ const DEFAULT_BANNERS = [
 export default function HeroSlider() {
   const [slides, setSlides] = useState(DEFAULT_BANNERS)
   const [current, setCurrent] = useState(0)
-  const { isAuthenticated, openAuthModal } = useAuthStore()
+  const { isAuthenticated, openAuthModal } = useAuthStore(
+    useShallow((state) => ({
+      isAuthenticated: state.isAuthenticated,
+      openAuthModal: state.openAuthModal
+    }))
+  )
 
   const handleCtaClick = (e: React.MouseEvent) => {
     if (!isAuthenticated) {

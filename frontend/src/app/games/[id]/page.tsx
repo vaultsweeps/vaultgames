@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { Download, ArrowLeft, RefreshCw, Copy, Eye, EyeOff, PlusCircle, ArrowUpCircle, AlertCircle, Key, Info, Bot, MessageCircle, X, RefreshCcw } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Link from 'next/link'
+import Image from 'next/image'
 
 import Navbar from '@/components/layout/Navbar'
 import Footer from '@/components/layout/Footer'
@@ -16,6 +17,7 @@ import PlayWithAgentModal from '@/components/modals/PlayWithAgentModal'
 import CashoutRulesModal from '@/components/modals/CashoutRulesModal'
 import Cookies from 'js-cookie'
 import { useAuthStore } from '@/store/authStore'
+import { useShallow } from 'zustand/react/shallow'
 
 interface Game {
   id: string
@@ -64,7 +66,7 @@ export default function GameDetailsPage() {
   const [settings, setSettings] = useState<any>({})
   const [agentModalOpen, setAgentModalOpen] = useState(false)
   
-  const { isAuthenticated } = useAuthStore()
+  const isAuthenticated = useAuthStore(state => state.isAuthenticated)
   const [accountFetched, setAccountFetched] = useState(false)
   // Start as true if a token cookie exists so we show a skeleton instead of "Get Access" during initial fetch
   const [accountLoading, setAccountLoading] = useState(() => {
@@ -391,7 +393,7 @@ export default function GameDetailsPage() {
         {/* Top Game Card */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-surface rounded-2xl p-4 flex flex-col sm:flex-row items-center gap-4 shadow-lg border border-border-subtle">
           <div className="w-full sm:w-1/2 h-32 rounded-xl overflow-hidden relative bg-black/40">
-            {game.thumbnailUrl && <img src={game.thumbnailUrl} alt={game.name} className="w-full h-full object-cover" />}
+            {game.thumbnailUrl && <Image src={game.thumbnailUrl} alt={game.name} fill sizes="(max-width: 640px) 100vw, 50vw" className="object-cover" unoptimized={game.thumbnailUrl.startsWith('http')} />}
           </div>
           <div className="w-full sm:w-1/2 flex flex-col justify-center">
             <h2 className="text-white font-bold text-lg mb-3 truncate">{game.name}</h2>

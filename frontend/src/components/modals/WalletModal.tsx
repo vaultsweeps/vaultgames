@@ -272,17 +272,14 @@ export default function WalletModal({ isOpen, onClose, balance }: WalletModalPro
                                     ].map((a, i) => (
                                       <div
                                         key={i}
-                                        className={`w-9 h-9 rounded-full ${a.bg} flex items-center justify-center text-white font-bold text-xs border-2 border-[#1C1F2E] shadow-md`}
+                                        className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full ${a.bg} flex items-center justify-center text-white font-bold text-[10px] sm:text-xs border-2 border-[#1C1F2E] shadow-md`}
                                         style={{ zIndex: a.z, marginLeft: i === 0 ? 0 : -10 }}
                                       >{a.label}</div>
                                     ))}
                                   </div>
-                                  <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                                    Fast &amp; Auto
-                                  </span>
                                 </div>
-                                <div className="flex items-baseline gap-1.5 relative z-10 mt-3">
-                                  <span className="text-white font-bold text-[15px] tracking-wide">{method.name}</span>
+                                <div className="flex items-baseline gap-1.5 relative z-10 mt-3 w-full">
+                                  <span className="text-white font-bold text-[13px] sm:text-[15px] tracking-wide truncate">{method.name}</span>
                                 </div>
                               </button>
                             )
@@ -295,16 +292,16 @@ export default function WalletModal({ isOpen, onClose, balance }: WalletModalPro
                                 onClick={() => setDepositMethod('crypto')}
                                 className="p-4 rounded-[20px] flex flex-col relative transition-all text-left w-full h-[110px] border bg-[#1C1F2E] border-white/5 shadow-[0_4px_20px_rgba(0,0,0,0.2)] hover:bg-[#23273A] hover:border-white/10 hover:-translate-y-0.5"
                               >
-                                <div className="flex justify-between items-start mb-auto w-full relative z-10">
-                                  <div className="w-10 h-10 rounded-full bg-[#F7931A] flex items-center justify-center text-white font-bold text-[20px] shadow-[0_0_12px_rgba(247,147,26,0.3)]">
+                                <div className="flex justify-between items-start mb-auto w-full relative z-10 gap-2">
+                                  <div className="w-9 h-9 sm:w-10 sm:h-10 flex-shrink-0 rounded-full bg-[#F7931A] flex items-center justify-center text-white font-bold text-[18px] sm:text-[20px] shadow-[0_0_12px_rgba(247,147,26,0.3)]">
                                     ₿
                                   </div>
-                                  <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-[#FFB800] text-black shadow-[0_0_10px_rgba(255,184,0,0.2)]">
-                                    Bonus +20%
+                                  <span className="text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-[#FFB800] text-black shadow-[0_0_10px_rgba(255,184,0,0.2)] whitespace-nowrap">
+                                    +20% Bonus
                                   </span>
                                 </div>
-                                <div className="flex items-baseline gap-1.5 relative z-10 mt-3">
-                                  <span className="text-white font-bold text-[15px] tracking-wide">{method.name}</span>
+                                <div className="flex items-baseline gap-1.5 relative z-10 mt-3 w-full">
+                                  <span className="text-white font-bold text-[13px] sm:text-[15px] tracking-wide truncate">{method.name}</span>
                                 </div>
                               </button>
                             )
