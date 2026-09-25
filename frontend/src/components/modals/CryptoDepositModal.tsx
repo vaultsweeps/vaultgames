@@ -214,22 +214,27 @@ export default function CryptoDepositModal({ isOpen, onClose, amount: propAmount
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+      <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-[#050608]/80 backdrop-blur-sm">
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 10 }}
-          className="glass-card w-full max-w-md overflow-hidden flex flex-col relative"
+          className="w-full max-w-md overflow-hidden flex flex-col relative rounded-[28px] shadow-2xl"
+          style={{ backgroundColor: '#131521', border: '1px solid rgba(255,255,255,0.06)' }}
         >
+          {/* Subtle Ambient Lighting */}
+          <div className="absolute top-0 left-1/4 w-64 h-32 bg-blue-500/10 rounded-full blur-[80px] pointer-events-none" />
+          <div className="absolute bottom-0 right-1/4 w-64 h-32 bg-purple-500/10 rounded-full blur-[80px] pointer-events-none" />
+
           {/* Header */}
-          <div className="flex items-center justify-between p-5 border-b border-white/10 bg-white/5">
+          <div className="flex items-center justify-between p-6 pb-5 relative z-10 border-b border-white/5">
             <div className="flex items-center gap-3">
               {showBack && (
-                <button onClick={handleBack} className="text-secondary hover:text-white transition-colors">
+                <button onClick={handleBack} className="text-white/50 hover:text-white transition-colors">
                   <ChevronLeft className="w-5 h-5" />
                 </button>
               )}
-              <h3 className="font-display font-bold text-lg text-white">
+              <h3 className="font-bold text-[19px] text-white tracking-wide">
                 {step === 'select_coin' ? 'Select Cryptocurrency' :
                  step === 'enter_amount' ? 'Enter Amount' :
                  step === 'payment_details' ? 'Send Payment' : 'Payment Received!'}
@@ -237,14 +242,14 @@ export default function CryptoDepositModal({ isOpen, onClose, amount: propAmount
             </div>
             <button
               onClick={handleClose}
-              className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-secondary hover:text-white transition-colors"
+              className="p-1.5 rounded-full hover:bg-white/5 text-white/50 hover:text-white transition-colors"
             >
-              <X className="w-4 h-4" />
+              <X className="w-5 h-5" />
             </button>
           </div>
 
           {/* Content */}
-          <div className="p-6 max-h-[75vh] overflow-y-auto">
+          <div className="p-6 max-h-[75vh] overflow-y-auto relative z-10">
 
             {/* ── STEP 2: Amount Entry ── */}
             {step === 'enter_amount' && (
@@ -281,130 +286,119 @@ export default function CryptoDepositModal({ isOpen, onClose, amount: propAmount
 
             {/* ── STEP 1: Coin Selection ── */}
             {step === 'select_coin' && (
-              <div className="space-y-4">
-                <p className="text-sm text-secondary text-center mb-4">
+              <div className="space-y-6">
+                <p className="text-[14px] text-white/60 px-1">
                   Choose which cryptocurrency you'd like to deposit with
                 </p>
 
                 {loadingCoins ? (
                   <div className="flex flex-col items-center justify-center py-10 space-y-4">
-                    <Loader2 className="w-8 h-8 text-neon-blue animate-spin" />
-                    <p className="text-sm text-secondary">Fetching available coins...</p>
+                    <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+                    <p className="text-sm text-white/60">Fetching available coins...</p>
                   </div>
                 ) : (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-3">
-                      {/* Litecoin — POPULAR featured card */}
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-2 gap-4">
+                      {/* Litecoin — RECOMMENDED featured card */}
                       <button
                         disabled={isSubmitting}
                         onClick={() => handleCoinSelect({ currency: 'ltc', available: true })}
-                        className={`p-4 rounded-2xl border-2 flex flex-col items-center justify-center transition-all relative overflow-hidden ${
+                        className={`p-4 rounded-[20px] flex flex-col relative overflow-hidden transition-all text-left w-full h-[130px] border bg-[#1C1F2E] hover:bg-[#23273A] ${
                           selectedCoin === 'ltc'
-                            ? 'border-blue-400 shadow-[0_0_20px_rgba(59,130,246,0.6)]'
-                            : 'border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.3)] hover:border-blue-400 hover:shadow-[0_0_25px_rgba(59,130,246,0.5)]'
-                        } ${isSubmitting && selectedCoin !== 'ltc' ? 'opacity-30 cursor-not-allowed' : ''}`}
-                        style={{ background: 'linear-gradient(180deg, #091325 0%, #030815 100%)' }}
+                            ? 'border-blue-400 bg-[#23273A] shadow-[0_0_20px_rgba(59,130,246,0.25)] scale-[1.02]'
+                            : 'border-blue-500/30 shadow-[0_4px_20px_rgba(0,0,0,0.2)] hover:border-blue-500/60 hover:shadow-[0_0_15px_rgba(59,130,246,0.15)] hover:-translate-y-0.5'
+                        } ${isSubmitting && selectedCoin !== 'ltc' ? 'opacity-40 cursor-not-allowed' : ''}`}
                       >
-                        <div className="absolute top-0 right-0 bg-gradient-to-r from-yellow-500 to-yellow-400 text-black text-[10px] font-black px-2 py-0.5 rounded-bl-xl flex items-center gap-1 shadow-md z-10 border-b border-l border-yellow-300">👑 POPULAR</div>
-                        <div className="absolute -top-10 -left-10 w-32 h-32 bg-blue-500/20 rounded-full blur-2xl" />
-                        <div className="absolute bottom-0 right-0 w-24 h-24 bg-cyan-400/10 rounded-full blur-2xl" />
-                        {isSubmitting && selectedCoin === 'ltc' ? (
-                          <Loader2 className="w-10 h-10 animate-spin text-blue-400 my-6" />
-                        ) : (
-                          <>
-                            <div className="w-14 h-14 rounded-full flex items-center justify-center font-black text-white text-3xl italic shadow-[0_0_15px_rgba(59,130,246,0.6)] bg-gradient-to-br from-[#1c5bbd] to-[#0a2f6b] border-2 border-blue-300 relative z-10 mt-2 mb-1">Ł</div>
-                            <div className="text-center relative z-10 w-full">
-                              <span className="text-white font-black text-xl tracking-wide block drop-shadow-md">Litecoin</span>
-                              <span className="text-cyan-400 font-bold text-[11px] block tracking-wider mb-2">Mainnet</span>
-                              <div className="flex items-center justify-between gap-1 w-full mt-1 border-t border-blue-500/30 pt-2">
-                                <div className="flex items-center gap-1 bg-black/40 px-1.5 py-1 rounded text-[7px] font-bold text-white flex-1 justify-center border border-white/5 leading-tight">
-                                  <div className="bg-white rounded-full p-0.5"><svg viewBox="0 0 24 24" fill="currentColor" className="w-2.5 h-2.5 text-blue-600"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>
-                                  QUICK<br/>CONFIRMATIONS
-                                </div>
-                                <div className="flex items-center gap-1 bg-black/40 px-1.5 py-1 rounded text-[7px] font-bold text-white flex-1 justify-center border border-white/5 leading-tight">
-                                  <div className="bg-white rounded-full p-0.5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-2.5 h-2.5 text-blue-600"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
-                                  LOW NETWORK<br/>FEES
-                                </div>
-                              </div>
-                            </div>
-                          </>
-                        )}
+                        {/* Soft blue glow behind the card content */}
+                        <div className="absolute -top-10 -left-10 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl pointer-events-none" />
+                        
+                        <div className="flex justify-between items-start mb-auto w-full relative z-10">
+                          <div className="w-11 h-11 rounded-full bg-[#345D9D] flex items-center justify-center shadow-[0_0_12px_rgba(52,93,157,0.5)]">
+                            <span className="text-white font-bold text-[22px] italic drop-shadow-md">Ł</span>
+                          </div>
+                          <div className="bg-[#FFB800] text-black text-[10px] font-bold px-2.5 py-1 rounded-full shadow-[0_0_10px_rgba(255,184,0,0.2)]">
+                            POPULAR
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-baseline gap-1.5 relative z-10 mt-3">
+                          <span className="text-white font-bold text-[16px] tracking-wide">Litecoin</span>
+                          <span className="text-white/50 text-[12px]">Mainnet</span>
+                        </div>
                       </button>
 
                       {/* USDT TRC-20 */}
                       <button
                         disabled={isSubmitting}
                         onClick={() => handleCoinSelect({ currency: 'usdttrc20', available: true })}
-                        className={`p-5 rounded-2xl border flex flex-col items-center justify-center gap-2 transition-all relative ${
+                        className={`p-4 rounded-[20px] flex flex-col relative transition-all text-left w-full h-[130px] border bg-[#1C1F2E] hover:bg-[#23273A] ${
                           selectedCoin === 'usdttrc20'
-                            ? 'bg-surface-elevated border-neon-blue text-white'
-                            : 'bg-surface border-border-subtle hover:bg-surface-elevated text-secondary hover:text-white'
-                        } ${isSubmitting && selectedCoin !== 'usdttrc20' ? 'opacity-30 cursor-not-allowed' : ''}`}
+                            ? 'border-white/20 bg-[#23273A] scale-[1.02]'
+                            : 'border-white/5 shadow-[0_4px_20px_rgba(0,0,0,0.2)] hover:border-white/10 hover:-translate-y-0.5'
+                        } ${isSubmitting && selectedCoin !== 'usdttrc20' ? 'opacity-40 cursor-not-allowed' : ''}`}
                       >
-                        {isSubmitting && selectedCoin === 'usdttrc20' ? (
-                          <Loader2 className="w-10 h-10 animate-spin text-neon-blue" />
-                        ) : (
-                          <>
-                            <div className="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center font-bold text-white text-xl">
-                              <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><path d="M3 12h18"/><path d="M12 3v18"/><path d="M3 12l9-9 9 9-9 9-9-9z"/></svg>
-                            </div>
-                            <div className="text-center mt-1">
-                              <span className="text-white font-bold text-sm block">USDT</span>
-                              <span className="text-muted text-[10px] block">TRC-20</span>
-                            </div>
-                          </>
-                        )}
+                        <div className="flex justify-between items-start mb-auto w-full relative z-10">
+                          <div className="w-11 h-11 rounded-full bg-[#E51C23] flex items-center justify-center shadow-[0_0_12px_rgba(229,28,35,0.3)]">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><path d="M3 12h18"/><path d="M12 3v18"/><path d="M3 12l9-9 9 9-9 9-9-9z"/></svg>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-baseline gap-1.5 relative z-10 mt-3">
+                          <span className="text-white font-bold text-[16px] tracking-wide">USDT</span>
+                          <span className="text-white/50 text-[12px]">TRC-20</span>
+                        </div>
                       </button>
 
                       {/* Bitcoin */}
                       <button
                         disabled={isSubmitting}
                         onClick={() => handleCoinSelect({ currency: 'btc', available: true })}
-                        className={`p-5 rounded-2xl border flex flex-col items-center justify-center gap-2 transition-all relative ${
+                        className={`p-4 rounded-[20px] flex flex-col relative transition-all text-left w-full h-[130px] border bg-[#1C1F2E] hover:bg-[#23273A] ${
                           selectedCoin === 'btc'
-                            ? 'bg-surface-elevated border-neon-blue text-white'
-                            : 'bg-surface border-border-subtle hover:bg-surface-elevated text-secondary hover:text-white'
-                        } ${isSubmitting && selectedCoin !== 'btc' ? 'opacity-30 cursor-not-allowed' : ''}`}
+                            ? 'border-white/20 bg-[#23273A] scale-[1.02]'
+                            : 'border-white/5 shadow-[0_4px_20px_rgba(0,0,0,0.2)] hover:border-white/10 hover:-translate-y-0.5'
+                        } ${isSubmitting && selectedCoin !== 'btc' ? 'opacity-40 cursor-not-allowed' : ''}`}
                       >
-                        {isSubmitting && selectedCoin === 'btc' ? (
-                          <Loader2 className="w-10 h-10 animate-spin text-neon-blue" />
-                        ) : (
-                          <>
-                            <div className="w-10 h-10 rounded-full bg-orange-500 flex items-center justify-center font-bold text-white text-xl">₿</div>
-                            <div className="text-center mt-1">
-                              <span className="text-white font-bold text-sm block">Bitcoin</span>
-                              <span className="text-muted text-[10px] block">Mainnet</span>
-                            </div>
-                          </>
-                        )}
+                        <div className="flex justify-between items-start mb-auto w-full relative z-10">
+                          <div className="w-11 h-11 rounded-full bg-[#F7931A] flex items-center justify-center shadow-[0_0_12px_rgba(247,147,26,0.3)]">
+                            <span className="text-white font-bold text-[22px] drop-shadow-md">₿</span>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-baseline gap-1.5 relative z-10 mt-3">
+                          <span className="text-white font-bold text-[16px] tracking-wide">Bitcoin</span>
+                          <span className="text-white/50 text-[12px]">Mainnet</span>
+                        </div>
                       </button>
 
                       {/* Ethereum */}
                       <button
                         disabled={isSubmitting}
                         onClick={() => handleCoinSelect({ currency: 'eth', available: true })}
-                        className={`p-5 rounded-2xl border flex flex-col items-center justify-center gap-2 transition-all relative ${
+                        className={`p-4 rounded-[20px] flex flex-col relative transition-all text-left w-full h-[130px] border bg-[#1C1F2E] hover:bg-[#23273A] ${
                           selectedCoin === 'eth'
-                            ? 'bg-surface-elevated border-neon-blue text-white'
-                            : 'bg-surface border-border-subtle hover:bg-surface-elevated text-secondary hover:text-white'
-                        } ${isSubmitting && selectedCoin !== 'eth' ? 'opacity-30 cursor-not-allowed' : ''}`}
+                            ? 'border-white/20 bg-[#23273A] scale-[1.02]'
+                            : 'border-white/5 shadow-[0_4px_20px_rgba(0,0,0,0.2)] hover:border-white/10 hover:-translate-y-0.5'
+                        } ${isSubmitting && selectedCoin !== 'eth' ? 'opacity-40 cursor-not-allowed' : ''}`}
                       >
-                        {isSubmitting && selectedCoin === 'eth' ? (
-                          <Loader2 className="w-10 h-10 animate-spin text-neon-blue" />
-                        ) : (
-                          <>
-                            <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center font-bold text-white text-xl">Ξ</div>
-                            <div className="text-center mt-1">
-                              <span className="text-white font-bold text-sm block">Ethereum</span>
-                              <span className="text-muted text-[10px] block">ERC-20</span>
-                            </div>
-                          </>
-                        )}
+                        <div className="flex justify-between items-start mb-auto w-full relative z-10">
+                          <div className="w-11 h-11 rounded-full bg-[#627EEA] flex items-center justify-center shadow-[0_0_12px_rgba(98,126,234,0.3)]">
+                            <svg viewBox="0 0 24 24" fill="white" className="w-[22px] h-[22px] drop-shadow-md">
+                              <path d="M11.944 2.5L2 9.5l9.944 7L22 9.5l-10.056-7z"/>
+                              <path d="M2 11.5l9.944 7 10.056-7L11.944 23 2 11.5z"/>
+                            </svg>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-baseline gap-1.5 relative z-10 mt-3">
+                          <span className="text-white font-bold text-[16px] tracking-wide">Ethereum</span>
+                          <span className="text-white/50 text-[12px]">ERC-20</span>
+                        </div>
                       </button>
                     </div>
                     
-                    <a href={getSmsUrl()} target="_blank" rel="noopener noreferrer" className="btn-sms-beam-rect w-full block font-bold py-3 rounded-xl text-center text-sm shadow-md transition-all">
-                      <span className="relative z-10 text-white">Contact us for more option</span>
+                    <a href={getSmsUrl()} target="_blank" rel="noopener noreferrer" className="w-full block font-bold py-4 rounded-[16px] text-center text-[15px] shadow-[0_0_20px_rgba(37,99,235,0.3)] transition-all bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white border border-blue-400/50 hover:scale-[1.01]">
+                      Contact us for more option
                     </a>
                   </div>
                 )}

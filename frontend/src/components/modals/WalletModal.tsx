@@ -197,62 +197,68 @@ export default function WalletModal({ isOpen, onClose, balance }: WalletModalPro
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ duration: 0.2 }}
-              className="bg-background w-full max-w-md rounded-3xl overflow-hidden shadow-2xl border border-border-subtle flex flex-col max-h-[90vh]"
+              className="w-full max-w-md rounded-[28px] overflow-hidden shadow-2xl border flex flex-col max-h-[90vh] relative"
+              style={{ backgroundColor: '#131521', border: '1px solid rgba(255,255,255,0.06)' }}
             >
+              {/* Subtle Ambient Lighting (Performance Optimized) */}
+              <div className="absolute top-[-50px] left-[10%] w-[80%] h-[150px] pointer-events-none rounded-full" style={{ background: 'radial-gradient(ellipse at center, rgba(59,130,246,0.15) 0%, transparent 70%)' }} />
+              <div className="absolute bottom-[-50px] right-[10%] w-[80%] h-[150px] pointer-events-none rounded-full" style={{ background: 'radial-gradient(ellipse at center, rgba(168,85,247,0.15) 0%, transparent 70%)' }} />
+
               {/* Header */}
-              <div className="p-5 pb-0 flex justify-between items-center relative">
-                <h2 className="text-white font-bold text-xl">Wallet</h2>
-                <button onClick={onClose} className="p-2 text-secondary hover:text-white rounded-full transition-colors">
+              <div className="p-6 pb-2 flex justify-between items-center relative z-10">
+                <h2 className="text-white font-bold text-[22px] tracking-wide">Wallet</h2>
+                <button onClick={onClose} className="p-2 text-white/50 hover:text-white rounded-full transition-colors bg-white/5 hover:bg-white/10">
                   <X className="w-5 h-5" />
                 </button>
-                <p className="text-secondary text-xs absolute top-12 left-5 max-w-[250px]">
-                  Deposit and cash out your funds in your wallet
+                <p className="text-white/50 text-[13px] absolute top-[3.25rem] left-6 max-w-[250px]">
+                  Deposit and cash out your funds
                 </p>
               </div>
 
-              <div className="p-5 flex-1 overflow-y-auto mt-6">
+              <div className="p-6 flex-1 overflow-y-auto mt-4 relative z-10">
                 {/* Balance Card */}
-                <div className="bg-surface rounded-2xl p-6 flex flex-col items-center justify-center mb-6 shadow-inner border border-border-subtle">
-                  <p className="text-secondary text-sm mb-1">Balance</p>
-                  <div className="flex items-baseline gap-1">
+                <div className="bg-[#1C1F2E] rounded-[24px] p-6 flex flex-col items-center justify-center mb-6 shadow-[0_4px_20px_rgba(0,0,0,0.2)] border border-white/5 relative overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-b from-blue-500/5 to-transparent pointer-events-none" />
+                  <p className="text-white/50 text-sm mb-1.5 font-medium tracking-wide">Balance</p>
+                  <div className="flex items-baseline gap-1.5 relative z-10">
                     <span className="text-[#2AC3FF] font-bold text-3xl">$</span>
-                    <span className="text-white font-black text-4xl">{balance.toFixed(2)}</span>
+                    <span className="text-white font-black text-[42px] tracking-tight">{balance.toFixed(2)}</span>
                   </div>
                 </div>
 
                 {/* Tabs */}
-                <div className="flex justify-between border-b border-border-subtle mb-5 px-4">
+                <div className="flex justify-between border-b border-white/10 mb-6 px-4">
                   {['deposit', 'cashout', 'history'].map((tab) => (
                     <button
                       key={tab}
                       onClick={() => setActiveTab(tab as any)}
-                      className={`pb-3 px-2 capitalize text-sm font-bold transition-colors relative ${
-                        activeTab === tab ? 'text-white' : 'text-muted hover:text-secondary'
+                      className={`pb-3 px-3 capitalize text-[15px] font-bold transition-colors relative ${
+                        activeTab === tab ? 'text-white' : 'text-white/50 hover:text-white/80'
                       }`}
                     >
                       {tab}
                       {activeTab === tab && (
-                        <motion.div layoutId="wallet-tab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-500 rounded-t-full" />
+                        <motion.div layoutId="wallet-tab" className="absolute bottom-0 left-0 right-0 h-[3px] bg-[#2AC3FF] rounded-t-full shadow-[0_0_10px_rgba(42,195,255,0.5)]" />
                       )}
                     </button>
                   ))}
                 </div>
 
                 {/* Tab Content */}
-                <div className="px-2 pb-4">
+                <div className="px-1 pb-4">
                   {activeTab === 'deposit' && (
                     <>
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-2 gap-4">
                         {paymentMethods.map((method) => {
-                          // Special card for Payment Apps with overlapping icons - v2
+                          // Special card for Payment Apps with overlapping icons
                           if (method.id === 'ggusonepay') {
                             return (
                               <button
                                 key={method.id}
                                 onClick={() => setDepositMethod('ggusonepay')}
-                                className="bg-surface rounded-2xl p-4 flex flex-col transition-all border border-border-subtle relative overflow-hidden text-left hover:bg-surface-elevated hover:-translate-y-1"
+                                className="p-4 rounded-[20px] flex flex-col relative transition-all text-left w-full h-[110px] border bg-[#1C1F2E] border-white/5 shadow-[0_4px_20px_rgba(0,0,0,0.2)] hover:bg-[#23273A] hover:border-white/10 hover:-translate-y-0.5"
                               >
-                                <div className="flex justify-between items-start mb-3">
+                                <div className="flex justify-between items-start mb-auto w-full relative z-10">
                                   <div className="flex" style={{ gap: '-8px' }}>
                                     {[
                                       { bg: 'bg-green-500', label: '$', z: 3 },
@@ -262,49 +268,39 @@ export default function WalletModal({ isOpen, onClose, balance }: WalletModalPro
                                     ].map((a, i) => (
                                       <div
                                         key={i}
-                                        className={`w-8 h-8 rounded-full ${a.bg} flex items-center justify-center text-white font-bold text-xs border-2 border-[#12121c]`}
-                                        style={{ zIndex: a.z, marginLeft: i === 0 ? 0 : -8 }}
+                                        className={`w-9 h-9 rounded-full ${a.bg} flex items-center justify-center text-white font-bold text-xs border-2 border-[#1C1F2E] shadow-md`}
+                                        style={{ zIndex: a.z, marginLeft: i === 0 ? 0 : -10 }}
                                       >{a.label}</div>
                                     ))}
                                   </div>
-                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400">
+                                  <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                                     Fast &amp; Auto
                                   </span>
                                 </div>
-                                <div className="flex justify-between items-center mt-auto">
-                                  <span className="text-white font-medium text-sm">{method.name}</span>
+                                <div className="flex items-baseline gap-1.5 relative z-10 mt-3">
+                                  <span className="text-white font-bold text-[15px] tracking-wide">{method.name}</span>
                                 </div>
                               </button>
                             )
                           }
-                          // Special card for Cryptocurrency with overlapping coin icons
+                          // Special card for Cryptocurrency
                           if (method.id === 'crypto') {
                             return (
                               <button
                                 key={method.id}
                                 onClick={() => setDepositMethod('crypto')}
-                                className="bg-surface rounded-2xl p-4 flex flex-col transition-all border border-border-subtle relative overflow-hidden text-left hover:bg-surface-elevated hover:-translate-y-1"
+                                className="p-4 rounded-[20px] flex flex-col relative transition-all text-left w-full h-[110px] border bg-[#1C1F2E] border-white/5 shadow-[0_4px_20px_rgba(0,0,0,0.2)] hover:bg-[#23273A] hover:border-white/10 hover:-translate-y-0.5"
                               >
-                                <div className="flex justify-between items-start mb-3">
-                                  <div className="flex" >
-                                    {[
-                                      { bg: 'bg-orange-500', label: '₿', z: 3 },
-                                      { bg: 'bg-blue-500',   label: 'Ξ', z: 2 },
-                                      { bg: 'bg-slate-600',  label: '+5', z: 1 },
-                                    ].map((a, i) => (
-                                      <div
-                                        key={i}
-                                        className={`w-8 h-8 rounded-full ${a.bg} flex items-center justify-center text-white font-bold text-xs border-2 border-[#12121c]`}
-                                        style={{ zIndex: a.z, marginLeft: i === 0 ? 0 : -8 }}
-                                      >{a.label}</div>
-                                    ))}
+                                <div className="flex justify-between items-start mb-auto w-full relative z-10">
+                                  <div className="w-10 h-10 rounded-full bg-[#F7931A] flex items-center justify-center text-white font-bold text-[20px] shadow-[0_0_12px_rgba(247,147,26,0.3)]">
+                                    ₿
                                   </div>
-                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400">
+                                  <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-[#FFB800] text-black shadow-[0_0_10px_rgba(255,184,0,0.2)]">
                                     Bonus +30%
                                   </span>
                                 </div>
-                                <div className="flex justify-between items-center mt-auto">
-                                  <span className="text-white font-medium text-sm">{method.name}</span>
+                                <div className="flex items-baseline gap-1.5 relative z-10 mt-3">
+                                  <span className="text-white font-bold text-[15px] tracking-wide">{method.name}</span>
                                 </div>
                               </button>
                             )
@@ -327,46 +323,42 @@ export default function WalletModal({ isOpen, onClose, balance }: WalletModalPro
                                 toast.error('This method is coming soon!')
                               }
                             }}
-                            className={`bg-surface rounded-2xl p-4 flex flex-col transition-all border border-border-subtle relative overflow-hidden text-left
-                              ${method.soon ? 'opacity-50 cursor-not-allowed hover:bg-surface' : 'hover:bg-surface-elevated hover:-translate-y-1'}`}
+                            className={`p-4 rounded-[20px] flex flex-col relative transition-all text-left w-full h-[110px] border bg-[#1C1F2E] border-white/5 shadow-[0_4px_20px_rgba(0,0,0,0.2)] ${
+                              method.soon ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#23273A] hover:border-white/10 hover:-translate-y-0.5'
+                            }`}
                           >
-                            <div className="flex justify-between items-start mb-3">
-                              <div className={`w-8 h-8 rounded-full ${method.color} flex items-center justify-center font-bold text-sm shadow-lg overflow-hidden`}>
+                            <div className="flex justify-between items-start mb-auto w-full relative z-10">
+                              <div className={`w-10 h-10 rounded-full ${method.color} flex items-center justify-center font-bold ${method.color.includes('text-') ? '' : 'text-white'} text-lg shadow-lg overflow-hidden`}>
                                 {(method as any).logoUrl
                                   ? <img src={(method as any).logoUrl} alt={method.name} className="w-full h-full object-cover" />
                                   : method.icon
                                 }
                               </div>
                               {method.badge && !method.soon && (
-                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                                  method.badge.includes('+') ? 'bg-yellow-500/20 text-yellow-500' :
-                                  method.badge.includes('-') ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/20 text-emerald-400'
+                                <span className={`text-[10px] font-bold px-2 py-1 rounded-full border ${
+                                  method.badge.includes('+') ? 'bg-[#FFB800] text-black border-transparent shadow-[0_0_10px_rgba(255,184,0,0.2)]' :
+                                  method.badge.includes('-') ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
                                 }`}>
                                   {method.badge}
                                 </span>
                               )}
                               {method.soon && (
-                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-surface-elevated text-secondary">
+                                <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-white/5 text-white/50 border border-white/10">
                                   Soon
                                 </span>
                               )}
                             </div>
-                            <div className="flex justify-between items-center mt-auto">
-                              <span className="text-white font-medium text-sm">{method.name}</span>
+                            <div className="flex items-baseline gap-1.5 relative z-10 mt-3">
+                              <span className="text-white font-bold text-[15px] tracking-wide">{method.name}</span>
                             </div>
-                            {method.tag && !method.soon && (
-                              <div className="absolute top-4 left-10 bg-[#2AC3FF] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
-                                {method.tag}
-                              </div>
-                            )}
                           </button>
                           )
 
                         })}
                       </div>
-                      <div className="px-2 mt-3">
-                        <a href={getSmsUrl()} target="_blank" rel="noopener noreferrer" className="btn-sms-beam-rect w-full block font-bold py-3 rounded-xl text-center text-sm shadow-md transition-all">
-                          <span className="relative z-10 text-white">Contact us for more option</span>
+                      <div className="mt-4">
+                        <a href={getSmsUrl()} target="_blank" rel="noopener noreferrer" className="w-full block font-bold py-4 rounded-[16px] text-center text-[15px] shadow-[0_0_20px_rgba(37,99,235,0.3)] transition-all bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white border border-blue-400/50 hover:scale-[1.01]">
+                          Contact us for more option
                         </a>
                       </div>
                     </>
@@ -375,43 +367,43 @@ export default function WalletModal({ isOpen, onClose, balance }: WalletModalPro
                   {activeTab === 'cashout' && (
                     <div className="py-2 space-y-6">
                       <div>
-                        <h3 className="text-secondary text-sm font-medium mb-3 px-2">Cash methods</h3>
-                        <div className="grid grid-cols-2 gap-3">
-                          <button onClick={() => setCashoutMethod('chime')} className="bg-surface hover:bg-surface-elevated border border-border-subtle rounded-2xl p-6 flex flex-col items-center justify-center gap-3 transition-colors">
-                            <div className="w-12 h-12 rounded-full bg-emerald-500 flex items-center justify-center font-bold text-white text-xl">C</div>
-                            <span className="text-white font-bold text-sm">Chime</span>
+                        <h3 className="text-white/50 text-[13px] font-bold mb-3 px-2 uppercase tracking-wider">Cash methods</h3>
+                        <div className="grid grid-cols-2 gap-4">
+                          <button onClick={() => setCashoutMethod('chime')} className="p-5 rounded-[20px] flex flex-col items-center justify-center gap-3 transition-all border bg-[#1C1F2E] border-white/5 shadow-[0_4px_20px_rgba(0,0,0,0.2)] hover:bg-[#23273A] hover:border-white/10 hover:-translate-y-0.5">
+                            <div className="w-12 h-12 rounded-full bg-emerald-500 flex items-center justify-center font-bold text-white text-[22px] shadow-[0_0_15px_rgba(16,185,129,0.4)]">C</div>
+                            <span className="text-white font-bold text-[15px] tracking-wide">Chime</span>
                           </button>
-                          <button onClick={() => setCashoutMethod('cashapp')} className="bg-surface hover:bg-surface-elevated border border-border-subtle rounded-2xl p-6 flex flex-col items-center justify-center gap-3 transition-colors">
-                            <div className="w-12 h-12 rounded-full bg-green-500 flex items-center justify-center font-bold text-white text-xl">$</div>
-                            <span className="text-white font-bold text-sm">CashApp</span>
+                          <button onClick={() => setCashoutMethod('cashapp')} className="p-5 rounded-[20px] flex flex-col items-center justify-center gap-3 transition-all border bg-[#1C1F2E] border-white/5 shadow-[0_4px_20px_rgba(0,0,0,0.2)] hover:bg-[#23273A] hover:border-white/10 hover:-translate-y-0.5">
+                            <div className="w-12 h-12 rounded-full bg-green-500 flex items-center justify-center font-bold text-white text-[22px] shadow-[0_0_15px_rgba(34,197,94,0.4)]">$</div>
+                            <span className="text-white font-bold text-[15px] tracking-wide">CashApp</span>
                           </button>
                         </div>
                       </div>
                       <div>
-                        <h3 className="text-secondary text-sm font-medium mb-3 px-2">Cryptocurrency</h3>
-                        <div className="grid grid-cols-2 gap-3 mb-3">
-                          <button onClick={() => setCashoutMethod('crypto_ltc' as any)} className="bg-surface hover:bg-surface-elevated border border-border-subtle rounded-2xl p-5 flex flex-col items-center justify-center gap-2 transition-colors">
-                            <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center font-bold text-white text-xl">
-                              <svg viewBox="0 0 24 24" fill="white" className="w-6 h-6"><path d="M11.944 2.5L2 9.5l9.944 7L22 9.5l-10.056-7z"/><path d="M2 11.5l9.944 7 10.056-7L11.944 23 2 11.5z"/></svg>
+                        <h3 className="text-white/50 text-[13px] font-bold mb-3 px-2 mt-2 uppercase tracking-wider">Cryptocurrency</h3>
+                        <div className="grid grid-cols-2 gap-4 mb-4">
+                          <button onClick={() => setCashoutMethod('crypto_ltc' as any)} className="p-5 rounded-[20px] flex flex-col items-center justify-center gap-2 transition-all border bg-[#1C1F2E] border-white/5 shadow-[0_4px_20px_rgba(0,0,0,0.2)] hover:bg-[#23273A] hover:border-white/10 hover:-translate-y-0.5">
+                            <div className="w-12 h-12 rounded-full bg-[#345D9D] flex items-center justify-center font-bold text-white text-[22px] italic shadow-[0_0_15px_rgba(52,93,157,0.5)]">
+                              Ł
                             </div>
-                            <div className="text-center">
-                              <span className="text-white font-bold text-sm block">Litecoin</span>
-                              <span className="text-muted text-[10px] block">Mainnet</span>
+                            <div className="text-center mt-1">
+                              <span className="text-white font-bold text-[15px] tracking-wide block">Litecoin</span>
+                              <span className="text-white/50 text-[11px] block mt-0.5">Mainnet</span>
                             </div>
                           </button>
-                          <button onClick={() => setCashoutMethod('crypto_trx' as any)} className="bg-surface hover:bg-surface-elevated border border-border-subtle rounded-2xl p-5 flex flex-col items-center justify-center gap-2 transition-colors">
-                            <div className="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center font-bold text-white text-xl">
+                          <button onClick={() => setCashoutMethod('crypto_trx' as any)} className="p-5 rounded-[20px] flex flex-col items-center justify-center gap-2 transition-all border bg-[#1C1F2E] border-white/5 shadow-[0_4px_20px_rgba(0,0,0,0.2)] hover:bg-[#23273A] hover:border-white/10 hover:-translate-y-0.5">
+                            <div className="w-12 h-12 rounded-full bg-[#E51C23] flex items-center justify-center font-bold text-white text-[22px] shadow-[0_0_15px_rgba(229,28,35,0.4)]">
                               <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><path d="M3 12h18"/><path d="M12 3v18"/><path d="M3 12l9-9 9 9-9 9-9-9z"/></svg>
                             </div>
-                            <div className="text-center">
-                              <span className="text-white font-bold text-sm block">USDT</span>
-                              <span className="text-muted text-[10px] block">TRC-20</span>
+                            <div className="text-center mt-1">
+                              <span className="text-white font-bold text-[15px] tracking-wide block">USDT</span>
+                              <span className="text-white/50 text-[11px] block mt-0.5">TRC-20</span>
                             </div>
                           </button>
                         </div>
-                        <div className="px-2">
-                          <a href={getSmsUrl()} target="_blank" rel="noopener noreferrer" className="btn-sms-beam-rect w-full block font-bold py-3 rounded-xl text-center text-sm shadow-md transition-all">
-                            <span className="relative z-10 text-white">Contact us for more option</span>
+                        <div className="mt-4">
+                          <a href={getSmsUrl()} target="_blank" rel="noopener noreferrer" className="w-full block font-bold py-4 rounded-[16px] text-center text-[15px] shadow-[0_0_20px_rgba(37,99,235,0.3)] transition-all bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white border border-blue-400/50 hover:scale-[1.01]">
+                            Contact us for more option
                           </a>
                         </div>
                       </div>

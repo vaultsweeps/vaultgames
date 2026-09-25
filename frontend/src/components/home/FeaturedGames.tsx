@@ -54,7 +54,22 @@ export default function FeaturedGames() {
 
       try {
         const res = await publicApi.getFeaturedGames()
-        const sortedGames = res.data.data.sort((a: Game, b: Game) => (b.providerId ? 1 : 0) - (a.providerId ? 1 : 0))
+        
+        let fetchedGames = res.data.data || []
+        
+        // Inject thumbnails for specific games
+        fetchedGames = fetchedGames.map((game: Game) => {
+          const lowerName = game.name.toLowerCase()
+          if (lowerName.includes('panda master') || lowerName.includes('pandamaster')) {
+            return { ...game, thumbnailUrl: '/image.png' }
+          }
+          if (lowerName.includes('riversweeps') || lowerName.includes('river sweeps')) {
+            return { ...game, thumbnailUrl: '/images/river.png' }
+          }
+          return game
+        })
+
+        const sortedGames = fetchedGames.sort((a: Game, b: Game) => (b.providerId ? 1 : 0) - (a.providerId ? 1 : 0))
         setGames(sortedGames)
         try {
           sessionStorage.setItem('vs_featured_games', JSON.stringify({ data: sortedGames, ts: Date.now() }))
