@@ -182,7 +182,7 @@ export const createDeposit = asyncHandler(async (req: AuthRequest, res: Response
     } catch (err: any) {
       throw new AppError(err?.message || 'Failed to initialize payment gateway', 500)
     }
-  } else if (['chime', 'paypal'].includes(paymentMethod.code.toLowerCase())) {
+  } else if (['chime', 'chime2', 'paypal'].includes(paymentMethod.code.toLowerCase())) {
     const depositId = deposit.id
 
     // Send Telegram notification immediately for Chime/PayPal

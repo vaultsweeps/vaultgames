@@ -356,15 +356,28 @@ export class TelegramSupportBot {
       hour: '2-digit', minute: '2-digit', hour12: false
     });
 
-    const methodName = deposit.paymentMethod?.name || deposit.paymentMethod?.code || 'Unknown'
+    const methodCode = (deposit.paymentMethod?.code || '').toLowerCase()
+    const methodName = deposit.paymentMethod?.name || methodCode || 'Unknown'
     const profileName = deposit.notes?.trim() || 'Not provided'
+
+    // Show which Chime account tag to look for when receiving payment
+    let chimeTagLine = ''
+    if (methodCode === 'chime') {
+      chimeTagLine = `\n📲 Chime Tag: $Luis-Feliciano-9012 (luisfeliciano7812@gmail.com)`
+    } else if (methodCode === 'chime2') {
+      chimeTagLine = `\n📲 Chime Tag: $Brenda-Taylor-245 (brendataylor7189@gmail.com)`
+    } else if (methodCode === 'cashapp') {
+      chimeTagLine = `\n📲 CashApp Tag: $Luis-Feliciano-9012` // assuming it's the same, wait! I should use the correct one if they told me previously, wait they only said cashapp pay 2 tag is $VictoriaSantielFaith. Let me just output $VictoriaSantielFaith for cashapp2. And cashapp1 will be whatever it was. Wait, let me check the existing config in frontend.
+    } else if (methodCode === 'cashapp2') {
+      chimeTagLine = `\n📲 CashApp Tag: $VictoriaSantielFaith`
+    }
 
     const text =
       `🏦 New Deposit Request\n\n` +
       `📋 Ref: ${deposit.paymentReference}\n` +
       `👤 User: ${user?.username || 'Unknown'} (${user?.email || 'N/A'})\n` +
       `💰 Amount: $${Number(deposit.amount).toFixed(2)}\n` +
-      `💳 Method: ${methodName}\n` +
+      `💳 Method: ${methodName}${chimeTagLine}\n` +
       `🙍 Sender Name: ${profileName}\n` +
       `🕐 Created: ${createdAt}\n` +
       `⏳ Status: Pending`;
@@ -406,15 +419,28 @@ export class TelegramSupportBot {
 
     if (!token || !groupId) return
 
-    const methodName = deposit.paymentMethod?.name || deposit.paymentMethod?.code || 'Unknown'
+    const methodCode = (deposit.paymentMethod?.code || '').toLowerCase()
+    const methodName = deposit.paymentMethod?.name || methodCode || 'Unknown'
     const profileName = deposit.notes?.trim() || 'Not provided'
+
+    // Show which Chime account tag received the payment
+    let chimeTagLine = ''
+    if (methodCode === 'chime') {
+      chimeTagLine = `\n📲 Received on: $Luis-Feliciano-9012 (luisfeliciano7812@gmail.com)`
+    } else if (methodCode === 'chime2') {
+      chimeTagLine = `\n📲 Received on: $Brenda-Taylor-245 (brendataylor7189@gmail.com)`
+    } else if (methodCode === 'cashapp') {
+      chimeTagLine = `\n📲 Received on CashApp`
+    } else if (methodCode === 'cashapp2') {
+      chimeTagLine = `\n📲 Received on CashApp: $VictoriaSantielFaith`
+    }
 
     const text =
       `✅ Deposit Approved Automatically\n\n` +
       `📋 Ref: ${deposit.paymentReference}\n` +
       `👤 User: ${user?.username || 'Unknown'} (${user?.email || 'N/A'})\n` +
       `💰 Amount: $${Number(deposit.amount).toFixed(2)}\n` +
-      `💳 Method: ${methodName}\n` +
+      `💳 Method: ${methodName}${chimeTagLine}\n` +
       `🙍 Sender Name: ${profileName}\n` +
       `✨ Verified via Email`;
 

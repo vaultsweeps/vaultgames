@@ -287,10 +287,6 @@ export default function CryptoDepositModal({ isOpen, onClose, amount: propAmount
             {/* ── STEP 1: Coin Selection ── */}
             {step === 'select_coin' && (
               <div className="space-y-6">
-                <p className="text-[14px] text-white/60 px-1">
-                  Choose which cryptocurrency you'd like to deposit with
-                </p>
-
                 {loadingCoins ? (
                   <div className="flex flex-col items-center justify-center py-10 space-y-4">
                     <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
@@ -298,6 +294,30 @@ export default function CryptoDepositModal({ isOpen, onClose, amount: propAmount
                   </div>
                 ) : (
                   <div className="space-y-6">
+                    {/* Big Crypto Bonus Banner */}
+                    <div className="relative w-full rounded-2xl overflow-hidden border border-blue-500/30 bg-gradient-to-r from-[#0c1638] to-[#121c45] p-5 shadow-[0_0_30px_rgba(37,99,235,0.15)] flex flex-col gap-2">
+                      <div className="absolute top-0 right-0 w-64 h-full bg-gradient-to-l from-blue-500/10 to-transparent pointer-events-none" />
+                      <div className="absolute -top-10 -right-10 w-40 h-40 bg-blue-500/20 rounded-full blur-3xl pointer-events-none" />
+                      <h3 className="text-white font-black text-2xl leading-tight relative z-10 w-[70%]">
+                        Get Extra <span className="text-[#FFD700] drop-shadow-[0_0_10px_rgba(255,215,0,0.5)]">20% Bonus</span><br />
+                        on Crypto Deposit
+                      </h3>
+                      <p className="text-blue-200 text-xs mt-1 relative z-10">Deposit now and get 20% more on every coin!</p>
+                      
+                      {/* Decorative elements to mimic the image */}
+                      <div className="absolute top-2 right-4 flex items-center justify-center">
+                        <div className="relative w-24 h-24 flex items-center justify-center">
+                          <span className="text-[#FFD700] font-black text-5xl drop-shadow-[0_4px_10px_rgba(255,215,0,0.4)] italic">20<span className="text-3xl">%</span></span>
+                          <div className="absolute -bottom-2 bg-blue-600 text-white text-[9px] font-bold px-3 py-0.5 rounded-full uppercase tracking-wider shadow-lg border border-blue-400">Bonus</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <p className="text-white font-bold text-lg px-1">Select Cryptocurrency</p>
+                    <p className="text-[14px] text-white/60 px-1 -mt-4">
+                      Choose which cryptocurrency you'd like to deposit with
+                    </p>
+
                     <div className="grid grid-cols-2 gap-4">
                       {/* Litecoin — RECOMMENDED featured card */}
                       <button
@@ -316,8 +336,8 @@ export default function CryptoDepositModal({ isOpen, onClose, amount: propAmount
                           <div className="w-11 h-11 rounded-full bg-[#345D9D] flex items-center justify-center shadow-[0_0_12px_rgba(52,93,157,0.5)]">
                             <span className="text-white font-bold text-[22px] italic drop-shadow-md">Ł</span>
                           </div>
-                          <div className="bg-[#FFB800] text-black text-[10px] font-bold px-2.5 py-1 rounded-full shadow-[0_0_10px_rgba(255,184,0,0.2)]">
-                            POPULAR
+                          <div className="bg-[#FFB800] text-black text-[10px] font-bold px-2.5 py-1 rounded-full shadow-[0_0_10px_rgba(255,184,0,0.2)] flex items-center gap-1">
+                            <span className="text-xs">🎁</span> +20% Bonus
                           </div>
                         </div>
                         
@@ -341,6 +361,9 @@ export default function CryptoDepositModal({ isOpen, onClose, amount: propAmount
                           <div className="w-11 h-11 rounded-full bg-[#E51C23] flex items-center justify-center shadow-[0_0_12px_rgba(229,28,35,0.3)]">
                             <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><path d="M3 12h18"/><path d="M12 3v18"/><path d="M3 12l9-9 9 9-9 9-9-9z"/></svg>
                           </div>
+                          <div className="bg-[#FFB800] text-black text-[10px] font-bold px-2.5 py-1 rounded-full shadow-[0_0_10px_rgba(255,184,0,0.2)] flex items-center gap-1">
+                            <span className="text-xs">🎁</span> +20% Bonus
+                          </div>
                         </div>
                         
                         <div className="flex items-baseline gap-1.5 relative z-10 mt-3">
@@ -362,6 +385,9 @@ export default function CryptoDepositModal({ isOpen, onClose, amount: propAmount
                         <div className="flex justify-between items-start mb-auto w-full relative z-10">
                           <div className="w-11 h-11 rounded-full bg-[#F7931A] flex items-center justify-center shadow-[0_0_12px_rgba(247,147,26,0.3)]">
                             <span className="text-white font-bold text-[22px] drop-shadow-md">₿</span>
+                          </div>
+                          <div className="bg-[#FFB800] text-black text-[10px] font-bold px-2.5 py-1 rounded-full shadow-[0_0_10px_rgba(255,184,0,0.2)] flex items-center gap-1">
+                            <span className="text-xs">🎁</span> +20% Bonus
                           </div>
                         </div>
                         
@@ -387,6 +413,9 @@ export default function CryptoDepositModal({ isOpen, onClose, amount: propAmount
                               <path d="M11.944 2.5L2 9.5l9.944 7L22 9.5l-10.056-7z"/>
                               <path d="M2 11.5l9.944 7 10.056-7L11.944 23 2 11.5z"/>
                             </svg>
+                          </div>
+                          <div className="bg-[#FFB800] text-black text-[10px] font-bold px-2.5 py-1 rounded-full shadow-[0_0_10px_rgba(255,184,0,0.2)] flex items-center gap-1">
+                            <span className="text-xs">🎁</span> +20% Bonus
                           </div>
                         </div>
                         

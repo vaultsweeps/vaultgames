@@ -410,23 +410,28 @@ export const approveDeposit = asyncHandler(async (req: AuthRequest, res: Respons
   const id = req.params.id as string
   const { notes } = req.body
 
-  const deposit = await prisma.deposit.findUnique({ where: { id }, include: { user: true } })
+  const deposit = await prisma.deposit.findUnique({ where: { id }, include: { user: true, paymentMethod: true } })
   if (!deposit) throw new AppError('Deposit not found', 404)
   if (deposit.status === 'approved') throw new AppError('Deposit already approved', 400)
 
+  let finalAmount = deposit.amount;
+  if (deposit.paymentMethod?.code?.toLowerCase() === 'crypto') {
+    finalAmount = finalAmount * 1.2;
+  }
+
   await prisma.deposit.update({
     where: { id },
-    data: { status: 'approved', notes, approvedBy: req.user!.id, approvedAt: new Date() }
+    data: { status: 'approved', amount: finalAmount, notes, approvedBy: req.user!.id, approvedAt: new Date() }
   })
 
   createNotification(deposit.userId, {
     title: 'Deposit Approved! ✓',
-    message: `Your deposit of $${deposit.amount} has been approved and is ready to use.`,
+    message: `Your deposit of $${finalAmount.toFixed(2)} has been approved and is ready to use.`,
     type: 'success', link: '/dashboard/deposits'
   })
 
   await prisma.transactionLog.create({
-    data: { type: 'deposit_approved', entityId: id, userId: req.user!.id, amount: deposit.amount, status: 'approved' }
+    data: { type: 'deposit_approved', entityId: id, userId: req.user!.id, amount: finalAmount, status: 'approved' }
   })
 
   // Process potential referral bonus

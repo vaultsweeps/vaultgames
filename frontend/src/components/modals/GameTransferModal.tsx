@@ -59,7 +59,7 @@ const GameTransferModal = React.memo(function GameTransferModal({
   } else if (totalDeposited >= 16 && totalDeposited <= 50) {
     minCashout = totalDeposited * 3; maxCashout = totalDeposited * 15;
   } else if (totalDeposited > 50) {
-    minCashout = totalDeposited * 3; maxCashout = 1000;
+    minCashout = totalDeposited * 3; maxCashout = 2000;
   }
 
   // Full game balance withdrawn from provider on cashout
@@ -409,7 +409,7 @@ const GameTransferModal = React.memo(function GameTransferModal({
                         { deposit: '$16–$25',  min: 'X3',   max: 'X15'   },
                         { deposit: '$26–$35',  min: 'X3',   max: 'X15'   },
                         { deposit: '$36–$50',  min: 'X3',   max: 'X15'   },
-                        { deposit: '$50+',     min: 'X3',   max: '$1000' },
+                        { deposit: '$50+',     min: 'X3',   max: '$2000' },
                       ].map((row, i) => (
                         <tr key={i} className={`${i % 2 === 0 ? 'bg-white/[0.02]' : 'bg-transparent'} hover:bg-[#2AC3FF]/5 transition-colors`}>
                           <td className="px-4 py-3 text-white font-semibold">{row.deposit}</td>
@@ -428,8 +428,12 @@ const GameTransferModal = React.memo(function GameTransferModal({
                     <p className="text-white font-bold text-lg">$5</p>
                   </div>
                   <div className="flex-1 bg-[#2AC3FF]/10 border border-[#2AC3FF]/20 rounded-xl p-3">
-                    <p className="text-[#2AC3FF] text-xs font-mono font-bold uppercase tracking-wider mb-1">Max Cashout / Day</p>
-                    <p className="text-white font-bold text-lg">$1,000</p>
+                    <p className="text-[#2AC3FF] text-xs font-mono font-bold uppercase tracking-wider mb-1">Max Per Transaction</p>
+                    <p className="text-white font-bold text-lg">$2,000</p>
+                  </div>
+                  <div className="flex-1 bg-green-500/10 border border-green-500/20 rounded-xl p-3">
+                    <p className="text-green-400 text-xs font-mono font-bold uppercase tracking-wider mb-1">Daily Withdrawals</p>
+                    <p className="text-white font-bold text-lg">Unlimited</p>
                   </div>
                 </div>
 

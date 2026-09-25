@@ -14,11 +14,12 @@ const GgusOnePayModal = dynamic(() => import('@/components/modals/GgusOnePayModa
 // Method icon/color map
 const METHOD_META: Record<string, { icon: string; color: string; desc: string; logoUrl?: string }> = {
   cashapp:    { icon: '💸', color: '#00D632', desc: 'Send via Cash App — fast & easy' },
-  chime:      { icon: '🏦', color: '#00CFAA', desc: 'Deposit via Chime bank' },
+  chime:      { icon: '🏦', color: '#00CFAA', desc: 'Deposit via Chime 1 ($Luis-Feliciano-9012)' },
+  chime2:     { icon: '🏦', color: '#0EA5E9', desc: 'Deposit via Chime 2 ($Brenda-Taylor-245)' },
   crypto:     { icon: '₿',  color: '#F7931A', desc: 'USDT, BTC, ETH & 100+ cryptocurrencies' },
   bitcoin:    { icon: '₿',  color: '#F7931A', desc: 'Bitcoin payments' },
   usdt:       { icon: '₮',  color: '#26A17B', desc: 'Tether stablecoin (TRC20)' },
-  bank:       { icon: '🏛️', color: '#00D4FF', desc: 'Bank wire transfer' },
+  bank:       { icon: '🏙️', color: '#00D4FF', desc: 'Bank wire transfer' },
   apple:      { icon: '', color: '#000000', desc: 'Apple Pay — tap & pay instantly', logoUrl: 'https://i.pinimg.com/originals/ae/85/92/ae859253f4141e38711d2c159a53649e.jpg' },
   card:       { icon: '💳', color: '#2563EB', desc: 'Debit card — pay securely' },
   dollarpay:  { icon: '💵', color: '#22C55E', desc: 'Instant deposit via DollarPay secure link — auto-credited' },
@@ -53,7 +54,7 @@ function DepositsContent() {
   const [depositHistory, setDepositHistory] = useState<any[]>([])
   const [historyLoading, setHistoryLoading] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [chimePayPalMethod, setChimePayPalMethod] = useState<'chime'|'paypal'|'cashapp'|null>(null)
+  const [chimePayPalMethod, setChimePayPalMethod] = useState<'chime'|'chime2'|'paypal'|'cashapp'|null>(null)
   const [cryptoModalOpen, setCryptoModalOpen] = useState(false)
   const [ggusOnePayModalOpen, setGgusOnePayModalOpen] = useState(false)
   const [ggusOnePayPreset, setGgusOnePayPreset] = useState<string | undefined>(undefined)
@@ -313,7 +314,7 @@ function DepositsContent() {
                               ))}
                             </div>
                             <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
-                              Bonus +30%
+                              Bonus +20%
                             </span>
                           </div>
                           <h3 className="text-white font-bold text-lg mb-1 relative z-10">Cryptocurrency</h3>
@@ -329,8 +330,8 @@ function DepositsContent() {
                             toast.error('This method is coming soon!')
                             return
                           }
-                          if (['chime', 'paypal', 'cashapp'].includes(m.code.toLowerCase())) {
-                            setChimePayPalMethod(m.code.toLowerCase() as 'chime' | 'paypal' | 'cashapp')
+                          if (['chime', 'chime2', 'paypal', 'cashapp'].includes(m.code.toLowerCase())) {
+                            setChimePayPalMethod(m.code.toLowerCase() as 'chime' | 'chime2' | 'paypal' | 'cashapp')
                           } else {
                             // dollarpay and crypto go through the amount step
                             setSelectedMethod(m)

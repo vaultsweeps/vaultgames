@@ -227,6 +227,7 @@ export const adminApi = {
   getPaymentMethods: () => apiClient.get('/admin/payment-methods'),
   createPaymentMethod: (data: object) => apiClient.post('/admin/payment-methods', data),
   updatePaymentMethod: (id: string, data: object) => apiClient.put(`/admin/payment-methods/${id}`, data),
+  togglePaymentMethod: (id: string) => apiClient.patch(`/admin/payment-methods/${id}/toggle`),
   deletePaymentMethod: (id: string) => apiClient.delete(`/admin/payment-methods/${id}`),
 
   // Settings & CMS
