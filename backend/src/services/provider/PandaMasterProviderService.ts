@@ -58,10 +58,10 @@ export class PandaMasterProviderService implements ProviderAdapter {
 
     this.http = axios.create({
       baseURL: this.provider.apiBaseUrl,
-      timeout: this.provider.requestTimeout || 15_000,
-      // IIS-backed endpoints require Content-Length even on empty POST bodies (HTTP 411)
+      timeout: this.provider.requestTimeout || 20_000,
+      maxRedirects: 5,
       // Also ignore SSL cert errors — pandamaster.vip cert has altname mismatch
-      headers: { 'Content-Length': '0', 'Accept-Language': 'en-US,en;q=0.9' },
+      headers: { 'Accept-Language': 'en-US,en;q=0.9', 'Content-Type': 'application/x-www-form-urlencoded' },
       httpsAgent: new https.Agent({ rejectUnauthorized: false }),
     });
   }
@@ -129,18 +129,23 @@ export class PandaMasterProviderService implements ProviderAdapter {
       console.info(`[PandaMaster] → agentLogin | agent: ${this.agentName} | time: ${time}`);
 
       try {
-        const res = await this.http.post(this.servicePath, null, {
-          params: {
-            action:      'agentLogin',
-            agentName:   this.agentName,
-            agentPasswd: this.md5(this.provider.secretKey),
-            time,
-          },
+        const body = new URLSearchParams({
+          action:      'agentLogin',
+          agentName:   this.agentName,
+          agentPasswd: this.md5(this.provider.secretKey),
+          time,
         });
+        const res = await this.http.post(this.servicePath, body.toString());
 
-        console.info(`[PandaMaster] ← agentLogin | ${JSON.stringify(res.data)}`);
+        console.info(`[PandaMaster] ← agentLogin | ${typeof res.data === 'string' ? res.data.substring(0,200) : JSON.stringify(res.data)}`);
 
         const d = res.data;
+        
+        // If server returned HTML, the URL/endpoint is wrong
+        if (typeof d === 'string' && (d.includes('<!doctype') || d.includes('<html'))) {
+          throw new AppError(`Panda Master config error: Server returned HTML instead of JSON. Check the API Base URL in admin panel.`, 500);
+        }
+        
         if (String(d.code) !== '200') {
           throw new AppError(`Panda Master login failed: ${d.msg ?? JSON.stringify(d)}`, 400);
         }
@@ -195,13 +200,13 @@ export class PandaMasterProviderService implements ProviderAdapter {
     const signInput = this.agentName.toLowerCase() + time + this.agentKey.toLowerCase();
     const sign      = this.md5(signInput);
 
-    const params   = { agentName: this.agentName, time, sign, ...payload };
-    const endpoint = `${this.servicePath}?action=${action}`;
+    const params   = { agentName: this.agentName, time, sign, action, ...payload };
+    const body     = new URLSearchParams(params as Record<string, string>);
 
     console.info(`[PandaMaster] → ${action} | time: ${time} | sign: ${sign}`);
 
     try {
-      const res = await this.http.post(endpoint, null, { params });
+      const res = await this.http.post(this.servicePath, body.toString());
       const { code, msg, ...data } = res.data;
       const codeStr = String(code);
 
@@ -218,14 +223,14 @@ export class PandaMasterProviderService implements ProviderAdapter {
         }
 
         await ProviderLogService.logRequest(
-          this.provider.id, userId, endpoint, params, res.data,
+          this.provider.id, userId, this.servicePath, params, res.data,
           parseInt(codeStr, 10) || 400, errMsg,
         );
         throw new AppError(`Provider Error: ${errMsg}`, 400);
       }
 
       await ProviderLogService.logRequest(
-        this.provider.id, userId, endpoint, params, res.data, 200, null,
+        this.provider.id, userId, this.servicePath, params, res.data, 200, null,
       );
 
       return data;

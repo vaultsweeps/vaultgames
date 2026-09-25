@@ -90,7 +90,18 @@ export default function GameDetailsPage() {
           publicApi.getGameDetails(id as string),
           publicApi.getSettings().catch(() => ({ data: { data: {} } }))
         ])
-        setGame(gameRes.data.data)
+        
+        let fetchedGame = gameRes.data.data
+        if (fetchedGame) {
+          const lowerName = fetchedGame.name.toLowerCase()
+          if (lowerName.includes('panda master') || lowerName.includes('pandamaster')) {
+            fetchedGame.thumbnailUrl = '/image.png'
+          } else if (lowerName.includes('riversweeps') || lowerName.includes('river sweeps')) {
+            fetchedGame.thumbnailUrl = '/images/river.png'
+          }
+        }
+        
+        setGame(fetchedGame)
         setSettings(settingsRes.data.data || {})
         setLoading(false) // Unblock UI immediately
 

@@ -58,7 +58,22 @@ export default function GamesPage() {
         gamesApi.getAll(),
         publicApi.getSettings().catch(() => ({ data: { data: {} } })),
       ])
-      setGames(gamesRes.data.data || [])
+      
+      const fetchedGames = gamesRes.data.data || []
+      
+      // Inject thumbnails for specific games
+      const processedGames = fetchedGames.map((game: Game) => {
+        const lowerName = game.name.toLowerCase()
+        if (lowerName.includes('panda master') || lowerName.includes('pandamaster')) {
+          return { ...game, thumbnailUrl: '/image.png' }
+        }
+        if (lowerName.includes('riversweeps') || lowerName.includes('river sweeps')) {
+          return { ...game, thumbnailUrl: '/images/river.png' }
+        }
+        return game
+      })
+
+      setGames(processedGames)
       setSettings(settingsRes.data.data || {})
     } catch {
       toast.error('Failed to load games')

@@ -10,6 +10,7 @@ import { MafiaProviderService } from './MafiaProviderService';
 import { PandaMasterProviderService } from './PandaMasterProviderService';
 import { RiversweepsProviderService } from './RiversweepsProviderService';
 import { ProviderAdapter } from './ProviderAdapter';
+import { Yolo777ProviderService } from './Yolo777ProviderService';
 import prisma from '../../lib/prisma';
 import { Provider } from '@prisma/client';
 import { resolveGameId } from '../../utils/gameResolver';
@@ -45,6 +46,9 @@ export function createProviderService(provider: Provider): ProviderAdapter {
   }
   if (name.includes('riversweeps') || name.includes('river sweeps') || name.includes('river_sweeps')) {
     return new RiversweepsProviderService(provider);
+  }
+  if (name.includes('yolo777') || name.includes('yolo 777') || name.includes('g7s')) {
+    return new Yolo777ProviderService(provider);
   }
   return new ProviderService(provider);
 }

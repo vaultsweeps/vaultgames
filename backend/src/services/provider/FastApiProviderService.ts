@@ -256,17 +256,17 @@ export class FastApiProviderService implements ProviderAdapter {
 
   /**
    * Sanitize userId → a valid UltraPanda account name.
-   * ACTUAL API LIMITS (from API error response): 7–20 chars, only a-z 0-9 (lowercase).
+   * ACTUAL API LIMITS (from API documentation): 3–16 chars, only a-z 0-9 (lowercase).
    */
   private getProviderAccount(userId: string): string {
     // Remove any character that is not a letter or digit
     let clean = userId.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-    // Pad to minimum 7 chars
-    if (clean.length < 7) {
-      clean = clean.padEnd(7, 'x');
+    // Pad to minimum 3 chars
+    if (clean.length < 3) {
+      clean = clean.padEnd(3, 'x');
     }
-    // Truncate to 20 chars max
-    return clean.substring(0, 20);
+    // Truncate to 16 chars max
+    return clean.substring(0, 16);
   }
 
   /**
@@ -385,8 +385,13 @@ export class FastApiProviderService implements ProviderAdapter {
           return true;
         }
 
-        // Code 20 = wrong old password — try next candidate
-        if (e.message?.includes('Code: 20') || e.message?.includes('Password error')) {
+        // Code 20 = wrong old password
+        // Code 3, 8, 9 = Parameter/Format errors often returned if the old pass format is completely invalid
+        if (
+          e.message?.includes('Code: 20') || e.message?.includes('Password error') ||
+          e.message?.includes('Code: 3') || e.message?.includes('Parameter Error') ||
+          e.message?.includes('Code: 9') || e.message?.includes('Code: 8')
+        ) {
           console.warn(`[FastApiProviderService] Old password "${oldPass}" rejected for "${providerAccount}", trying next...`);
           continue;
         }
