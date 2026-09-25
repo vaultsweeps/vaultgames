@@ -11,7 +11,7 @@ import { depositApi, publicApi } from '@/lib/api'
 interface ChimePayPalDepositModalProps {
   isOpen: boolean
   onClose: () => void
-  method: 'chime' | 'paypal' | 'cashapp' | null
+  method: 'chime' | 'chime2' | 'paypal' | 'cashapp' | 'cashapp2' | null
 }
 
 export default function ChimePayPalDepositModal({ isOpen, onClose, method }: ChimePayPalDepositModalProps) {
@@ -69,7 +69,7 @@ export default function ChimePayPalDepositModal({ isOpen, onClose, method }: Chi
   const handleISent = async () => {
     const numAmount = parseFloat(amount)
     if (!numAmount || numAmount <= 0) return toast.error('Please enter a valid amount')
-    if (!profileName.trim()) return toast.error(`Please enter your ${method === 'chime' ? 'Chime' : method === 'cashapp' ? 'CashApp' : 'PayPal'} name`)
+    if (!profileName.trim()) return toast.error(`Please enter your ${method === 'chime' || method === 'chime2' ? 'Chime' : method === 'cashapp' ? 'CashApp' : 'PayPal'} name`)
 
     setStatus('verifying')
     setStep(3)
@@ -118,14 +118,22 @@ export default function ChimePayPalDepositModal({ isOpen, onClose, method }: Chi
 
   if (!method) return null;
 
-  const config = {
+  const config: Record<string, any> = {
     chime: {
-        name: 'Chime',
+        name: 'Chime 1',
         color: 'bg-emerald-500',
         text: 'text-emerald-500',
-        recipient: '$Luis-Feliciano-114',
-        linkUrl: 'https://www.chime.com/r/Luis-Feliciano-114/?c=q',
-        qrUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0b/Chime_company_logo.svg/1200px-Chime_company_logo.svg.png' // Just placeholder if we had QR we'd put here
+        recipient: '$Luis-Feliciano-9012',
+        linkUrl: 'https://www.chime.com/r/Luis-Feliciano-9012/?c=q',
+        qrUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0b/Chime_company_logo.svg/1200px-Chime_company_logo.svg.png'
+    },
+    chime2: {
+        name: 'Chime 2',
+        color: 'bg-teal-500',
+        text: 'text-teal-500',
+        recipient: '$Brenda-Taylor-245',
+        linkUrl: 'https://www.chime.com/r/Brenda-Taylor-245/?c=q',
+        qrUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0b/Chime_company_logo.svg/1200px-Chime_company_logo.svg.png'
     },
     paypal: {
         name: 'PayPal',
@@ -136,11 +144,19 @@ export default function ChimePayPalDepositModal({ isOpen, onClose, method }: Chi
         qrUrl: 'https://upload.wikimedia.org/wikipedia/commons/b/b5/PayPal.svg'
     },
     cashapp: {
-        name: 'CashApp',
+        name: 'CashApp 1',
         color: 'bg-green-500',
         text: 'text-green-500',
         recipient: '$JacobJonesAaron',
         linkUrl: 'https://cash.app/$JacobJonesAaron?qr=1',
+        qrUrl: ''
+    },
+    cashapp2: {
+        name: 'CashApp 2',
+        color: 'bg-lime-500',
+        text: 'text-lime-500',
+        recipient: '$VictoriaSantielFaith',
+        linkUrl: 'https://cash.app/$VictoriaSantielFaith?qr=1',
         qrUrl: ''
     }
   }

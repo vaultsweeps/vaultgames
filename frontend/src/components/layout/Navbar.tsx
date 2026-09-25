@@ -496,48 +496,59 @@ export default function Navbar() {
         </AnimatePresence>
       </button>
 
+
       {/* Main Nav Pill */}
       <div
-        className="relative border border-white/10 rounded-[28px] px-1.5 py-1.5 flex items-center gap-1.5 pointer-events-auto shadow-[0_8px_32px_rgba(0,0,0,0.6)] bg-gradient-to-b from-[#14152c]/95 to-[#090914]/95 backdrop-blur-xl"
+        className="relative border border-white/10 rounded-[28px] px-1.5 py-1.5 flex items-center gap-1 pointer-events-auto shadow-[0_8px_32px_rgba(0,0,0,0.6)] bg-[#18192e]/95 backdrop-blur-xl"
         style={{ contain: 'layout style' }}
       >
-        {/* Inner subtle glow for the pill */}
-        <div className="absolute inset-0 rounded-[28px] shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] pointer-events-none" />
+        {/* Inner rim highlight */}
+        <div className="absolute inset-0 rounded-[28px] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] pointer-events-none" />
 
-        {/* Home */}
+        {/* Home — matches photo: white house icon */}
         <Link href="/" aria-label="Home" className={`relative flex flex-col items-center justify-center w-[50px] h-[50px] rounded-2xl group overflow-hidden ${
           pathname === '/'
-            ? 'bg-gradient-to-b from-indigo-500/20 to-purple-500/10 text-indigo-300 shadow-[inset_0_0_12px_rgba(99,102,241,0.2)] border border-indigo-500/30'
-            : 'text-white/50 hover:text-white/90 hover:bg-white/5 border border-transparent'
+            ? 'bg-white/10 text-white border border-white/20 shadow-[inset_0_0_12px_rgba(255,255,255,0.08)]'
+            : 'text-white/45 hover:text-white/80 hover:bg-white/5 border border-transparent'
         }`} style={{ transition: 'background-color 0.2s ease, color 0.2s ease' }}>
-          <Home className="w-[22px] h-[22px] z-10" strokeWidth={pathname === '/' ? 2.5 : 2} />
-          {pathname === '/' && <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-indigo-400 rounded-full shadow-[0_0_8px_rgba(129,140,248,0.9)]" />}
+          <Home className="w-[21px] h-[21px] z-10" strokeWidth={pathname === '/' ? 2.5 : 1.8} />
+          {pathname === '/' && <span className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-1 h-1 bg-white rounded-full" />}
         </Link>
 
-        {/* Games */}
+        {/* Games — logo icon */}
         <Link href="/games" aria-label="Games" className={`relative flex flex-col items-center justify-center w-[50px] h-[50px] rounded-2xl ${
           pathname.includes('/games')
-            ? 'bg-gradient-to-b from-blue-500/20 to-cyan-500/10 shadow-[inset_0_0_12px_rgba(59,130,246,0.2)] border border-blue-500/30'
+            ? 'bg-white/10 border border-white/20'
             : 'hover:bg-white/5 border border-transparent'
         }`} style={{ transition: 'background-color 0.2s ease' }}>
           <div className="w-[30px] h-[30px] rounded-lg flex items-center justify-center overflow-hidden z-10">
-            <Image src="/images/vault-sweeps-logo.png" alt="Games" width={32} height={32} className={`w-full h-full object-contain drop-shadow-[0_0_4px_rgba(255,255,255,0.2)] ${!pathname.includes('/games') && 'opacity-70 hover:opacity-100'}`} style={{ transition: 'opacity 0.2s ease' }} />
+            <Image src="/images/vault-sweeps-logo.png" alt="Games" width={32} height={32} className={`w-full h-full object-contain ${!pathname.includes('/games') && 'opacity-60 hover:opacity-100'}`} style={{ transition: 'opacity 0.2s ease' }} />
           </div>
-          {pathname.includes('/games') && <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-blue-400 rounded-full shadow-[0_0_8px_rgba(96,165,250,0.9)]" />}
+          {pathname.includes('/games') && <span className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-1 h-1 bg-white rounded-full" />}
         </Link>
 
-        {/* Bonuses */}
+        {/* Bonuses — gift icon, matches photo white gift */}
         <Link href="/bonuses" aria-label="Bonuses" className={`relative flex flex-col items-center justify-center w-[50px] h-[50px] rounded-2xl ${
           pathname.includes('/bonuses')
-            ? 'bg-gradient-to-b from-amber-500/20 to-orange-500/10 text-amber-300 shadow-[inset_0_0_12px_rgba(245,158,11,0.2)] border border-amber-500/30'
-            : 'text-white/50 hover:text-white/90 hover:bg-white/5 border border-transparent'
+            ? 'bg-white/10 text-white border border-white/20'
+            : 'text-white/45 hover:text-white/80 hover:bg-white/5 border border-transparent'
         }`} style={{ transition: 'background-color 0.2s ease, color 0.2s ease' }}>
-          <Gift className="w-[22px] h-[22px] z-10" strokeWidth={pathname.includes('/bonuses') ? 2.5 : 2} />
-          {pathname.includes('/bonuses') && <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-amber-400 rounded-full shadow-[0_0_8px_rgba(251,191,36,0.9)]" />}
+          <Gift className="w-[21px] h-[21px] z-10" strokeWidth={pathname.includes('/bonuses') ? 2.5 : 1.8} />
+          {pathname.includes('/bonuses') && <span className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-1 h-1 bg-white rounded-full" />}
+        </Link>
+
+        {/* Refer & Earn — people icon, matches photo */}
+        <Link href="/dashboard/invite" aria-label="Refer & Earn" className={`relative flex flex-col items-center justify-center w-[50px] h-[50px] rounded-2xl ${
+          pathname.includes('/invite')
+            ? 'bg-white/10 text-white border border-white/20'
+            : 'text-white/45 hover:text-white/80 hover:bg-white/5 border border-transparent'
+        }`} style={{ transition: 'background-color 0.2s ease, color 0.2s ease' }}>
+          <Users className="w-[21px] h-[21px] z-10" strokeWidth={pathname.includes('/invite') ? 2.5 : 1.8} />
+          {pathname.includes('/invite') && <span className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-1 h-1 bg-white rounded-full" />}
         </Link>
 
         {/* Divider */}
-        <div className="w-px h-8 bg-gradient-to-b from-transparent via-white/15 to-transparent mx-0.5" />
+        <div className="w-px h-7 bg-gradient-to-b from-transparent via-white/12 to-transparent mx-0.5" />
 
         {/* Contact FAB inside pill */}
         <div className="w-[50px] h-[50px] flex items-center justify-center">

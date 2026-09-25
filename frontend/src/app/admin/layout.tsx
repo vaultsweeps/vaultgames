@@ -24,6 +24,7 @@ const NAV_ITEMS = [
   { href: '/admin/support', icon: HelpCircle, label: 'Support' },
   { href: '/admin/reports', icon: BarChart3, label: 'Reports' },
   { href: '/admin/providers', icon: Server, label: 'Providers' },
+  { href: '/admin/payment-methods', icon: CreditCard, label: 'Payment Methods' },
   { href: '/admin/game-balance', icon: TrendingUp, label: 'Game Balances' },
   { href: '/admin/settings', icon: Settings, label: 'Settings' },
 ]

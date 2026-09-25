@@ -93,7 +93,7 @@ export default function CashoutRulesModal({ isOpen, onClose }: CashoutRulesModal
                   <tr className="hover:bg-white/5 transition-colors">
                     <td className="px-6 py-3.5 text-white font-bold">$50+</td>
                     <td className="px-6 py-3.5">X3</td>
-                    <td className="px-6 py-3.5">$1000</td>
+                    <td className="px-6 py-3.5">$2000</td>
                   </tr>
                 </tbody>
               </table>
@@ -103,7 +103,8 @@ export default function CashoutRulesModal({ isOpen, onClose }: CashoutRulesModal
             <div className="mt-4 bg-white/5 rounded-xl p-4 flex flex-col sm:flex-row items-center sm:items-start justify-between gap-4 border border-white/5">
               <div className="space-y-1 text-sm whitespace-nowrap">
                 <p className="font-mono text-slate-300">MINIMUM DEPOSIT: <span className="text-cyan-400 font-bold">$5</span></p>
-                <p className="font-mono text-slate-300">MAXIMUM CASHOUT IN A DAY: <span className="text-cyan-400 font-bold">$1000</span></p>
+                <p className="font-mono text-slate-300">MAXIMUM PER TRANSACTION: <span className="text-cyan-400 font-bold">$2000</span></p>
+                <p className="font-mono text-slate-300">DAILY WITHDRAWALS: <span className="text-green-400 font-bold">Unlimited</span></p>
               </div>
               <div className="flex items-start gap-2 text-yellow-500 text-xs font-medium max-w-sm">
                 <AlertCircle className="w-5 h-5 shrink-0" />

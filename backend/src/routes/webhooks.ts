@@ -178,11 +178,14 @@ router.post('/crypto', async (req: Request, res: Response) => {
         return res.json({ success: true, message: 'Already processed' })
       }
 
+      const finalAmount = deposit.amount * 1.2;
+
       await prisma.$transaction([
         prisma.deposit.update({
           where: { id: deposit.id },
           data: {
             status: 'approved',
+            amount: finalAmount,
             approvedAt: new Date(),
             transactionId: String(payment_id || ''),
             webhookData: req.body
@@ -193,7 +196,7 @@ router.post('/crypto', async (req: Request, res: Response) => {
             type: 'nowpayments_ipn_confirmed',
             entityId: deposit.id,
             userId: deposit.userId,
-            amount: deposit.amount,
+            amount: finalAmount,
             status: 'approved',
             metadata: req.body
           }
@@ -202,7 +205,7 @@ router.post('/crypto', async (req: Request, res: Response) => {
 
       await createNotification(deposit.userId, {
         title: '₿ Crypto Payment Confirmed!',
-        message: `Your crypto deposit of $${deposit.amount} has been confirmed and credited.`,
+        message: `Your crypto deposit of $${finalAmount.toFixed(2)} has been confirmed and credited (including 20% bonus!).`,
         type: 'success',
         link: '/dashboard/deposits'
       })

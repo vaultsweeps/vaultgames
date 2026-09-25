@@ -59,11 +59,11 @@ function namesMatch(emailName: string, profileName: string): boolean {
 export class ImapChimePayPalService {
   static isRunning = false
 
-  static async connect() {
+  static async connect(user: string, pass: string) {
     const config = {
       imap: {
-        user: process.env.IMAP_USER || '',
-        password: process.env.IMAP_PASSWORD || '',
+        user: user || '',
+        password: pass || '',
         host: 'imap.gmail.com',
         port: 993,
         tls: true,
@@ -73,7 +73,6 @@ export class ImapChimePayPalService {
     }
 
     if (!config.imap.user || !config.imap.password) {
-      logger.warn('[ImapChimePayPal] Missing IMAP credentials. Skipping connection.')
       return null
     }
 
@@ -86,22 +85,31 @@ export class ImapChimePayPalService {
   }
 
   /**
-   * Parse unseen emails and auto-approve any matching pending deposit.
+   * Parse unseen emails and auto-approve any matching pending deposit across all configured inboxes.
    * Returns number of deposits approved.
    */
   static async parseEmailsAndVerifyDeposits(): Promise<number> {
     if (this.isRunning) return 0
     this.isRunning = true
-    let approved = 0
+    let totalApproved = 0
 
-    const connection = await this.connect()
-    if (!connection) {
+    const accounts = [
+      { user: process.env.IMAP_USER, pass: process.env.IMAP_PASSWORD },
+      { user: process.env.IMAP_CHIME2_USER, pass: process.env.IMAP_CHIME2_PASSWORD }
+    ].filter(a => a.user && a.pass)
+
+    if (accounts.length === 0) {
+      logger.warn('[ImapChimePayPal] Missing IMAP credentials. Skipping connection.')
       this.isRunning = false
       return 0
     }
 
-    try {
-      await connection.openBox('INBOX')
+    for (const account of accounts) {
+      const connection = await this.connect(account.user!, account.pass!)
+      if (!connection) continue
+
+      try {
+        await connection.openBox('INBOX')
 
       const since = new Date(Date.now() - 24 * 3600 * 1000)
       const messages = await connection.search(
@@ -213,7 +221,7 @@ export class ImapChimePayPalService {
           const pending = await prisma.deposit.findMany({
             where: {
               status: 'pending',
-              paymentMethod: { code: paymentMethod }
+              paymentMethod: { code: { in: paymentMethod === 'chime' ? ['chime', 'chime2'] : ['paypal'] } }
             },
             include: { user: true, paymentMethod: true }
           })
@@ -273,19 +281,20 @@ export class ImapChimePayPalService {
             logger.error('[ImapChimePayPal] Failed to send Telegram notification', e)
           }
 
-          approved++
+          totalApproved++
         } catch (emailErr) {
-          logger.error('[ImapChimePayPal] Error processing email: ' + emailErr)
+          logger.error(`[ImapChimePayPal] Error processing email for ${account.user}: ` + emailErr)
         }
       }
     } catch (err) {
-      logger.error('[ImapChimePayPal] Process error: ' + err)
+      logger.error(`[ImapChimePayPal] Process error for ${account.user}: ` + err)
     } finally {
       try { connection.end() } catch {}
-      this.isRunning = false
+    }
     }
 
-    return approved
+    this.isRunning = false
+    return totalApproved
   }
 
   /**

@@ -4,7 +4,7 @@ import { CheckCircle, Clock, Shield, AlertCircle } from 'lucide-react'
 
 const RULES = [
   { icon: CheckCircle, title: 'Minimum Cashout', value: '$50', desc: 'The minimum amount per withdrawal request is $50 USD.', color: '#00D4FF' },
-  { icon: CheckCircle, title: 'Maximum Cashout', value: '$1000', desc: 'Maximum single withdrawal is $1000 per transaction.', color: '#7B2FFF' },
+  { icon: CheckCircle, title: 'Maximum Cashout', value: '$2000', desc: 'Maximum single withdrawal is $2000 per transaction. Unlimited withdrawals throughout the day.', color: '#7B2FFF' },
   { icon: Clock, title: 'Processing Time', value: 'Under 10 Mins', desc: 'Cashouts are reviewed and processed by our team in under 10 minutes.', color: '#00FFC8' },
 ]
 
@@ -77,7 +77,7 @@ export default function CashoutRulesPage() {
                   <tr className="border-b border-border-subtle bg-white/[0.01]"><td className="py-3 px-6 font-bold">$16-$25</td><td className="py-3 px-6">X3</td><td className="py-3 px-6">X15</td></tr>
                   <tr className="border-b border-border-subtle bg-white/[0.02]"><td className="py-3 px-6 font-bold">$26-$35</td><td className="py-3 px-6">X3</td><td className="py-3 px-6">X15</td></tr>
                   <tr className="border-b border-border-subtle bg-white/[0.01]"><td className="py-3 px-6 font-bold">$36-$50</td><td className="py-3 px-6">X3</td><td className="py-3 px-6">X15</td></tr>
-                  <tr className="border-b border-border-subtle bg-white/[0.02]"><td className="py-3 px-6 font-bold">$50+</td><td className="py-3 px-6">X3</td><td className="py-3 px-6">$1000</td></tr>
+                  <tr className="border-b border-border-subtle bg-white/[0.02]"><td className="py-3 px-6 font-bold">$50+</td><td className="py-3 px-6">X3</td><td className="py-3 px-6">$2000</td></tr>
                 </tbody>
               </table>
             </div>
@@ -85,7 +85,8 @@ export default function CashoutRulesPage() {
             <div className="mt-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-surface/50 p-4 rounded-xl border border-border-subtle">
               <div>
                 <p className="text-white font-mono text-sm mb-1 uppercase tracking-wider">Minimum Deposit: <span className="text-neon-blue">$5</span></p>
-                <p className="text-white font-mono text-sm uppercase tracking-wider">Maximum Cashout in a Day: <span className="text-neon-blue">$1000</span></p>
+                <p className="text-white font-mono text-sm uppercase tracking-wider">Maximum Per Transaction: <span className="text-neon-blue">$2000</span></p>
+                <p className="text-white font-mono text-sm uppercase tracking-wider">Daily Withdrawals: <span className="text-green-400">Unlimited</span></p>
               </div>
               <div className="flex gap-2 items-center text-sm">
                 <AlertCircle className="w-5 h-5 text-yellow-500 flex-shrink-0" />
