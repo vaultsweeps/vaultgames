@@ -1,9 +1,10 @@
 'use client'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import Image from 'next/image'
+import { Check, Clock, AlertCircle } from 'lucide-react'
 import { wheelApi } from '@/lib/api'
 import { useAuthStore } from '@/store/authStore'
+import { Card, Button, PageHeader, SectionHeading, IconTile, Skeleton, GiftIcon, TONES } from '@/components/dashboard/ui'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface WheelPrize {
@@ -35,8 +36,11 @@ const SEGMENT_COLORS = [
   { bg: '#0e3082', highlight: '#174ac0', text: '#ffffff', label: 'FREEPLAY' },
 ]
 
+// Gold that stays readable on both dark and light surfaces.
+const GOLD_TEXT = 'color-mix(in srgb, #F59E0B 80%, var(--text-primary))'
+
 // ─── Cooldown Timer Component ─────────────────────────────────────────────────
-function CooldownTimer({ nextSpinAt }: { nextSpinAt: string }) {
+function CooldownTimer({ nextSpinAt, className }: { nextSpinAt: string; className?: string }) {
   const [timeLeft, setTimeLeft] = useState('')
   useEffect(() => {
     const update = () => {
@@ -51,8 +55,13 @@ function CooldownTimer({ nextSpinAt }: { nextSpinAt: string }) {
     const id = setInterval(update, 1000)
     return () => clearInterval(id)
   }, [nextSpinAt])
-  return <span className="font-mono text-neon-blue font-bold">{timeLeft}</span>
+  return <span className={className || 'font-bold text-primary tabular-nums'}>{timeLeft}</span>
 }
+
+// Display helpers (presentation only — same rules the wheel segments and result modal already use)
+const prizeFigure = (p: WheelPrize) => (p.percentage ? `${p.percentage}%` : `$${p.amount}`)
+const prizeKind = (p: WheelPrize) =>
+  p.type === 'deposit_bonus' ? 'Deposit bonus' : p.title.includes('Freeplay') ? 'Freeplay' : 'Cash'
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function WheelPage() {
@@ -140,91 +149,28 @@ export default function WheelPage() {
   const segmentDeg = 360 / count
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#050d1f] via-[#0a1535] to-[#061028] relative overflow-hidden">
-      {/* Ambient background effects */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl" />
-      </div>
+    <div>
+      <PageHeader
+        title="Daily Spin"
+        subtitle="Get prizes every day in the win-win lottery wheel of luck!"
+      />
 
-      <div className="max-w-6xl mx-auto px-4 py-8 relative z-10">
-        {/* Header */}
-        <div className="text-center mb-6">
-          <h1 className="font-display font-black text-5xl md:text-7xl text-white tracking-widest mb-2"
-            style={{ textShadow: '0 0 40px rgba(79,172,254,0.6), 0 0 80px rgba(79,172,254,0.3)' }}>
-            WHEEL
-          </h1>
-          <p className="text-blue-200/70 text-sm md:text-base">Get prizes every day in the win-win lottery wheel of luck!</p>
-        </div>
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,380px)] gap-4 sm:gap-5 items-start">
 
-        {/* Main Layout */}
-        <div className="flex flex-col lg:flex-row items-center justify-center gap-6 lg:gap-12">
+        {/* ── Wheel card ── */}
+        <Card className="relative overflow-hidden !px-3 min-[400px]:!px-5 sm:!px-8 !py-6 sm:!py-9">
+          {/* soft static glow behind the wheel */}
+          <div className="absolute inset-0 pointer-events-none" aria-hidden="true"
+            style={{ background: 'radial-gradient(60% 55% at 50% 46%, rgba(59,130,246,0.20) 0%, rgba(251,191,36,0.06) 55%, transparent 80%)' }} />
 
-          {/* Left: Eligibility + Presenter (on desktop) */}
-          <div className="flex flex-col items-center lg:items-start gap-4 lg:w-80 order-2 lg:order-1">
-            {/* Presenter Image */}
-            <div className="relative hidden lg:block">
-              <Image
-                src="/images/casino-presenter.png"
-                alt="Casino Host"
-                width={280}
-                height={420}
-                className="object-contain drop-shadow-2xl"
-                style={{ filter: 'drop-shadow(0 0 30px rgba(79,172,254,0.3))' }}
-                priority
-              />
-            </div>
-
-            {/* Eligibility Cards */}
-            {config && (
-              <div className="space-y-3 w-full max-w-sm">
-                <div className="bg-[#0d1f4d]/80 border border-blue-500/20 rounded-xl p-4 backdrop-blur-sm">
-                  <div className="flex items-start gap-3">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${config.eligible ? 'bg-emerald-500/20 border border-emerald-500/30' : 'bg-orange-500/20 border border-orange-500/30'}`}>
-                      <span className="text-sm">{config.eligible ? '✓' : '○'}</span>
-                    </div>
-                    <div>
-                      {config.eligible ? (
-                        <p className="text-sm text-blue-100">
-                          <span className="text-emerald-400 font-bold">You haven&apos;t spun the wheel for 24 hours.</span>
-                          <br /><span className="text-blue-200/60 text-xs">You are eligible to spin!</span>
-                        </p>
-                      ) : (
-                        <p className="text-sm text-blue-100">
-                          <span className="text-orange-300 font-bold">Already spun today.</span>
-                          <br />
-                          <span className="text-blue-200/60 text-xs">Next spin in: </span>
-                          {config.nextSpinAt && <CooldownTimer nextSpinAt={config.nextSpinAt} />}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Center: The Wheel */}
-          <div className="relative order-1 lg:order-2 flex flex-col items-center">
-            {/* Mobile presenter (shown above wheel on mobile) */}
-            <div className="relative lg:hidden mb-4">
-              <Image
-                src="/images/casino-presenter.png"
-                alt="Casino Host"
-                width={120}
-                height={180}
-                className="object-contain drop-shadow-xl"
-                style={{ filter: 'drop-shadow(0 0 20px rgba(79,172,254,0.3))' }}
-              />
-            </div>
-
+          <div className="relative flex flex-col items-center">
             {/* Pointer */}
-            <div className="relative z-20 mb-[-10px]" style={{ filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))' }}>
+            <div className="relative z-20 mb-[-10px]" style={{ filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.45))' }}>
               <svg width="40" height="32" viewBox="0 0 40 32">
                 <defs>
                   <linearGradient id="ptGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stopColor="#64ffda" />
-                    <stop offset="100%" stopColor="#1a8f6f" />
+                    <stop offset="0%" stopColor="#FDE68A" />
+                    <stop offset="100%" stopColor="#D97706" />
                   </linearGradient>
                 </defs>
                 <polygon points="20,32 0,0 40,0" fill="url(#ptGrad)" />
@@ -233,12 +179,7 @@ export default function WheelPage() {
             </div>
 
             {/* Wheel Outer Ring */}
-            <div className="relative"
-              style={{
-                width: 'min(90vw, 360px)',
-                height: 'min(90vw, 360px)',
-              }}
-            >
+            <div className="relative w-full aspect-square" style={{ maxWidth: 360 }}>
               {/* Glow ring */}
               <div className="absolute inset-[-8px] rounded-full pointer-events-none z-0"
                 style={{
@@ -262,7 +203,7 @@ export default function WheelPage() {
                 return (
                   <div
                     key={i}
-                    className="absolute w-3 h-3 rounded-full z-10 transform -translate-x-1/2 -translate-y-1/2 transition-all duration-100"
+                    className="absolute w-2.5 h-2.5 min-[400px]:w-3 min-[400px]:h-3 rounded-full z-10 transform -translate-x-1/2 -translate-y-1/2 transition-all duration-100"
                     style={{
                       left: `${x}%`,
                       top: `${y}%`,
@@ -396,10 +337,10 @@ export default function WheelPage() {
               <button
                 onClick={handleSpin}
                 disabled={!config?.eligible || spinning || loading}
-                className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-30 rounded-full transition-all active:scale-95 focus:outline-none"
+                className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-30 rounded-full transition-all active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/70"
                 style={{
-                  width: 'calc(min(90vw, 360px) * 0.28)',
-                  height: 'calc(min(90vw, 360px) * 0.28)',
+                  width: '28%',
+                  height: '28%',
                   background: 'transparent',
                   cursor: config?.eligible && !spinning ? 'pointer' : 'not-allowed',
                 }}
@@ -409,34 +350,91 @@ export default function WheelPage() {
 
             {/* Error message */}
             {error && (
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                className="mt-4 bg-red-500/20 border border-red-500/30 rounded-xl px-4 py-3 text-red-300 text-sm text-center max-w-xs">
-                {error}
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} role="alert"
+                className="mt-5 w-full max-w-sm flex items-start gap-2.5 rounded-2xl px-4 py-3 text-[14px] leading-snug"
+                style={{ background: TONES.red.bg, color: TONES.red.fg, boxShadow: `inset 0 0 0 1px ${TONES.red.ring}` }}>
+                <AlertCircle className="w-[18px] h-[18px] flex-shrink-0 mt-px" />
+                <span className="min-w-0 break-words">{error}</span>
               </motion.div>
             )}
 
             {/* Spin button (below wheel, for clarity) */}
-            <motion.button
+            <Button
+              size="lg"
               onClick={handleSpin}
               disabled={!config?.eligible || spinning || loading}
-              whileTap={config?.eligible && !spinning ? { scale: 0.95 } : {}}
-              whileHover={config?.eligible && !spinning ? { scale: 1.05 } : {}}
-              className={`mt-6 px-12 py-4 rounded-full font-black text-lg tracking-widest transition-all shadow-2xl ${
-                config?.eligible && !spinning
-                  ? 'bg-gradient-to-r from-[#4facfe] to-[#00f2fe] text-[#050d1f] hover:shadow-[0_0_30px_rgba(79,172,254,0.6)] cursor-pointer'
-                  : 'bg-[#1a2a4a] text-gray-500 cursor-not-allowed'
-              }`}
+              className="mt-6 sm:mt-7 w-full sm:w-auto sm:min-w-[260px]"
             >
-              {loading ? 'LOADING...' : spinning ? 'SPINNING...' : config?.eligible ? 'SPIN THE WHEEL' : 'COME BACK LATER'}
-            </motion.button>
+              {loading ? 'Loading…' : spinning ? 'Spinning…' : config?.eligible ? 'Spin the wheel' : 'Come back later'}
+            </Button>
 
             {/* Not eligible message */}
             {config && !config.eligible && config.nextSpinAt && (
-              <p className="mt-3 text-blue-200/50 text-xs text-center">
-                Next spin available in: <CooldownTimer nextSpinAt={config.nextSpinAt} />
+              <p className="mt-3 text-secondary text-[13px] text-center lg:hidden">
+                Next spin available in: <CooldownTimer nextSpinAt={config.nextSpinAt} className="font-semibold text-primary tabular-nums" />
               </p>
             )}
           </div>
+        </Card>
+
+        {/* ── Side column: status + prizes ── */}
+        <div className="space-y-4 sm:space-y-5 min-w-0">
+          {/* Eligibility / next spin */}
+          {loading && !config ? (
+            <Card>
+              <div className="flex items-center gap-4">
+                <Skeleton className="w-11 h-11" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-2/3" />
+                  <Skeleton className="h-3 w-1/2" />
+                </div>
+              </div>
+            </Card>
+          ) : config && (
+            <Card>
+              {config.eligible ? (
+                <div className="flex items-start gap-4">
+                  <IconTile icon={Check} tone="green" size="md" />
+                  <div className="min-w-0">
+                    <p className="text-[12px] font-medium text-secondary">Daily spin</p>
+                    <p className="mt-1 text-[17px] font-semibold leading-snug" style={{ color: TONES.green.fg }}>
+                      You haven&apos;t spun the wheel for 24 hours.
+                    </p>
+                    <p className="mt-1 text-[14px] text-secondary">You are eligible to spin!</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-start gap-4">
+                  <IconTile icon={Clock} tone="orange" size="md" />
+                  <div className="min-w-0">
+                    <p className="text-[17px] font-semibold leading-snug" style={{ color: TONES.orange.fg }}>Already spun today.</p>
+                    <p className="mt-1 text-[13px] text-secondary">Next spin in</p>
+                    {config.nextSpinAt && (
+                      <p className="mt-0.5">
+                        <CooldownTimer nextSpinAt={config.nextSpinAt} className="text-[28px] sm:text-[32px] leading-tight font-bold text-primary tabular-nums" />
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </Card>
+          )}
+
+          {/* Prizes */}
+          {prizes.length > 0 && (
+            <Card>
+              <SectionHeading title="Prizes on the wheel" />
+              <ul className="flex flex-wrap gap-2">
+                {prizes.map(p => (
+                  <li key={p.id}
+                    className="inline-flex items-center gap-2 h-9 pl-3 pr-3.5 rounded-full bg-surface-elevated border border-border-subtle text-[13px]">
+                    <span className="font-bold tabular-nums" style={{ color: GOLD_TEXT }}>{prizeFigure(p)}</span>
+                    <span className="text-secondary">{prizeKind(p)}</span>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
         </div>
       </div>
 
@@ -447,44 +445,47 @@ export default function WheelPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
             onClick={() => setShowWin(false)}
           >
             <motion.div
-              initial={{ scale: 0.5, opacity: 0, y: 50 }}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Spin result"
+              initial={{ scale: 0.92, opacity: 0, y: 24 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.8, opacity: 0 }}
-              transition={{ type: 'spring', damping: 15, stiffness: 200 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ type: 'spring', damping: 20, stiffness: 240 }}
               onClick={e => e.stopPropagation()}
-              className="bg-gradient-to-br from-[#0a1535] to-[#061028] border border-blue-500/30 rounded-3xl p-10 text-center max-w-sm w-full shadow-2xl"
-              style={{ boxShadow: '0 0 80px rgba(79,172,254,0.3)' }}
+              className="ds-card relative overflow-hidden text-center max-w-sm w-full p-6 sm:p-8"
             >
-              {/* Confetti emoji decorations */}
-              <div className="text-4xl mb-2">🎉</div>
-              <h2 className="text-2xl font-black text-white mb-1 tracking-wide">CONGRATULATIONS!</h2>
-              <p className="text-blue-200/60 text-sm mb-6">You won from the Daily Spin</p>
+              <div className="absolute inset-0 pointer-events-none" aria-hidden="true"
+                style={{ background: 'radial-gradient(90% 55% at 50% 0%, rgba(251,191,36,0.20) 0%, transparent 70%)' }} />
+              <div className="relative">
+                <div className="w-20 h-20 mx-auto -mb-1"><GiftIcon /></div>
+                <h2 className="text-[22px] font-bold text-primary tracking-tight">Congratulations!</h2>
+                <p className="mt-1 text-[14px] text-secondary">You won from the Daily Spin</p>
 
-              <div className="bg-[#1a3a8f]/50 rounded-2xl p-6 mb-6 border border-blue-500/20">
-                <div className="text-5xl font-black text-white mb-2">
-                  {winResult.percentage ? `${winResult.percentage}%` : `$${winResult.amount}`}
+                <div className="mt-5 rounded-2xl px-4 py-5"
+                  style={{ background: TONES.gold.bg, boxShadow: `inset 0 0 0 1px ${TONES.gold.ring}` }}>
+                  <div className="text-[44px] leading-none font-bold tabular-nums" style={{ color: GOLD_TEXT }}>
+                    {winResult.percentage ? `${winResult.percentage}%` : `$${winResult.amount}`}
+                  </div>
+                  <div className="mt-2 text-[13px] font-semibold text-primary">
+                    {winResult.type === 'deposit_bonus' ? 'Deposit Bonus' : winResult.title.includes('Freeplay') ? 'Freeplay Credit' : 'Cash Reward'}
+                  </div>
                 </div>
-                <div className="text-blue-300 font-bold text-sm uppercase tracking-widest">
-                  {winResult.type === 'deposit_bonus' ? 'Deposit Bonus' : winResult.title.includes('Freeplay') ? 'Freeplay Credit' : 'Cash Reward'}
-                </div>
+
+                <p className="mt-4 mb-6 text-[13px] text-secondary leading-relaxed">
+                  {winResult.type === 'deposit_bonus'
+                    ? 'This bonus will be applied to your next deposit.'
+                    : 'This reward has been added to your wallet balance.'}
+                </p>
+
+                <Button full onClick={() => setShowWin(false)}>
+                  Collect reward
+                </Button>
               </div>
-
-              <p className="text-blue-200/50 text-xs mb-6">
-                {winResult.type === 'deposit_bonus'
-                  ? 'This bonus will be applied to your next deposit.'
-                  : 'This reward has been added to your wallet balance.'}
-              </p>
-
-              <button
-                onClick={() => setShowWin(false)}
-                className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[#4facfe] to-[#00f2fe] text-[#050d1f] font-black text-sm tracking-wider hover:opacity-90 transition-opacity"
-              >
-                COLLECT REWARD
-              </button>
             </motion.div>
           </motion.div>
         )}

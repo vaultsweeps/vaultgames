@@ -42,6 +42,7 @@ const VOID_REASONS = [
 export class TelegramSupportBot {
   private bot: Telegraf;
   private groupId: string;
+  private pollingActive = false;
   private static instance: TelegramSupportBot;
 
   private constructor() {
@@ -87,11 +88,39 @@ export class TelegramSupportBot {
         logger.warn(`[TelegramBot] Suppressed bot error: ${err?.message || err}`);
       });
 
-      try {
-        await this.bot.launch();
-        logger.info('Telegram Support Bot started successfully.');
-      } catch (e) {
-        logger.error('Failed to start Telegram Support Bot', e);
+      if (this.pollingActive) return;
+      this.pollingActive = true;
+
+      // Long-polling ends permanently on a 409 (another process is polling the
+      // same bot token — e.g. a local dev backend or an overlapping deploy) or
+      // any unexpected error. Messages are still *sent* over plain HTTP, so the
+      // bot looks alive while every Approve/Reject/Void click is silently lost.
+      // Keep re-launching so the bot recovers by itself.
+      let delayMs = 3000;
+      for (;;) {
+        try {
+          await this.bot.launch(
+            { allowedUpdates: ['message', 'callback_query'] },
+            () => logger.info('Telegram Support Bot connected — polling for updates.'),
+          );
+          // launch() resolves only when polling was stopped on purpose.
+          this.pollingActive = false;
+          return;
+        } catch (e: any) {
+          const code = e?.response?.error_code ?? e?.code;
+          if (code === 401) {
+            logger.error('Telegram Support Bot: bot token rejected (401). Not retrying.');
+            this.pollingActive = false;
+            return;
+          }
+          logger.error(
+            code === 409
+              ? `Telegram polling conflict (409): another process is polling this bot token. Retrying in ${Math.round(delayMs / 1000)}s`
+              : `Telegram polling stopped (${e?.message || e}). Retrying in ${Math.round(delayMs / 1000)}s`
+          );
+          await new Promise(r => setTimeout(r, delayMs));
+          delayMs = Math.min(delayMs * 2, 60_000);
+        }
       }
     }
   }
@@ -160,8 +189,17 @@ export class TelegramSupportBot {
     // /reject text commands already are; otherwise a callback delivered from
     // any other chat the bot is a member of would be actioned unchecked.
     this.bot.on('callback_query', async (ctx) => {
-      if (ctx.chat?.id.toString() !== this.groupId) return;
-      if (!this.isAuthorizedStaff(ctx)) return;
+      // Never drop a click silently — tell the tapper why nothing happened.
+      if (ctx.chat?.id.toString() !== this.groupId) {
+        logger.warn(`[TelegramBot] Ignored button click from chat ${ctx.chat?.id} (configured TELEGRAM_GROUP_CHAT_ID is ${this.groupId || 'empty'})`);
+        await ctx.answerCbQuery('This chat is not the configured staff group.', { show_alert: true }).catch(() => {});
+        return;
+      }
+      if (!this.isAuthorizedStaff(ctx)) {
+        logger.warn(`[TelegramBot] Ignored button click from Telegram user ${ctx.from?.id} — not in TELEGRAM_STAFF_USER_IDS`);
+        await ctx.answerCbQuery('You are not authorized to use these buttons.', { show_alert: true }).catch(() => {});
+        return;
+      }
       await this.handleCallbackQuery(ctx);
     });
 

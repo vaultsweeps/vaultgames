@@ -1,11 +1,14 @@
 'use client'
-import { useState, useEffect, Suspense } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useState, useEffect, Suspense, Fragment, ReactNode } from 'react'
+import { motion } from 'framer-motion'
 import toast from 'react-hot-toast'
-import { CreditCard, Plus, History, Loader2, ChevronRight, ExternalLink } from 'lucide-react'
+import { Plus, History, Loader2, ChevronRight, ArrowLeft, CheckCircle2, CreditCard } from 'lucide-react'
 import { depositApi, publicApi } from '@/lib/api'
 import dynamic from 'next/dynamic'
 import { useSearchParams } from 'next/navigation'
+import {
+  cn, Card, cardClass, PageHeader, SectionHeading, Button, Badge, StatusBadge, TabBar, EmptyState, Field, Skeleton, IconTile, BrandIcon,
+} from '@/components/dashboard/ui'
 
 const ChimePayPalDepositModal = dynamic(() => import('@/components/modals/ChimePayPalDepositModal'), { ssr: false })
 const CryptoDepositModal = dynamic(() => import('@/components/modals/CryptoDepositModal'), { ssr: false })
@@ -30,17 +33,68 @@ function getMeta(code: string) {
   return METHOD_META[code?.toLowerCase()] || METHOD_META.default
 }
 
-function StatusBadge({ status }: { status: string }) {
-  const map: Record<string, string> = {
-    pending:    'badge-pending',
-    approved:   'badge-approved',
-    failed:     'badge-rejected',
-    processing: 'badge-pending',
-  }
+/* Overlapping round "coin" chips used by the multi-method cards. */
+function Cluster({ items }: { items: { bg: string; node: ReactNode }[] }) {
   return (
-    <span className={`${map[status] || 'badge-pending'} text-xs px-2 py-0.5 rounded-full font-mono`}>
-      {status}
-    </span>
+    <div className="flex items-center" aria-hidden>
+      {items.map((a, i) => (
+        <span
+          key={i}
+          className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-[15px] leading-none"
+          style={{ background: a.bg, zIndex: items.length - i, marginLeft: i === 0 ? 0 : -10, boxShadow: '0 0 0 2.5px var(--bg-surface)' }}
+        >
+          {a.node}
+        </span>
+      ))}
+    </div>
+  )
+}
+
+/**
+ * Shared payment-method card anatomy (Deposits + Cashouts):
+ * icon tile top-left · chevron (or "Soon" badge) top-right · title · one-line description · optional metadata.
+ */
+function MethodCard({ onClick, tile, title, desc, meta, soon, featured, badge }: {
+  onClick: () => void
+  tile: ReactNode
+  title: ReactNode
+  desc: ReactNode
+  meta?: ReactNode
+  soon?: boolean
+  featured?: boolean
+  badge?: ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-disabled={soon || undefined}
+      className={cn(
+        cardClass({ interactive: !soon }),
+        'group relative w-full h-full min-w-0 min-h-[112px] flex flex-col text-left overflow-hidden !p-3.5 sm:!p-5',
+        soon && 'cursor-not-allowed',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/60'
+      )}
+      style={{
+        ...(featured ? { backgroundImage: 'linear-gradient(150deg, rgba(247,147,26,0.14) 0%, rgba(247,147,26,0.03) 45%, transparent 75%)' } : null),
+        ...(soon ? { opacity: 0.55 } : null),
+      }}
+    >
+      <div className="flex items-start justify-between gap-2 mb-3 sm:mb-4">
+        {tile}
+        <div className="flex items-center gap-2 flex-shrink-0 min-w-0">
+          {badge}
+          {soon ? (
+            <Badge tone="slate">Soon</Badge>
+          ) : (
+            !badge && <ChevronRight className="hidden sm:block w-5 h-5 text-muted transition-all group-hover:text-primary group-hover:translate-x-0.5" strokeWidth={2} />
+          )}
+        </div>
+      </div>
+      <h3 className="mt-auto text-[15px] sm:text-[17px] font-bold sm:font-semibold text-primary leading-snug tracking-tight line-clamp-2 break-words">{title}</h3>
+      <p className="hidden sm:block mt-1 text-[13.5px] text-secondary leading-snug line-clamp-2 break-words">{desc}</p>
+      {meta && <p className="hidden sm:block pt-3 text-[12.5px] text-muted tabular-nums">{meta}</p>}
+    </button>
   )
 }
 
@@ -54,7 +108,8 @@ function DepositsContent() {
   const [depositHistory, setDepositHistory] = useState<any[]>([])
   const [historyLoading, setHistoryLoading] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [chimePayPalMethod, setChimePayPalMethod] = useState<'chime'|'chime2'|'paypal'|'cashapp'|null>(null)
+  const [chimePayPalMethod, setChimePayPalMethod] = useState<'chime'|'chime2'|'paypal'|'cashapp'|'cashapp2'|null>(null)
+  const [subGroup, setSubGroup] = useState<'chime' | 'cashapp' | null>(null)
   const [cryptoModalOpen, setCryptoModalOpen] = useState(false)
   const [ggusOnePayModalOpen, setGgusOnePayModalOpen] = useState(false)
   const [ggusOnePayPreset, setGgusOnePayPreset] = useState<string | undefined>(undefined)
@@ -138,24 +193,24 @@ function DepositsContent() {
   }
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="pb-10">
       {/* Header */}
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-        <h2 className="font-display font-bold text-2xl text-white">DEPOSITS</h2>
-        <p className="text-secondary text-sm mt-1">Fund your account to access platform features.</p>
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
+        <PageHeader
+          title="Deposits"
+          subtitle="Fund your account to access platform features."
+          actions={
+            <TabBar
+              tabs={[
+                { id: 'new', label: 'New Deposit', icon: <Plus className="w-4 h-4" /> },
+                { id: 'history', label: 'History', icon: <History className="w-4 h-4" /> },
+              ]}
+              active={tab}
+              onChange={setTab}
+            />
+          }
+        />
       </motion.div>
-
-      {/* Tabs */}
-      <div className="flex gap-2">
-        {[{ id: 'new', label: 'New Deposit', icon: Plus }, { id: 'history', label: 'History', icon: History }].map(t => (
-          <button key={t.id} onClick={() => setTab(t.id as any)}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all ${
-              tab === t.id ? 'bg-neon-blue/10 text-neon-blue border border-neon-blue/20' : 'glass text-secondary hover:text-white border border-border-strong'
-            }`}>
-            <t.icon className="w-4 h-4" />{t.label}
-          </button>
-        ))}
-      </div>
 
       {tab === 'new' && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
@@ -163,283 +218,256 @@ function DepositsContent() {
           {/* STEP 1 — Select Method */}
           {step === 1 && (
             <div>
-              <h3 className="font-display text-sm font-bold text-secondary uppercase tracking-wider mb-4">
-                Select Payment Method
-              </h3>
+              <SectionHeading title="Select payment method" />
               {loadingMethods ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                   {Array(3).fill(0).map((_, i) => (
-                    <div key={`meth-skel-${i}`} className="glass-card p-5 h-24 animate-pulse bg-white/5"></div>
+                    <Skeleton key={`meth-skel-${i}`} className="h-[168px]" />
                   ))}
                 </div>
               ) : methods.length === 0 ? (
-                <p className="text-muted py-8">No deposit methods available. Please contact support.</p>
+                <Card>
+                  <EmptyState icon={CreditCard} title="No deposit methods available" text="Please contact support." />
+                </Card>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {methods
-                    .filter(m => m.code !== 'zappay' && !m.name?.toLowerCase().includes('zappay'))
-                    .sort((a, b) => {
-                      // ggusonepay always first
-                      if (a.code?.toLowerCase() === 'ggusonepay') return -1;
-                      if (b.code?.toLowerCase() === 'ggusonepay') return 1;
-                      // crypto always second
-                      if (a.code?.toLowerCase() === 'crypto') return -1;
-                      if (b.code?.toLowerCase() === 'crypto') return 1;
-                      const workingCodes = ['chime', 'paypal', 'cashapp', 'crypto', 'ggusonepay', 'applepay', 'googlepay', 'card', 'apple', 'debitcard'];
-                      const aSoon = !workingCodes.includes(a.code?.toLowerCase() || '');
-                      const bSoon = !workingCodes.includes(b.code?.toLowerCase() || '');
-                      if (aSoon === bSoon) return 0;
-                      return aSoon ? 1 : -1;
-                    })
-                    .map(m => {
+                (() => {
+                  const workingCodes = ['chime', 'chime2', 'paypal', 'cashapp', 'cashapp2', 'crypto', 'ggusonepay', 'applepay', 'googlepay', 'card', 'apple', 'debitcard']
+                  const codeOf = (m: any) => String(m.code || '').toLowerCase()
+                  const list = methods.filter(m => m.code !== 'zappay' && !m.name?.toLowerCase().includes('zappay'))
+                  const chimeGroup = list.filter(m => ['chime', 'chime2'].includes(codeOf(m)))
+                  const cashappGroup = list.filter(m => ['cashapp', 'cashapp2'].includes(codeOf(m)))
+                  const cryptoMethods = list.filter(m => codeOf(m) === 'crypto')
+                  const paypalMethods = list.filter(m => codeOf(m) === 'paypal')
+                  const ggusMethod = list.find(m => codeOf(m) === 'ggusonepay')
+                  const CORE = ['chime', 'chime2', 'cashapp', 'cashapp2', 'crypto', 'paypal', 'ggusonepay']
+                  const others = list
+                    .filter(m => !CORE.includes(codeOf(m)))
+                    .sort((x, y) => Number(!workingCodes.includes(codeOf(x))) - Number(!workingCodes.includes(codeOf(y))))
+
+                  const openDirect = (m: any) => {
+                    if (['chime', 'chime2', 'paypal', 'cashapp', 'cashapp2'].includes(codeOf(m))) {
+                      setChimePayPalMethod(codeOf(m) as 'chime' | 'chime2' | 'paypal' | 'cashapp' | 'cashapp2')
+                    } else {
+                      // dollarpay and crypto go through the amount step
+                      setSelectedMethod(m)
+                      setStep(2)
+                    }
+                  }
+
+                  const renderMethod = (m: any) => {
                     const meta = getMeta(m.code)
-                    const workingCodes = ['chime', 'paypal', 'cashapp', 'crypto', 'ggusonepay', 'applepay', 'googlepay', 'card', 'apple', 'debitcard'];
-                    const isSoon = !workingCodes.includes(m.code?.toLowerCase() || '');
-                    
-                    if (m.code?.toLowerCase() === 'ggusonepay') {
-                      // Render: Payment Apps card (all methods) + separate Apple Pay, Google Pay, Card cards
-                      const ggusMethod = m;
-                      const openGgusWith = (preset?: string) => {
-                        setSelectedMethod(ggusMethod);
-                        setGgusOnePayPreset(preset);
-                        setGgusOnePayModalOpen(true);
-                      };
-                      return (
-                        <>
-                          {/* Payment Apps — all methods */}
-                          <button key={m.id}
-                            onClick={() => openGgusWith(undefined)}
-                            className="p-5 text-left transition-all group flex flex-col justify-center items-start hover:-translate-y-1 relative overflow-hidden"
-                            style={{ 
-                              background: '#1a1f2e', 
-                              borderRadius: '20px', 
-                              border: '1px solid rgba(255,255,255,0.05)',
-                              boxShadow: '0 4px 20px rgba(0,0,0,0.2)' 
-                            }}>
-                            <div className="flex items-center mb-3">
-                              <div className="flex -space-x-2 relative z-10">
-                                <div className="w-10 h-10 rounded-full flex items-center justify-center bg-green-500 border-2 border-[#1a1f2e] text-white font-bold text-lg" style={{ zIndex: 4 }}>$</div>
-                                <div className="w-10 h-10 rounded-full flex items-center justify-center bg-black border-2 border-[#1a1f2e] text-white font-bold text-sm" style={{ zIndex: 3 }}></div>
-                                <div className="w-10 h-10 rounded-full flex items-center justify-center bg-blue-600 border-2 border-[#1a1f2e] text-white font-bold text-sm" style={{ zIndex: 2 }}>G</div>
-                                <div className="w-10 h-10 rounded-full flex items-center justify-center bg-blue-700 border-2 border-[#1a1f2e] text-white font-bold text-sm" style={{ zIndex: 1 }}>💳</div>
-                              </div>
-                            </div>
-                            <h3 className="text-white font-bold text-lg mb-1 relative z-10">Payment Apps</h3>
-                            <p className="text-xs text-slate-400 relative z-10">CashApp, Apple Pay, Google Pay &amp; more</p>
-                          </button>
-
-                          {/* Apple Pay — direct */}
-                          <button
-                            key="ggus-applepay"
-                            onClick={() => openGgusWith('applepay')}
-                            className="p-5 text-left transition-all group flex flex-col gap-3 hover:-translate-y-1 glass-card"
-                          >
-                            <div className="flex justify-between items-start">
-                              <div className="w-12 h-12 rounded-2xl flex items-center justify-center overflow-hidden" style={{ background: '#00000020', border: '1px solid #00000040' }}>
-                                <img src="https://i.pinimg.com/originals/ae/85/92/ae859253f4141e38711d2c159a53649e.jpg" alt="Apple Pay" className="w-full h-full object-cover rounded-2xl" />
-                              </div>
-                            </div>
-                            <div className="flex-1">
-                              <p className="text-white font-semibold">Apple Pay</p>
-                              <p className="text-xs text-muted mt-0.5">Tap &amp; pay instantly with Apple Pay</p>
-                            </div>
-                            <ChevronRight className="w-4 h-4 text-slate-600 group-hover:text-neon-blue transition-colors self-end" />
-                          </button>
-
-                          {/* Google Pay — direct */}
-                          <button
-                            key="ggus-googlepay"
-                            onClick={() => openGgusWith('googlepay')}
-                            className="p-5 text-left transition-all group flex flex-col gap-3 hover:-translate-y-1 glass-card"
-                          >
-                            <div className="flex justify-between items-start">
-                              <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl" style={{ background: '#4285F420', border: '1px solid #4285F440' }}>
-                                G
-                              </div>
-                            </div>
-                            <div className="flex-1">
-                              <p className="text-white font-semibold">Google Pay</p>
-                              <p className="text-xs text-muted mt-0.5">Fast checkout with Google Pay</p>
-                            </div>
-                            <ChevronRight className="w-4 h-4 text-slate-600 group-hover:text-neon-blue transition-colors self-end" />
-                          </button>
-
-                          {/* Credit / Debit Card — direct */}
-                          <button
-                            key="ggus-card"
-                            onClick={() => openGgusWith('card')}
-                            className="p-5 text-left transition-all group flex flex-col gap-3 hover:-translate-y-1 glass-card"
-                          >
-                            <div className="flex justify-between items-start">
-                              <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl" style={{ background: '#2563EB20', border: '1px solid #2563EB40' }}>
-                                💳
-                              </div>
-                            </div>
-                            <div className="flex-1">
-                              <p className="text-white font-semibold">Debit Card</p>
-                              <p className="text-xs text-muted mt-0.5">Pay securely with your debit card</p>
-                            </div>
-                            <ChevronRight className="w-4 h-4 text-slate-600 group-hover:text-neon-blue transition-colors self-end" />
-                          </button>
-                        </>
-                      )
-                    }
-
-                    if (m.code?.toLowerCase() === 'crypto') {
-                      return (
-                        <button key={m.id}
-                          onClick={() => {
-                            setSelectedMethod(m)
-                            setCryptoModalOpen(true)
-                          }}
-                          className="p-5 text-left transition-all group flex flex-col justify-center items-start hover:-translate-y-1 relative overflow-hidden"
-                          style={{ 
-                            background: '#1a1f2e', 
-                            borderRadius: '20px', 
-                            border: '1px solid rgba(255,255,255,0.05)',
-                            boxShadow: '0 4px 20px rgba(0,0,0,0.2)' 
-                          }}>
-                          <div className="flex items-center justify-between w-full mb-3">
-                            <div className="flex relative z-10">
-                              {[
-                                { bg: 'bg-orange-500', label: '₿', z: 3 },
-                                { bg: 'bg-blue-500',   label: 'Ξ', z: 2 },
-                                { bg: 'bg-slate-600',  label: '+5', z: 1 },
-                              ].map((a, i) => (
-                                <div
-                                  key={i}
-                                  className={`w-10 h-10 rounded-full ${a.bg} flex items-center justify-center text-white font-bold text-sm border-2 border-[#1a1f2e]`}
-                                  style={{ zIndex: a.z, marginLeft: i === 0 ? 0 : -8 }}
-                                >{a.label}</div>
-                              ))}
-                            </div>
-                            <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
-                              Bonus +20%
-                            </span>
-                          </div>
-                          <h3 className="text-white font-bold text-lg mb-1 relative z-10">Cryptocurrency</h3>
-                          <p className="text-xs text-slate-400 relative z-10">BTC, ETH, USDT &amp; 100+ coins</p>
-                        </button>
-                      )
-                    }
-
+                    const isSoon = !workingCodes.includes(codeOf(m))
                     return (
-                      <button key={m.id}
-                        onClick={() => { 
+                      <MethodCard key={m.id}
+                        soon={isSoon}
+                        onClick={() => {
                           if (isSoon) {
                             toast.error('This method is coming soon!')
                             return
                           }
-                          if (['chime', 'chime2', 'paypal', 'cashapp'].includes(m.code.toLowerCase())) {
-                            setChimePayPalMethod(m.code.toLowerCase() as 'chime' | 'chime2' | 'paypal' | 'cashapp')
-                          } else {
-                            // dollarpay and crypto go through the amount step
-                            setSelectedMethod(m)
-                            setStep(2)
-                          }
+                          openDirect(m)
                         }}
-                        className={`glass-card p-5 text-left transition-all group flex flex-col gap-3 ${isSoon ? 'opacity-50 cursor-not-allowed hover:bg-white/5' : 'hover:-translate-y-1'}`}>
-                        <div className="flex justify-between items-start">
-                          <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl overflow-hidden"
-                            style={{ background: `${meta.color}20`, border: `1px solid ${meta.color}40` }}>
-                            {(meta as any).logoUrl
-                               ? <img src={(meta as any).logoUrl} alt={m.name} className="w-full h-full object-cover rounded-2xl" />
-                               : meta.icon
-                             }
-                          </div>
-                          {isSoon && (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-secondary border border-border-strong">
-                              Soon
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-white font-semibold">{m.name}</p>
-                          <p className="text-xs text-muted mt-0.5">{meta.desc}</p>
-                          {!isSoon && <p className="text-xs text-slate-600 mt-1">Min: ${m.minAmount} · Max: ${m.maxAmount.toLocaleString()}</p>}
-                        </div>
-                        {!isSoon && <ChevronRight className="w-4 h-4 text-slate-600 group-hover:text-neon-blue transition-colors self-end" />}
-                      </button>
+                        tile={<BrandIcon kind={m.code || m.name} className="!w-10 !h-10 sm:!w-12 sm:!h-12" />}
+                        badge={!isSoon && ['chime', 'chime2', 'paypal', 'cashapp', 'cashapp2'].includes(codeOf(m)) ? (
+                          <Badge tone="green" className="!text-[11px] !px-1.5 sm:!px-2 !py-1">No fee</Badge>
+                        ) : undefined}
+                        title={m.name}
+                        desc={meta.desc}
+                        meta={!isSoon ? <>Min: ${m.minAmount} · Max: ${m.maxAmount.toLocaleString()}</> : undefined}
+                      />
                     )
-                  })}
-                </div>
+                  }
+
+                  const renderGroup = (key: 'chime' | 'cashapp', group: any[], title: string, desc: string) => (
+                    <MethodCard key={`group-${key}`}
+                      onClick={() => (group.length === 1 ? openDirect(group[0]) : setSubGroup(key))}
+                      tile={<BrandIcon kind={key} className="!w-10 !h-10 sm:!w-12 sm:!h-12" />}
+                      badge={<Badge tone="green" className="!text-[11px] !px-1.5 sm:!px-2 !py-1">No fee</Badge>}
+                      title={title}
+                      desc={desc}
+                    />
+                  )
+
+                  const gridCls = 'grid grid-cols-1 min-[360px]:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4'
+
+                  // Sub-menu: Chime 1 / Chime 2  ·  CashApp 1 / CashApp 2
+                  if (subGroup) {
+                    const group = subGroup === 'chime' ? chimeGroup : cashappGroup
+                    return (
+                      <div className="space-y-4">
+                        <button
+                          type="button"
+                          onClick={() => setSubGroup(null)}
+                          className="inline-flex items-center gap-1.5 h-10 -ml-2 px-2 rounded-xl text-[14px] font-medium text-secondary hover:text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/60"
+                        >
+                          <ArrowLeft className="w-4 h-4" /> Back to methods
+                        </button>
+                        <div className={gridCls}>{group.map(renderMethod)}</div>
+                      </div>
+                    )
+                  }
+
+                  const openGgusWith = (preset?: string) => {
+                    if (!ggusMethod) return
+                    setSelectedMethod(ggusMethod)
+                    setGgusOnePayPreset(preset)
+                    setGgusOnePayModalOpen(true)
+                  }
+
+                  return (
+                    <div className={gridCls}>
+                      {cryptoMethods.map(m => (
+                        <MethodCard key={m.id}
+                          featured
+                          onClick={() => {
+                            setSelectedMethod(m)
+                            setCryptoModalOpen(true)
+                          }}
+                          tile={<BrandIcon kind="crypto" className="!w-10 !h-10 sm:!w-12 sm:!h-12" />}
+                          badge={
+                            <span className="text-[11px] font-bold px-1.5 sm:px-2 py-1 rounded-full whitespace-nowrap text-black" style={{ background: '#FFB800', boxShadow: '0 0 10px rgba(255,184,0,0.25)' }}>+20% Bonus</span>
+                          }
+                          title="Cryptocurrency"
+                          desc={<>BTC, ETH, USDT &amp; 100+ coins</>}
+                        />
+                      ))}
+
+                      {chimeGroup.length > 0 && renderGroup('chime', chimeGroup, 'Chime', 'Send via Chime — fast & easy')}
+                      {cashappGroup.length > 0 && renderGroup('cashapp', cashappGroup, 'CashApp Pay', 'Send via Cash App — fast & easy')}
+                      {paypalMethods.map(renderMethod)}
+
+                      {ggusMethod && (
+                        <Fragment>
+                          <MethodCard
+                            onClick={() => openGgusWith('applepay')}
+                            tile={<BrandIcon kind="applepay" className="!w-10 !h-10 sm:!w-12 sm:!h-12" />}
+                            title="Apple Pay"
+                            desc={<>Tap &amp; pay instantly with Apple Pay</>}
+                          />
+                          <MethodCard
+                            onClick={() => openGgusWith('googlepay')}
+                            tile={<BrandIcon kind="googlepay" className="!w-10 !h-10 sm:!w-12 sm:!h-12" />}
+                            title="Google Pay"
+                            desc="Fast checkout with Google Pay"
+                          />
+                          <MethodCard
+                            onClick={() => openGgusWith('card')}
+                            tile={<BrandIcon kind="card" className="!w-10 !h-10 sm:!w-12 sm:!h-12" />}
+                            title="Debit Card"
+                            desc="Pay securely with your debit card"
+                          />
+                          <MethodCard
+                            onClick={() => openGgusWith(undefined)}
+                            tile={
+                              <Cluster items={[
+                                { bg: '#22C55E', node: '$' },
+                                { bg: '#0EA5E9', node: 'Z' },
+                                { bg: '#1D4ED8', node: 'P' },
+                                { bg: '#475569', node: <span className="text-[12px]">+4</span> },
+                              ]} />
+                            }
+                            title="Payment Apps"
+                            desc={<>CashApp, Apple Pay, Google Pay &amp; more</>}
+                          />
+                        </Fragment>
+                      )}
+
+                      {others.map(renderMethod)}
+                    </div>
+                  )
+                })()
               )}
             </div>
           )}
 
           {/* STEP 2 — Enter Amount */}
           {step === 2 && selectedMethod && (() => {
-            const meta = getMeta(selectedMethod.code)
             return (
-              <div className="glass-card p-6 max-w-md space-y-5">
-                <button onClick={() => setStep(1)} className="text-xs text-muted hover:text-white transition-colors">← Back</button>
-                <div className="flex items-center gap-3">
-                  <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl"
-                    style={{ background: `${meta.color}20`, border: `1px solid ${meta.color}40` }}>
-                    {meta.icon}
-                  </div>
-                  <div>
-                    <p className="text-white font-bold">{selectedMethod.name}</p>
-                    <p className="text-xs text-muted">Min: ${selectedMethod.minAmount} · Max: ${selectedMethod.maxAmount.toLocaleString()}</p>
+              <Card className="max-w-lg space-y-5 !p-5 sm:!p-6">
+                <button
+                  type="button"
+                  onClick={() => setStep(1)}
+                  className="inline-flex items-center gap-1.5 h-10 -ml-2 px-2 rounded-xl text-[14px] font-medium text-secondary hover:text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/60"
+                >
+                  <ArrowLeft className="w-4 h-4" /> Back
+                </button>
+
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <BrandIcon kind={selectedMethod.code || selectedMethod.name} size="md" />
+                  <div className="min-w-0">
+                    <p className="text-[17px] font-semibold text-primary leading-snug truncate">{selectedMethod.name}</p>
+                    <p className="text-[13px] text-muted tabular-nums">Min: ${selectedMethod.minAmount} · Max: ${selectedMethod.maxAmount.toLocaleString()}</p>
                   </div>
                 </div>
+
                 {selectedMethod.instructions && (
-                  <p className="text-xs text-secondary bg-white/5 rounded-xl p-3 border border-border-subtle">
+                  <p className="text-[13.5px] leading-relaxed text-secondary bg-surface-elevated rounded-2xl p-3.5 border border-border-subtle break-words">
                     {selectedMethod.instructions}
                   </p>
                 )}
-                <div>
-                  <label className="block text-xs font-mono tracking-wider text-secondary uppercase mb-2">Deposit Amount (USD)</label>
-                  <input
-                    type="number" value={depositAmount}
-                    onChange={e => setDepositAmount(e.target.value)}
-                    placeholder={`Min $${selectedMethod.minAmount}`}
-                    className="input-neon text-xl font-display"
-                    min={selectedMethod.minAmount}
-                    max={selectedMethod.maxAmount}
-                  />
-                  <div className="flex gap-2 mt-3">
-                    {[50, 100, 250, 500].map(amt => (
-                      <button key={amt} onClick={() => setDepositAmount(String(amt))}
-                        className="px-3 py-1.5 text-xs glass rounded-lg text-secondary hover:text-neon-blue border border-border-strong hover:border-neon-blue/30 transition-all">
+
+                <Field label="Deposit Amount (USD)">
+                  <div className="relative">
+                    <span aria-hidden className="absolute left-4 top-1/2 -translate-y-1/2 text-[26px] font-bold text-muted leading-none">$</span>
+                    <input
+                      type="number" inputMode="decimal" value={depositAmount}
+                      onChange={e => setDepositAmount(e.target.value)}
+                      placeholder={`Min $${selectedMethod.minAmount}`}
+                      className="ds-input !h-16 !pl-10 !pr-4 !text-[28px] !font-bold tabular-nums"
+                      min={selectedMethod.minAmount}
+                      max={selectedMethod.maxAmount}
+                    />
+                  </div>
+                </Field>
+
+                <div className="grid grid-cols-4 gap-2">
+                  {[50, 100, 250, 500].map(amt => {
+                    const on = depositAmount === String(amt)
+                    return (
+                      <button key={amt} type="button" onClick={() => setDepositAmount(String(amt))}
+                        aria-pressed={on}
+                        className={cn(
+                          'h-11 rounded-xl text-[14px] font-semibold tabular-nums border transition-all active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/60',
+                          on ? 'text-primary border-transparent' : 'bg-surface-elevated border-border-subtle text-secondary hover:text-primary hover:border-border-strong'
+                        )}
+                        style={on ? { background: 'rgba(56,189,248,0.16)', boxShadow: 'inset 0 0 0 1px rgba(56,189,248,0.45)' } : undefined}>
                         ${amt}
                       </button>
-                    ))}
-                  </div>
+                    )
+                  })}
                 </div>
-                <button onClick={handleSubmit} disabled={isSubmitting}
-                  className="btn-primary w-full py-3 text-sm disabled:opacity-50 flex items-center justify-center gap-2">
-                  {isSubmitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Processing...</> : 'CONTINUE TO PAYMENT'}
-                </button>
-              </div>
+
+                <Button variant="primary" size="md" full onClick={handleSubmit} disabled={isSubmitting}>
+                  {isSubmitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Processing...</> : 'Continue to payment'}
+                </Button>
+              </Card>
             )
           })()}
 
           {/* STEP 3 — Success */}
           {step === 3 && selectedMethod && (
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-              className="glass-card p-8 max-w-md text-center">
-              <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 bg-neon-blue/10 border border-neon-blue/20">
-                <CreditCard className="w-8 h-8 text-neon-blue" />
-              </div>
-              <h3 className="font-display font-bold text-xl text-white mb-2">
-                PAYMENT REQUEST CREATED
-              </h3>
-              <p className="text-secondary text-sm mb-6">
-                Your deposit request for <span className="text-white font-medium">${depositAmount}</span> via {selectedMethod.name} has been submitted.
-              </p>
-              <div className="glass rounded-xl p-4 text-left mb-6 space-y-2 text-sm">
-                <div className="flex justify-between"><span className="text-muted">Method</span><span className="text-white">{selectedMethod.name}</span></div>
-                <div className="flex justify-between"><span className="text-muted">Amount</span><span className="text-neon-blue font-mono">${depositAmount}</span></div>
-                <div className="flex justify-between"><span className="text-muted">Status</span><span className="badge-pending text-xs px-2 py-0.5 rounded-full">PENDING</span></div>
-              </div>
-              <p className="text-xs text-muted mb-4">
-                Our team will review and approve your deposit within 1–24 hours.
-              </p>
-              <div className="flex gap-3">
-                <button onClick={resetForm} className="btn-neon flex-1 text-sm py-2.5">New Deposit</button>
-                <button onClick={() => setTab('history')} className="glass flex-1 text-sm py-2.5 rounded-xl text-secondary hover:text-white border border-border-strong transition-all">View History</button>
-              </div>
+            <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }}>
+              <Card className="max-w-lg text-center !p-6 sm:!p-8">
+                <IconTile icon={CheckCircle2} tone="green" size="lg" className="mx-auto mb-4 !rounded-full" />
+                <h3 className="text-xl font-bold text-primary tracking-tight mb-2">
+                  Payment request created
+                </h3>
+                <p className="text-secondary text-[14px] leading-relaxed mb-6">
+                  Your deposit request for <span className="text-primary font-semibold">${depositAmount}</span> via {selectedMethod.name} has been submitted.
+                </p>
+                <div className="rounded-2xl bg-surface-elevated border border-border-subtle p-4 text-left mb-5 space-y-3 text-[14px]">
+                  <div className="flex justify-between items-center gap-3"><span className="text-muted">Method</span><span className="text-primary font-medium truncate">{selectedMethod.name}</span></div>
+                  <div className="flex justify-between items-center gap-3"><span className="text-muted">Amount</span><span className="text-primary font-semibold tabular-nums">${depositAmount}</span></div>
+                  <div className="flex justify-between items-center gap-3"><span className="text-muted">Status</span><StatusBadge status="pending" /></div>
+                </div>
+                <p className="text-[13px] text-muted mb-5">
+                  Our team will review and approve your deposit within 1–24 hours.
+                </p>
+                <div className="flex flex-col-reverse min-[420px]:flex-row gap-3">
+                  <Button variant="secondary" full onClick={() => setTab('history')} className="min-[420px]:flex-1">View History</Button>
+                  <Button variant="primary" full onClick={resetForm} className="min-[420px]:flex-1">New Deposit</Button>
+                </div>
+              </Card>
             </motion.div>
           )}
         </motion.div>
@@ -448,38 +476,56 @@ function DepositsContent() {
       {/* History Tab */}
       {tab === 'history' && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-          <div className="glass-card overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="data-table">
-                <thead>
-                  <tr><th>Reference</th><th>Method</th><th>Amount</th><th>Status</th><th>Date</th></tr>
-                </thead>
-                <tbody>
-                  {historyLoading ? (
-                    Array(5).fill(0).map((_, i) => (
-                      <tr key={`skel-tx-${i}`}>
-                        <td><div className="h-4 w-20 bg-slate-800 rounded animate-pulse"></div></td>
-                        <td><div className="h-4 w-20 bg-slate-800 rounded animate-pulse"></div></td>
-                        <td><div className="h-4 w-16 bg-slate-800 rounded animate-pulse"></div></td>
-                        <td><div className="h-5 w-16 bg-slate-800 rounded-full animate-pulse"></div></td>
-                        <td><div className="h-4 w-20 bg-slate-800 rounded animate-pulse"></div></td>
-                      </tr>
-                    ))
-                  ) : depositHistory.length === 0 ? (
-                    <tr><td colSpan={5} className="text-center py-8 text-muted">No deposits yet.</td></tr>
-                  ) : depositHistory.map((tx: any) => (
-                    <tr key={tx.id}>
-                      <td className="font-mono text-xs text-secondary">{tx.paymentReference || tx.id.slice(0, 10)}</td>
-                      <td>{tx.paymentMethod?.name || tx.currency}</td>
-                      <td className="text-white font-medium">${tx.amount.toFixed(2)}</td>
-                      <td><StatusBadge status={tx.status} /></td>
-                      <td className="text-xs text-slate-600">{new Date(tx.createdAt).toLocaleDateString()}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          <Card padded={false} className="overflow-hidden">
+            {/* Column header (desktop only) */}
+            <div className="hidden md:grid grid-cols-[minmax(0,1.2fr)_minmax(0,1.3fr)_110px_130px_110px] gap-4 px-6 py-3.5 border-b border-border-subtle text-[13px] font-medium text-muted">
+              <span>Reference</span><span>Method</span><span className="text-right">Amount</span><span>Status</span><span className="text-right">Date</span>
             </div>
-          </div>
+
+            {historyLoading ? (
+              <div className="divide-y divide-border-subtle">
+                {Array(5).fill(0).map((_, i) => (
+                  <div key={`skel-tx-${i}`} className="px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
+                    <div className="space-y-2 flex-1">
+                      <Skeleton className="h-4 w-32 !rounded-md" />
+                      <Skeleton className="h-3 w-24 !rounded-md" />
+                    </div>
+                    <Skeleton className="h-6 w-20 !rounded-full" />
+                  </div>
+                ))}
+              </div>
+            ) : depositHistory.length === 0 ? (
+              <EmptyState icon={History} title="No deposits yet." text="Your deposit requests will show up here." />
+            ) : (
+              <ul className="divide-y divide-border-subtle">
+                {depositHistory.map((tx: any) => {
+                  const ref = tx.paymentReference || tx.id.slice(0, 10)
+                  const methodName = tx.paymentMethod?.name || tx.currency
+                  const amount = `$${tx.amount.toFixed(2)}`
+                  const date = new Date(tx.createdAt).toLocaleDateString()
+                  return (
+                    <li key={tx.id} className="px-4 sm:px-6 py-4">
+                      {/* Mobile: stacked card row */}
+                      <div className="md:hidden grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1.5 items-center">
+                        <p className="text-[15px] font-semibold text-primary truncate">{methodName}</p>
+                        <p className="text-[15px] font-bold text-primary tabular-nums text-right">{amount}</p>
+                        <p className="text-[12.5px] text-muted truncate"><span className="font-mono">{ref}</span> · {date}</p>
+                        <StatusBadge status={tx.status} />
+                      </div>
+                      {/* Desktop: aligned columns */}
+                      <div className="hidden md:grid grid-cols-[minmax(0,1.2fr)_minmax(0,1.3fr)_110px_130px_110px] gap-4 items-center">
+                        <span className="font-mono text-[13px] text-secondary truncate">{ref}</span>
+                        <span className="text-[14px] text-primary truncate">{methodName}</span>
+                        <span className="text-[15px] font-semibold text-primary tabular-nums text-right">{amount}</span>
+                        <span><StatusBadge status={tx.status} /></span>
+                        <span className="text-[13px] text-muted text-right tabular-nums">{date}</span>
+                      </div>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </Card>
         </motion.div>
       )}
 
@@ -492,7 +538,7 @@ function DepositsContent() {
         }}
         method={chimePayPalMethod}
       />
-      
+
       {selectedMethod && (
         <CryptoDepositModal
           isOpen={cryptoModalOpen}
@@ -505,7 +551,7 @@ function DepositsContent() {
           paymentMethodId={selectedMethod.id}
         />
       )}
-      
+
       {selectedMethod && (
         <GgusOnePayModal
           isOpen={ggusOnePayModalOpen}
@@ -530,7 +576,7 @@ function DepositsContent() {
 
 export default function DepositsPage() {
   return (
-    <Suspense fallback={<div className="space-y-6 max-w-4xl"><div className="h-8 w-32 bg-white/5 rounded animate-pulse" /></div>}>
+    <Suspense fallback={<div className="pb-10"><Skeleton className="h-8 w-40" /></div>}>
       <DepositsContent />
     </Suspense>
   )

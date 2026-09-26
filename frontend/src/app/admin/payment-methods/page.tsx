@@ -2,7 +2,9 @@
 import { useState, useEffect } from 'react'
 import { adminApi } from '@/lib/api'
 import toast from 'react-hot-toast'
-import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, Save, X } from 'lucide-react'
+import { Plus, Pencil, Trash2, Save, CreditCard } from 'lucide-react'
+import { PageHeader, Card, Button, Badge, EmptyState, Field } from '@/components/dashboard/ui'
+import { INPUT, NUM, TH, TD, IconBtn, Switch, SwitchRow, AdminModal, TableCard, SkeletonRows } from '../_kit'
 
 const TYPES = ['wallet', 'bank', 'card', 'crypto']
 
@@ -112,189 +114,144 @@ export default function PaymentMethodsAdminPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Payment Methods</h1>
-          <p className="text-white/50 text-sm mt-1">Manage deposit & cashout payment methods</p>
-        </div>
-        <button
-          onClick={openCreate}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#2AC3FF] text-black font-bold text-sm hover:bg-[#2AC3FF]/80 transition-all"
-        >
-          <Plus className="w-4 h-4" />
-          Add Method
-        </button>
-      </div>
+    <div className="space-y-5 pb-10">
+      <PageHeader
+        title="Payment methods"
+        subtitle="Manage deposit & cashout payment methods."
+        actions={
+          <Button onClick={openCreate}>
+            <Plus className="w-5 h-5" /> Add method
+          </Button>
+        }
+      />
 
       {/* Form Modal */}
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="bg-[#0E1120] border border-white/10 rounded-2xl w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between">
-              <h2 className="text-white font-bold text-lg">{editingId ? 'Edit' : 'Add'} Payment Method</h2>
-              <button onClick={() => setShowForm(false)} className="text-white/50 hover:text-white"><X className="w-5 h-5" /></button>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="col-span-2">
-                <label className="text-white/60 text-xs font-semibold mb-1 block">Name</label>
-                <input
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-[#2AC3FF]/50"
-                  value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                  placeholder="e.g. Chime 2"
-                />
-              </div>
-              <div>
-                <label className="text-white/60 text-xs font-semibold mb-1 block">Code <span className="text-white/30">(unique, no spaces)</span></label>
-                <input
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-[#2AC3FF]/50 font-mono"
-                  value={form.code}
-                  onChange={e => setForm(f => ({ ...f, code: e.target.value.toLowerCase().replace(/\s/g, '') }))}
-                  placeholder="e.g. chime2"
-                  disabled={!!editingId}
-                />
-              </div>
-              <div>
-                <label className="text-white/60 text-xs font-semibold mb-1 block">Type</label>
-                <select
-                  className="w-full bg-[#1a1d2e] border border-white/10 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-[#2AC3FF]/50"
-                  value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
-                  disabled={!!editingId}
-                >
-                  {TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="text-white/60 text-xs font-semibold mb-1 block">Min Amount ($)</label>
-                <input
-                  type="number" className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-[#2AC3FF]/50"
-                  value={form.minAmount} onChange={e => setForm(f => ({ ...f, minAmount: +e.target.value }))}
-                />
-              </div>
-              <div>
-                <label className="text-white/60 text-xs font-semibold mb-1 block">Max Amount ($)</label>
-                <input
-                  type="number" className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-[#2AC3FF]/50"
-                  value={form.maxAmount} onChange={e => setForm(f => ({ ...f, maxAmount: +e.target.value }))}
-                />
-              </div>
-              <div>
-                <label className="text-white/60 text-xs font-semibold mb-1 block">Fee (%)</label>
-                <input
-                  type="number" className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-[#2AC3FF]/50"
-                  value={form.feePercent} onChange={e => setForm(f => ({ ...f, feePercent: +e.target.value }))}
-                />
-              </div>
-              <div className="col-span-2">
-                <label className="text-white/60 text-xs font-semibold mb-1 block">Instructions <span className="text-white/30">(shown to user)</span></label>
-                <textarea
-                  rows={3}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-[#2AC3FF]/50 resize-none"
-                  value={form.instructions} onChange={e => setForm(f => ({ ...f, instructions: e.target.value }))}
-                  placeholder="Send to $Brenda-Taylor-245 on Chime..."
-                />
-              </div>
-              <div className="flex items-center gap-3">
-                <label className="text-white/60 text-sm">Active</label>
-                <button
-                  onClick={() => setForm(f => ({ ...f, isActive: !f.isActive }))}
-                  className={`w-11 h-6 rounded-full transition-all ${form.isActive ? 'bg-emerald-500' : 'bg-white/10'} relative`}
-                >
-                  <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${form.isActive ? 'left-6' : 'left-1'}`} />
-                </button>
-              </div>
-              <div className="flex items-center gap-3">
-                <label className="text-white/60 text-sm">Cashout Enabled</label>
-                <button
-                  onClick={() => setForm(f => ({ ...f, cashoutEnabled: !f.cashoutEnabled }))}
-                  className={`w-11 h-6 rounded-full transition-all ${form.cashoutEnabled ? 'bg-emerald-500' : 'bg-white/10'} relative`}
-                >
-                  <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${form.cashoutEnabled ? 'left-6' : 'left-1'}`} />
-                </button>
-              </div>
-            </div>
-
-            <div className="flex gap-3 pt-2">
-              <button
-                onClick={handleSave} disabled={saving}
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[#2AC3FF] text-black font-bold text-sm hover:bg-[#2AC3FF]/80 transition-all disabled:opacity-50"
-              >
+        <AdminModal
+          title={`${editingId ? 'Edit' : 'Add'} payment method`}
+          onClose={() => setShowForm(false)}
+          footer={
+            <div className="flex gap-3">
+              <Button variant="primary" onClick={handleSave} disabled={saving} className="flex-1">
                 <Save className="w-4 h-4" />
                 {saving ? 'Saving...' : 'Save'}
-              </button>
-              <button onClick={() => setShowForm(false)} className="px-6 py-2.5 rounded-xl bg-white/5 text-white/70 font-semibold text-sm hover:bg-white/10">
-                Cancel
-              </button>
+              </Button>
+              <Button variant="secondary" onClick={() => setShowForm(false)} className="flex-1 sm:flex-none">Cancel</Button>
             </div>
+          }
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label="Name" className="sm:col-span-2">
+              <input className={INPUT}
+                value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                placeholder="e.g. Chime 2"
+              />
+            </Field>
+            <Field label="Code" hint="Unique, no spaces.">
+              <input
+                className={INPUT}
+                value={form.code}
+                onChange={e => setForm(f => ({ ...f, code: e.target.value.toLowerCase().replace(/\s/g, '') }))}
+                placeholder="e.g. chime2"
+                disabled={!!editingId}
+              />
+            </Field>
+            <Field label="Type">
+              <select
+                className={INPUT}
+                value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
+                disabled={!!editingId}
+              >
+                {TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </Field>
+            <Field label="Min amount ($)">
+              <input
+                type="number" className={INPUT}
+                value={form.minAmount} onChange={e => setForm(f => ({ ...f, minAmount: +e.target.value }))}
+              />
+            </Field>
+            <Field label="Max amount ($)">
+              <input
+                type="number" className={INPUT}
+                value={form.maxAmount} onChange={e => setForm(f => ({ ...f, maxAmount: +e.target.value }))}
+              />
+            </Field>
+            <Field label="Fee (%)">
+              <input
+                type="number" className={INPUT}
+                value={form.feePercent} onChange={e => setForm(f => ({ ...f, feePercent: +e.target.value }))}
+              />
+            </Field>
+            <Field label="Instructions" hint="Shown to the user." className="sm:col-span-2">
+              <textarea
+                rows={3}
+                className={`${INPUT} resize-none`}
+                value={form.instructions} onChange={e => setForm(f => ({ ...f, instructions: e.target.value }))}
+                placeholder="Send to $Brenda-Taylor-245 on Chime..."
+              />
+            </Field>
+            <SwitchRow label="Active" on={form.isActive} onToggle={() => setForm(f => ({ ...f, isActive: !f.isActive }))} />
+            <SwitchRow label="Cashout enabled" on={form.cashoutEnabled} onToggle={() => setForm(f => ({ ...f, cashoutEnabled: !f.cashoutEnabled }))} />
           </div>
-        </div>
+        </AdminModal>
       )}
 
       {/* Table */}
       {loading ? (
-        <div className="space-y-3">
-          {[1,2,3,4].map(i => (
-            <div key={i} className="h-16 rounded-2xl bg-white/5 animate-pulse" />
-          ))}
-        </div>
+        <SkeletonRows rows={4} />
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-white/5">
-          <table className="w-full text-sm">
+        <TableCard>
+          <table className="data-table min-w-[860px]">
             <thead>
-              <tr className="border-b border-white/5 text-white/40 text-xs uppercase tracking-wider">
-                <th className="text-left px-4 py-3">Name</th>
-                <th className="text-left px-4 py-3">Code</th>
-                <th className="text-left px-4 py-3">Type</th>
-                <th className="text-left px-4 py-3">Min</th>
-                <th className="text-left px-4 py-3">Max</th>
-                <th className="text-left px-4 py-3">Fee</th>
-                <th className="text-left px-4 py-3">Cashout</th>
-                <th className="text-left px-4 py-3">Status</th>
-                <th className="text-left px-4 py-3">Actions</th>
+              <tr>
+                <th className={TH}>Name</th>
+                <th className={TH}>Code</th>
+                <th className={TH}>Type</th>
+                <th className={TH}>Min</th>
+                <th className={TH}>Max</th>
+                <th className={TH}>Fee</th>
+                <th className={TH}>Cashout</th>
+                <th className={TH}>Status</th>
+                <th className={TH}>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {methods.map((m, i) => (
-                <tr key={m.id} className={`border-b border-white/5 hover:bg-white/[0.02] transition-colors ${i % 2 === 0 ? 'bg-white/[0.01]' : ''}`}>
-                  <td className="px-4 py-3 text-white font-semibold">{m.name}</td>
-                  <td className="px-4 py-3 font-mono text-[#2AC3FF] text-xs">{m.code}</td>
-                  <td className="px-4 py-3 text-white/60 capitalize">{m.type}</td>
-                  <td className="px-4 py-3 text-white/60">${m.minAmount}</td>
-                  <td className="px-4 py-3 text-white/60">${m.maxAmount.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-white/60">{m.feePercent}%</td>
-                  <td className="px-4 py-3">
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${m.cashoutEnabled ? 'bg-emerald-500/15 text-emerald-400' : 'bg-white/5 text-white/30'}`}>
-                      {m.cashoutEnabled ? 'Yes' : 'No'}
-                    </span>
+              {methods.map((m) => (
+                <tr key={m.id}>
+                  <td className={`${TD} text-[14px] font-semibold text-primary`}>{m.name}</td>
+                  <td className={`${TD} text-[13px] font-mono ${NUM.cyan}`}>{m.code}</td>
+                  <td className={`${TD} text-[14px] capitalize`}>{m.type}</td>
+                  <td className={`${TD} text-[14px] tabular-nums`}>${m.minAmount}</td>
+                  <td className={`${TD} text-[14px] tabular-nums`}>${m.maxAmount.toLocaleString()}</td>
+                  <td className={`${TD} text-[14px] tabular-nums`}>{m.feePercent}%</td>
+                  <td className={TD}>
+                    <Badge tone={m.cashoutEnabled ? 'green' : 'slate'}>{m.cashoutEnabled ? 'Yes' : 'No'}</Badge>
                   </td>
-                  <td className="px-4 py-3">
-                    <button onClick={() => handleToggle(m.id)} title="Toggle active">
-                      {m.isActive
-                        ? <ToggleRight className="w-5 h-5 text-emerald-400" />
-                        : <ToggleLeft className="w-5 h-5 text-white/20" />
-                      }
-                    </button>
+                  <td className={TD}>
+                    <div className="flex items-center gap-1">
+                      <Switch on={m.isActive} onToggle={() => handleToggle(m.id)} label={m.isActive ? 'Deactivate method' : 'Activate method'} />
+                      <span className="text-[13px] text-secondary w-12">{m.isActive ? 'Active' : 'Off'}</span>
+                    </div>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className={TD}>
                     <div className="flex gap-2">
-                      <button onClick={() => openEdit(m)} className="p-1.5 rounded-lg hover:bg-white/10 text-white/50 hover:text-white transition-colors">
+                      <IconBtn label="Edit method" onClick={() => openEdit(m)}>
                         <Pencil className="w-4 h-4" />
-                      </button>
-                      <button onClick={() => handleDelete(m.id, m.name)} className="p-1.5 rounded-lg hover:bg-red-500/10 text-white/50 hover:text-red-400 transition-colors">
+                      </IconBtn>
+                      <IconBtn tone="red" label="Delete method" onClick={() => handleDelete(m.id, m.name)}>
                         <Trash2 className="w-4 h-4" />
-                      </button>
+                      </IconBtn>
                     </div>
                   </td>
                 </tr>
               ))}
               {methods.length === 0 && (
-                <tr><td colSpan={9} className="text-center py-12 text-white/30">No payment methods found</td></tr>
+                <tr><td colSpan={9}><EmptyState icon={CreditCard} title="No payment methods found" text="Add a method so players can deposit and cash out." /></td></tr>
               )}
             </tbody>
           </table>
-        </div>
+        </TableCard>
       )}
     </div>
   )

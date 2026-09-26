@@ -555,3 +555,131 @@ img[loading="lazy"] {
   content-visibility: auto;
 }
 
+
+
+/* =====================================================================
+   DASHBOARD DESIGN SYSTEM
+   Scoped to `.ds-scope` (set on the dashboard + admin shells only), so the
+   public site, homepage and standalone modals are unaffected. It re-themes
+   the existing colour variables (near-black -> navy) and refines the legacy
+   classes below, so pages that haven't been migrated to the primitives in
+   components/dashboard/ui.tsx still inherit a consistent look.
+   ===================================================================== */
+.ds-scope {
+  /* light theme */
+  --bg-background: #F3F6FB;
+  --bg-surface: #FFFFFF;
+  --bg-surface-elevated: #EEF2F8;
+  --text-primary: #0F172A;
+  --text-secondary: #475569;
+  --text-muted: #64748B;
+  --border-subtle: rgba(15, 23, 42, 0.08);
+  --border-strong: rgba(15, 23, 42, 0.15);
+  --ds-hover: rgba(15, 23, 42, 0.05);
+  --ds-accent: linear-gradient(135deg, #22D3EE 0%, #3B82F6 50%, #8B5CF6 100%);
+  --ds-accent-shadow: 0 8px 24px -8px rgba(59, 130, 246, 0.55);
+  --ds-gold: #B45309;
+}
+.dark .ds-scope {
+  --bg-background: #060912;
+  --bg-surface: #0C1224;
+  --bg-surface-elevated: #121A31;
+  --text-primary: #F1F5F9;
+  --text-secondary: #9AA8BF;
+  --text-muted: #7383A0;
+  --border-subtle: rgba(148, 163, 184, 0.10);
+  --border-strong: rgba(148, 163, 184, 0.20);
+  --ds-hover: rgba(148, 163, 184, 0.09);
+  --ds-gold: #FBBF24;
+}
+.theme-night .ds-scope {
+  --bg-background: #000000;
+  --bg-surface: #090B12;
+  --bg-surface-elevated: #10131E;
+}
+
+/* Page background: subtle navy lighting instead of flat black. Static gradients only (cheap to paint). */
+.ds-shell { background: var(--bg-background); }
+.dark .ds-shell {
+  background:
+    radial-gradient(900px 480px at 85% -8%, rgba(59, 130, 246, 0.11), transparent 62%),
+    radial-gradient(760px 420px at -8% 12%, rgba(139, 92, 246, 0.09), transparent 58%),
+    var(--bg-background);
+}
+
+/* Intentional brand typeface use only (wordmark, hero name). Everything else that asked for the
+   futuristic display face inside the dashboard falls back to Inter. */
+.ds-scope .font-display { font-family: var(--font-inter), 'Inter', system-ui, sans-serif; letter-spacing: -0.01em; }
+
+/* Cards */
+.ds-scope .glass-card,
+.ds-scope .ds-card {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.012) 100%), var(--bg-surface);
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+  border: 1px solid var(--border-subtle);
+  border-radius: 20px;
+  box-shadow: 0 14px 34px -18px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.045);
+}
+:root:not(.dark) .ds-scope .glass-card,
+:root:not(.dark) .ds-scope .ds-card {
+  background: var(--bg-surface);
+  border-color: var(--border-subtle);
+  box-shadow: 0 10px 28px -14px rgba(15, 23, 42, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+.ds-scope .ds-card-interactive { transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease; }
+.ds-scope .ds-card-interactive:hover { transform: translateY(-2px); border-color: var(--border-strong); }
+.ds-scope .ds-card-interactive:active { transform: translateY(0) scale(0.99); }
+.ds-scope .glass {
+  background: var(--bg-surface-elevated); -webkit-backdrop-filter: none; backdrop-filter: none;
+  border: 1px solid var(--border-subtle);
+}
+
+/* Buttons */
+.ds-scope .btn-primary,
+.ds-scope .ds-btn-primary {
+  background: var(--ds-accent); color: #fff; border: 0;
+  font-family: var(--font-inter), 'Inter', system-ui, sans-serif; font-weight: 700; font-size: 15px; letter-spacing: 0;
+  border-radius: 14px; padding: 0 24px; min-height: 46px;
+  box-shadow: var(--ds-accent-shadow);
+  transition: filter .2s ease, transform .15s ease, box-shadow .2s ease;
+}
+.ds-scope .btn-primary:hover, .ds-scope .ds-btn-primary:hover { transform: none; filter: brightness(1.08); box-shadow: 0 10px 28px -8px rgba(59, 130, 246, 0.7); }
+.ds-scope .btn-primary:active, .ds-scope .ds-btn-primary:active { transform: scale(0.97); filter: brightness(0.96); }
+.ds-scope .btn-primary:disabled, .ds-scope .ds-btn-primary:disabled { opacity: .5; }
+.ds-scope .btn-neon {
+  background: var(--bg-surface-elevated); border: 1px solid var(--border-strong); color: var(--text-primary);
+  font-family: var(--font-inter), 'Inter', system-ui, sans-serif; font-weight: 600; font-size: 14px; letter-spacing: 0;
+  border-radius: 14px; padding: 0 20px; min-height: 44px; box-shadow: none;
+}
+.ds-scope .btn-neon::before { display: none; }
+.ds-scope .btn-neon:hover { background: var(--bg-surface-elevated); border-color: rgba(56, 189, 248, 0.45); box-shadow: none; transform: none; filter: brightness(1.12); }
+
+/* Inputs */
+.ds-scope .input-neon,
+.ds-scope .ds-input {
+  background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); color: var(--text-primary);
+  border-radius: 14px; font-size: 15px; min-height: 46px; padding: 12px 16px; width: 100%; outline: none;
+  transition: border-color .2s ease, box-shadow .2s ease;
+}
+.ds-scope .ds-input::placeholder { color: var(--text-muted); opacity: .8; }
+.ds-scope .input-neon:focus,
+.ds-scope .ds-input:focus { border-color: rgba(56, 189, 248, 0.55); box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.12); }
+
+/* Tables (admin + history lists): readable sentence-case headers instead of tiny cyan Orbitron caps */
+.ds-scope .data-table th {
+  background: transparent; color: var(--text-muted);
+  font-family: var(--font-inter), 'Inter', system-ui, sans-serif; font-size: 12px; font-weight: 600; letter-spacing: 0.02em; text-transform: none;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.ds-scope .data-table td { border-bottom: 1px solid var(--border-subtle); }
+
+/* Status badges */
+.ds-scope .badge-pending  { background: rgba(251, 191, 36, 0.13); color: #FBBF24; border: 1px solid rgba(251, 191, 36, 0.25); }
+.ds-scope .badge-approved { background: rgba(52, 211, 153, 0.13); color: #34D399; border: 1px solid rgba(52, 211, 153, 0.25); }
+.ds-scope .badge-rejected { background: rgba(248, 113, 113, 0.13); color: #F87171; border: 1px solid rgba(248, 113, 113, 0.25); }
+.ds-scope .badge-paid     { background: rgba(56, 189, 248, 0.13); color: #38BDF8; border: 1px solid rgba(56, 189, 248, 0.25); }
+:root:not(.dark) .ds-scope .badge-pending  { color: #B45309; }
+:root:not(.dark) .ds-scope .badge-approved { color: #047857; }
+:root:not(.dark) .ds-scope .badge-rejected { color: #B91C1C; }
+:root:not(.dark) .ds-scope .badge-paid     { color: #0369A1; }
+

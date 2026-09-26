@@ -38,6 +38,7 @@ module.exports = {
       },
       fontFamily: {
         display: ['var(--font-orbitron)', 'Orbitron', 'monospace'],
+        brand: ['var(--font-orbitron)', 'Orbitron', 'monospace'],
         body: ['var(--font-inter)', 'Inter', 'sans-serif'],
         mono: ['var(--font-jetbrains)', 'JetBrains Mono', 'monospace'],
       },

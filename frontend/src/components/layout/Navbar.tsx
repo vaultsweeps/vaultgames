@@ -513,59 +513,83 @@ export default function Navbar() {
 
       {/* Main Nav Pill */}
       <div
-        className="relative border border-white/10 rounded-[28px] px-1.5 py-1.5 flex items-center gap-1 pointer-events-auto shadow-[0_8px_32px_rgba(0,0,0,0.6)] bg-[#18192e]/95 backdrop-blur-xl"
-        style={{ contain: 'layout style' }}
+        className="relative rounded-[32px] px-2 py-2 flex items-center gap-1.5 pointer-events-auto"
+        style={{
+          background: 'linear-gradient(160deg, #0c0d22 0%, #080918 100%)',
+          border: '1px solid rgba(80,100,220,0.3)',
+          boxShadow: '0 12px 50px rgba(0,0,30,0.9), 0 0 0 1px rgba(255,255,255,0.04), inset 0 1px 0 rgba(255,255,255,0.07)',
+          contain: 'layout style'
+        }}
       >
-        {/* Inner rim highlight */}
-        <div className="absolute inset-0 rounded-[28px] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] pointer-events-none" />
 
-        {/* Home — matches photo: white house icon */}
-        <Link href="/" aria-label="Home" className={`relative flex flex-col items-center justify-center w-[50px] h-[50px] rounded-2xl group overflow-hidden ${
-          pathname === '/'
-            ? 'bg-white/10 text-white border border-white/20 shadow-[inset_0_0_12px_rgba(255,255,255,0.08)]'
-            : 'text-white/45 hover:text-white/80 hover:bg-white/5 border border-transparent'
-        }`} style={{ transition: 'background-color 0.2s ease, color 0.2s ease' }}>
-          <Home className="w-[21px] h-[21px] z-10" strokeWidth={pathname === '/' ? 2.5 : 1.8} />
-          {pathname === '/' && <span className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-1 h-1 bg-white rounded-full" />}
+        {/* Home — bright white icon, neon blue glow */}
+        <Link href="/" aria-label="Home" className="relative flex flex-col items-center justify-center w-[52px] h-[52px] rounded-[18px] overflow-hidden"
+          style={{
+            background: 'linear-gradient(145deg, #131640, #0b0d2e)',
+            border: '1px solid rgba(100,140,255,0.35)',
+            boxShadow: '0 0 22px rgba(60,100,255,0.55), 0 2px 8px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.12)',
+          }}
+        >
+          {/* Glow blob behind icon */}
+          <div className="absolute inset-0 rounded-[18px]" style={{ background: 'radial-gradient(circle at 50% 60%, rgba(80,130,255,0.25) 0%, transparent 70%)' }} />
+          <Home className="w-[23px] h-[23px] z-10" strokeWidth={2.2}
+            style={{ color: '#c8d8ff', filter: 'drop-shadow(0 0 8px rgba(140,180,255,1)) drop-shadow(0 0 3px rgba(200,220,255,0.8))' }}
+          />
+          <span className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full"
+            style={{ background: '#7eb5ff', boxShadow: '0 0 8px #7eb5ff, 0 0 16px rgba(100,160,255,0.6)' }} />
         </Link>
 
-        {/* Games — logo icon */}
-        <Link href="/games" aria-label="Games" className={`relative flex flex-col items-center justify-center w-[50px] h-[50px] rounded-2xl ${
-          pathname.includes('/games')
-            ? 'bg-white/10 border border-white/20'
-            : 'hover:bg-white/5 border border-transparent'
-        }`} style={{ transition: 'background-color 0.2s ease' }}>
-          <div className="w-[30px] h-[30px] rounded-lg flex items-center justify-center overflow-hidden z-10">
-            <Image src="/images/vault-sweeps-logo.png" alt="Games" width={32} height={32} className={`w-full h-full object-contain ${!pathname.includes('/games') && 'opacity-60 hover:opacity-100'}`} style={{ transition: 'opacity 0.2s ease' }} />
+        {/* Games — logo icon, bright with blue glow */}
+        <Link href="/games" aria-label="Games" className="relative flex flex-col items-center justify-center w-[52px] h-[52px] rounded-[18px] overflow-hidden"
+          style={{
+            background: 'linear-gradient(145deg, #0e1235, #080b28)',
+            border: '1px solid rgba(80,110,220,0.35)',
+            boxShadow: '0 0 18px rgba(60,90,200,0.4), 0 2px 8px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1)',
+          }}
+        >
+          <div className="absolute inset-0 rounded-[18px]" style={{ background: 'radial-gradient(circle at 50% 60%, rgba(60,90,200,0.2) 0%, transparent 70%)' }} />
+          <div className="w-[34px] h-[34px] flex items-center justify-center z-10"
+            style={{ filter: 'drop-shadow(0 0 10px rgba(120,160,255,0.9)) brightness(1.35) saturate(1.2)' }}
+          >
+            <Image src="/images/vault-sweeps-logo.png" alt="Games" width={34} height={34} className="w-full h-full object-contain" />
           </div>
-          {pathname.includes('/games') && <span className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-1 h-1 bg-white rounded-full" />}
         </Link>
 
-        {/* Bonuses — gift icon, matches photo white gift */}
-        <Link href="/bonuses" aria-label="Bonuses" className={`relative flex flex-col items-center justify-center w-[50px] h-[50px] rounded-2xl ${
-          pathname.includes('/bonuses')
-            ? 'bg-white/10 text-white border border-white/20'
-            : 'text-white/45 hover:text-white/80 hover:bg-white/5 border border-transparent'
-        }`} style={{ transition: 'background-color 0.2s ease, color 0.2s ease' }}>
-          <Gift className="w-[21px] h-[21px] z-10" strokeWidth={pathname.includes('/bonuses') ? 2.5 : 1.8} />
-          {pathname.includes('/bonuses') && <span className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-1 h-1 bg-white rounded-full" />}
+        {/* Bonuses — vivid orange gift icon */}
+        <Link href="/bonuses" aria-label="Bonuses" className="relative flex flex-col items-center justify-center w-[52px] h-[52px] rounded-[18px] overflow-hidden"
+          style={{
+            background: 'linear-gradient(145deg, #1a1005, #100a02)',
+            border: '1px solid rgba(255,150,30,0.4)',
+            boxShadow: '0 0 22px rgba(255,120,0,0.5), 0 2px 8px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1)',
+          }}
+        >
+          <div className="absolute inset-0 rounded-[18px]" style={{ background: 'radial-gradient(circle at 50% 60%, rgba(255,130,0,0.2) 0%, transparent 70%)' }} />
+          <Gift className="w-[24px] h-[24px] z-10" strokeWidth={2.2}
+            style={{ color: '#ffb347', filter: 'drop-shadow(0 0 10px rgba(255,140,0,1)) drop-shadow(0 0 4px rgba(255,180,80,0.9))' }}
+          />
+          <span className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full"
+            style={{ background: '#ffb347', boxShadow: '0 0 8px #ffb347, 0 0 16px rgba(255,140,0,0.6)' }} />
         </Link>
 
-        {/* Refer & Earn — people icon, matches photo */}
-        <Link href="/dashboard/invite" aria-label="Refer & Earn" className={`relative flex flex-col items-center justify-center w-[50px] h-[50px] rounded-2xl ${
-          pathname.includes('/invite')
-            ? 'bg-white/10 text-white border border-white/20'
-            : 'text-white/45 hover:text-white/80 hover:bg-white/5 border border-transparent'
-        }`} style={{ transition: 'background-color 0.2s ease, color 0.2s ease' }}>
-          <Users className="w-[21px] h-[21px] z-10" strokeWidth={pathname.includes('/invite') ? 2.5 : 1.8} />
-          {pathname.includes('/invite') && <span className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-1 h-1 bg-white rounded-full" />}
+        {/* Refer & Earn — bright white/blue user icon */}
+        <Link href="/dashboard/invite" aria-label="Refer & Earn" className="relative flex flex-col items-center justify-center w-[52px] h-[52px] rounded-[18px] overflow-hidden"
+          style={{
+            background: 'linear-gradient(145deg, #131640, #0b0d2e)',
+            border: '1px solid rgba(100,140,255,0.3)',
+            boxShadow: '0 0 16px rgba(60,100,220,0.35), 0 2px 8px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1)',
+          }}
+        >
+          <div className="absolute inset-0 rounded-[18px]" style={{ background: 'radial-gradient(circle at 50% 55%, rgba(80,120,255,0.18) 0%, transparent 70%)' }} />
+          <Users className="w-[23px] h-[23px] z-10" strokeWidth={2.2}
+            style={{ color: '#c0d4ff', filter: 'drop-shadow(0 0 7px rgba(140,180,255,0.9)) drop-shadow(0 0 3px rgba(200,220,255,0.7))' }}
+          />
         </Link>
 
         {/* Divider */}
-        <div className="w-px h-7 bg-gradient-to-b from-transparent via-white/12 to-transparent mx-0.5" />
+        <div className="w-px h-8 bg-gradient-to-b from-transparent via-white/10 to-transparent mx-0.5" />
 
         {/* Contact FAB inside pill */}
-        <div className="w-[50px] h-[50px] flex items-center justify-center">
+        <div className="w-[52px] h-[52px] flex items-center justify-center">
           <ExpandableContactFab inlinePill />
         </div>
 

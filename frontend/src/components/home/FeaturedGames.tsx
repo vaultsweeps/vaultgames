@@ -91,7 +91,7 @@ export default function FeaturedGames() {
   }, [])
   return (
     <section className="py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl lg:max-w-[1824px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12">
         <div className="flex items-center justify-start gap-3 mb-6">
           <Gamepad2 className="w-8 h-8 text-cyan-400" />
           <h2 className="font-display font-bold text-2xl sm:text-3xl text-white">
@@ -99,7 +99,7 @@ export default function FeaturedGames() {
           </h2>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-5 lg:gap-5 2xl:gap-6">
           {loading ? (
             <div className="col-span-full py-16 flex justify-center"><Loader fullScreen={false} /></div>
           ) : games.length === 0 ? (
@@ -116,7 +116,7 @@ export default function FeaturedGames() {
                 transition={{ delay: Math.min(i * 0.03, 0.3) }}
                 whileHover={{ y: -8, scale: 1.03 }}
                 style={{ willChange: 'transform' }}
-                className="relative z-10 aspect-[4/5] rounded-[22px] overflow-hidden cursor-pointer bg-[#10141d] border border-white/5 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.8)] transition-transform duration-500 ease-out"
+                className="relative z-10 aspect-[4/5] lg:aspect-[7/9] rounded-[22px] lg:rounded-[26px] overflow-hidden cursor-pointer bg-[#10141d] border border-white/5 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.8)] transition-transform duration-500 ease-out"
               >
                 <Link href={`/games/${game.name.toLowerCase().replace(/[\s_.-]+/g, '')}`} onClick={handleGameClick} className="absolute inset-0 z-20" aria-label={game.name}></Link>
                 
@@ -127,7 +127,7 @@ export default function FeaturedGames() {
                       src={game.thumbnailUrl}
                       alt={game.name}
                       fill
-                      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 20vw"
+                      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, (max-width: 1800px) 20vw, 340px"
                       unoptimized={game.thumbnailUrl.startsWith('http')}
                       className="object-cover saturate-[1.15] contrast-[1.05] group-hover:scale-110 transition-transform duration-700 ease-out"
                       onError={() => setImgErrors(prev => ({ ...prev, [game.id]: true }))}
@@ -152,8 +152,8 @@ export default function FeaturedGames() {
                 </div>
 
                 {/* Game info overlay (bottom left, flush text) */}
-                <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-5 flex items-end justify-between z-10">
-                  <h3 className="font-sans font-bold text-white text-[16px] sm:text-[18px] tracking-tight truncate drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+                <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-5 lg:p-6 flex items-end justify-between z-10">
+                  <h3 className="font-sans font-bold text-white text-[16px] sm:text-[18px] lg:text-[19px] 2xl:text-[21px] tracking-tight truncate drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
                     {game.name}
                   </h3>
                 </div>

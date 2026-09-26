@@ -6,10 +6,11 @@ import { usePathname, useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard, CreditCard, ArrowUpCircle, Gamepad2, Gift, HelpCircle, User,
-  Bell, LogOut, Menu, X, Zap, ChevronRight, Settings, Users2
+  Bell, LogOut, Menu, X, Settings, Users2, ArrowLeft, Home
 } from 'lucide-react'
 import { notificationsApi } from '@/lib/api'
 import { useAuthStore } from '@/store/authStore'
+import { cn } from '@/components/dashboard/ui'
 
 const NAV_ITEMS = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Overview' },
@@ -21,6 +22,101 @@ const NAV_ITEMS = [
   { href: '/dashboard/support', icon: HelpCircle, label: 'Support' },
   { href: '/dashboard/profile', icon: User, label: 'Profile' },
 ]
+
+// Routes that exist but aren't in the sidebar still deserve a proper header title.
+const EXTRA_TITLES: Record<string, string> = {
+  '/dashboard/notifications': 'Notifications',
+  '/dashboard/withdrawals': 'Withdrawals',
+  '/dashboard/wheel': 'Daily Spin',
+}
+
+const isActivePath = (pathname: string, href: string) =>
+  pathname === href || (href !== '/dashboard' && pathname.startsWith(href + '/'))
+
+type SidebarUser = { username?: string; email?: string; role?: string } | null
+
+function SidebarContent({ user, pathname, onNavigate, onLogout, onClose }: {
+  user: SidebarUser; pathname: string; onNavigate: () => void; onLogout: () => void; onClose?: () => void
+}) {
+  return (
+    <div className="flex flex-col h-full">
+      {/* Brand */}
+      <div className="flex items-center justify-between px-5 pt-5 pb-4">
+        <Link href="/" onClick={onNavigate} className="flex items-center gap-2.5 min-w-0">
+          <Image src="/images/vault-sweeps-logo.png" alt="Vault Sweeps" width={551} height={488} className="h-9 w-auto object-contain" priority />
+          <span className="font-brand font-bold text-[13px] tracking-wide gradient-text whitespace-nowrap">VAULT SWEEPS</span>
+        </Link>
+        {onClose && (
+          <button type="button" onClick={onClose} aria-label="Close menu"
+            className="w-10 h-10 -mr-2 rounded-xl flex items-center justify-center text-secondary hover:text-primary hover:bg-[var(--ds-hover)] active:scale-95 transition">
+            <X className="w-5 h-5" />
+          </button>
+        )}
+      </div>
+
+      {/* Profile */}
+      <div className="mx-4 mb-3 flex items-center gap-3 rounded-2xl bg-surface-elevated border border-border-subtle p-3.5">
+        <div className="w-11 h-11 flex-shrink-0 rounded-full flex items-center justify-center text-white font-bold text-base"
+          style={{ background: 'var(--ds-accent)' }}>
+          {user?.username?.charAt(0).toUpperCase()}
+        </div>
+        <div className="min-w-0">
+          <p className="text-primary text-[15px] font-semibold truncate leading-tight">{user?.username}</p>
+          <p className="text-muted text-xs truncate mt-0.5">{user?.email}</p>
+        </div>
+      </div>
+
+      {/* Navigation */}
+      <nav className="flex-1 overflow-y-auto px-3 py-1 space-y-1" aria-label="Dashboard">
+        {NAV_ITEMS.map(item => {
+          const active = isActivePath(pathname, item.href)
+          return (
+            <Link key={item.href} href={item.href} onClick={onNavigate}
+              aria-current={active ? 'page' : undefined}
+              className={cn(
+                'group flex items-center gap-3 h-12 lg:h-11 px-3.5 rounded-xl text-[15px] lg:text-[14.5px] font-medium transition-colors',
+                active ? 'text-primary' : 'text-secondary hover:text-primary hover:bg-[var(--ds-hover)]'
+              )}
+              style={active ? {
+                background: 'linear-gradient(90deg, rgba(56,189,248,0.16), rgba(99,102,241,0.07))',
+                boxShadow: 'inset 0 0 0 1px rgba(56,189,248,0.16), 0 10px 26px -16px rgba(56,189,248,0.55)',
+              } : undefined}
+            >
+              <item.icon className={cn('w-[19px] h-[19px] flex-shrink-0 transition-colors', active ? 'text-sky-400' : 'text-muted group-hover:text-primary')} strokeWidth={1.9} />
+              <span className="truncate">{item.label}</span>
+              {active && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-sky-400" style={{ boxShadow: '0 0 10px rgba(56,189,248,0.9)' }} />}
+            </Link>
+          )
+        })}
+        {user?.role === 'admin' && (
+          <>
+            <div className="!mt-3 mb-1 mx-3.5 h-px bg-border-subtle" />
+            <Link href="/admin" onClick={onNavigate}
+              className="flex items-center gap-3 h-12 lg:h-11 px-3.5 rounded-xl text-[15px] lg:text-[14.5px] font-semibold transition-colors hover:bg-[var(--ds-hover)]"
+              style={{ color: 'var(--ds-gold)' }}
+            >
+              <Settings className="w-[19px] h-[19px] flex-shrink-0" strokeWidth={1.9} />
+              Admin Panel
+            </Link>
+          </>
+        )}
+      </nav>
+
+      {/* Bottom */}
+      <div className="p-3 border-t border-border-subtle" style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
+        <Link href="/" onClick={onNavigate} className="lg:hidden flex items-center gap-3 h-12 px-3.5 rounded-xl text-[15px] text-secondary hover:text-primary hover:bg-[var(--ds-hover)] transition-colors">
+          <Home className="w-[19px] h-[19px]" strokeWidth={1.9} />
+          Back to site
+        </Link>
+        <button type="button" onClick={onLogout}
+          className="w-full flex items-center gap-3 h-12 lg:h-11 px-3.5 rounded-xl text-[15px] lg:text-[14.5px] font-medium text-secondary hover:text-red-400 hover:bg-red-500/10 transition-colors">
+          <LogOut className="w-[19px] h-[19px]" strokeWidth={1.9} />
+          Logout
+        </button>
+      </div>
+    </div>
+  )
+}
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -45,7 +141,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const fetchNotifications = () => {
       const now = Date.now()
       if (now - lastFetch.current < 30000) return // Throttle to 30s
-      
+
       notificationsApi.getUnreadCount()
         .then(res => {
           setUnreadCount(res.data.data.count)
@@ -55,137 +151,100 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
 
     fetchNotifications() // fetch immediately on mount if authenticated
-    
+
     // Poll every 30 seconds
     const interval = setInterval(fetchNotifications, 30000)
     return () => clearInterval(interval)
   }, [isAuthenticated])
 
+  // Close the mobile menu on Escape
+  useEffect(() => {
+    if (!sidebarOpen) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setSidebarOpen(false) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [sidebarOpen])
+
   // Show spinner only if there is no cached user at all (first load with no persisted state)
   if (!isAuthenticated && !user) return (
-    <div className="min-h-screen bg-background flex items-center justify-center">
-      <div className="w-8 h-8 border-2 border-neon-blue/30 border-t-neon-blue rounded-full animate-spin" />
+    <div className="ds-scope ds-shell min-h-screen flex items-center justify-center">
+      <div className="w-8 h-8 border-2 border-sky-400/25 border-t-sky-400 rounded-full animate-spin" />
     </div>
   )
 
-  const SidebarContent = () => (
-    <div className="flex flex-col h-full">
-      {/* Logo */}
-      <div className="p-6 border-b border-border-subtle">
-        <Link href="/" className="flex items-center gap-2">
-          <Image src="/images/vault-sweeps-logo.png" alt="Vault Sweeps" width={551} height={488} className="h-10 w-auto object-contain drop-shadow-md" priority />
-          <span className="font-display font-bold text-sm gradient-text">VAULT SWEEPS</span>
-        </Link>
-      </div>
+  const pageTitle =
+    NAV_ITEMS.find(n => isActivePath(pathname, n.href))?.label ||
+    Object.entries(EXTRA_TITLES).find(([href]) => isActivePath(pathname, href))?.[1] ||
+    'Dashboard'
 
-      {/* User info */}
-      <div className="p-4 m-4 glass rounded-xl">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-neon-blue to-neon-purple flex items-center justify-center text-white font-bold">
-            {user?.username?.charAt(0).toUpperCase()}
-          </div>
-          <div className="min-w-0">
-            <p className="text-white text-sm font-medium truncate">{user?.username}</p>
-            <p className="text-muted text-xs truncate">{user?.email}</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Navigation */}
-      <nav className="flex-1 px-4 space-y-1">
-        {NAV_ITEMS.map(item => {
-          const active = pathname === item.href
-          return (
-            <Link key={item.href} href={item.href}
-              onClick={() => setSidebarOpen(false)}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all group ${
-                active
-                  ? 'bg-neon-blue/10 text-neon-blue border border-neon-blue/20'
-                  : 'text-secondary hover:text-white hover:bg-white/5'
-              }`}
-            >
-              <item.icon className={`w-4 h-4 ${active ? 'text-neon-blue' : 'group-hover:text-white'}`} />
-              {item.label}
-              {active && <ChevronRight className="w-3 h-3 ml-auto opacity-50" />}
-            </Link>
-          )
-        })}
-        {user?.role === 'admin' && (
-          <Link href="/admin"
-            className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-yellow-400 hover:bg-yellow-400/5 transition-all"
-          >
-            <Settings className="w-4 h-4" />
-            Admin Panel
-          </Link>
-        )}
-      </nav>
-
-      {/* Bottom */}
-      <div className="p-4 border-t border-border-subtle">
-        <button onClick={logout} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-secondary hover:text-red-400 hover:bg-red-500/5 transition-all">
-          <LogOut className="w-4 h-4" />
-          Logout
-        </button>
-      </div>
-    </div>
-  )
+  const closeMenu = () => setSidebarOpen(false)
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="ds-scope ds-shell min-h-screen text-primary flex">
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex w-64 bg-surface border-r border-border-subtle flex-col flex-shrink-0 fixed inset-y-0 left-0 z-30">
-        <SidebarContent />
+      <aside className="hidden lg:flex w-[272px] bg-surface border-r border-border-subtle flex-col flex-shrink-0 fixed inset-y-0 left-0 z-30">
+        <SidebarContent user={user} pathname={pathname} onNavigate={closeMenu} onLogout={logout} />
       </aside>
 
       {/* Mobile Sidebar */}
       <AnimatePresence>
         {sidebarOpen && (
           <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
-              onClick={() => setSidebarOpen(false)} />
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}
+              className="fixed inset-0 bg-black/65 z-40 lg:hidden"
+              onClick={closeMenu} />
             <motion.aside
-              initial={{ x: -256 }} animate={{ x: 0 }} exit={{ x: -256 }}
-              transition={{ type: 'spring', damping: 25 }}
-              className="fixed inset-y-0 left-0 w-64 bg-surface border-r border-border-subtle flex flex-col z-50 lg:hidden"
+              initial={{ x: '-100%' }} animate={{ x: 0 }} exit={{ x: '-100%' }}
+              transition={{ type: 'spring', damping: 30, stiffness: 320 }}
+              role="dialog" aria-modal="true" aria-label="Menu"
+              className="fixed inset-y-0 left-0 w-[86%] max-w-[300px] bg-surface border-r border-border-subtle flex flex-col z-50 lg:hidden shadow-[0_0_60px_rgba(0,0,0,0.55)]"
             >
-              <SidebarContent />
+              <SidebarContent user={user} pathname={pathname} onNavigate={closeMenu} onLogout={logout} onClose={closeMenu} />
             </motion.aside>
           </>
         )}
       </AnimatePresence>
 
       {/* Main content */}
-      <div className="flex-1 min-w-0 lg:ml-64 flex flex-col min-h-screen">
+      <div className="flex-1 min-w-0 lg:ml-[272px] flex flex-col min-h-screen">
         {/* Top bar */}
-        <header className="sticky top-0 z-20 bg-surface/80 backdrop-blur-sm border-b border-border-subtle px-4 sm:px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <button onClick={() => setSidebarOpen(true)} className="lg:hidden text-secondary hover:text-white">
+        <header className="sticky top-0 z-20 border-b border-border-subtle backdrop-blur-xl"
+          style={{ background: 'color-mix(in srgb, var(--bg-background) 78%, transparent)' }}>
+          <div className="h-16 px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <button type="button" onClick={() => setSidebarOpen(true)} aria-label="Open menu"
+                className="lg:hidden w-10 h-10 flex-shrink-0 rounded-xl bg-surface-elevated border border-border-subtle flex items-center justify-center text-primary active:scale-95 transition">
                 <Menu className="w-5 h-5" />
               </button>
-              <div>
-                <h1 className="font-display font-bold text-white text-sm">
-                  {NAV_ITEMS.find(n => n.href === pathname)?.label || 'Dashboard'}
-                </h1>
+              <div className="min-w-0">
+                <p className="text-[17px] sm:text-lg font-bold text-primary leading-tight truncate">{pageTitle}</p>
                 <p className="text-muted text-xs hidden sm:block">Manage your gaming account</p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <Link href="/dashboard/notifications" className="relative w-9 h-9 glass rounded-lg flex items-center justify-center text-secondary hover:text-white border border-border-strong transition-all">
-                <Bell className="w-4 h-4" />
+            <div className="flex items-center gap-2 sm:gap-2.5">
+              <Link href="/dashboard/notifications" aria-label="Notifications"
+                className="relative w-10 h-10 rounded-xl bg-surface-elevated border border-border-subtle flex items-center justify-center text-primary hover:brightness-125 active:scale-95 transition">
+                <Bell className="w-[18px] h-[18px]" strokeWidth={1.9} />
                 {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-neon-blue rounded-full text-xs text-white flex items-center justify-center font-mono">{unreadCount > 9 ? '9+' : unreadCount}</span>
+                  <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full text-[11px] font-bold text-white flex items-center justify-center"
+                    style={{ background: 'var(--ds-accent)', boxShadow: '0 0 0 2px var(--bg-background)' }}>
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
                 )}
               </Link>
-              <Link href="/" className="text-xs text-muted hover:text-white transition-colors hidden sm:block">← Back to site</Link>
+              <Link href="/" className="hidden sm:inline-flex items-center gap-1.5 h-10 px-3.5 rounded-xl text-[13px] font-medium text-secondary hover:text-primary hover:bg-[var(--ds-hover)] transition-colors">
+                <ArrowLeft className="w-4 h-4" />
+                Back to site
+              </Link>
             </div>
           </div>
         </header>
 
         {/* Page content */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">
-          {children}
+        <main className="flex-1 w-full overflow-x-clip">
+          <div className="mx-auto w-full max-w-[1240px] px-4 sm:px-6 lg:px-8 py-5 sm:py-7 lg:py-9">
+            {children}
+          </div>
         </main>
       </div>
     </div>

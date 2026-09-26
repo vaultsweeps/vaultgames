@@ -1,9 +1,10 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
-import { motion } from 'framer-motion'
 import toast from 'react-hot-toast'
-import { Download, RefreshCw, Search, Zap, Wallet2 } from 'lucide-react'
+import { Download, RefreshCw, Search, Zap, Wallet2, Info, Gamepad2 } from 'lucide-react'
 import { adminApi } from '@/lib/api'
+import { PageHeader, SectionHeading, Card, Button, TabBar, EmptyState, IconTile } from '@/components/dashboard/ui'
+import { INPUT, NUM, TH, TD, IconBtn, SwitchRow, TableCard, SkeletonRows } from '../_kit'
 
 type WindowStats = { pointsAdded: number; bonus: number; totalAdded: number; pointsWithdrawn: number; net: number; cashout: number }
 
@@ -22,10 +23,10 @@ type Provider = { id: string; name: string }
 type ProviderBalance = { providerId: string; providerName: string; balance: number | null; usedToday: number; error: string | null }
 type RangeKey = '8h' | '24h' | 'all'
 
-const RANGES: { key: RangeKey; label: string }[] = [
-  { key: '8h', label: 'Last 8 Hours' },
-  { key: '24h', label: 'Last 24 Hours' },
-  { key: 'all', label: 'All Time' },
+const RANGES: { key: RangeKey; label: string; short: string }[] = [
+  { key: '8h', label: 'Last 8 Hours', short: '8h' },
+  { key: '24h', label: 'Last 24 Hours', short: '24h' },
+  { key: 'all', label: 'All Time', short: 'All' },
 ]
 
 const money = (n: number) => `$${(n || 0).toFixed(2)}`
@@ -136,186 +137,177 @@ export default function AdminGameBalancePage() {
 
   const rangeLabel = RANGES.find(r => r.key === range)?.label || ''
 
+  const summary = [
+    { label: 'Base points added', value: totals.pointsAdded, cls: NUM.green },
+    { label: 'Bonus added (estimated)', value: totals.bonus, cls: NUM.purple },
+    { label: 'Total withdrawn from games', value: totals.pointsWithdrawn, cls: NUM.amber },
+    { label: 'Total platform cashouts', value: totals.cashout, cls: NUM.cyan },
+  ]
+
   return (
-    <div className="space-y-5">
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h2 className="font-display font-bold text-2xl text-white">GAME BALANCE REPORT</h2>
-          <p className="text-secondary text-sm">Points added, withdrawn, and cashed out per user &amp; game — {rangeLabel.toLowerCase()}.</p>
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={handleExport}
-            disabled={exporting || rows.length === 0}
-            className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 rounded-xl text-sm font-medium transition-all disabled:opacity-50"
-          >
-            <Download className="w-4 h-4" />
-            {exporting ? 'Exporting...' : 'Export to Excel'}
-          </button>
-          <button onClick={fetchReport} className="glass border border-border-strong rounded-xl px-3 py-2 text-secondary hover:text-white transition-all">
-            <RefreshCw className="w-4 h-4" />
-          </button>
-        </div>
-      </motion.div>
+    <div className="space-y-5 pb-10">
+      <PageHeader
+        title="Game balances"
+        subtitle={<>Points added, withdrawn, and cashed out per user &amp; game — {rangeLabel.toLowerCase()}.</>}
+        actions={
+          <>
+            <Button variant="success" onClick={handleExport} disabled={exporting || rows.length === 0}>
+              <Download className="w-5 h-5" />
+              {exporting ? 'Exporting...' : 'Export to Excel'}
+            </Button>
+            <IconBtn size="lg" label="Refresh report" onClick={fetchReport}><RefreshCw className="w-5 h-5" /></IconBtn>
+          </>
+        }
+      />
 
       {/* Provider (agent) remaining balances — separate from the per-user table below */}
-      <div className="glass-card p-4">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-bold text-white flex items-center gap-2">
-            <Wallet2 className="w-4 h-4 text-neon-blue" /> Remaining Balance Per Game (Agent Accounts)
-          </h3>
-          <button onClick={fetchProviderBalances} disabled={balancesLoading} className="text-secondary hover:text-white transition-all disabled:opacity-50">
-            <RefreshCw className={`w-4 h-4 ${balancesLoading ? 'animate-spin' : ''}`} />
-          </button>
-        </div>
+      <Card>
+        <SectionHeading
+          title={<span className="flex items-center gap-2.5"><IconTile icon={Wallet2} tone="cyan" size="sm" />Remaining balance per game <span className="hidden sm:inline text-muted font-medium text-[14px]">(agent accounts)</span></span>}
+          action={
+            <IconBtn label="Refresh agent balances" onClick={fetchProviderBalances} disabled={balancesLoading}>
+              <RefreshCw className={`w-4 h-4 ${balancesLoading ? 'animate-spin' : ''}`} />
+            </IconBtn>
+          }
+        />
         {balancesLoading ? (
-          <p className="text-muted text-sm">Checking every provider's agent balance...</p>
+          <p className="text-secondary text-[14px]">Checking every provider&apos;s agent balance...</p>
         ) : providerBalances.length === 0 ? (
-          <p className="text-muted text-sm">No active providers configured.</p>
+          <p className="text-secondary text-[14px]">No active providers configured.</p>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 min-[420px]:grid-cols-2 lg:grid-cols-4 gap-3">
             {providerBalances.map(p => (
-              <div key={p.providerId} className="bg-white/5 rounded-xl p-3 border border-border-subtle">
-                <p className="text-xs text-muted mb-1 truncate">{p.providerName}</p>
+              <div key={p.providerId} className="rounded-2xl bg-surface-elevated border border-border-subtle px-4 py-3.5 min-w-0">
+                <p className="text-[13px] text-secondary mb-1.5 truncate">{p.providerName}</p>
                 {p.balance !== null ? (
-                  <p className="text-lg font-bold text-emerald-400">{money(p.balance)}</p>
+                  <p className={`text-[22px] font-bold leading-none tabular-nums truncate ${NUM.green}`}>{money(p.balance)}</p>
                 ) : (
-                  <p className="text-xs text-red-400" title={p.error || undefined}>Unreachable</p>
+                  <p className={`text-[15px] font-semibold leading-none ${NUM.red}`} title={p.error || undefined}>Unreachable</p>
                 )}
-                <p className="text-[11px] text-amber-400 mt-1">Used today: {money(p.usedToday)}</p>
+                <p className={`text-xs mt-2 tabular-nums truncate ${NUM.amber}`}>Used today: {money(p.usedToday)}</p>
               </div>
             ))}
           </div>
         )}
-      </div>
+      </Card>
 
       {/* Filters */}
-      <div className="glass-card p-4 flex flex-wrap items-center gap-3">
-        <div className="flex gap-1.5 bg-white/5 rounded-xl p-1 border border-border-subtle">
-          {RANGES.map(r => (
-            <button
-              key={r.key}
-              onClick={() => setRange(r.key)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${range === r.key ? 'bg-neon-blue text-black' : 'text-secondary hover:text-white'}`}
-            >
-              {r.label}
-            </button>
-          ))}
-        </div>
-
-        <select value={providerId} onChange={e => setProviderId(e.target.value)} className="input-neon !w-auto text-sm py-2">
-          <option value="">All Games</option>
-          {providers.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-        </select>
-
-        <div className="relative flex-1 min-w-[180px]">
-          <Search className="w-4 h-4 text-muted absolute left-3 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            placeholder="Search username, email, or account..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="input-neon pl-9 text-sm py-2 w-full"
+      <Card className="!p-4 sm:!p-5">
+        <div className="flex flex-col lg:flex-row lg:items-center gap-3">
+          <TabBar
+            className="self-start"
+            tabs={RANGES.map(r => ({ id: r.key, label: <><span className="sm:hidden">{r.short}</span><span className="hidden sm:inline">{r.label}</span></> }))}
+            active={range}
+            onChange={setRange}
           />
-        </div>
 
-        <label className="flex items-center gap-2 text-sm text-secondary cursor-pointer select-none whitespace-nowrap">
-          <input type="checkbox" checked={onlyActive} onChange={e => setOnlyActive(e.target.checked)} className="accent-neon-blue w-4 h-4" />
-          Only show accounts active in this period
-        </label>
-      </div>
+          <select value={providerId} onChange={e => setProviderId(e.target.value)} className={`${INPUT} lg:!w-52`} aria-label="Filter by game">
+            <option value="">All Games</option>
+            {providers.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+
+          <div className="relative flex-1 min-w-0">
+            <Search className="w-4 h-4 text-muted absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search username, email, or account..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className={`${INPUT} !pl-11`}
+            />
+          </div>
+        </div>
+        <SwitchRow className="mt-3" label="Only show accounts active in this period" on={onlyActive} onToggle={() => setOnlyActive(v => !v)} />
+      </Card>
 
       {/* Summary tiles (selected period) */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <div className="glass-card p-4">
-          <p className="text-xs text-muted mb-1">Base Points Added ({rangeLabel})</p>
-          <p className="text-xl font-bold text-emerald-400">{money(totals.pointsAdded)}</p>
-        </div>
-        <div className="glass-card p-4">
-          <p className="text-xs text-muted mb-1">Bonus Added — Estimated ({rangeLabel})</p>
-          <p className="text-xl font-bold text-purple-400">{money(totals.bonus)}</p>
-        </div>
-        <div className="glass-card p-4">
-          <p className="text-xs text-muted mb-1">Total Withdrawn From Games ({rangeLabel})</p>
-          <p className="text-xl font-bold text-amber-400">{money(totals.pointsWithdrawn)}</p>
-        </div>
-        <div className="glass-card p-4">
-          <p className="text-xs text-muted mb-1">Total Platform Cashouts ({rangeLabel})</p>
-          <p className="text-xl font-bold text-neon-blue">{money(totals.cashout)}</p>
-        </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+        {summary.map(s => (
+          <div key={s.label} className="ds-card p-4 sm:p-5 min-w-0">
+            <p className="text-[13px] text-secondary leading-snug mb-2">{s.label}</p>
+            <p className={`text-[22px] sm:text-[26px] font-bold leading-none tabular-nums truncate ${s.cls}`}>{money(s.value)}</p>
+            <p className="text-xs text-muted mt-2">{rangeLabel}</p>
+          </div>
+        ))}
       </div>
 
       {/* Table */}
-      <div className="glass-card overflow-hidden">
-        <p className="text-xs text-muted px-4 pt-3">
-          "Bonus" and "Total Added" are estimated — recharges also credit a welcome/deposit bonus to the player's live game balance that isn't stored per-transaction, so it's re-derived here using the same 100%-first-recharge / 30%-after rule the app applies. Use "Live Balance" for the exact figure.
+      <div className="rounded-2xl p-4 flex gap-3 bg-surface-elevated border border-border-subtle">
+        <Info className="w-5 h-5 text-muted flex-shrink-0 mt-0.5" />
+        <p className="text-[13px] text-secondary leading-relaxed">
+          &quot;Bonus&quot; and &quot;Total Added&quot; are estimated — recharges also credit a welcome/deposit bonus to the player&apos;s live game balance that isn&apos;t stored per-transaction, so it&apos;s re-derived here using the same 100%-first-recharge / 30%-after rule the app applies. Use &quot;Live Balance&quot; for the exact figure.
         </p>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-slate-300 min-w-[1300px]">
-            <thead className="bg-white/5 text-slate-400 text-xs uppercase tracking-wider">
+      </div>
+
+      {loading ? (
+        <SkeletonRows rows={5} />
+      ) : rows.length === 0 ? (
+        <Card>
+          <EmptyState
+            icon={Gamepad2}
+            title="No accounts to show"
+            text={onlyActive
+              ? `No accounts had any recharge/withdraw activity in the ${rangeLabel.toLowerCase()}. Try a wider period or turn off "Only show accounts active in this period".`
+              : 'No game accounts found for this filter.'}
+          />
+        </Card>
+      ) : (
+        <TableCard>
+          <table className="data-table min-w-[1300px]">
+            <thead>
               <tr>
-                <th className="px-4 py-3 font-medium">User</th>
-                <th className="px-4 py-3 font-medium">Game</th>
-                <th className="px-4 py-3 font-medium">In-Game Account</th>
-                <th className="px-4 py-3 font-medium">Base Added</th>
-                <th className="px-4 py-3 font-medium">Bonus (Est.)</th>
-                <th className="px-4 py-3 font-medium">Total Added</th>
-                <th className="px-4 py-3 font-medium">Withdrawn</th>
-                <th className="px-4 py-3 font-medium">Net</th>
-                <th className="px-4 py-3 font-medium">Cashout</th>
-                <th className="px-4 py-3 font-medium">Total (All-Time)</th>
-                <th className="px-4 py-3 font-medium">Live Balance</th>
+                <th className={TH}>User</th>
+                <th className={TH}>Game</th>
+                <th className={TH}>In-game account</th>
+                <th className={TH}>Base added</th>
+                <th className={TH}>Bonus (est.)</th>
+                <th className={TH}>Total added</th>
+                <th className={TH}>Withdrawn</th>
+                <th className={TH}>Net</th>
+                <th className={TH}>Cashout</th>
+                <th className={TH}>Total (all-time)</th>
+                <th className={TH}>Live balance</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5">
-              {loading ? (
-                <tr><td colSpan={11} className="px-4 py-12 text-center text-muted">Loading report...</td></tr>
-              ) : rows.length === 0 ? (
-                <tr>
-                  <td colSpan={11} className="px-4 py-12 text-center text-muted">
-                    {onlyActive
-                      ? `No accounts had any recharge/withdraw activity in the ${rangeLabel.toLowerCase()}. Try a wider period or uncheck "Only show accounts active in this period".`
-                      : 'No game accounts found for this filter.'}
-                  </td>
-                </tr>
-              ) : rows.map(r => {
+            <tbody>
+              {rows.map(r => {
                 const key = `${r.userId}:${r.providerId}`
                 const live = liveBalances[key]
                 const s = r.windows[range]
                 return (
-                  <tr key={key} className="hover:bg-white/[0.02] transition-colors">
-                    <td className="px-4 py-3">
-                      <p className="text-white font-medium">{r.username}</p>
-                      <p className="text-xs text-muted">{r.email}</p>
+                  <tr key={key}>
+                    <td className={TD}>
+                      <p className="text-primary text-[14px] font-semibold">{r.username}</p>
+                      <p className="text-[13px] text-muted">{r.email}</p>
                     </td>
-                    <td className="px-4 py-3">{r.providerName}</td>
-                    <td className="px-4 py-3 font-mono text-xs text-neon-blue">{r.accountName}</td>
-                    <td className="px-4 py-3 text-emerald-400 font-semibold">{money(s.pointsAdded)}</td>
-                    <td className="px-4 py-3 text-purple-400">{money(s.bonus)}</td>
-                    <td className="px-4 py-3 text-white font-semibold">{money(s.totalAdded)}</td>
-                    <td className="px-4 py-3 text-amber-400">{money(s.pointsWithdrawn)}</td>
-                    <td className={`px-4 py-3 font-semibold ${s.net >= 0 ? 'text-white' : 'text-red-400'}`}>{money(s.net)}</td>
-                    <td className="px-4 py-3 text-neon-blue">{money(s.cashout)}</td>
-                    <td className="px-4 py-3 text-secondary">{money(r.windows.all.totalAdded)}</td>
-                    <td className="px-4 py-3">
+                    <td className={`${TD} text-[14px]`}>{r.providerName}</td>
+                    <td className={`${TD} font-mono text-[13px] ${NUM.cyan}`}>{r.accountName}</td>
+                    <td className={`${TD} text-[14px] font-semibold tabular-nums ${NUM.green}`}>{money(s.pointsAdded)}</td>
+                    <td className={`${TD} text-[14px] tabular-nums ${NUM.purple}`}>{money(s.bonus)}</td>
+                    <td className={`${TD} text-[14px] font-semibold tabular-nums text-primary`}>{money(s.totalAdded)}</td>
+                    <td className={`${TD} text-[14px] tabular-nums ${NUM.amber}`}>{money(s.pointsWithdrawn)}</td>
+                    <td className={`${TD} text-[14px] font-semibold tabular-nums ${s.net >= 0 ? 'text-primary' : NUM.red}`}>{money(s.net)}</td>
+                    <td className={`${TD} text-[14px] tabular-nums ${NUM.cyan}`}>{money(s.cashout)}</td>
+                    <td className={`${TD} text-[14px] tabular-nums`}>{money(r.windows.all.totalAdded)}</td>
+                    <td className={TD}>
                       {live === undefined && (
-                        <button onClick={() => fetchLiveBalance(r)} className="flex items-center gap-1 text-xs bg-white/5 hover:bg-white/10 px-2.5 py-1 rounded-lg text-white transition-colors">
-                          <Zap className="w-3 h-3" /> Check
-                        </button>
+                        <Button variant="secondary" size="sm" onClick={() => fetchLiveBalance(r)} className="!h-9 !px-3.5 !text-[13px] !rounded-xl">
+                          <Zap className="w-3.5 h-3.5" /> Check
+                        </Button>
                       )}
-                      {live === 'loading' && <span className="text-xs text-muted">Checking...</span>}
+                      {live === 'loading' && <span className="text-[13px] text-muted">Checking...</span>}
                       {live === 'error' && (
-                        <button onClick={() => fetchLiveBalance(r)} className="text-xs text-red-400 hover:underline">Retry</button>
+                        <button onClick={() => fetchLiveBalance(r)} className={`min-h-[40px] px-2 text-[13px] font-semibold hover:underline ${NUM.red}`}>Retry</button>
                       )}
-                      {typeof live === 'number' && <span className="text-white font-bold">{money(live)}</span>}
+                      {typeof live === 'number' && <span className="text-primary text-[14px] font-bold tabular-nums">{money(live)}</span>}
                     </td>
                   </tr>
                 )
               })}
             </tbody>
           </table>
-        </div>
-      </div>
+        </TableCard>
+      )}
     </div>
   )
 }
