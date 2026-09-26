@@ -234,7 +234,7 @@ export default function BonusesPage() {
                         {bonus.maxBonus != null && (
                           <div className="flex items-center gap-2.5 text-xs text-white/50">
                             <Check className="w-3.5 h-3.5 text-green-400 flex-shrink-0" />
-                            Max bonus: <span className="text-white/80 font-semibold">${bonus.maxBonus}</span>
+                            Max bonus: <span className="text-white/80 font-semibold">{bonus.type === 'welcome' ? 'Same as your deposit' : `$${bonus.maxBonus}`}</span>
                           </div>
                         )}
                         {bonus.minDeposit != null && (

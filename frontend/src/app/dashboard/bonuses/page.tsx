@@ -50,7 +50,7 @@ function BonusCard({ bonus }: { bonus: Bonus }) {
 
   const hasFigure = bonus.percentage != null || (bonus.amount != null && !bonus.percentage)
   const figureLabel = bonus.percentage != null
-    ? (bonus.maxBonus != null ? `match up to $${bonus.maxBonus}` : 'bonus')
+    ? (isWelcome ? 'match of your deposit' : bonus.maxBonus != null ? `match up to $${bonus.maxBonus}` : 'bonus')
     : bonus.maxBonus != null ? `bonus up to $${bonus.maxBonus}` : 'bonus credit'
 
   const hasMeta = bonus.minDeposit != null || bonus.maxBonus != null || !!bonus.expiresAt
@@ -96,7 +96,7 @@ function BonusCard({ bonus }: { bonus: Bonus }) {
           {hasMeta && (
             <div className="mt-4 divide-y divide-[var(--border-subtle)] border-y border-border-subtle">
               {bonus.minDeposit != null && <MetaRow label="Min. deposit" value={`$${bonus.minDeposit}`} />}
-              {bonus.maxBonus != null && <MetaRow label="Max bonus" value={`$${bonus.maxBonus}`} />}
+              {bonus.maxBonus != null && <MetaRow label="Max bonus" value={isWelcome ? 'Same as your deposit' : `$${bonus.maxBonus}`} />}
               {bonus.expiresAt && (
                 <div className="flex items-center justify-between gap-3 py-2.5 text-[14px]">
                   <span className="inline-flex items-center gap-1.5 text-secondary">

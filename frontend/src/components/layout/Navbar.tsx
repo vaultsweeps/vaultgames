@@ -488,112 +488,71 @@ export default function Navbar() {
         - No transition-all on children: only GPU-friendly color/opacity transitions
     */}
     <div
-      className="mobile-nav-stable lg:hidden fixed bottom-5 left-1/2 z-50 flex justify-center items-center gap-3 pointer-events-none"
+      className="mobile-nav-stable lg:hidden fixed bottom-4 left-1/2 z-50 flex justify-center items-center gap-2 pointer-events-none"
       style={{
         transform: 'translate3d(-50%, 0, 0)',
         willChange: 'transform',
       }}
     >
 
-      {/* Menu Toggle Button */}
-      <button
-        onClick={() => setMobileOpen(!mobileOpen)}
-        aria-label={mobileOpen ? "Close menu" : "Open menu"}
-        className="w-[52px] h-[52px] rounded-full bg-[#7C3AED] hover:bg-[#6D28D9] flex items-center justify-center text-white shadow-lg pointer-events-auto active:scale-95"
-        style={{ transition: 'background-color 0.2s ease, transform 0.1s ease' }}
-      >
-        <AnimatePresence mode="wait" initial={false}>
-          {mobileOpen
-            ? <motion.span key="x" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }} transition={{ duration: 0.15 }}><X className="w-5 h-5" /></motion.span>
-            : <motion.span key="m" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }} transition={{ duration: 0.15 }}><Menu className="w-5 h-5" /></motion.span>
-          }
-        </AnimatePresence>
-      </button>
-
-
-      {/* Main Nav Pill */}
+      {/* Main Nav Pill — slim, flat icons */}
       <div
-        className="relative rounded-[32px] px-2 py-2 flex items-center gap-1.5 pointer-events-auto"
+        className="relative rounded-full px-1.5 py-1 flex items-center gap-0.5 pointer-events-auto"
         style={{
           background: 'linear-gradient(160deg, #0c0d22 0%, #080918 100%)',
-          border: '1px solid rgba(80,100,220,0.3)',
-          boxShadow: '0 12px 50px rgba(0,0,30,0.9), 0 0 0 1px rgba(255,255,255,0.04), inset 0 1px 0 rgba(255,255,255,0.07)',
+          border: '1px solid rgba(80,100,220,0.28)',
+          boxShadow: '0 8px 28px rgba(0,0,30,0.85), inset 0 1px 0 rgba(255,255,255,0.06)',
           contain: 'layout style'
         }}
       >
 
-        {/* Home — bright white icon, neon blue glow */}
-        <Link href="/" aria-label="Home" className="relative flex flex-col items-center justify-center w-[52px] h-[52px] rounded-[18px] overflow-hidden"
-          style={{
-            background: 'linear-gradient(145deg, #131640, #0b0d2e)',
-            border: '1px solid rgba(100,140,255,0.35)',
-            boxShadow: '0 0 22px rgba(60,100,255,0.55), 0 2px 8px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.12)',
-          }}
-        >
-          {/* Glow blob behind icon */}
-          <div className="absolute inset-0 rounded-[18px]" style={{ background: 'radial-gradient(circle at 50% 60%, rgba(80,130,255,0.25) 0%, transparent 70%)' }} />
-          <Home className="w-[23px] h-[23px] z-10" strokeWidth={2.2}
-            style={{ color: '#c8d8ff', filter: 'drop-shadow(0 0 8px rgba(140,180,255,1)) drop-shadow(0 0 3px rgba(200,220,255,0.8))' }}
+        <Link href="/" aria-label="Home" className="relative flex items-center justify-center w-10 h-10 rounded-full active:scale-95">
+          <Home className="w-[20px] h-[20px]" strokeWidth={2.2}
+            style={{ color: '#d6e2ff', filter: 'drop-shadow(0 0 5px rgba(140,180,255,0.7))' }}
           />
-          <span className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full"
-            style={{ background: '#7eb5ff', boxShadow: '0 0 8px #7eb5ff, 0 0 16px rgba(100,160,255,0.6)' }} />
         </Link>
 
-        {/* Games — logo icon, bright with blue glow */}
-        <Link href="/games" aria-label="Games" className="relative flex flex-col items-center justify-center w-[52px] h-[52px] rounded-[18px] overflow-hidden"
-          style={{
-            background: 'linear-gradient(145deg, #0e1235, #080b28)',
-            border: '1px solid rgba(80,110,220,0.35)',
-            boxShadow: '0 0 18px rgba(60,90,200,0.4), 0 2px 8px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1)',
-          }}
-        >
-          <div className="absolute inset-0 rounded-[18px]" style={{ background: 'radial-gradient(circle at 50% 60%, rgba(60,90,200,0.2) 0%, transparent 70%)' }} />
-          <div className="w-[34px] h-[34px] flex items-center justify-center z-10"
-            style={{ filter: 'drop-shadow(0 0 10px rgba(120,160,255,0.9)) brightness(1.35) saturate(1.2)' }}
+        <Link href="/games" aria-label="Games" className="relative flex items-center justify-center w-10 h-10 rounded-full active:scale-95">
+          <div className="w-[26px] h-[26px] rounded-full overflow-hidden flex items-center justify-center"
+            style={{ filter: 'brightness(1.25) saturate(1.15)' }}
           >
-            <Image src="/images/vault-sweeps-logo.png" alt="Games" width={34} height={34} className="w-full h-full object-contain" />
+            <Image src="/images/vault-sweeps-logo.png" alt="Games" width={26} height={26} className="w-full h-full object-cover" />
           </div>
         </Link>
 
-        {/* Bonuses — vivid orange gift icon */}
-        <Link href="/bonuses" aria-label="Bonuses" className="relative flex flex-col items-center justify-center w-[52px] h-[52px] rounded-[18px] overflow-hidden"
-          style={{
-            background: 'linear-gradient(145deg, #1a1005, #100a02)',
-            border: '1px solid rgba(255,150,30,0.4)',
-            boxShadow: '0 0 22px rgba(255,120,0,0.5), 0 2px 8px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1)',
-          }}
-        >
-          <div className="absolute inset-0 rounded-[18px]" style={{ background: 'radial-gradient(circle at 50% 60%, rgba(255,130,0,0.2) 0%, transparent 70%)' }} />
-          <Gift className="w-[24px] h-[24px] z-10" strokeWidth={2.2}
-            style={{ color: '#ffb347', filter: 'drop-shadow(0 0 10px rgba(255,140,0,1)) drop-shadow(0 0 4px rgba(255,180,80,0.9))' }}
-          />
-          <span className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full"
-            style={{ background: '#ffb347', boxShadow: '0 0 8px #ffb347, 0 0 16px rgba(255,140,0,0.6)' }} />
-        </Link>
-
-        {/* Refer & Earn — bright white/blue user icon */}
-        <Link href="/dashboard/invite" aria-label="Refer & Earn" className="relative flex flex-col items-center justify-center w-[52px] h-[52px] rounded-[18px] overflow-hidden"
-          style={{
-            background: 'linear-gradient(145deg, #131640, #0b0d2e)',
-            border: '1px solid rgba(100,140,255,0.3)',
-            boxShadow: '0 0 16px rgba(60,100,220,0.35), 0 2px 8px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1)',
-          }}
-        >
-          <div className="absolute inset-0 rounded-[18px]" style={{ background: 'radial-gradient(circle at 50% 55%, rgba(80,120,255,0.18) 0%, transparent 70%)' }} />
-          <Users className="w-[23px] h-[23px] z-10" strokeWidth={2.2}
-            style={{ color: '#c0d4ff', filter: 'drop-shadow(0 0 7px rgba(140,180,255,0.9)) drop-shadow(0 0 3px rgba(200,220,255,0.7))' }}
+        <Link href="/bonuses" aria-label="Bonuses" className="relative flex items-center justify-center w-10 h-10 rounded-full active:scale-95">
+          <Gift className="w-[20px] h-[20px]" strokeWidth={2.2}
+            style={{ color: '#ffb347', filter: 'drop-shadow(0 0 5px rgba(255,140,0,0.7))' }}
           />
         </Link>
 
-        {/* Divider */}
-        <div className="w-px h-8 bg-gradient-to-b from-transparent via-white/10 to-transparent mx-0.5" />
+        <Link href="/dashboard/invite" aria-label="Refer & Earn" className="relative flex items-center justify-center w-10 h-10 rounded-full active:scale-95">
+          <Users className="w-[20px] h-[20px]" strokeWidth={2.2}
+            style={{ color: '#d6e2ff', filter: 'drop-shadow(0 0 5px rgba(140,180,255,0.7))' }}
+          />
+        </Link>
 
         {/* Contact FAB inside pill */}
-        <div className="w-[52px] h-[52px] flex items-center justify-center">
+        <div className="w-10 h-10 flex items-center justify-center">
           <ExpandableContactFab inlinePill />
         </div>
 
       </div>
+
+      {/* Menu Toggle Button */}
+      <button
+        onClick={() => setMobileOpen(!mobileOpen)}
+        aria-label={mobileOpen ? "Close menu" : "Open menu"}
+        className="w-11 h-11 rounded-full bg-[#7C3AED] hover:bg-[#6D28D9] flex items-center justify-center text-white shadow-lg pointer-events-auto active:scale-95"
+        style={{ transition: 'background-color 0.2s ease, transform 0.1s ease' }}
+      >
+        <AnimatePresence mode="wait" initial={false}>
+          {mobileOpen
+            ? <motion.span key="x" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }} transition={{ duration: 0.15 }}><X className="w-[18px] h-[18px]" /></motion.span>
+            : <motion.span key="m" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }} transition={{ duration: 0.15 }}><Menu className="w-[18px] h-[18px]" /></motion.span>
+          }
+        </AnimatePresence>
+      </button>
     </div>
 
     {/* Desktop Contact FAB */}
