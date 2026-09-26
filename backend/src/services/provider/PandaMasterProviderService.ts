@@ -41,9 +41,6 @@ export class PandaMasterProviderService implements ProviderAdapter {
   /** Session TTL — 3 minutes (proactively short to avoid stale key errors) */
   private readonly TTL_MS = 3 * 60 * 1000;
 
-  /** Page path taken from apiBaseUrl when it was saved as a full .aspx URL */
-  private pagePathFromBase: string | null = null;
-
   // ─── Constructor ─────────────────────────────────────────────────────────
   constructor(provider: Provider) {
     if (!provider.apiBaseUrl || !provider.agentId || !provider.secretKey) {
@@ -54,15 +51,24 @@ export class PandaMasterProviderService implements ProviderAdapter {
     }
 
     let apiBaseUrl = provider.apiBaseUrl.trim().replace(/\/+$/, '');
-    // The admin may save the full page URL (https://host/Agent.aspx). The page name is added by
-    // servicePath, so split it off instead of requesting /Agent.aspx/Agent.aspx.
+    // A saved *.aspx page (e.g. https://host/Agent.aspx) is the web panel, not the API — keep only the
+    // site address; the API path comes from servicePath.
     try {
       const u = new URL(apiBaseUrl);
       if (/\.aspx$/i.test(u.pathname)) {
-        this.pagePathFromBase = u.pathname;
         apiBaseUrl = u.origin;
       }
     } catch { /* not an absolute URL — leave as saved */ }
+
+    // Panda Master's JSON API lives on port 8033 (https://pandamaster.vip serves the web panel and
+    // answers 404/HTML for /ws/service.ashx). If the saved URL has no explicit port, assume 8033.
+    if (!/^https?:\/\/[^/]+:\d+/i.test(apiBaseUrl)) {
+      try {
+        const u = new URL(apiBaseUrl);
+        u.port = '8033';
+        apiBaseUrl = `${u.origin}${u.pathname}`.replace(/\/+$/, '');
+      } catch { /* leave as saved */ }
+    }
 
     this.provider = {
       ...provider,
@@ -105,7 +111,7 @@ export class PandaMasterProviderService implements ProviderAdapter {
   /** The service path — defaults to /ws/service.ashx (same API family as Orionstar/MilkyWay), overridable via DB endpoints config */
   private get servicePath(): string {
     const ep = this.provider.endpoints as Record<string, string> | null;
-    return ep?.servicePath ?? this.pagePathFromBase ?? '/ws/service.ashx';
+    return ep?.servicePath ?? '/ws/service.ashx';
   }
 
   /** Returns true when any response message indicates an expired/invalid session */
