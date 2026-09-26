@@ -160,7 +160,7 @@ export class PandaMasterProviderService implements ProviderAdapter {
           },
         });
 
-        console.info(`[PandaMaster] ← agentLogin | ${typeof res.data === 'string' ? res.data.substring(0,200) : JSON.stringify(res.data)}`);
+        console.info(`[PandaMaster] ← agentLogin | ${typeof res.data === 'string' ? `non-JSON response (${res.data.length} chars)` : `code: ${res.data?.code} | msg: ${res.data?.msg ?? 'ok'}`}`);
 
         const d = res.data;
         
@@ -189,7 +189,7 @@ export class PandaMasterProviderService implements ProviderAdapter {
         this.agentBalance = parseFloat(d.balance ?? d.Balance ?? '0') || 0;
         this.lastAuthTime = Date.now();
 
-        console.info(`[PandaMaster] Session established | key: ${key} | balance: ${this.agentBalance}`);
+        console.info(`[PandaMaster] Session established | balance: ${this.agentBalance}`);
 
         // Give provider server 1 second before the next request
         await this.sleep(1000);
@@ -227,7 +227,7 @@ export class PandaMasterProviderService implements ProviderAdapter {
     const params   = { agentName: this.agentName, time, sign, ...payload };
     const endpoint = `${this.servicePath}?action=${action}`;
 
-    console.info(`[PandaMaster] → ${action} | time: ${time} | sign: ${sign}`);
+    console.info(`[PandaMaster] → ${action} | time: ${time}`);
 
     try {
       const res = await this.http.post(endpoint, null, { params });

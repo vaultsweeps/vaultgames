@@ -251,7 +251,8 @@ export const transferFunds = asyncHandler(async (req: AuthRequest, res: Response
   // Parallelize: get provider config (cached) AND look up user's game account at same time
   const [providerId, walletBalanceForRecharge] = await Promise.all([
     ProviderFactory.getProviderIdForGame(gameId),
-    type === 'recharge' ? WalletService.getWalletBalance(userId) : Promise.resolve(null)
+    // Fresh, uncached read: the 10s cached balance could let parallel/rapid requests pass the same check
+    type === 'recharge' ? WalletService.getBalancesRaw(userId).then(b => b.displayBalance) : Promise.resolve(null)
   ]);
 
   const providerUser = await prisma.providerUser.findFirst({ where: { userId, providerId: providerId ?? '' } });

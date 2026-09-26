@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express'
 import jwt from 'jsonwebtoken'
 import prisma from '../lib/prisma';
 import { getTokensRevokedBefore } from '../lib/redis';
+import { securityLog } from './security';
 
 export interface AuthRequest extends Request {
   user?: { id: string; role: string; email: string }
@@ -78,6 +79,7 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
 
 export const requireAdmin = (req: AuthRequest, res: Response, next: NextFunction) => {
   if (req.user?.role !== 'admin') {
+    securityLog('admin_access_denied', req)
     return res.status(403).json({ success: false, message: 'Admin access required' })
   }
   next()

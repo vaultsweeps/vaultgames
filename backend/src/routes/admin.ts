@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { authenticate, requireAdmin } from '../middleware/auth'
+import { limit } from '../middleware/security'
 import {
   getDashboardStats, getUsers, banUser, suspendUser, verifyUser,
   getAdminDeposits, approveDeposit, rejectDeposit, voidDeposit,
@@ -23,6 +24,7 @@ import {
 const router = Router()
 
 router.use(authenticate, requireAdmin)
+router.use(limit({ name: 'admin', windowMs: 15 * 60_000, max: 3000, scope: 'user' }))
 
 // Dashboard
 router.get('/stats', getDashboardStats)

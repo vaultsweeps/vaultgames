@@ -65,6 +65,8 @@ const nextConfig = {
           { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          // Sensors the site never uses stay off, even if injected content asks for them
+          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), usb=(), bluetooth=(), serial=()' },
           { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains' },
           {
             // Report-Only: browsers log violations to the console but never

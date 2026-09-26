@@ -12,6 +12,7 @@ dotenv.config()
 import { errorHandler } from './middleware/errorHandler'
 import { logger } from './utils/logger'
 import { performanceLogger } from './middleware/performanceLogger'
+import { limit } from './middleware/security'
 
 // Routes
 import authRoutes from './routes/auth'
@@ -33,6 +34,18 @@ import proxyRoutes from './routes/proxy'
 
 const app = express()
 const PORT = process.env.PORT || 5000
+
+// Client IP awareness behind a reverse proxy. TRUST_PROXY = number of proxy hops in front of the API
+// (1 = Render or nginx, 2 = Cloudflare + nginx). Never use "true": that trusts a client-supplied
+// X-Forwarded-For and lets attackers dodge per-IP limits. Unset = unchanged behaviour.
+const trustProxy = process.env.TRUST_PROXY
+if (trustProxy && /^\d+$/.test(trustProxy)) {
+  app.set('trust proxy', Number(trustProxy))
+} else if (trustProxy && trustProxy !== 'true') {
+  app.set('trust proxy', trustProxy) // e.g. "loopback" or a CIDR list
+} else if (process.env.RENDER) {
+  app.set('trust proxy', 1)
+}
 
 // Security middleware
 app.use(helmet({
@@ -73,7 +86,7 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key'],
 }))
 
 const limiter = rateLimit({
@@ -87,8 +100,9 @@ const limiter = rateLimit({
 app.use('/api/', limiter)
 
 // Body parsing
-app.use(express.json({ limit: '10mb' }))
-app.use(express.urlencoded({ extended: true, limit: '10mb' }))
+// Uploads use multipart (multer, own size limits); no JSON endpoint needs more than 1 MB
+app.use(express.json({ limit: '1mb' }))
+app.use(express.urlencoded({ extended: true, limit: '1mb' }))
 app.use(compression())
 
 // Redact one-time secret tokens (password reset / email verification) out of
@@ -130,7 +144,7 @@ app.use('/api/provider', providerRoutes)
 app.use('/api/referral', referralRoutes)
 app.use('/api/user/coupons', couponRoutes)
 app.use('/api/wheel', wheelRoutes)
-app.use('/api/proxy', proxyRoutes)
+app.use('/api/proxy', limit({ name: 'payment-proxy', windowMs: 10 * 60_000, max: 40, scope: 'ip' }), proxyRoutes)
 
 // 404 handler
 app.use('*', (req, res) => {
