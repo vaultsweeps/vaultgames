@@ -3,14 +3,19 @@ import axios from 'axios'
 import { logger } from '../utils/logger'
 
 const router = Router()
+
+// User-controlled query values end up inside the returned HTML/JS, so accept only what is valid
+// and HTML-escape the rest (previously "amount" was injected into a script unvalidated).
+const escapeHtml = (v: string) => v.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string))
 const DOLLARPAY_URL = 'https://check.dollarpay.vip/pay.php?uid=GaRrD'
 const MOBILE_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1'
 
 // 1. GET Proxy: Serve DollarPay checkout page but remove mobile restriction
 router.get('/dollarpay-proxy', async (req: Request, res: Response) => {
   try {
-    const amount = req.query.amount as string || ''
-    const name = req.query.name as string || ''
+    const amountRaw = typeof req.query.amount === 'string' ? req.query.amount : ''
+    const amount = /^\d{1,7}(\.\d{1,2})?$/.test(amountRaw) ? amountRaw : ''
+    const name = (typeof req.query.name === 'string' ? req.query.name : '').replace(/[\u0000-\u001f<>]/g, '').slice(0, 60)
 
     const response = await axios.get(DOLLARPAY_URL, {
       headers: { 'User-Agent': MOBILE_UA },
@@ -38,13 +43,13 @@ router.get('/dollarpay-proxy', async (req: Request, res: Response) => {
     if (amount) {
       html = html.replace(
         'const initialAmount = "";',
-        `const initialAmount = "${amount}"; document.getElementById('is_pay').value = "1"; updateAmountOptions("${amount}");`
+        () => `const initialAmount = "${amount}"; document.getElementById('is_pay').value = "1"; updateAmountOptions("${amount}");`
       )
     }
     if (name) {
       html = html.replace(
         'value="" required>',
-        `value="${name.replace(/"/g, '&quot;')}" required>`
+        () => `value="${escapeHtml(name)}" required>`
       )
     }
 

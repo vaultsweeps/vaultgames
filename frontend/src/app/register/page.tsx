@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -10,6 +10,7 @@ import toast from 'react-hot-toast'
 import { Eye, EyeOff, Zap, Lock, Mail, User, CheckCircle, XCircle, Loader2 } from 'lucide-react'
 import Image from 'next/image'
 import { useAuthStore } from '@/store/authStore'
+import Loader from '@/components/ui/Loader'
 import apiClient from '@/lib/api'
 import { AuthBackground } from '@/components/auth/AuthBackground'
 import { AuthCard } from '@/components/auth/AuthCard'
@@ -38,7 +39,16 @@ const CRITERIA = [
 
 type AvailStatus = 'idle' | 'checking' | 'available' | 'taken'
 
+// useSearchParams() needs a Suspense boundary for static prerendering (this used to be supplied by app/loading.tsx)
 export default function RegisterPage() {
+  return (
+    <Suspense fallback={<Loader fullScreen />}>
+      <RegisterForm />
+    </Suspense>
+  )
+}
+
+function RegisterForm() {
   const [showPassword, setShowPassword] = useState(false)
   const [registered, setRegistered] = useState(false)
   const [usernameVal, setUsernameVal] = useState('')

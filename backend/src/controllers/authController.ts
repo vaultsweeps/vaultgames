@@ -6,6 +6,7 @@ import { asyncHandler, AppError } from '../middleware/errorHandler'
 import { generateToken, evictAuthCache } from '../middleware/auth'
 import { sendVerificationEmail, sendPasswordResetEmail, sendWelcomeEmail } from '../services/emailService'
 import { AuthRequest } from '../middleware/auth'
+import { securityLog } from '../middleware/security'
 import { ProviderFactory } from '../services/provider/ProviderFactory'
 import { WalletService } from '../services/WalletService'
 import { revokeTokensIssuedBefore, markEmailVerifyTokenIssued, isEmailVerifyTokenValid, clearEmailVerifyToken, createTelegramLinkToken } from '../lib/redis'
@@ -183,13 +184,18 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     // measurably faster than a wrong-password attempt on a real account —
     // otherwise response timing alone leaks whether an email/username exists.
     await bcrypt.compare(password, '$2a$10$CwTycUXWue0Thq9StjUM0uJ8Q1TOTf9k6dQ1jJ0m5x8n9c5x8n9c5')
+    securityLog('login_failed', req, { reason: 'unknown_account' })
     throw new AppError('Invalid credentials', 401)
   }
   if (!user.isActive) throw new AppError('Account is suspended. Contact support.', 403)
   if (user.isBanned) throw new AppError('Account has been banned.', 403)
 
   const isMatch = await bcrypt.compare(password, user.password)
-  if (!isMatch) throw new AppError('Invalid credentials', 401)
+  if (!isMatch) {
+    securityLog('login_failed', req, { reason: 'bad_password', targetUserId: user.id, targetRole: user.role })
+    throw new AppError('Invalid credentials', 401)
+  }
+  if (user.role === 'admin') securityLog('admin_login', req, { adminId: user.id })
 
   // Update last login (async)
   prisma.user.update({

@@ -123,7 +123,7 @@ export class MilkywayProviderService implements ProviderAdapter {
           },
         });
 
-        console.info(`[MilkyWay] ← agentLogin | ${JSON.stringify(res.data)}`);
+        console.info(`[MilkyWay] ← agentLogin | code: ${res.data?.code} | msg: ${res.data?.msg ?? 'ok'}`);
 
         const d = res.data;
         if (String(d.code) !== '200') {
@@ -145,7 +145,7 @@ export class MilkywayProviderService implements ProviderAdapter {
         this.agentBalance = parseFloat(d.balance ?? d.Balance ?? '0') || 0;
         this.lastAuthTime = Date.now();
 
-        console.info(`[MilkyWay] Session established | key: ${key} | balance: ${this.agentBalance}`);
+        console.info(`[MilkyWay] Session established | balance: ${this.agentBalance}`);
 
         // Sleep so the next request's timestamp is in a different second from this login.
         await this.sleep(2000);
@@ -185,7 +185,7 @@ export class MilkywayProviderService implements ProviderAdapter {
     const params   = { agentName: this.agentName, time, sign, ...payload };
     const endpoint = `${this.servicePath}?action=${action}`;
 
-    console.info(`[MilkyWay] → ${action} | time: ${time} | sign: ${sign} | signInput: "${signInput}"`);
+    console.info(`[MilkyWay] → ${action} | time: ${time}`);
 
     try {
       const res = await this.http.post(endpoint, null, { params });

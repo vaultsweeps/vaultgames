@@ -116,7 +116,7 @@ export class OrionstarProviderService implements ProviderAdapter {
           },
         });
 
-        console.info(`[Orionstar] ← agentLogin | ${JSON.stringify(res.data)}`);
+        console.info(`[Orionstar] ← agentLogin | code: ${res.data?.code} | msg: ${res.data?.msg ?? 'ok'}`);
 
         const d = res.data;
         if (String(d.code) !== '200') {
@@ -139,7 +139,7 @@ export class OrionstarProviderService implements ProviderAdapter {
         this.agentBalance = parseFloat(d.balance ?? d.Balance ?? '0') || 0;
         this.lastAuthTime = Date.now();
 
-        console.info(`[Orionstar] Session OK | key: ${key} | balance: ${this.agentBalance}`);
+        console.info(`[Orionstar] Session OK | balance: ${this.agentBalance}`);
 
         // ✅ Wait 2s so the next request's timestamp is strictly greater
         // than the login timestamp — same-second = "Session timeout"
@@ -185,7 +185,7 @@ export class OrionstarProviderService implements ProviderAdapter {
 
     const endpoint = `${this.servicePath}?action=${action}&${searchParams.toString()}`;
 
-    console.info(`[Orionstar] → ${action} | time: ${time} | signInput: "${signInput}" | sign: ${sign}`);
+    console.info(`[Orionstar] → ${action} | time: ${time}`);
 
     try {
       const res = await this.http.post(endpoint, null);
