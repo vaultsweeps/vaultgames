@@ -228,7 +228,6 @@ const BRANDS: Record<string, BrandDef> = {
     <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-[52%] h-[52%]" aria-hidden><path d="M3 12h18" /><path d="M12 3v18" /><path d="M3 12l9-9 9 9-9 9-9-9z" /></svg>
   ) },
   chime:     { bg: '#10B981', glyph: 'C' },
-  chime2:    { bg: '#14B8A6', glyph: 'C' },
   cashapp:   { bg: '#22C55E', glyph: '$' },
   cash_app:  { bg: '#22C55E', glyph: '$' },
   dollarpay: { bg: '#22C55E', glyph: '$' },
@@ -244,7 +243,7 @@ const BRANDS: Record<string, BrandDef> = {
   ggusonepay:{ bg: '#A855F7', glyph: <Zap className="w-[48%] h-[48%]" strokeWidth={2.2} fill="currentColor" /> },
   default:   { bg: '#8B5CF6', glyph: <Wallet className="w-[48%] h-[48%]" strokeWidth={2.2} /> },
 }
-const BRAND_ALIAS: Record<string, string> = { apple: 'applepay', google: 'googlepay', debitcard: 'card', debit_card: 'card', tron: 'trx', tether: 'usdt', ethereum: 'eth' }
+const BRAND_ALIAS: Record<string, string> = { chime2: 'chime', cashapp2: 'cashapp', apple: 'applepay', google: 'googlepay', debitcard: 'card', debit_card: 'card', tron: 'trx', tether: 'usdt', ethereum: 'eth' }
 
 /** Resolve a payment-method code/name to a brand key (falls back to a neutral wallet). */
 export function brandKey(codeOrName?: string) {
