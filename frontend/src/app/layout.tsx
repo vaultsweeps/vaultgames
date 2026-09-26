@@ -7,6 +7,7 @@ import NavigationLoader from '@/components/ui/NavigationLoader'
 import FrustrationDetector from '@/components/ui/FrustrationDetector'
 import { Orbitron, Inter, JetBrains_Mono } from 'next/font/google'
 import VaultIntro from '@/components/ui/VaultIntro'
+import NoPinchZoom from '@/components/ui/NoPinchZoom'
 
 const orbitron = Orbitron({ subsets: ['latin'], weight: ['700', '800', '900'], variable: '--font-orbitron', display: 'swap' })
 const inter = Inter({ subsets: ['latin'], weight: ['400', '500', '600', '700'], variable: '--font-inter', display: 'swap' })
@@ -38,7 +39,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
       <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
         <link rel="preload" as="image" href="/intro.png" />
         <link rel="preload" as="image" href="/images/slide1.png" />
         {/* Inline script: synchronously hide the pre-screen if vault was already seen.
@@ -60,6 +61,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <NavigationLoader />
           </Suspense>
           <FrustrationDetector />
+          <NoPinchZoom />
           <div className="scan-line" />
           {children}
           <SwipeToaster />
