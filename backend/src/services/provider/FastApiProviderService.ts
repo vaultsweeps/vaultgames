@@ -75,13 +75,10 @@ export class FastApiProviderService implements ProviderAdapter {
     requestData.sign = crypto.createHash('md5').update(strToHash).digest('hex');
 
     try {
-      const response = await axios.post(url, new URLSearchParams(requestData).toString(), {
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        timeout: this.provider.requestTimeout || 10000,
-      });
+      const response = await this.postForm(url, new URLSearchParams(requestData).toString(), this.provider.requestTimeout || 10000);
 
       const code = response.data.code;
-      const message = response.data.message || response.data.msg || 'Unknown Provider Error';
+      const message = this.extractMessage(response.data);
       const data = response.data.data;
       
       if (code !== 200 && code !== 0) {
@@ -100,6 +97,39 @@ export class FastApiProviderService implements ProviderAdapter {
       console.error(`[FastApiProviderService] Login failed for ${url} - Status: ${status} - Response: ${data}`);
       throw new AppError(`Agent Login connection failed (Make sure your IP is whitelisted! URL: ${url}): ${e.message}`, 502);
     }
+  }
+
+  /**
+   * POSTs a form body and, if the provider answers with a redirect (e.g. http -> https),
+   * re-sends the SAME body to the new location. axios' default redirect handling turns a
+   * 301/302 POST into a body-less GET, which the provider then rejects with
+   * "empty appid or sign" / "Timestamp Error".
+   */
+  private async postForm(url: string, body: string, timeout: number) {
+    let target = url;
+    for (let hop = 0; hop < 4; hop++) {
+      const res = await axios.post(target, body, {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        timeout,
+        maxRedirects: 0,
+        validateStatus: (status) => status >= 200 && status < 400,
+      });
+      const location = res.headers?.location;
+      if (res.status >= 300 && location) {
+        const next = new URL(location, target).toString();
+        console.warn(`[FastApiProviderService] ${res.status} redirect ${target} -> ${next}; re-sending POST body to the new location. Update the provider's API base URL to avoid this.`);
+        target = next;
+        continue;
+      }
+      return res;
+    }
+    throw new Error('Too many redirects');
+  }
+
+  /** Provider's human-readable reason: top-level message/msg, else data.info (e.g. "empty appid or sign"). */
+  private extractMessage(body: any): string {
+    const info = body?.data?.info;
+    return body?.message || body?.msg || (typeof info === 'string' ? info : '') || 'Unknown Provider Error';
   }
 
   private getEndpoint(key: string, defaultPath: string): string {
@@ -217,16 +247,11 @@ export class FastApiProviderService implements ProviderAdapter {
     };
 
     try {
-      const response = await axios.post(url, new URLSearchParams(requestData).toString(), {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
-        },
-        timeout: this.provider.requestTimeout || 10000,
-      });
+      const response = await this.postForm(url, new URLSearchParams(requestData).toString(), this.provider.requestTimeout || 10000);
 
       const duration = Date.now() - startTime;
       const code = response.data.code;
-      const message = response.data.message || response.data.msg || 'Unknown Provider Error';
+      const message = this.extractMessage(response.data);
       const data = response.data.data;
 
       // 200 is success, 0 is success for some endpoints, 1 is "New User Is Created" success

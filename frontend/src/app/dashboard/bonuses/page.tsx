@@ -1,19 +1,22 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Gift, Clock, Check, ChevronDown, ChevronUp, Zap, RefreshCw } from 'lucide-react'
+import { Gift, Clock, Check, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { bonusesApi } from '@/lib/api'
+import { Card, PageHeader, Button, Badge, IconTile, EmptyState, Skeleton, GiftIcon, TONES, type Tone } from '@/components/dashboard/ui'
 
-const COLORS = ['#00D4FF', '#7B2FFF', '#00FFC8', '#FF2D9B', '#FFD700', '#00FF88']
-const TYPE_BADGE: Record<string, string> = {
-  welcome: 'NEW PLAYER',
-  deposit: 'DEPOSIT BONUS',
-  referral: 'REFER & EARN',
-  vip: 'EXCLUSIVE',
-  seasonal: 'LIMITED TIME',
-  cashback: 'DAILY CASHBACK',
+const TYPE_BADGE: Record<string, { label: string; tone: Tone }> = {
+  welcome: { label: 'Welcome', tone: 'gold' },
+  deposit: { label: 'Deposit', tone: 'cyan' },
+  referral: { label: 'Referral', tone: 'green' },
+  vip: { label: 'VIP', tone: 'purple' },
+  seasonal: { label: 'Seasonal', tone: 'orange' },
+  cashback: { label: 'Cashback', tone: 'blue' },
 }
+
+// Gold that stays readable on both dark and light surfaces.
+const GOLD_TEXT = 'color-mix(in srgb, #F59E0B 80%, var(--text-primary))'
 
 interface Bonus {
   id: string
@@ -30,96 +33,124 @@ interface Bonus {
   expiresAt: string | null
 }
 
-function BonusCard({ bonus, color }: { bonus: Bonus; color: string }) {
+function MetaRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3 py-2.5 text-[14px]">
+      <span className="text-secondary">{label}</span>
+      <span className="font-semibold text-primary tabular-nums">{value}</span>
+    </div>
+  )
+}
+
+function BonusCard({ bonus }: { bonus: Bonus }) {
   const [expanded, setExpanded] = useState(false)
 
-  const badge = TYPE_BADGE[bonus.type] || bonus.type.toUpperCase()
-  const isVip = bonus.type === 'vip'
+  const badge = TYPE_BADGE[bonus.type] || { label: bonus.type.charAt(0).toUpperCase() + bonus.type.slice(1), tone: 'slate' as Tone }
+  const isWelcome = bonus.type === 'welcome'
+
+  const hasFigure = bonus.percentage != null || (bonus.amount != null && !bonus.percentage)
+  const figureLabel = bonus.percentage != null
+    ? (bonus.maxBonus != null ? `match up to $${bonus.maxBonus}` : 'bonus')
+    : bonus.maxBonus != null ? `bonus up to $${bonus.maxBonus}` : 'bonus credit'
+
+  const hasMeta = bonus.minDeposit != null || bonus.maxBonus != null || !!bonus.expiresAt
 
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass-card overflow-hidden">
-      <div className="h-1" style={{ background: `linear-gradient(90deg, transparent, ${color}, transparent)` }} />
-      <div className="p-6">
-        <div className="flex items-start justify-between mb-4">
-          <div>
-            <span className="text-xs font-mono px-2 py-0.5 rounded-full"
-              style={{ color, background: `${color}15`, border: `1px solid ${color}30` }}>
-              {badge}
-            </span>
-            <h3 className="font-display font-bold text-lg text-white mt-2">{bonus.title}</h3>
-          </div>
-          <div className="text-right flex-shrink-0 ml-3">
-            {bonus.percentage != null && (
-              <div className="font-display font-black text-3xl" style={{ color }}>{bonus.percentage}%</div>
-            )}
-            {bonus.amount != null && !bonus.percentage && (
-              <div className="font-display font-black text-3xl" style={{ color }}>${bonus.amount}</div>
-            )}
-            {!bonus.percentage && !bonus.amount && (
-              <div className="font-display font-black text-2xl text-muted">CUSTOM</div>
-            )}
-            {bonus.maxBonus != null && (
-              <div className="text-xs text-muted">up to ${bonus.maxBonus}</div>
-            )}
-          </div>
-        </div>
-
-        {bonus.description && (
-          <p className="text-secondary text-sm leading-relaxed mb-4">{bonus.description}</p>
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="h-full">
+      <Card className="relative overflow-hidden h-full flex flex-col !p-5 sm:!p-6">
+        {isWelcome && (
+          <div className="absolute inset-0 pointer-events-none" aria-hidden="true"
+            style={{ background: 'radial-gradient(120% 70% at 100% 0%, rgba(251,191,36,0.13) 0%, transparent 60%)' }} />
         )}
 
-        <div className="grid grid-cols-2 gap-3 mb-4">
-          {bonus.minDeposit != null && (
-            <div className="glass rounded-lg p-3">
-              <p className="text-xs text-muted mb-1">Min. Deposit</p>
-              <p className="text-white text-sm font-medium">${bonus.minDeposit}</p>
+        <div className="relative flex flex-col flex-1">
+          <div className="flex items-start justify-between gap-3">
+            {isWelcome
+              ? <div className="w-16 h-16 -mt-1 -ml-1 flex-shrink-0"><GiftIcon /></div>
+              : <IconTile icon={Gift} tone="gold" size="md" />}
+            <Badge tone={badge.tone}>{badge.label}</Badge>
+          </div>
+
+          <h3 className="mt-4 text-[17px] sm:text-lg font-semibold text-primary leading-snug break-words">{bonus.title}</h3>
+
+          <div className="mt-3">
+            {hasFigure ? (
+              <div className="flex items-baseline gap-2 flex-wrap">
+                <span className="text-[32px] font-bold leading-none tabular-nums" style={{ color: GOLD_TEXT }}>
+                  {bonus.percentage != null ? `${bonus.percentage}%` : `$${bonus.amount}`}
+                </span>
+                <span className="text-[13px] text-secondary">{figureLabel}</span>
+              </div>
+            ) : (
+              <div className="flex items-baseline gap-2 flex-wrap">
+                <span className="text-[26px] font-bold leading-none text-muted">CUSTOM</span>
+                {bonus.maxBonus != null && <span className="text-[13px] text-secondary">up to ${bonus.maxBonus}</span>}
+              </div>
+            )}
+          </div>
+
+          {bonus.description && (
+            <p className="mt-3 text-secondary text-[14px] leading-relaxed">{bonus.description}</p>
+          )}
+
+          {hasMeta && (
+            <div className="mt-4 divide-y divide-[var(--border-subtle)] border-y border-border-subtle">
+              {bonus.minDeposit != null && <MetaRow label="Min. deposit" value={`$${bonus.minDeposit}`} />}
+              {bonus.maxBonus != null && <MetaRow label="Max bonus" value={`$${bonus.maxBonus}`} />}
+              {bonus.expiresAt && (
+                <div className="flex items-center justify-between gap-3 py-2.5 text-[14px]">
+                  <span className="inline-flex items-center gap-1.5 text-secondary">
+                    <Clock className="w-4 h-4" style={{ color: TONES.orange.fg }} /> Expires
+                  </span>
+                  <span className="font-semibold tabular-nums" style={{ color: TONES.orange.fg }}>
+                    {new Date(bonus.expiresAt).toLocaleDateString()}
+                  </span>
+                </div>
+              )}
             </div>
           )}
-          {bonus.maxBonus != null && (
-            <div className="glass rounded-lg p-3">
-              <p className="text-xs text-muted mb-1">Max Bonus</p>
-              <p className="text-white text-sm font-medium">${bonus.maxBonus}</p>
-            </div>
+
+          {(bonus.requirements || bonus.terms) && (
+            <>
+              <button
+                type="button"
+                onClick={() => setExpanded(!expanded)}
+                aria-expanded={expanded}
+                className="mt-3 -mx-1 px-1 min-h-[40px] w-[calc(100%+8px)] flex items-center justify-between gap-2 rounded-xl text-[13px] font-medium text-secondary hover:text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/60"
+              >
+                <span>{expanded ? 'Hide' : 'Show'} Terms &amp; Requirements</span>
+                {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              </button>
+
+              {expanded && (
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="space-y-2 overflow-hidden">
+                  {bonus.requirements && (
+                    <div className="rounded-2xl bg-surface-elevated border border-border-subtle p-3.5">
+                      <p className="text-[13px] font-semibold text-primary mb-1">Requirements</p>
+                      <p className="text-secondary text-[13px] leading-relaxed break-words">{bonus.requirements}</p>
+                    </div>
+                  )}
+                  {bonus.terms && (
+                    <div className="rounded-2xl bg-surface-elevated border border-border-subtle p-3.5">
+                      <p className="text-[13px] font-semibold text-primary mb-1">Terms &amp; Conditions</p>
+                      <p className="text-secondary text-[13px] leading-relaxed break-words">{bonus.terms}</p>
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </>
           )}
-        </div>
 
-        {bonus.expiresAt && (
-          <div className="flex items-center gap-2 text-xs text-orange-400 mb-4">
-            <Clock className="w-3 h-3" /> Expires: {new Date(bonus.expiresAt).toLocaleDateString()}
+          <div className="mt-auto pt-5">
+            <div
+              className="w-full h-11 rounded-2xl text-[14px] font-semibold flex items-center justify-center gap-2 cursor-default select-none"
+              style={{ background: TONES.green.bg, color: TONES.green.fg, boxShadow: `inset 0 0 0 1px ${TONES.green.ring}` }}
+            >
+              <Check className="w-4 h-4" /> System Auto-Applied
+            </div>
           </div>
-        )}
-
-        {(bonus.requirements || bonus.terms) && (
-          <>
-            <button onClick={() => setExpanded(!expanded)}
-              className="flex items-center gap-1 text-xs text-muted hover:text-white transition-colors mb-3 w-full">
-              {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-              {expanded ? 'Hide' : 'Show'} Terms & Requirements
-            </button>
-
-            {expanded && (
-              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mb-4 space-y-2">
-                {bonus.requirements && (
-                  <div className="glass rounded-lg p-3">
-                    <p className="text-xs font-mono text-neon-blue uppercase tracking-wider mb-1">Requirements</p>
-                    <p className="text-secondary text-xs">{bonus.requirements}</p>
-                  </div>
-                )}
-                {bonus.terms && (
-                  <div className="glass rounded-lg p-3">
-                    <p className="text-xs font-mono text-neon-blue uppercase tracking-wider mb-1">Terms & Conditions</p>
-                    <p className="text-secondary text-xs">{bonus.terms}</p>
-                  </div>
-                )}
-              </motion.div>
-            )}
-          </>
-        )}
-
-        <div className="w-full py-2.5 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 bg-green-500/10 text-green-400 border border-green-500/20 cursor-default mt-4">
-          <Check className="w-4 h-4" /> System Auto-Applied
         </div>
-      </div>
+      </Card>
     </motion.div>
   )
 }
@@ -142,40 +173,41 @@ export default function BonusesPage() {
   useEffect(() => { fetchBonuses() }, [])
 
   return (
-    <div className="space-y-6">
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex items-end justify-between flex-wrap gap-3">
-        <div>
-          <h2 className="font-display font-bold text-2xl text-white">BONUSES & PROMOTIONS</h2>
-          <p className="text-secondary text-sm mt-1">Claim exclusive bonuses and boost your gaming experience.</p>
-        </div>
-        <button onClick={fetchBonuses} className="glass border border-border-strong rounded-xl px-3 py-2 text-secondary hover:text-white transition-all flex items-center gap-2 text-sm">
-          <RefreshCw className="w-4 h-4" /> Refresh
-        </button>
-      </motion.div>
+    <div>
+      <PageHeader
+        title="Bonuses"
+        subtitle="Claim exclusive bonuses and boost your gaming experience."
+        actions={
+          <Button variant="secondary" size="sm" onClick={fetchBonuses}>
+            <RefreshCw className="w-4 h-4" /> Refresh
+          </Button>
+        }
+      />
 
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5" aria-busy="true">
           {[1, 2, 3, 4].map(i => (
-            <div key={i} className="glass-card p-6 h-64 animate-pulse">
-              <div className="h-3 w-20 bg-white/10 rounded mb-4" />
-              <div className="h-5 w-40 bg-white/10 rounded mb-3" />
-              <div className="h-16 bg-white/5 rounded" />
-            </div>
+            <Card key={i} className="!p-5 sm:!p-6 h-[340px]">
+              <div className="flex items-start justify-between">
+                <Skeleton className="w-11 h-11" />
+                <Skeleton className="w-20 h-6 !rounded-full" />
+              </div>
+              <Skeleton className="mt-5 h-5 w-2/3" />
+              <Skeleton className="mt-4 h-9 w-1/3" />
+              <Skeleton className="mt-4 h-4 w-full" />
+              <Skeleton className="mt-2 h-4 w-4/5" />
+              <Skeleton className="mt-6 h-11 w-full" />
+            </Card>
           ))}
         </div>
       ) : bonuses.length === 0 ? (
-        <div className="glass-card py-20 text-center">
-          <Gift className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-          <p className="text-muted">No active bonuses at the moment. Check back soon!</p>
-        </div>
+        <Card>
+          <EmptyState icon={Gift} title="No active bonuses" text="No active bonuses at the moment. Check back soon!" />
+        </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {bonuses.map((bonus, i) => (
-              <BonusCard
-                key={bonus.id}
-                bonus={bonus}
-                color={COLORS[i % COLORS.length]}
-              />
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5 items-stretch">
+          {bonuses.map(bonus => (
+            <BonusCard key={bonus.id} bonus={bonus} />
           ))}
         </div>
       )}

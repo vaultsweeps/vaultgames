@@ -1,12 +1,13 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Gamepad2, Download, Search, Star, Eye, RefreshCw, Bot, X, MessageCircle, Send, Zap, Copy, RefreshCcw } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { Gamepad2, Download, Search, Star, Eye, RefreshCw, Bot, Copy, RefreshCcw } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Link from 'next/link'
 import { gamesApi, publicApi } from '@/lib/api'
 import Image from 'next/image'
 import dynamic from 'next/dynamic'
+import { Badge, Button, buttonClass, Card, cn, EmptyState, IconTile, PageHeader, Skeleton, TONES } from '@/components/dashboard/ui'
 
 const PlayWithAgentModal = dynamic(() => import('@/components/modals/PlayWithAgentModal'), { ssr: false })
 
@@ -58,9 +59,9 @@ export default function GamesPage() {
         gamesApi.getAll(),
         publicApi.getSettings().catch(() => ({ data: { data: {} } })),
       ])
-      
+
       const fetchedGames = gamesRes.data.data || []
-      
+
       // Inject thumbnails for specific games
       const processedGames = fetchedGames.map((game: Game) => {
         const lowerName = game.name.toLowerCase()
@@ -141,130 +142,174 @@ export default function GamesPage() {
 
   const hasProvider = (game: Game) => !!game.providerId
 
+  // Presentation only: some versions already carry a leading "v".
+  const formatVersion = (v: string) => (/^v/i.test(v) ? v : `v${v}`)
+
+  const cardBtn = (variant: 'primary' | 'secondary') =>
+    cn(buttonClass({ variant, size: 'sm' }), '!h-11 flex-1 min-w-0 !px-2 !text-[14px] !gap-1.5')
+
   return (
-    <div className="space-y-6">
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex items-end justify-between flex-wrap gap-3">
-        <div>
-          <h2 className="font-display font-bold text-2xl text-white">GAMES LIBRARY</h2>
-          <p className="text-secondary text-sm mt-1">Browse and download all available games.</p>
-        </div>
-        <button onClick={fetchGames} className="glass border border-border-strong rounded-xl px-3 py-2 text-secondary hover:text-white transition-all flex items-center gap-2 text-sm">
-          <RefreshCw className="w-4 h-4" /> Refresh
-        </button>
-      </motion.div>
+    <div className="space-y-5 sm:space-y-6">
+      <PageHeader
+        title="Games Library"
+        subtitle="Browse and download all available games."
+        className="!mb-0"
+        actions={
+          <Button variant="secondary" size="sm" onClick={fetchGames}>
+            <RefreshCw className="w-4 h-4" /> Refresh
+          </Button>
+        }
+      />
 
       {/* Search & Filter */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-          <input type="text" placeholder="Search games..." value={search} onChange={handleSearchChange} className="input-neon pl-10" />
+      <div className="flex flex-col lg:flex-row lg:items-center gap-3">
+        <div className="relative flex-1 min-w-0">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-muted pointer-events-none" aria-hidden="true" />
+          <input
+            type="text"
+            inputMode="search"
+            aria-label="Search games"
+            placeholder="Search games..."
+            value={search}
+            onChange={handleSearchChange}
+            className="ds-input !pl-11 !text-[16px]"
+          />
         </div>
-        <div className="flex gap-2 flex-wrap">
-          {categories.slice(0, 6).map(cat => (
-            <button key={cat} onClick={() => handleCategoryChange(cat)}
-              className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${category === cat ? 'bg-neon-blue/10 text-neon-blue border border-neon-blue/20' : 'glass text-secondary hover:text-white border border-border-strong'}`}>
-              {cat}
-            </button>
-          ))}
+        <div
+          role="group"
+          aria-label="Filter by category"
+          className="flex gap-2 min-w-0 max-w-full overflow-x-auto snap-x snap-proximity sm:flex-wrap sm:overflow-visible [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+          {categories.slice(0, 6).map(cat => {
+            const on = category === cat
+            return (
+              <button
+                key={cat}
+                type="button"
+                aria-pressed={on}
+                onClick={() => handleCategoryChange(cat)}
+                className={cn(
+                  'snap-start flex-shrink-0 h-10 px-4 rounded-full text-[14px] font-semibold whitespace-nowrap transition-all active:scale-[0.97]',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/60',
+                  on ? 'text-white shadow-[0_6px_18px_-8px_rgba(59,130,246,0.7)]' : 'bg-surface-elevated border border-border-subtle text-secondary hover:text-primary hover:border-border-strong'
+                )}
+                style={on ? { background: 'var(--ds-accent)' } : undefined}
+              >
+                {cat}
+              </button>
+            )
+          })}
         </div>
       </div>
 
       {/* Legend */}
-      <div className="flex items-center gap-4 text-xs text-muted">
-        <span className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-neon-blue/70 inline-block" />
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[13px] text-muted">
+        <span className="inline-flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full inline-block" style={{ background: TONES.cyan.fg }} />
           Online Play (Provider)
         </span>
-        <span className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-violet-400/70 inline-block" />
+        <span className="inline-flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full inline-block" style={{ background: TONES.purple.fg }} />
           Agent-Assisted Play
         </span>
       </div>
 
       {/* Games Grid */}
       {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 min-[560px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5" aria-busy="true">
           {[1,2,3,4,5,6,7,8].map(i => (
-            <div key={i} className="glass-card h-64 animate-pulse">
-              <div className="h-36 bg-white/5" />
-              <div className="p-4 space-y-2">
-                <div className="h-4 bg-white/10 rounded w-3/4" />
-                <div className="h-3 bg-white/5 rounded" />
+            <Card key={i} padded={false} className="overflow-hidden">
+              <Skeleton className="!rounded-none aspect-[16/10] w-full" />
+              <div className="p-4 space-y-3">
+                <Skeleton className="h-5 w-3/4 !rounded-lg" />
+                <Skeleton className="h-3.5 w-full !rounded-lg" />
+                <Skeleton className="h-3.5 w-2/3 !rounded-lg" />
+                <div className="flex gap-2 pt-2">
+                  <Skeleton className="h-11 flex-1 !rounded-2xl" />
+                  <Skeleton className="h-11 flex-1 !rounded-2xl" />
+                </div>
               </div>
-            </div>
+            </Card>
           ))}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="glass-card py-16 text-center">
-          <Gamepad2 className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-          <p className="text-muted">{games.length === 0 ? 'No games available yet.' : 'No games match your search.'}</p>
-        </div>
+        <Card>
+          <EmptyState
+            icon={Gamepad2}
+            title="No games found"
+            text={games.length === 0 ? 'No games available yet.' : 'No games match your search.'}
+          />
+        </Card>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 min-[560px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
           {visibleGames.map((game, i) => (
-            <motion.div key={game.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: (i % 12) * 0.04 }}
-              className="glass-card overflow-hidden group hover:-translate-y-1 transition-all">
-              {/* Thumbnail */}
-              <div className={`h-36 bg-gradient-to-br ${COLORS[i % COLORS.length]} relative overflow-hidden`}>
-                <div className="absolute inset-0 cyber-grid opacity-20" />
-                {game.thumbnailUrl ? (
-                  <Image src={game.thumbnailUrl} alt={game.name} fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" className="object-cover opacity-70 group-hover:opacity-90 transition-opacity" />
-                ) : (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <Gamepad2 className="w-12 h-12 text-white/20 group-hover:text-white/40 transition-colors" />
-                  </div>
-                )}
-                {game.isFeatured && (
-                  <span className="absolute top-2 left-2 text-xs font-mono text-neon-blue bg-neon-blue/10 border border-neon-blue/30 px-2 py-0.5 rounded-full">FEATURED</span>
-                )}
-                {/* Provider badge */}
-                <span className={`absolute top-2 right-2 text-xs px-2 py-0.5 rounded-full border font-medium ${
-                  hasProvider(game)
-                    ? 'text-neon-blue glass border-neon-blue/20'
-                    : 'text-violet-300 bg-violet-500/10 border-violet-500/20'
-                }`}>
-                  {hasProvider(game) ? game.category : '🤖 Agent'}
-                </span>
-              </div>
-
-              {/* Info */}
-              <div className="p-4">
-                <div className="flex items-start justify-between mb-1">
-                  <h3 className="text-white text-sm font-bold leading-tight">{game.name}</h3>
-                  {game.rating > 0 && (
-                    <div className="flex items-center gap-1 text-xs text-yellow-400 ml-2 flex-shrink-0">
-                      <Star className="w-3 h-3 fill-current" />{game.rating}
+            <motion.div key={game.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: (i % 12) * 0.03 }} className="min-w-0">
+              <Card padded={false} className="group h-full flex flex-col overflow-hidden transition-transform duration-200 hover:-translate-y-0.5">
+                {/* Thumbnail */}
+                <div className={`aspect-[16/10] w-full bg-gradient-to-br ${COLORS[i % COLORS.length]} relative overflow-hidden flex-shrink-0`}>
+                  {game.thumbnailUrl ? (
+                    <Image src={game.thumbnailUrl} alt={game.name} fill loading="lazy" sizes="(max-width: 559px) 100vw, (max-width: 1023px) 50vw, (max-width: 1279px) 33vw, 25vw" className="object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <IconTile icon={Gamepad2} tone="blue" size="lg" />
                     </div>
                   )}
-                </div>
-                <p className="text-muted text-xs mb-3 line-clamp-2">{game.description || 'No description available.'}</p>
-                <div className="flex items-center justify-between text-xs text-slate-600 mb-3">
-                  <span className="flex items-center gap-1"><Download className="w-3 h-3" />{game.downloadCount > 999 ? `${(game.downloadCount/1000).toFixed(0)}K` : game.downloadCount}</span>
-                  {game.version && <span className="font-mono text-neon-blue/50">v{game.version}</span>}
+                  <div className="absolute inset-x-0 bottom-0 h-1/2 pointer-events-none" style={{ background: 'linear-gradient(to top, rgba(6,9,18,0.55), transparent)' }} />
+                  {game.isFeatured && (
+                    <span className="absolute top-2.5 left-2.5 rounded-full" style={{ background: 'rgba(6,9,18,0.68)' }}>
+                      <Badge tone="gold" className="!text-[11px] !px-2.5 !py-1.5">Featured</Badge>
+                    </span>
+                  )}
+                  {/* Provider badge */}
+                  <span className="absolute top-2.5 right-2.5 max-w-[55%] rounded-full flex" style={{ background: 'rgba(6,9,18,0.68)' }}>
+                    {hasProvider(game) ? (
+                      <Badge tone="cyan" className="!text-[11px] !px-2.5 !py-1.5 min-w-0 max-w-full"><span className="truncate">{game.category}</span></Badge>
+                    ) : (
+                      <Badge tone="purple" className="!text-[11px] !px-2.5 !py-1.5"><Bot className="w-3 h-3" /> Agent</Badge>
+                    )}
+                  </span>
                 </div>
 
-                <div className="flex gap-2">
-                  <Link href={`/games/${game.id}`} className="btn-neon flex-1 text-xs py-1.5 flex items-center justify-center gap-1">
-                    <Eye className="w-3 h-3" /> Details
-                  </Link>
-                  <button
-                    onClick={() => handleDownload(game)}
-                    disabled={downloading === game.id || !game.downloadUrl}
-                    className="btn-primary flex-1 text-xs py-1.5 flex items-center justify-center gap-1 disabled:opacity-50">
-                    {downloading === game.id ? (
-                      <div className="w-3 h-3 border border-white/30 border-t-white rounded-full animate-spin" />
-                    ) : <><Download className="w-3 h-3" /> Get</>}
-                  </button>
-                  {!hasProvider(game) && (
+                {/* Info */}
+                <div className="p-4 flex flex-col flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="text-primary text-[16px] sm:text-[17px] font-semibold leading-snug tracking-tight line-clamp-2 break-words min-w-0">{game.name}</h3>
+                    {game.rating > 0 && (
+                      <div className="flex items-center gap-1 text-[13px] sm:text-[14px] font-semibold flex-shrink-0 mt-0.5 tabular-nums" style={{ color: 'var(--ds-gold)' }}>
+                        <Star className="w-3.5 h-3.5 fill-current" />{Number(game.rating).toFixed(1)}
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-secondary text-[14px] leading-relaxed mt-1.5 line-clamp-2 flex-1">{game.description || 'No description available.'}</p>
+                  <div className="flex items-center justify-between gap-3 text-[13px] text-muted mt-3 mb-4">
+                    <span className="flex items-center gap-1.5 tabular-nums"><Download className="w-3.5 h-3.5" />{game.downloadCount > 999 ? `${(game.downloadCount/1000).toFixed(0)}K` : game.downloadCount}</span>
+                    {game.version && <span className="tabular-nums truncate">{formatVersion(game.version)}</span>}
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Link href={`/games/${game.id}`} className={cardBtn('secondary')}>
+                      <Eye className="w-4 h-4 flex-shrink-0" /> Details
+                    </Link>
                     <button
-                      onClick={() => setAgentGame(game)}
-                      className="flex-1 text-xs py-1.5 flex items-center justify-center gap-1 rounded-lg bg-violet-500/10 border border-violet-500/20 text-violet-300 hover:bg-violet-500/20 hover:border-violet-400/40 transition-all font-medium"
-                    >
-                      <Bot className="w-3 h-3" /> Play
+                      onClick={() => handleDownload(game)}
+                      disabled={downloading === game.id || !game.downloadUrl}
+                      className={cardBtn('primary')}>
+                      {downloading === game.id ? (
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      ) : <><Download className="w-4 h-4 flex-shrink-0" /> Get</>}
                     </button>
-                  )}
+                    {!hasProvider(game) && (
+                      <button
+                        onClick={() => setAgentGame(game)}
+                        className={cardBtn('secondary')}
+                        style={{ background: TONES.purple.bg, color: TONES.purple.fg, borderColor: TONES.purple.ring }}
+                      >
+                        <Bot className="w-4 h-4 flex-shrink-0" /> Play
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
+              </Card>
             </motion.div>
           ))}
         </div>
@@ -272,13 +317,11 @@ export default function GamesPage() {
 
       {/* Load More Button */}
       {!loading && visibleCount < filtered.length && (
-        <div className="flex justify-center mt-8">
-          <button 
-            onClick={() => setVisibleCount(v => v + 12)}
-            className="glass px-6 py-2.5 rounded-xl text-sm font-medium text-secondary hover:text-white border border-border-strong transition-all hover:bg-white/5"
-          >
+        <div className="flex flex-col items-center gap-2 pt-2">
+          <Button variant="secondary" onClick={() => setVisibleCount(v => v + 12)} className="min-w-[200px]">
             Load More Games
-          </button>
+          </Button>
+          <p className="text-[13px] text-muted tabular-nums">Showing {visibleGames.length} of {filtered.length}</p>
         </div>
       )}
 
@@ -294,7 +337,7 @@ export default function GamesPage() {
               }
             </div>
             <div className="flex items-start justify-between mb-3">
-              <h3 className="font-display font-bold text-xl text-white">{selectedGame.name}</h3>
+              <h3 className="font-bold text-xl text-primary">{selectedGame.name}</h3>
               {selectedGame.rating > 0 && <div className="flex items-center gap-1 text-yellow-400"><Star className="w-4 h-4 fill-current" /><span className="text-sm">{selectedGame.rating}</span></div>}
             </div>
             <div className="flex gap-2 mb-4">
@@ -314,9 +357,9 @@ export default function GamesPage() {
                   <div className="glass rounded-xl p-4 border border-neon-blue/20 text-center">
                     <p className="text-xs text-secondary mb-1">Download code</p>
                     <div className="flex items-center justify-center gap-3">
-                      <span className="text-2xl font-bold text-white tracking-widest font-mono">{downloadCode}</span>
+                      <span className="text-2xl font-bold text-primary tracking-widest font-mono">{downloadCode}</span>
                       <button onClick={() => { navigator.clipboard.writeText(downloadCode); toast.success('Code copied!'); }}
-                        className="text-secondary hover:text-white transition-colors">
+                        className="text-secondary hover:text-primary transition-colors">
                         <Copy className="w-4 h-4" />
                       </button>
                     </div>
@@ -345,7 +388,7 @@ export default function GamesPage() {
                   </button>
                 )}
               </div>
-              <button onClick={() => { setSelectedGame(null); setDownloadCode(null); }} className="glass px-5 py-3 rounded-xl text-secondary hover:text-white border border-border-strong transition-all text-sm">Close</button>
+              <button onClick={() => { setSelectedGame(null); setDownloadCode(null); }} className="glass px-5 py-3 rounded-xl text-secondary hover:text-primary border border-border-strong transition-all text-sm">Close</button>
             </div>
           </motion.div>
         </div>

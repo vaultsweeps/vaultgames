@@ -2,8 +2,9 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import toast from 'react-hot-toast'
-import { Search, CheckCircle, XCircle, DollarSign, Eye, RefreshCw } from 'lucide-react'
+import { Search, CheckCircle, XCircle, DollarSign, Eye, RefreshCw, Clock, ArrowUpCircle, X } from 'lucide-react'
 import { adminApi } from '@/lib/api'
+import { Button, Card, EmptyState, IconTile, PageHeader, Skeleton, StatusBadge, cn } from '@/components/dashboard/ui'
 
 type Item = {
   id: string
@@ -16,7 +17,7 @@ type Item = {
   adminNotes?: string
 }
 
-const STATUS_MAP: Record<string, string> = { pending: 'badge-pending', approved: 'badge-approved', rejected: 'badge-rejected', paid: 'badge-paid' }
+const ICON_BTN = 'w-9 h-9 rounded-xl flex items-center justify-center border transition-all active:scale-95 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/60'
 
 export default function AdminCashoutsPage() {
   const [items, setItems] = useState<Item[]>([])
@@ -64,34 +65,71 @@ export default function AdminCashoutsPage() {
   const totalPending = items.filter(d => d.status === 'pending').length
   const totalPendingAmount = items.filter(d => d.status === 'pending').reduce((s, d) => s + d.amount, 0)
 
-  return (
-    <div className="space-y-5">
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex items-end justify-between flex-wrap gap-3">
-        <div>
-          <h2 className="font-display font-bold text-2xl text-white">CASHOUT MANAGEMENT</h2>
-          <p className="text-secondary text-sm">Review and process withdrawal requests.</p>
-        </div>
-        <div className="flex gap-3">
-          <button onClick={fetchWithdrawals} className="glass border border-border-strong rounded-xl px-3 py-2 text-secondary hover:text-white transition-all flex items-center gap-2">
-            <RefreshCw className="w-4 h-4" />
+  const rowActions = (d: Item) => (
+    <div className="flex gap-2">
+      <button onClick={() => { setSelected(d); setNotes(d.adminNotes) }}
+        className={cn(ICON_BTN, 'bg-surface-elevated border-border-strong text-secondary hover:text-primary')} title="View details" aria-label="View details">
+        <Eye className="w-4 h-4" />
+      </button>
+      {d.status === 'pending' && (
+        <>
+          <button onClick={() => handleAction(d.id, 'approve')} disabled={processing === d.id}
+            className={cn(ICON_BTN, 'bg-emerald-500/10 border-emerald-500/25 text-emerald-400 hover:bg-emerald-500/20')} title="Approve" aria-label="Approve cashout">
+            <CheckCircle className="w-4 h-4" />
           </button>
-          <div className="glass-card px-4 py-2 text-center">
-            <p className="text-yellow-400 font-bold text-lg font-display">{totalPending}</p>
-            <p className="text-xs text-muted">Pending</p>
-          </div>
-          <div className="glass-card px-4 py-2 text-center">
-            <p className="text-orange-400 font-bold text-lg font-display">${totalPendingAmount.toLocaleString()}</p>
-            <p className="text-xs text-muted">Pending Amount</p>
-          </div>
-        </div>
+          <button onClick={() => handleAction(d.id, 'reject')} disabled={processing === d.id}
+            className={cn(ICON_BTN, 'bg-red-500/10 border-red-500/25 text-red-400 hover:bg-red-500/20')} title="Reject" aria-label="Reject cashout">
+            <XCircle className="w-4 h-4" />
+          </button>
+        </>
+      )}
+      {d.status === 'approved' && (
+        <button onClick={() => handleAction(d.id, 'paid')} disabled={processing === d.id}
+          className={cn(ICON_BTN, 'bg-sky-500/10 border-sky-500/25 text-sky-400 hover:bg-sky-500/20')} title="Mark as paid" aria-label="Mark as paid">
+          <DollarSign className="w-4 h-4" />
+        </button>
+      )}
+    </div>
+  )
+
+  return (
+    <div>
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+        <PageHeader
+          title="Cashout management"
+          subtitle="Review and process withdrawal requests."
+          actions={
+            <Button variant="secondary" size="sm" onClick={fetchWithdrawals} aria-label="Refresh cashouts" className="!px-3">
+              <RefreshCw className="w-4 h-4" />
+            </Button>
+          }
+        />
       </motion.div>
 
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-          <input type="text" placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} className="input-neon pl-10" />
+      {/* Summary */}
+      <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-5 max-w-xl">
+        <div className="ds-card p-4 flex items-center gap-3 min-w-0">
+          <IconTile icon={Clock} tone="gold" size="md" />
+          <div className="min-w-0">
+            <p className="text-2xl font-bold text-primary leading-none tabular-nums">{totalPending}</p>
+            <p className="text-[13px] text-secondary mt-1.5">Pending</p>
+          </div>
         </div>
-        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="input-neon bg-surface w-full sm:w-40">
+        <div className="ds-card p-4 flex items-center gap-3 min-w-0">
+          <IconTile icon={DollarSign} tone="orange" size="md" />
+          <div className="min-w-0">
+            <p className="text-2xl font-bold text-primary leading-none tabular-nums truncate">${totalPendingAmount.toLocaleString()}</p>
+            <p className="text-[13px] text-secondary mt-1.5">Pending amount</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-col sm:flex-row gap-3 mb-4 sm:mb-5">
+        <div className="relative flex-1 min-w-0">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
+          <input type="text" placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} className="ds-input pl-11" aria-label="Search cashouts" />
+        </div>
+        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="ds-input w-full sm:w-44" aria-label="Filter by status">
           <option value="all">All Status</option>
           <option value="pending">Pending</option>
           <option value="approved">Approved</option>
@@ -100,101 +138,117 @@ export default function AdminCashoutsPage() {
         </select>
       </div>
 
-      <div className="glass-card overflow-hidden">
+      {/* Desktop table */}
+      <Card padded={false} className="overflow-hidden hidden md:block">
         <div className="overflow-x-auto">
-          <table className="data-table">
+          <table className="data-table min-w-[900px] [&_th]:whitespace-nowrap [&_th]:px-4 [&_th]:py-3.5 [&_th]:bg-[var(--bg-surface-elevated)] [&_td]:px-4 [&_td]:py-3.5 [&_td]:align-middle [&_tr:last-child_td]:border-b-0">
             <thead><tr><th>ID</th><th>User</th><th>Amount</th><th>Method</th><th>Account</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={8} className="text-center py-10 text-muted">Loading cashouts...</td></tr>
+                <tr><td colSpan={8} className="text-center py-12 text-muted">Loading cashouts...</td></tr>
               ) : filtered.map(d => (
                 <tr key={d.id}>
-                  <td className="font-mono text-xs text-orange-400">{d.id.slice(0, 10)}</td>
-                  <td><p className="text-white text-sm">{d.user?.username}</p><p className="text-xs text-muted">{d.user?.email}</p></td>
-                  <td className="text-white font-bold">${d.amount.toLocaleString()}</td>
-                  <td className="text-secondary text-sm">{d.paymentMethod?.name || 'Unknown'}</td>
-                  <td className="text-xs text-muted max-w-[120px] truncate">{d.accountInfo}</td>
-                  <td><span className={`${STATUS_MAP[d.status]} text-xs px-2 py-0.5 rounded-full font-mono`}>{d.status}</span></td>
-                  <td className="text-xs text-slate-600">{new Date(d.createdAt).toLocaleDateString()}</td>
+                  <td><span className="font-mono text-[13px] text-secondary bg-surface-elevated px-2 py-1 rounded-lg">{d.id.slice(0, 10)}</span></td>
                   <td>
-                    <div className="flex gap-1">
-                      <button onClick={() => { setSelected(d); setNotes(d.adminNotes) }}
-                        className="w-7 h-7 glass rounded-lg flex items-center justify-center text-secondary hover:text-neon-blue border border-border-strong transition-all">
-                        <Eye className="w-3.5 h-3.5" />
-                      </button>
-                      {d.status === 'pending' && (
-                        <>
-                          <button onClick={() => handleAction(d.id, 'approve')} disabled={processing === d.id}
-                            className="w-7 h-7 bg-green-500/10 border border-green-500/20 rounded-lg flex items-center justify-center text-green-400 hover:bg-green-500/20 transition-all disabled:opacity-50">
-                            <CheckCircle className="w-3.5 h-3.5" />
-                          </button>
-                          <button onClick={() => handleAction(d.id, 'reject')} disabled={processing === d.id}
-                            className="w-7 h-7 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center justify-center text-red-400 hover:bg-red-500/20 transition-all disabled:opacity-50">
-                            <XCircle className="w-3.5 h-3.5" />
-                          </button>
-                        </>
-                      )}
-                      {d.status === 'approved' && (
-                        <button onClick={() => handleAction(d.id, 'paid')} disabled={processing === d.id}
-                          className="w-7 h-7 bg-blue-500/10 border border-blue-500/20 rounded-lg flex items-center justify-center text-blue-400 hover:bg-blue-500/20 transition-all text-xs font-mono disabled:opacity-50">
-                          <DollarSign className="w-3.5 h-3.5" />
-                        </button>
-                      )}
+                    <div className="max-w-[220px]">
+                      <p className="text-primary text-[14px] font-semibold truncate">{d.user?.username}</p>
+                      <p className="text-[13px] text-muted truncate">{d.user?.email}</p>
                     </div>
                   </td>
+                  <td className="text-primary font-bold tabular-nums">${d.amount.toLocaleString()}</td>
+                  <td className="text-secondary text-[14px]">{d.paymentMethod?.name || 'Unknown'}</td>
+                  <td className="text-[13px] text-muted max-w-[160px] truncate" title={d.accountInfo}>{d.accountInfo}</td>
+                  <td><StatusBadge status={d.status} /></td>
+                  <td className="text-[13px] text-muted whitespace-nowrap">{new Date(d.createdAt).toLocaleDateString()}</td>
+                  <td>{rowActions(d)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-        {filtered.length === 0 && <div className="py-12 text-center text-muted text-sm">No cashouts found</div>}
+        {filtered.length === 0 && !loading && <div className="py-12 text-center text-muted text-[14px]">No cashouts found</div>}
+      </Card>
+
+      {/* Mobile cards */}
+      <div className="md:hidden space-y-3">
+        {loading ? (
+          [0, 1, 2].map(i => <Skeleton key={i} className="h-[132px] !rounded-[20px]" />)
+        ) : filtered.length === 0 ? (
+          <Card><EmptyState icon={ArrowUpCircle} title="No cashouts found" text="Try a different search or status." /></Card>
+        ) : filtered.map(d => (
+          <Card key={d.id} className="!p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-primary text-[15px] font-semibold truncate">{d.user?.username}</p>
+                <p className="text-[13px] text-muted truncate">{d.user?.email}</p>
+              </div>
+              <StatusBadge status={d.status} />
+            </div>
+            <div className="mt-3 flex items-end justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[22px] font-bold text-primary leading-none tabular-nums">${d.amount.toLocaleString()}</p>
+                <p className="text-[13px] text-secondary mt-1.5 truncate">{d.paymentMethod?.name || 'Unknown'} · {d.accountInfo}</p>
+              </div>
+              {rowActions(d)}
+            </div>
+            <p className="mt-3 pt-3 border-t border-border-subtle text-xs text-muted flex justify-between gap-2">
+              <span className="font-mono truncate">{d.id.slice(0, 10)}</span>
+              <span className="whitespace-nowrap">{new Date(d.createdAt).toLocaleDateString()}</span>
+            </p>
+          </Card>
+        ))}
       </div>
 
       {selected && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setSelected(null)}>
-          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} onClick={e => e.stopPropagation()}
-            className="glass-card max-w-md w-full p-6">
-            <h3 className="font-display font-bold text-xl text-white mb-4">CASHOUT DETAILS</h3>
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-3 sm:p-4" onClick={() => setSelected(null)}>
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} onClick={e => e.stopPropagation()}
+            role="dialog" aria-modal="true" aria-label="Cashout details"
+            className="ds-card max-w-md w-full p-5 sm:p-6 max-h-[92vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-xl text-primary">Cashout details</h3>
+              <button type="button" onClick={() => setSelected(null)} aria-label="Close"
+                className="w-10 h-10 -mr-2 rounded-xl flex items-center justify-center text-secondary hover:text-primary hover:bg-[var(--ds-hover)] transition">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
             <div className="space-y-2 mb-4">
               {[
-                ['ID', selected.id], 
-                ['User', selected.user?.username], 
-                ['Amount', `$${selected.amount}`], 
-                ['Method', selected.paymentMethod?.name || 'Unknown'], 
-                ['Account', selected.accountInfo], 
-                ['Status', selected.status], 
+                ['ID', selected.id],
+                ['User', selected.user?.username],
+                ['Amount', `$${selected.amount}`],
+                ['Method', selected.paymentMethod?.name || 'Unknown'],
+                ['Account', selected.accountInfo],
+                ['Status', selected.status],
                 ['Date', new Date(selected.createdAt).toLocaleString()]
               ].map(([k, v]) => (
-                <div key={k} className="flex justify-between glass rounded-lg px-4 py-2.5">
-                  <span className="text-xs text-muted">{k}</span>
-                  <span className={`text-sm font-medium ${k === 'Status' ? STATUS_MAP[v as string] + ' text-xs px-2 py-0.5 rounded-full font-mono' : 'text-white'}`}>{v}</span>
+                <div key={k} className="flex justify-between items-center gap-3 bg-surface-elevated border border-border-subtle rounded-xl px-4 py-2.5">
+                  <span className="text-[13px] text-muted flex-shrink-0">{k}</span>
+                  {k === 'Status' ? <StatusBadge status={v as string} /> : <span className="text-[14px] font-medium text-primary text-right break-all min-w-0">{v}</span>}
                 </div>
               ))}
             </div>
             {selected.status === 'pending' && (
               <>
                 <div className="mb-4">
-                  <label className="block text-xs text-secondary mb-2">Admin Notes</label>
-                  <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} className="input-neon resize-none text-sm" placeholder="Optional notes..." />
+                  <label className="block text-[13px] font-medium text-secondary mb-2">Admin Notes</label>
+                  <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} className="ds-input resize-none" placeholder="Optional notes..." />
                 </div>
-                <div className="flex gap-2">
-                  <button onClick={() => handleAction(selected.id, 'approve')} disabled={!!processing}
-                    className="flex-1 py-2.5 bg-green-500/10 border border-green-500/30 rounded-xl text-green-400 text-sm hover:bg-green-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
+                <div className="flex gap-3">
+                  <Button variant="success" size="sm" className="flex-1" onClick={() => handleAction(selected.id, 'approve')} disabled={!!processing}>
                     <CheckCircle className="w-4 h-4" /> Approve
-                  </button>
-                  <button onClick={() => handleAction(selected.id, 'reject')} disabled={!!processing}
-                    className="flex-1 py-2.5 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-sm hover:bg-red-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
+                  </Button>
+                  <Button variant="danger" size="sm" className="flex-1" onClick={() => handleAction(selected.id, 'reject')} disabled={!!processing}>
                     <XCircle className="w-4 h-4" /> Reject
-                  </button>
+                  </Button>
                 </div>
               </>
             )}
             {selected.status === 'approved' && (
-              <button onClick={() => handleAction(selected.id, 'paid')} className="w-full py-2.5 bg-blue-500/10 border border-blue-500/30 rounded-xl text-blue-400 text-sm hover:bg-blue-500/20 transition-all flex items-center justify-center gap-2">
+              <Button variant="secondary" size="sm" full className="!text-sky-400" onClick={() => handleAction(selected.id, 'paid')}>
                 <DollarSign className="w-4 h-4" /> Mark as Paid
-              </button>
+              </Button>
             )}
-            <button onClick={() => setSelected(null)} className="w-full mt-2 glass rounded-xl py-2.5 text-secondary text-sm border border-border-strong transition-all hover:text-white">Close</button>
+            <Button variant="ghost" size="sm" full className="mt-2.5" onClick={() => setSelected(null)}>Close</Button>
           </motion.div>
         </div>
       )}

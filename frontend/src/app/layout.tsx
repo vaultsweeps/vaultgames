@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
-import { Toaster } from 'react-hot-toast'
+import SwipeToaster from '@/components/ui/SwipeToaster'
 import '@/styles/globals.css'
 import { ThemeProvider } from '@/components/ThemeProvider'
 import NavigationLoader from '@/components/ui/NavigationLoader'
@@ -62,21 +62,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <FrustrationDetector />
           <div className="scan-line" />
           {children}
-          <Toaster
-            position="top-right"
-            toastOptions={{
-              style: {
-                background: 'rgba(10,15,30,0.95)',
-                color: '#e2e8f0',
-                border: '1px solid rgba(0,212,255,0.2)',
-                backdropFilter: 'blur(10px)',
-                fontFamily: 'Inter, sans-serif',
-                fontSize: '14px',
-              },
-              success: { iconTheme: { primary: '#00FF88', secondary: '#030712' } },
-              error: { iconTheme: { primary: '#FF4444', secondary: '#030712' } },
-            }}
-          />
+          <SwipeToaster />
         </ThemeProvider>
       </body>
     </html>

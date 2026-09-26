@@ -1,9 +1,10 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
 import toast from 'react-hot-toast'
-import { Save, Globe, CreditCard, Bell, Shield, Send, RefreshCw } from 'lucide-react'
+import { Save, Globe, CreditCard, Bell, Shield, RefreshCw, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { adminApi } from '@/lib/api'
+import { PageHeader, SectionHeading, Card, Button, TabBar, Field } from '@/components/dashboard/ui'
+import { INPUT, SwitchRow, Callout } from '../_kit'
 
 const TABS = [
   { id: 'general', label: 'General', icon: Globe },
@@ -38,6 +39,26 @@ const DEFAULTS = {
   show_home_faq: false,
   show_home_why_us: false,
   show_home_testimonials: false,
+}
+
+type Settings = typeof DEFAULTS
+
+// Kept at module level (not inside the page component) so inputs keep focus while typing.
+function SettingInput({ label, k, settings, onSet, type = 'text', placeholder = '' }: { label: string; k: string; settings: Settings; onSet: (k: string, v: any) => void; type?: string; placeholder?: string }) {
+  return (
+    <Field label={label}>
+      <input type={type} placeholder={placeholder} value={(settings as any)[k] || ''}
+        onChange={e => onSet(k, e.target.value)} className={INPUT} />
+    </Field>
+  )
+}
+
+function SettingToggle({ label, k, desc, settings, onSet }: { label: string; k: string; desc?: string; settings: Settings; onSet: (k: string, v: any) => void }) {
+  return <SwitchRow label={label} hint={desc} on={!!(settings as any)[k]} onToggle={() => onSet(k, !(settings as any)[k])} />
+}
+
+function Subheading({ children }: { children: React.ReactNode }) {
+  return <h4 className="text-[15px] font-semibold text-primary mb-3">{children}</h4>
 }
 
 export default function AdminSettingsPage() {
@@ -82,146 +103,123 @@ export default function AdminSettingsPage() {
     }
   }
 
-  const Field = ({ label, k, type = 'text', placeholder = '' }: { label: string; k: string; type?: string; placeholder?: string }) => (
-    <div>
-      <label className="block text-xs font-mono tracking-wider text-secondary uppercase mb-2">{label}</label>
-      <input type={type} placeholder={placeholder} value={(settings as any)[k] || ''}
-        onChange={e => set(k, e.target.value)} className="input-neon" />
-    </div>
+  const input = (label: string, k: string, type = 'text', placeholder = '') => (
+    <SettingInput label={label} k={k} settings={settings} onSet={set} type={type} placeholder={placeholder} />
   )
-
-  const Toggle = ({ label, k, desc }: { label: string; k: string; desc?: string }) => (
-    <div className="flex items-center justify-between glass rounded-xl px-4 py-3">
-      <div>
-        <p className="text-sm text-white font-medium">{label}</p>
-        {desc && <p className="text-xs text-muted mt-0.5">{desc}</p>}
-      </div>
-      <button onClick={() => set(k, !(settings as any)[k])}
-        className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${(settings as any)[k] ? 'bg-neon-blue' : 'bg-dark-500'}`}>
-        <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform shadow-sm ${(settings as any)[k] ? 'translate-x-5' : 'translate-x-0.5'}`} />
-      </button>
-    </div>
+  const toggle = (label: string, k: string, desc?: string) => (
+    <SettingToggle label={label} k={k} desc={desc} settings={settings} onSet={set} />
   )
 
   return (
-    <div className="space-y-5 max-w-3xl">
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-        <h2 className="font-display font-bold text-2xl text-white">PLATFORM SETTINGS</h2>
-        <p className="text-secondary text-sm">Configure your platform settings and preferences.</p>
-      </motion.div>
+    <div className="space-y-5 max-w-3xl pb-10">
+      <PageHeader title="Platform settings" subtitle="Configure your platform settings and preferences." />
 
       {/* Tabs */}
-      <div className="flex gap-2 flex-wrap">
-        {TABS.map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${tab === t.id ? 'bg-yellow-400/10 text-yellow-400 border border-yellow-400/20' : 'glass text-secondary hover:text-white border border-border-strong'}`}>
-            <t.icon className="w-4 h-4" />{t.label}
-          </button>
-        ))}
+      <div className="overflow-x-auto -mx-1 px-1 pb-1">
+        <TabBar className="min-w-max"
+          tabs={TABS.map(t => ({ id: t.id, label: t.label, icon: <t.icon className="w-4 h-4 hidden min-[420px]:block" /> }))}
+          active={tab} onChange={setTab} />
       </div>
 
       {/* General Settings */}
       {tab === 'general' && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass-card p-6 space-y-4">
-          <h3 className="font-display font-bold text-white text-sm">GENERAL SETTINGS</h3>
-          <Field label="Site Name" k="site_name" placeholder="Vault Sweeps" />
-          <Field label="Site Tagline" k="site_tagline" placeholder="The Ultimate Gaming Platform" />
-          <Field label="Site Description" k="site_description" placeholder="Description..." />
-          <div className="border-t border-border-subtle pt-4">
-            <h4 className="text-xs font-mono tracking-wider text-secondary uppercase mb-3">Social Links</h4>
-            <div className="space-y-3">
-              <Field label="Telegram URL" k="telegram_url" placeholder="https://t.me/..." />
-              <Field label="Facebook Messenger URL" k="facebook_url" placeholder="https://m.me/..." />
+        <Card className="space-y-5">
+          <SectionHeading title="General settings" className="!mb-0" />
+          {input('Site name', 'site_name', 'text', 'Vault Sweeps')}
+          {input('Site tagline', 'site_tagline', 'text', 'The Ultimate Gaming Platform')}
+          {input('Site description', 'site_description', 'text', 'Description...')}
+          <div className="border-t border-border-subtle pt-5">
+            <Subheading>Social links</Subheading>
+            <div className="space-y-4">
+              {input('Telegram URL', 'telegram_url', 'text', 'https://t.me/...')}
+              {input('Facebook Messenger URL', 'facebook_url', 'text', 'https://m.me/...')}
             </div>
           </div>
-          <div className="border-t border-border-subtle pt-4">
-            <Toggle label="Maintenance Mode" k="maintenance_mode" desc="Show maintenance page to all users except admins" />
+          <div className="border-t border-border-subtle pt-5">
+            {toggle('Maintenance mode', 'maintenance_mode', 'Show maintenance page to all users except admins')}
           </div>
-          <div className="border-t border-border-subtle pt-4">
-            <h4 className="text-xs font-mono tracking-wider text-secondary uppercase mb-3">Homepage Sections</h4>
+          <div className="border-t border-border-subtle pt-5">
+            <Subheading>Homepage sections</Subheading>
             <div className="space-y-3">
-              <Toggle label="Show Hot Bonuses" k="show_home_bonuses" desc="Display the Hot Bonuses section on the homepage" />
-              <Toggle label="Show FAQ" k="show_home_faq" desc="Display the Frequently Asked Questions section on the homepage" />
-              <Toggle label="Show Why Vault Sweeps" k="show_home_why_us" desc="Display the 'Why Vault Sweeps' features section on the homepage" />
-              <Toggle label="Show Player Reviews" k="show_home_testimonials" desc="Display the community testimonials section on the homepage" />
+              {toggle('Show Hot Bonuses', 'show_home_bonuses', 'Display the Hot Bonuses section on the homepage')}
+              {toggle('Show FAQ', 'show_home_faq', 'Display the Frequently Asked Questions section on the homepage')}
+              {toggle('Show Why Vault Sweeps', 'show_home_why_us', "Display the 'Why Vault Sweeps' features section on the homepage")}
+              {toggle('Show Player Reviews', 'show_home_testimonials', 'Display the community testimonials section on the homepage')}
             </div>
           </div>
-        </motion.div>
+        </Card>
       )}
 
       {/* Payment Settings */}
       {tab === 'payments' && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass-card p-6 space-y-4">
-          <h3 className="font-display font-bold text-white text-sm">PAYMENT SETTINGS</h3>
-          <div className="grid grid-cols-2 gap-4">
-            <Field label="Min Deposit ($)" k="min_deposit" type="number" />
-            <Field label="Max Deposit ($)" k="max_deposit" type="number" />
-            <Field label="Min Withdrawal ($)" k="min_withdrawal" type="number" />
-            <Field label="Max Withdrawal ($)" k="max_withdrawal" type="number" />
+        <Card className="space-y-5">
+          <SectionHeading title="Payment settings" className="!mb-0" />
+          <div className="grid grid-cols-1 min-[480px]:grid-cols-2 gap-4">
+            {input('Min deposit ($)', 'min_deposit', 'number')}
+            {input('Max deposit ($)', 'max_deposit', 'number')}
+            {input('Min withdrawal ($)', 'min_withdrawal', 'number')}
+            {input('Max withdrawal ($)', 'max_withdrawal', 'number')}
           </div>
-          <Field label="Withdrawal Fee (%)" k="withdrawal_fee_percent" type="number" placeholder="0" />
-          <div className="border-t border-border-subtle pt-4 space-y-3">
-            <Toggle label="Auto-Approve Deposits" k="auto_approve_deposits" desc="Automatically approve deposits verified by webhook" />
+          {input('Withdrawal fee (%)', 'withdrawal_fee_percent', 'number', '0')}
+          <div className="border-t border-border-subtle pt-5">
+            {toggle('Auto-approve deposits', 'auto_approve_deposits', 'Automatically approve deposits verified by webhook')}
           </div>
-          <div className="glass rounded-xl p-4 border border-yellow-400/20">
-            <p className="text-yellow-400 text-xs font-mono uppercase tracking-wider mb-1">⚠ Payment Gateway</p>
-            <p className="text-secondary text-xs">Configure your payment gateway API keys in the <code className="text-neon-blue">.env</code> file. Never store API keys in the database.</p>
-          </div>
-        </motion.div>
+          <Callout tone="gold" icon={<AlertTriangle className="w-5 h-5" />} title="Payment gateway">
+            Configure your payment gateway API keys in the <code className="text-primary font-semibold">.env</code> file. Never store API keys in the database.
+          </Callout>
+        </Card>
       )}
 
       {/* Notification Settings */}
       {tab === 'notifications' && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass-card p-6 space-y-3">
-          <h3 className="font-display font-bold text-white text-sm mb-4">NOTIFICATION SETTINGS</h3>
-          <Toggle label="Email on Deposit" k="email_on_deposit" desc="Send email to users when deposit status changes" />
-          <Toggle label="Email on Withdrawal" k="email_on_withdrawal" desc="Send email to users when cashout status changes" />
-          <Toggle label="Email on Registration" k="email_on_register" desc="Send welcome email to new users" />
-          <div className="border-t border-border-subtle pt-3">
-            <p className="text-xs font-mono tracking-wider text-muted uppercase mb-3">Admin Alerts</p>
+        <Card className="space-y-3">
+          <SectionHeading title="Notification settings" className="!mb-2" />
+          {toggle('Email on deposit', 'email_on_deposit', 'Send email to users when deposit status changes')}
+          {toggle('Email on withdrawal', 'email_on_withdrawal', 'Send email to users when cashout status changes')}
+          {toggle('Email on registration', 'email_on_register', 'Send welcome email to new users')}
+          <div className="border-t border-border-subtle pt-5 !mt-5">
+            <Subheading>Admin alerts</Subheading>
             <div className="space-y-3">
-              <Toggle label="Alert on New Deposit" k="notify_admin_on_deposit" desc="Get notified of every new deposit request" />
-              <Toggle label="Alert on New Withdrawal" k="notify_admin_on_withdrawal" desc="Get notified of every new withdrawal request" />
+              {toggle('Alert on new deposit', 'notify_admin_on_deposit', 'Get notified of every new deposit request')}
+              {toggle('Alert on new withdrawal', 'notify_admin_on_withdrawal', 'Get notified of every new withdrawal request')}
             </div>
           </div>
-        </motion.div>
+        </Card>
       )}
 
       {/* Security Settings */}
       {tab === 'security' && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass-card p-6 space-y-4">
-          <h3 className="font-display font-bold text-white text-sm">SECURITY SETTINGS</h3>
-          <div className="grid grid-cols-2 gap-4">
-            <Field label="Max Login Attempts" k="max_login_attempts" type="number" placeholder="5" />
-            <Field label="Session Timeout (hours)" k="session_timeout_hours" type="number" placeholder="24" />
+        <Card className="space-y-5">
+          <SectionHeading title="Security settings" className="!mb-0" />
+          <div className="grid grid-cols-1 min-[480px]:grid-cols-2 gap-4">
+            {input('Max login attempts', 'max_login_attempts', 'number', '5')}
+            {input('Session timeout (hours)', 'session_timeout_hours', 'number', '24')}
           </div>
-          <Field label="Admin IP Whitelist (comma-separated)" k="ip_whitelist_admin" placeholder="192.168.1.1, 10.0.0.1" />
-          <div className="border-t border-border-subtle pt-4">
-            <Toggle label="Require 2FA for Admins" k="two_factor_required" desc="Force all admin accounts to use two-factor authentication" />
+          {input('Admin IP whitelist (comma-separated)', 'ip_whitelist_admin', 'text', '192.168.1.1, 10.0.0.1')}
+          <div className="border-t border-border-subtle pt-5">
+            {toggle('Require 2FA for admins', 'two_factor_required', 'Force all admin accounts to use two-factor authentication')}
           </div>
-          <div className="glass rounded-xl p-4 border border-neon-blue/20">
-            <p className="text-neon-blue text-xs font-mono uppercase tracking-wider mb-2">Security Best Practices</p>
-            <ul className="space-y-1 text-xs text-secondary">
+          <Callout tone="cyan" icon={<CheckCircle2 className="w-5 h-5" />} title="Security best practices">
+            <ul className="space-y-1 mt-1">
               <li>• Use strong, unique JWT secrets (min 32 chars)</li>
               <li>• Enable HTTPS in production via Nginx SSL</li>
               <li>• Regularly rotate API keys and secrets</li>
               <li>• Monitor activity logs for suspicious behavior</li>
               <li>• Keep all dependencies updated</li>
             </ul>
-          </div>
-        </motion.div>
+          </Callout>
+        </Card>
       )}
 
       {/* Save Button */}
-      <div className="flex gap-3">
-        <button onClick={handleSave} disabled={saving}
-          className="btn-primary flex items-center gap-2 py-3 px-8 text-sm disabled:opacity-50">
-          {saving ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Saving...</>
-            : <><Save className="w-4 h-4" />Save Settings</>}
-        </button>
-        <button onClick={() => setSettings(DEFAULTS)} className="glass px-6 py-3 rounded-xl text-secondary hover:text-white border border-border-strong transition-all text-sm flex items-center gap-2">
-          <RefreshCw className="w-4 h-4" /> Reset Defaults
-        </button>
+      <div className="flex flex-wrap gap-3">
+        <Button onClick={handleSave} disabled={saving} className="flex-1 sm:flex-none sm:px-8">
+          {saving ? <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Saving...</>
+            : <><Save className="w-5 h-5" />Save settings</>}
+        </Button>
+        <Button variant="secondary" onClick={() => setSettings(DEFAULTS)}>
+          <RefreshCw className="w-4 h-4" /> Reset defaults
+        </Button>
       </div>
     </div>
   )

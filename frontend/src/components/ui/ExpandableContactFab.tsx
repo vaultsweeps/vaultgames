@@ -150,10 +150,14 @@ export default function ExpandableContactFab({ inlinePill = false }: Props) {
           aria-label={isOpen ? 'Close support' : 'Contact Support'}
           className={`relative flex items-center justify-center transition-all duration-200 active:scale-90 ${
             inlinePill
-              ? `w-[42px] h-[46px] rounded-[16px] bg-gradient-to-b from-[#9333ea] to-[#6d28d9] border-t border-t-white/40 border-l border-l-white/10 border-r border-r-white/10 border-b border-b-black/20 text-white shadow-[inset_0_1px_2px_rgba(255,255,255,0.3),0_0_15px_rgba(139,92,246,0.6)]`
+              ? `w-[52px] h-[52px] rounded-[18px] text-white`
               : `w-12 h-12 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#4F46E5] text-white border border-violet-400/30`
           }`}
-          style={inlinePill ? undefined : {
+          style={inlinePill ? {
+            background: 'linear-gradient(145deg, #3b0f7a, #220a52)',
+            border: '1px solid rgba(180,100,255,0.5)',
+            boxShadow: '0 0 28px rgba(160,80,255,0.7), 0 0 60px rgba(120,40,200,0.35), inset 0 1px 0 rgba(255,255,255,0.2)',
+          } : {
             boxShadow: '0 0 0 1px rgba(139,92,246,0.3), 0 4px 24px rgba(124,58,237,0.5)',
           }}
         >
@@ -165,7 +169,7 @@ export default function ExpandableContactFab({ inlinePill = false }: Props) {
                   exit={{ rotate: 90, opacity: 0, scale: 0.5 }}
                   transition={{ duration: 0.18 }}
                   className="flex">
-                  <X className="w-[18px] h-[18px]" />
+                  <X className="w-[18px] h-[18px]" style={{ color: '#e8d0ff', filter: 'drop-shadow(0 0 6px rgba(200,150,255,0.9))' }} />
                 </motion.span>
               : <motion.span key="h"
                   initial={{ rotate: 90, opacity: 0, scale: 0.5 }}
@@ -173,7 +177,7 @@ export default function ExpandableContactFab({ inlinePill = false }: Props) {
                   exit={{ rotate: -90, opacity: 0, scale: 0.5 }}
                   transition={{ duration: 0.18 }}
                   className="flex">
-                  <Headset className="w-[18px] h-[18px]" />
+                  <Headset className="w-[20px] h-[20px]" style={{ color: '#e8d0ff', filter: 'drop-shadow(0 0 8px rgba(200,130,255,1)) drop-shadow(0 0 4px rgba(220,170,255,0.8))' }} />
                 </motion.span>
             }
           </AnimatePresence>
