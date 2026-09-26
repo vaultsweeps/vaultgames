@@ -140,7 +140,7 @@ export const createManualWithdrawal = asyncHandler(async (req: AuthRequest, res:
     const pm = await prisma.paymentMethod.findUnique({ where: { id: paymentMethodId } })
     if (pm) methodName = pm.name
   } else {
-    methodName = paymentMethodId === 'chime' ? 'Chime' : paymentMethodId === 'cashapp' ? 'CashApp' : paymentMethodId
+    methodName = paymentMethodId === 'chime' ? 'Chime' : paymentMethodId === 'cashapp' ? 'CashApp' : paymentMethodId === 'venmo' ? 'Venmo' : paymentMethodId
   }
 
   const requestId = generateRequestId()
