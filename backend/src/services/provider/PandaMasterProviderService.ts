@@ -10,14 +10,15 @@ import { Provider } from '@prisma/client';
  * PandaMasterProviderService
  *
  * Panda Master (pandamaster.vip) uses an ASP.NET-based API similar to MilkyWay.
- * All calls go to a single endpoint with an `action=` query parameter:
+ * All calls go to a single endpoint with an `action=` query parameter (API host is on port 8033,
+ * e.g. https://pandamaster.vip:8033 — /Agent.aspx on the main site is the web panel, not the API):
  *
- *   POST /Agent.aspx?action=agentLogin     → returns agentKey session token
- *   POST /Agent.aspx?action=registerUser   → create player
- *   POST /Agent.aspx?action=queryInfo      → get player balance
- *   POST /Agent.aspx?action=recharge       → add credits to player
- *   POST /Agent.aspx?action=redeem         → remove credits from player
- *   POST /Agent.aspx?action=changePasswd   → reset player password
+ *   POST /ws/service.ashx?action=agentLogin     → returns agentKey session token
+ *   POST /ws/service.ashx?action=registerUser   → create player
+ *   POST /ws/service.ashx?action=queryInfo      → get player balance
+ *   POST /ws/service.ashx?action=recharge       → add credits to player
+ *   POST /ws/service.ashx?action=redeem         → remove credits from player
+ *   POST /ws/service.ashx?action=changePasswd   → reset player password
  *
  * Authentication: Each request is signed with:
  *   sign = MD5(agentName.toLowerCase() + time + agentKey.toLowerCase())
@@ -25,7 +26,7 @@ import { Provider } from '@prisma/client';
  * Provider DB config (set via admin panel — never hardcoded here):
  *   agentId    → agent username  (stored in Provider.agentId)
  *   secretKey  → agent password  (stored in Provider.secretKey)
- *   apiBaseUrl → e.g. "https://pandamaster.vip"
+ *   apiBaseUrl → e.g. "https://pandamaster.vip:8033"
  */
 export class PandaMasterProviderService implements ProviderAdapter {
   private readonly provider: Provider;
@@ -101,10 +102,10 @@ export class PandaMasterProviderService implements ProviderAdapter {
     return this.provider.agentId;
   }
 
-  /** The service path — defaults to /Agent.aspx, overridable via DB endpoints config */
+  /** The service path — defaults to /ws/service.ashx (same API family as Orionstar/MilkyWay), overridable via DB endpoints config */
   private get servicePath(): string {
     const ep = this.provider.endpoints as Record<string, string> | null;
-    return ep?.servicePath ?? this.pagePathFromBase ?? '/Agent.aspx';
+    return ep?.servicePath ?? this.pagePathFromBase ?? '/ws/service.ashx';
   }
 
   /** Returns true when any response message indicates an expired/invalid session */
