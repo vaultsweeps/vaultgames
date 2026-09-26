@@ -95,6 +95,7 @@ export default function ExpandableContactFab({ inlinePill = false }: Props) {
                         borderRadius: '50%',
                         background: c.beam,
                         animation: 'spin 2.2s linear infinite',
+              willChange: 'transform',
                       }}
                     />
                   )}

@@ -7,7 +7,6 @@ import toast from 'react-hot-toast'
 import Link from 'next/link'
 import Image from 'next/image'
 
-import Navbar from '@/components/layout/Navbar'
 import Footer from '@/components/layout/Footer'
 import GameTransferModal from '@/components/modals/GameTransferModal'
 import ChooseGameModal from '@/components/modals/ChooseGameModal'
@@ -369,7 +368,6 @@ export default function GameDetailsPage() {
 
   if (loading) return (
     <div className="min-h-screen bg-background flex flex-col">
-      <Navbar />
       <div className="pt-32 pb-20 flex-grow flex items-center justify-center">
         <Loader fullScreen={false} />
       </div>
@@ -382,7 +380,6 @@ export default function GameDetailsPage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col font-sans">
-      <Navbar />
       
       <div className="flex-1 pt-24 pb-24 px-4 max-w-lg mx-auto w-full space-y-4">
         

@@ -22,6 +22,15 @@ const navLinks = [
   { href: '/cashout-rules', label: 'Cashout Rules' },
 ]
 
+// Mobile bottom bar: fixed-size slots (40px + 2px gap) so the active indicator can glide by index.
+const BOTTOM_NAV_ITEMS = [
+  { href: '/', label: 'Home', match: (p: string) => p === '/' },
+  { href: '/games', label: 'Games', match: (p: string) => p.startsWith('/games') },
+  { href: '/bonuses', label: 'Bonuses', match: (p: string) => p.startsWith('/bonuses') },
+  { href: '/dashboard/invite', label: 'Refer & Earn', match: (p: string) => p.startsWith('/dashboard/invite') },
+] as const
+const BOTTOM_SLOT = 42
+
 export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -43,6 +52,7 @@ export default function Navbar() {
   )
   const { theme, setTheme } = useTheme()
   const pathname = usePathname()
+  const activeNavIdx = BOTTOM_NAV_ITEMS.findIndex(item => item.match(pathname))
   
   const [walletOpen, setWalletOpen] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
@@ -91,7 +101,8 @@ export default function Navbar() {
     const handler = () => {
       cancelAnimationFrame(rafId)
       rafId = requestAnimationFrame(() => {
-        const nowScrolled = window.scrollY > 20
+        const y = window.scrollY
+        const nowScrolled = lastScrolled ? y > 8 : y > 40
         if (nowScrolled !== lastScrolled) {
           lastScrolled = nowScrolled
           setIsScrolled(nowScrolled)
@@ -107,10 +118,10 @@ export default function Navbar() {
 
   return (
     <>
-    <nav className={`fixed top-0 left-0 right-0 z-50 transition-[background-color,box-shadow,padding,border-color,backdrop-filter] duration-500 ${
+    <nav style={{ transform: 'translateZ(0)' }} className={`fixed top-0 left-0 right-0 z-50 py-3 lg:py-5 transition-[background-color,box-shadow,border-color] duration-200 lg:transition-[background-color,box-shadow,border-color,padding] lg:duration-300 ${
       mounted && isScrolled
-        ? 'py-2.5 backdrop-blur-xl bg-[#0a0a1a]/80 border-b border-purple-500/20 shadow-[0_4px_32px_rgba(139,92,246,0.15),0_1px_0_rgba(99,102,241,0.25)]'
-        : 'bg-transparent py-5'
+        ? 'lg:py-2.5 bg-[#0a0a1a]/95 lg:bg-[#0a0a1a]/80 lg:backdrop-blur-xl border-b border-purple-500/20 shadow-[0_4px_32px_rgba(139,92,246,0.15),0_1px_0_rgba(99,102,241,0.25)]'
+        : 'bg-transparent border-b border-transparent'
     }`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between">
@@ -495,7 +506,7 @@ export default function Navbar() {
       }}
     >
 
-      {/* Main Nav Pill — slim, flat icons */}
+      {/* Main Nav Pill — slim, flat icons, gliding active indicator */}
       <div
         className="relative rounded-full px-1.5 py-1 flex items-center gap-0.5 pointer-events-auto"
         style={{
@@ -505,35 +516,47 @@ export default function Navbar() {
           contain: 'layout style'
         }}
       >
+        {/* Sliding active indicator (transform-only, so it never triggers layout) */}
+        <motion.span
+          aria-hidden
+          className="absolute left-1.5 top-1 w-10 h-10 rounded-full pointer-events-none"
+          initial={false}
+          animate={{ x: Math.max(activeNavIdx, 0) * BOTTOM_SLOT, opacity: activeNavIdx >= 0 ? 1 : 0 }}
+          transition={{ type: 'spring', stiffness: 520, damping: 38, mass: 0.6 }}
+          style={{
+            background: 'linear-gradient(145deg, rgba(99,102,241,0.34), rgba(59,130,246,0.18))',
+            boxShadow: 'inset 0 0 0 1px rgba(130,150,255,0.35), 0 0 14px rgba(99,102,241,0.35)',
+            willChange: 'transform',
+          }}
+        />
 
-        <Link href="/" aria-label="Home" className="relative flex items-center justify-center w-10 h-10 rounded-full active:scale-95">
-          <Home className="w-[20px] h-[20px]" strokeWidth={2.2}
-            style={{ color: '#d6e2ff', filter: 'drop-shadow(0 0 5px rgba(140,180,255,0.7))' }}
-          />
-        </Link>
-
-        <Link href="/games" aria-label="Games" className="relative flex items-center justify-center w-10 h-10 rounded-full active:scale-95">
-          <div className="w-[26px] h-[26px] rounded-full overflow-hidden flex items-center justify-center"
-            style={{ filter: 'brightness(1.25) saturate(1.15)' }}
-          >
-            <Image src="/images/vault-sweeps-logo.png" alt="Games" width={26} height={26} className="w-full h-full object-cover" />
-          </div>
-        </Link>
-
-        <Link href="/bonuses" aria-label="Bonuses" className="relative flex items-center justify-center w-10 h-10 rounded-full active:scale-95">
-          <Gift className="w-[20px] h-[20px]" strokeWidth={2.2}
-            style={{ color: '#ffb347', filter: 'drop-shadow(0 0 5px rgba(255,140,0,0.7))' }}
-          />
-        </Link>
-
-        <Link href="/dashboard/invite" aria-label="Refer & Earn" className="relative flex items-center justify-center w-10 h-10 rounded-full active:scale-95">
-          <Users className="w-[20px] h-[20px]" strokeWidth={2.2}
-            style={{ color: '#d6e2ff', filter: 'drop-shadow(0 0 5px rgba(140,180,255,0.7))' }}
-          />
-        </Link>
+        {BOTTOM_NAV_ITEMS.map((item, i) => {
+          const active = i === activeNavIdx
+          return (
+            <Link key={item.href} href={item.href} aria-label={item.label} aria-current={active ? 'page' : undefined}
+              className="relative z-10 flex items-center justify-center w-10 h-10 rounded-full active:scale-95"
+            >
+              <motion.span
+                className="flex items-center justify-center"
+                initial={false}
+                animate={{ scale: active ? 1.12 : 1, opacity: active ? 1 : 0.6 }}
+                transition={{ duration: 0.2, ease: 'easeOut' }}
+              >
+                {i === 0 && <Home className="w-[20px] h-[20px]" strokeWidth={2.2} style={{ color: '#d6e2ff', filter: active ? 'drop-shadow(0 0 5px rgba(140,180,255,0.8))' : undefined }} />}
+                {i === 1 && (
+                  <span className="w-[26px] h-[26px] rounded-full overflow-hidden flex items-center justify-center" style={{ filter: 'brightness(1.25) saturate(1.15)' }}>
+                    <Image src="/images/vault-sweeps-logo.png" alt="Games" width={26} height={26} className="w-full h-full object-cover" />
+                  </span>
+                )}
+                {i === 2 && <Gift className="w-[20px] h-[20px]" strokeWidth={2.2} style={{ color: '#ffb347', filter: active ? 'drop-shadow(0 0 5px rgba(255,140,0,0.8))' : undefined }} />}
+                {i === 3 && <Users className="w-[20px] h-[20px]" strokeWidth={2.2} style={{ color: '#d6e2ff', filter: active ? 'drop-shadow(0 0 5px rgba(140,180,255,0.8))' : undefined }} />}
+              </motion.span>
+            </Link>
+          )
+        })}
 
         {/* Contact FAB inside pill */}
-        <div className="w-10 h-10 flex items-center justify-center">
+        <div className="relative z-10 w-10 h-10 flex items-center justify-center">
           <ExpandableContactFab inlinePill />
         </div>
 

@@ -1,5 +1,4 @@
 import { Suspense } from 'react'
-import Navbar from '@/components/layout/Navbar'
 import dynamic from 'next/dynamic'
 import HeroSlider from '@/components/home/HeroSlider'
 import QuickLinks from '@/components/home/QuickLinks'
@@ -11,7 +10,6 @@ import Footer from '@/components/layout/Footer'
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
       <main className="pt-24 pb-12">
         <HeroSlider />
         <QuickLinks />

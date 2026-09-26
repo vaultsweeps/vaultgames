@@ -316,6 +316,11 @@ button, a, input, select, textarea,
   transition: none !important;
 }
 
+/* scan-line: desktop only — on phones a full-screen line sweeping over the fixed bars reads as flicker */
+@media (max-width: 1023px) {
+  .scan-line { display: none !important; }
+}
+
 /* Light mode: scan-line less aggressive */
 :root .scan-line { opacity: 0.12; }
 .dark .scan-line { opacity: 0.3; }
@@ -689,3 +694,27 @@ img[loading="lazy"] {
 :root:not(.dark) .ds-scope .badge-rejected { color: #B91C1C; }
 :root:not(.dark) .ds-scope .badge-paid     { color: #0369A1; }
 
+
+
+/* ===== Route-change progress bar (non-blocking) ===== */
+.nav-progress {
+  position: fixed; top: 0; left: 0; right: 0; height: 2px; z-index: 9999; pointer-events: none;
+  background: linear-gradient(90deg, #22D3EE, #3B82F6, #8B5CF6);
+  box-shadow: 0 0 10px rgba(59,130,246,0.6);
+  transform-origin: left center;
+  animation: navProgress 1.4s cubic-bezier(0.1, 0.7, 0.2, 1) forwards;
+}
+@keyframes navProgress { from { transform: scaleX(0); } to { transform: scaleX(0.92); } }
+
+/* ===== Skeleton shimmer for image/card placeholders (transform-free, cheap) ===== */
+.gc-shimmer {
+  background-color: #0d1220;
+  background-image: linear-gradient(100deg, rgba(255,255,255,0) 30%, rgba(255,255,255,0.07) 50%, rgba(255,255,255,0) 70%);
+  background-size: 220% 100%;
+  animation: gcShimmer 1.4s linear infinite;
+}
+@keyframes gcShimmer { from { background-position: 120% 0; } to { background-position: -120% 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .nav-progress { animation-duration: 0.01s; }
+  .gc-shimmer { animation: none; }
+}

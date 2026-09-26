@@ -72,6 +72,15 @@ export default function HeroSlider() {
   }, [slides.length])
 
   const slide = slides[current]
+  const nextSlide = slides[(current + 1) % slides.length]
+
+  // Once the first slide has painted, quietly fetch the next slide's art so the swap never shows an
+  // empty gradient waiting on the image.
+  const [warmNext, setWarmNext] = useState(false)
+  useEffect(() => {
+    const t = setTimeout(() => setWarmNext(true), 1200)
+    return () => clearTimeout(t)
+  }, [])
 
   return (
     <section className="pt-6 pb-4 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
@@ -87,27 +96,27 @@ export default function HeroSlider() {
             <div className="w-2/3 lg:w-1/2 p-6 sm:p-10 lg:p-12 text-left z-20">
               <motion.h1 
                 key={`title-${slide.id}`}
-                initial={{ y: 20, opacity: 0 }}
+                initial={{ y: 10, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.1 }}
+                transition={{ delay: 0.03, duration: 0.25 }}
                 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white leading-tight mb-2 tracking-tight drop-shadow-md"
               >
                 {slide.title}
               </motion.h1>
               <motion.p 
                 key={`subtitle-${slide.id}`}
-                initial={{ y: 20, opacity: 0 }}
+                initial={{ y: 10, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.2 }}
+                transition={{ delay: 0.06, duration: 0.25 }}
                 className="text-base sm:text-xl font-bold text-white mb-2 drop-shadow-md"
               >
                 {slide.subtitle}
               </motion.p>
               <motion.p 
                 key={`desc-${slide.id}`}
-                initial={{ y: 20, opacity: 0 }}
+                initial={{ y: 10, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.3 }}
+                transition={{ delay: 0.09, duration: 0.25 }}
                 className="text-xs sm:text-sm text-white/90 mb-6 max-w-xs sm:max-w-sm drop-shadow-md"
               >
                 {slide.description}
@@ -115,9 +124,9 @@ export default function HeroSlider() {
               
               <motion.div
                 key={`cta-${slide.id}`}
-                initial={{ y: 20, opacity: 0 }}
+                initial={{ y: 10, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.4 }}
+                transition={{ delay: 0.12, duration: 0.25 }}
               >
                 <Link href={slide.ctaLink} onClick={handleCtaClick} className="btn-liquid btn-signup-beam inline-block text-white font-bold py-2.5 px-6 sm:py-3 sm:px-8 rounded-xl sm:rounded-2xl text-sm sm:text-base">
                   <span className="btn-liquid-content">{slide.ctaText}</span>
@@ -128,9 +137,9 @@ export default function HeroSlider() {
             {/* 3D Girl Image (Right side) */}
             <motion.div 
               key={`img-${slide.id}`}
-              initial={{ x: 50, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              transition={{ duration: 0.8, type: "spring", bounce: 0.4 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.3, ease: 'easeOut' }}
               style={{ willChange: 'transform, opacity' }}
               className="absolute right-0 bottom-0 top-0 w-[45%] sm:w-[48%] lg:w-[50%] z-10 flex items-end justify-end pointer-events-none"
             >
@@ -164,6 +173,7 @@ export default function HeroSlider() {
                   src={slide.imageUrl} 
                   alt="Promo character"
                   fill
+                  sizes="(max-width: 640px) 46vw, (max-width: 1024px) 48vw, 640px"
                   priority={current === 0}
                   className={`${slide.isTransparent ? 'object-contain object-bottom' : 'object-cover object-top'}`}
                 />
@@ -171,6 +181,12 @@ export default function HeroSlider() {
             </motion.div>
           </div>
         </div>
+
+        {warmNext && nextSlide && nextSlide.id !== slide.id && (
+          <div aria-hidden className="absolute w-px h-px overflow-hidden opacity-0 pointer-events-none">
+            <Image src={nextSlide.imageUrl} alt="" fill sizes="(max-width: 640px) 46vw, (max-width: 1024px) 48vw, 640px" loading="eager" />
+          </div>
+        )}
 
         {/* Slide indicators — hidden on mobile to avoid overlapping the CTA button */}
         <div className="hidden sm:flex absolute bottom-6 left-10 lg:left-12 z-30 items-center gap-2">

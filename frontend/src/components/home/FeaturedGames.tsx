@@ -1,10 +1,8 @@
 'use client'
-import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
+import { useState, useEffect, useCallback, memo } from 'react'
 import Link from 'next/link'
-import { ChevronRight, Gamepad2 } from 'lucide-react'
+import { Gamepad2 } from 'lucide-react'
 import Image from 'next/image'
-import Loader from '@/components/ui/Loader'
 import { useAuthStore } from '@/store/authStore'
 import { useShallow } from 'zustand/react/shallow'
 
@@ -25,11 +23,144 @@ interface Game {
   providerId: string | null
 }
 
+// ─── Data loading: one shared request, memory + session cache ─────────────────
+// Every mount (home, /games, coming back via the nav) shares the same list, so navigating away and
+// returning never re-fetches or re-creates the cards, and two mounts never fire two requests.
+const CACHE_KEY = 'vs_featured_games'
+const CACHE_TTL = 5 * 60 * 1000
+let gamesCache: { data: Game[]; ts: number } | null = null
+let inflight: Promise<Game[]> | null = null
+
+const freshMemo = () => (gamesCache && Date.now() - gamesCache.ts < CACHE_TTL ? gamesCache.data : null)
+
+function loadFeaturedGames(): Promise<Game[]> {
+  const fresh = freshMemo()
+  if (fresh) return Promise.resolve(fresh)
+  if (inflight) return inflight
+
+  // Serve from session cache for 5 min — avoids re-fetching on homepage revisit
+  try {
+    const cached = sessionStorage.getItem(CACHE_KEY)
+    if (cached) {
+      const { data, ts } = JSON.parse(cached)
+      if (Date.now() - ts < CACHE_TTL) {
+        gamesCache = { data, ts }
+        return Promise.resolve(data)
+      }
+    }
+  } catch (_) {}
+
+  inflight = (async () => {
+    const res = await publicApi.getFeaturedGames()
+    let fetched: Game[] = res.data.data || []
+
+    // Inject thumbnails for specific games
+    fetched = fetched.map((game: Game) => {
+      const lowerName = game.name.toLowerCase()
+      if (lowerName.includes('panda master') || lowerName.includes('pandamaster')) {
+        return { ...game, thumbnailUrl: '/image.png' }
+      }
+      if (lowerName.includes('riversweeps') || lowerName.includes('river sweeps')) {
+        return { ...game, thumbnailUrl: '/images/river.png' }
+      }
+      return game
+    })
+
+    const sorted = fetched.sort((a: Game, b: Game) => (b.providerId ? 1 : 0) - (a.providerId ? 1 : 0))
+    gamesCache = { data: sorted, ts: Date.now() }
+    try {
+      sessionStorage.setItem(CACHE_KEY, JSON.stringify({ data: sorted, ts: gamesCache.ts }))
+    } catch (_) {}
+    return sorted
+  })().finally(() => { inflight = null })
+
+  return inflight
+}
+
+// Cards above the fold load eagerly; everything else is lazy.
+const EAGER_COUNT = 4
+const SKELETON_COUNT = 10
+const CARD_SIZES = '(max-width: 640px) 50vw, (max-width: 1024px) 25vw, (max-width: 1800px) 20vw, 340px'
+
+function SkeletonCard() {
+  return (
+    <div className="relative aspect-[4/5] lg:aspect-[7/9] rounded-[22px] lg:rounded-[26px] overflow-hidden border border-white/5 gc-shimmer" aria-hidden>
+      <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5 lg:p-6">
+        <div className="h-4 w-2/3 rounded-full bg-white/10" />
+      </div>
+    </div>
+  )
+}
+
+/**
+ * One game card. Owns its own image-loaded state, so an image finishing (or failing) re-renders only
+ * this card — never the whole grid. The card box has a fixed aspect ratio, so nothing shifts while
+ * images load.
+ */
+const GameCard = memo(function GameCard({ game, index, onClick }: { game: Game; index: number; onClick: (e: React.MouseEvent) => void }) {
+  const [loaded, setLoaded] = useState(false)
+  const [failed, setFailed] = useState(false)
+  const hasImage = !!game.thumbnailUrl && !failed
+  const eager = index < EAGER_COUNT
+
+  return (
+    <div className="relative group">
+      <div
+        className={`relative aspect-[4/5] lg:aspect-[7/9] rounded-[22px] lg:rounded-[26px] overflow-hidden cursor-pointer bg-[#10141d] border border-white/5 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.8)] transition-transform duration-300 ease-out active:scale-[0.98] [@media(hover:hover)]:hover:-translate-y-1.5 [@media(hover:hover)]:hover:shadow-[0_18px_40px_-12px_rgba(99,102,241,0.45)] ${hasImage && !loaded ? 'gc-shimmer' : ''}`}
+        style={{ contain: 'layout paint style' }}
+      >
+        <Link href={`/games/${game.name.toLowerCase().replace(/[\s_.-]+/g, '')}`} onClick={onClick} className="absolute inset-0 z-20" aria-label={game.name}></Link>
+
+        {/* Game thumbnail — fades/settles in once decoded */}
+        <div className="absolute inset-0 bg-[#0a0a0a]">
+          {hasImage ? (
+            <Image
+              src={game.thumbnailUrl as string}
+              alt={game.name}
+              fill
+              sizes={CARD_SIZES}
+              priority={eager}
+              unoptimized={(game.thumbnailUrl as string).startsWith('http:')}
+              draggable={false}
+              className={`object-cover saturate-[1.15] contrast-[1.05] transition-[opacity,transform] duration-500 ease-out [@media(hover:hover)]:group-hover:scale-105 ${loaded ? 'opacity-100' : 'opacity-0'}`}
+              onLoad={() => setLoaded(true)}
+              onError={() => setFailed(true)}
+            />
+          ) : (
+            <div className={`w-full h-full flex items-center justify-center bg-gradient-to-br ${COLORS[index % COLORS.length]}`}>
+              <Gamepad2 className="w-12 h-12 text-white/40" />
+            </div>
+          )}
+        </div>
+
+        {/* Dark only at the very bottom for text legibility */}
+        <div className="absolute inset-x-0 bottom-0 h-[60%] bg-gradient-to-t from-black/95 via-black/10 to-transparent opacity-90 pointer-events-none"></div>
+
+        {/* Top Badges */}
+        <div className="absolute top-3 left-3 right-3 flex justify-between items-start z-30 pointer-events-none">
+          {!game.providerId && (
+            <span className="ml-auto text-[10px] font-bold text-violet-100 bg-violet-600/80 border border-violet-400/50 px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-[0_0_12px_rgba(139,92,246,0.4)]">
+              🤖 Agent
+            </span>
+          )}
+        </div>
+
+        {/* Game info overlay (bottom left, flush text) */}
+        <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-5 lg:p-6 flex items-end justify-between z-10">
+          <h3 className="font-sans font-bold text-white text-[16px] sm:text-[18px] lg:text-[19px] 2xl:text-[21px] tracking-tight truncate drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+            {game.name}
+          </h3>
+        </div>
+      </div>
+    </div>
+  )
+})
+
 export default function FeaturedGames() {
-  const [games, setGames] = useState<Game[]>([])
-  const [loading, setLoading] = useState(true)
-  const [imgErrors, setImgErrors] = useState<Record<string, boolean>>({})
-  
+  // On client-side navigation the list is already in memory → render cards immediately, no skeleton.
+  const [games, setGames] = useState<Game[]>(() => freshMemo() ?? [])
+  const [loading, setLoading] = useState(() => !freshMemo())
+
   const { isAuthenticated, openAuthModal } = useAuthStore(
     useShallow((state) => ({
       isAuthenticated: state.isAuthenticated,
@@ -37,58 +168,22 @@ export default function FeaturedGames() {
     }))
   )
 
-  const handleGameClick = (e: React.MouseEvent) => {
+  const handleGameClick = useCallback((e: React.MouseEvent) => {
     if (!isAuthenticated) {
       e.preventDefault()
       openAuthModal('login')
     }
-  }
+  }, [isAuthenticated, openAuthModal])
 
   useEffect(() => {
-    const fetchGames = async () => {
-      // Serve from session cache for 5 min — avoids re-fetching on homepage revisit
-      try {
-        const cached = sessionStorage.getItem('vs_featured_games')
-        if (cached) {
-          const { data, ts } = JSON.parse(cached)
-          if (Date.now() - ts < 5 * 60 * 1000) {
-            setGames(data)
-            setLoading(false)
-            return
-          }
-        }
-      } catch (_) {}
-
-      try {
-        const res = await publicApi.getFeaturedGames()
-        
-        let fetchedGames = res.data.data || []
-        
-        // Inject thumbnails for specific games
-        fetchedGames = fetchedGames.map((game: Game) => {
-          const lowerName = game.name.toLowerCase()
-          if (lowerName.includes('panda master') || lowerName.includes('pandamaster')) {
-            return { ...game, thumbnailUrl: '/image.png' }
-          }
-          if (lowerName.includes('riversweeps') || lowerName.includes('river sweeps')) {
-            return { ...game, thumbnailUrl: '/images/river.png' }
-          }
-          return game
-        })
-
-        const sortedGames = fetchedGames.sort((a: Game, b: Game) => (b.providerId ? 1 : 0) - (a.providerId ? 1 : 0))
-        setGames(sortedGames)
-        try {
-          sessionStorage.setItem('vs_featured_games', JSON.stringify({ data: sortedGames, ts: Date.now() }))
-        } catch (_) {}
-      } catch (err) {
-        console.error('Failed to fetch featured games', err)
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchGames()
+    let alive = true // ignore the result if the user already navigated away
+    loadFeaturedGames()
+      .then(list => { if (alive) setGames(list) })
+      .catch(err => { console.error('Failed to fetch featured games', err) })
+      .finally(() => { if (alive) setLoading(false) })
+    return () => { alive = false }
   }, [])
+
   return (
     <section className="py-8">
       <div className="max-w-7xl lg:max-w-[1824px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12">
@@ -101,64 +196,11 @@ export default function FeaturedGames() {
 
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-5 lg:gap-5 2xl:gap-6">
           {loading ? (
-            <div className="col-span-full py-16 flex justify-center"><Loader fullScreen={false} /></div>
+            Array.from({ length: SKELETON_COUNT }, (_, i) => <SkeletonCard key={i} />)
           ) : games.length === 0 ? (
             <div className="col-span-full text-center py-10 text-muted">No games found.</div>
           ) : games.map((game, i) => (
-            <div key={game.id} className="relative group perspective-1000">
-              {/* Premium Ambient Colored Glow behind the card */}
-              <div className={`absolute -inset-1.5 bg-gradient-to-br ${COLORS[i % COLORS.length].replace('/20', '').replace('/20', '')} opacity-0 group-hover:opacity-30 blur-xl rounded-[2.5rem] transition-opacity duration-700 pointer-events-none z-0`}></div>
-              
-                <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true }}
-                transition={{ delay: Math.min(i * 0.03, 0.3) }}
-                whileHover={{ y: -8, scale: 1.03 }}
-                style={{ willChange: 'transform' }}
-                className="relative z-10 aspect-[4/5] lg:aspect-[7/9] rounded-[22px] lg:rounded-[26px] overflow-hidden cursor-pointer bg-[#10141d] border border-white/5 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.8)] transition-transform duration-500 ease-out"
-              >
-                <Link href={`/games/${game.name.toLowerCase().replace(/[\s_.-]+/g, '')}`} onClick={handleGameClick} className="absolute inset-0 z-20" aria-label={game.name}></Link>
-                
-                {/* Game thumbnail - Brighter & More Saturated */}
-                <div className="absolute inset-0 bg-[#0a0a0a]">
-                  {game.thumbnailUrl && !imgErrors[game.id] ? (
-                    <Image
-                      src={game.thumbnailUrl}
-                      alt={game.name}
-                      fill
-                      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, (max-width: 1800px) 20vw, 340px"
-                      unoptimized={game.thumbnailUrl.startsWith('http')}
-                      className="object-cover saturate-[1.15] contrast-[1.05] group-hover:scale-110 transition-transform duration-700 ease-out"
-                      onError={() => setImgErrors(prev => ({ ...prev, [game.id]: true }))}
-                    />
-                  ) : (
-                    <div className={`w-full h-full flex items-center justify-center bg-gradient-to-br ${COLORS[i % COLORS.length]}`}>
-                      <Gamepad2 className="w-12 h-12 text-white/40 group-hover:scale-110 transition-transform duration-500" />
-                    </div>
-                  )}
-                </div>
-                
-                {/* Refined gradient overlay - Only dark at the very bottom for text legibility, transparent above */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/10 to-transparent h-[60%] top-auto opacity-90 transition-opacity duration-500"></div>
-
-                {/* Top Badges - Premium styling */}
-                <div className="absolute top-3 left-3 right-3 flex justify-between items-start z-30 pointer-events-none">
-                  {!game.providerId && (
-                    <span className="ml-auto text-[10px] font-bold text-violet-100 bg-violet-600/80 border border-violet-400/50 px-2.5 py-0.5 rounded-full backdrop-blur-md flex items-center gap-1 shadow-[0_0_12px_rgba(139,92,246,0.4)]">
-                      🤖 Agent
-                    </span>
-                  )}
-                </div>
-
-                {/* Game info overlay (bottom left, flush text) */}
-                <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-5 lg:p-6 flex items-end justify-between z-10">
-                  <h3 className="font-sans font-bold text-white text-[16px] sm:text-[18px] lg:text-[19px] 2xl:text-[21px] tracking-tight truncate drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
-                    {game.name}
-                  </h3>
-                </div>
-              </motion.div>
-            </div>
+            <GameCard key={game.id} game={game} index={i} onClick={handleGameClick} />
           ))}
         </div>
       </div>
