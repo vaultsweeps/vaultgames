@@ -4,7 +4,7 @@ import { getTelegramUrl } from '@/lib/telegram'
 import { getSmsUrl } from '@/lib/sms'
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, CheckCircle, ArrowRight, Copy } from 'lucide-react'
+import { X, CheckCircle, ArrowRight, Copy, MessageSquareText } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { depositApi, publicApi } from '@/lib/api'
 
@@ -372,12 +372,8 @@ export default function ChimePayPalDepositModal({ isOpen, onClose, method }: Chi
                         <a href={smsUrl} target="_blank" rel="noreferrer" className="flex flex-col items-center justify-center gap-1 bg-[#3a76f0]/10 text-[#3a76f0] hover:bg-[#3a76f0]/20 font-bold py-2 rounded-xl transition-all border border-[#3a76f0]/30 text-xs relative overflow-hidden group">
                           <div className="absolute inset-0 bg-[#3a76f0]/5 opacity-0 group-hover:opacity-100 transition-opacity" />
                           <div className="flex items-center gap-1.5 z-10">
-                            <svg viewBox="0 0 48 48" className="w-4 h-4" fill="none" xmlns="http://www.w3.org/2000/svg">
-                              <circle cx="24" cy="24" r="20" fill="currentColor"/>
-                              <path d="M24 12a12 12 0 1 0 7.39 21.39l3.14 1.06-1.06-3.14A12 12 0 0 0 24 12z" fill="white"/>
-                              <path d="M19 23h10M19 27h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                            </svg>
-                            Signal
+                            <MessageSquareText className="w-4 h-4" strokeWidth={2.2} />
+                            SMS
                           </div>
                           <span className="text-[8px] px-1 bg-[#3a76f0]/20 rounded text-[#3a76f0] z-10">FASTEST</span>
                         </a>

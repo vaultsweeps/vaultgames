@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { notificationsApi } from '@/lib/api'
 import { useAuthStore } from '@/store/authStore'
+import MobileBottomBar from '@/components/layout/MobileBottomBar'
 import { cn } from '@/components/dashboard/ui'
 
 const NAV_ITEMS = [
@@ -103,7 +104,7 @@ function SidebarContent({ user, pathname, onNavigate, onLogout, onClose }: {
       </nav>
 
       {/* Bottom */}
-      <div className="p-3 border-t border-border-subtle" style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
+      <div className="p-3 border-t border-border-subtle" style={{ paddingBottom: onClose ? 'calc(4.75rem + env(safe-area-inset-bottom))' : 'max(0.75rem, env(safe-area-inset-bottom))' }}>
         <Link href="/" onClick={onNavigate} className="lg:hidden flex items-center gap-3 h-12 px-3.5 rounded-xl text-[15px] text-secondary hover:text-primary hover:bg-[var(--ds-hover)] transition-colors">
           <Home className="w-[19px] h-[19px]" strokeWidth={1.9} />
           Back to site
@@ -242,11 +243,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* Page content */}
         <main className="flex-1 w-full overflow-x-clip">
-          <div className="mx-auto w-full max-w-[1240px] px-4 sm:px-6 lg:px-8 py-5 sm:py-7 lg:py-9">
+          <div className="mx-auto w-full max-w-[1240px] px-4 sm:px-6 lg:px-8 pt-5 sm:pt-7 lg:pt-9 pb-28 lg:pb-9">
             {children}
           </div>
         </main>
       </div>
+
+      <MobileBottomBar menuOpen={sidebarOpen} onToggleMenu={() => setSidebarOpen(o => !o)} />
     </div>
   )
 }
