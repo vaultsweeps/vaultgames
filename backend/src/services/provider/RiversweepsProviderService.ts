@@ -1,4 +1,6 @@
 import axios, { AxiosInstance } from 'axios';
+import http from 'http';
+import https from 'https';
 import { ProviderAdapter } from './ProviderAdapter';
 import { ProviderLogService } from './ProviderLogService';
 import { AppError } from '../../middleware/errorHandler';
@@ -32,6 +34,10 @@ export class RiversweepsProviderService implements ProviderAdapter {
     this.http = axios.create({
       baseURL: provider.apiBaseUrl.replace(/\/+$/, ''),
       timeout: provider.requestTimeout || 10000,
+      // River-Pay only accepts calls from allow-listed (IPv4) addresses. On a host with IPv6 Node can
+      // pick an IPv6 route, which shows up to River-Pay as an address that was never whitelisted.
+      httpAgent: new http.Agent({ family: 4 }),
+      httpsAgent: new https.Agent({ family: 4 }),
     });
   }
 
@@ -80,6 +86,12 @@ export class RiversweepsProviderService implements ProviderAdapter {
 
     } catch (err: any) {
       if (err instanceof AppError) throw err;
+      const httpStatus = err?.response?.status;
+      if (httpStatus === 401 || httpStatus === 403) {
+        const msg = `Access denied by River-Pay (HTTP ${httpStatus}). This server's IPv4 address is most likely not on River-Pay's allowed-IP list — ask River-Pay to whitelist it.`;
+        await ProviderLogService.logRequest(this.provider.id, userId, logEndpoint, params, null, httpStatus, msg).catch(() => {});
+        throw new AppError(`Riversweeps connection failed: ${msg}`, 502);
+      }
       throw new AppError(`Riversweeps connection failed: ${err.message}`, 502);
     }
   }
