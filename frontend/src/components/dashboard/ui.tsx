@@ -232,7 +232,7 @@ const BRANDS: Record<string, BrandDef> = {
   cash_app:  { bg: '#22C55E', glyph: '$' },
   dollarpay: { bg: '#22C55E', glyph: '$' },
   paypal:    { bg: '#3B82F6', glyph: 'P' },
-  venmo:     { bg: '#3D95CE', glyph: <Send className="w-[48%] h-[48%]" strokeWidth={2.2} /> },
+  venmo:     { bg: '#3D95CE', glyph: 'V' },
   zappay:    { bg: '#8B5CF6', glyph: <Wallet className="w-[48%] h-[48%]" strokeWidth={2.2} /> },
   bank:      { bg: '#0EA5E9', glyph: <Landmark className="w-[48%] h-[48%]" strokeWidth={2.2} /> },
   applepay:  { bg: '#000000', glyph: (

@@ -35,6 +35,7 @@ const paymentMethods: PaymentMethodType[] = [
   { id: 'chime-group', name: 'Chime',           icon: 'C',  badge: 'No fee',     color: 'bg-emerald-500' },
   { id: 'cashapp-group', name: 'CashApp Pay',   icon: '$',  badge: 'No fee',     color: 'bg-green-500' },
   { id: 'paypal',      name: 'PayPal',          icon: 'P',  badge: 'No fee',     color: 'bg-blue-500' },
+  { id: 'venmo',       name: 'Venmo',           icon: 'V',  badge: 'No fee',     color: 'bg-sky-500' },
   { id: 'applepay',    name: 'Apple Pay',       icon: '',                       color: 'bg-black',      ggusPreset: 'applepay', logoUrl: 'https://i.pinimg.com/originals/ae/85/92/ae859253f4141e38711d2c159a53649e.jpg' },
   { id: 'googlepay',   name: 'Google Pay',      icon: 'G',                       color: 'bg-white text-black', ggusPreset: 'googlepay' },
   { id: 'card',        name: 'Debit Card',      icon: '💳',                      color: 'bg-blue-600',   ggusPreset: 'card' },
@@ -118,8 +119,8 @@ function TxRow({ tx }: { tx: TxItem }) {
 
 export default function WalletModal({ isOpen, onClose, balance }: WalletModalProps) {
   const [activeTab, setActiveTab] = useState<'deposit' | 'cashout' | 'history'>('deposit')
-  const [cashoutMethod, setCashoutMethod] = useState<'chime' | 'cashapp' | null>(null)
-  const [depositMethod, setDepositMethod] = useState<'chime' | 'chime2' | 'paypal' | 'cashapp' | 'cashapp2' | 'crypto' | 'ggusonepay' | null>(null)
+  const [cashoutMethod, setCashoutMethod] = useState<'chime' | 'cashapp' | 'venmo' | null>(null)
+  const [depositMethod, setDepositMethod] = useState<'chime' | 'chime2' | 'paypal' | 'cashapp' | 'cashapp2' | 'venmo' | 'crypto' | 'ggusonepay' | null>(null)
   const [subDepositGroup, setSubDepositGroup] = useState<'chime' | 'cashapp' | null>(null)
   const [ggusPreset, setGgusPreset] = useState<string | undefined>(undefined)
   const [paymentMethodId, setPaymentMethodId] = useState<string>('')
@@ -467,6 +468,10 @@ export default function WalletModal({ isOpen, onClose, balance }: WalletModalPro
                             <div className="w-12 h-12 rounded-full bg-green-500 flex items-center justify-center font-bold text-white text-[22px] shadow-[0_0_15px_rgba(34,197,94,0.4)]">$</div>
                             <span className="text-white font-bold text-[15px] tracking-wide">CashApp</span>
                           </button>
+                          <button onClick={() => setCashoutMethod('venmo')} className="p-5 rounded-[20px] flex flex-col items-center justify-center gap-3 transition-all border bg-[#1C1F2E] border-white/5 shadow-[0_4px_20px_rgba(0,0,0,0.2)] hover:bg-[#23273A] hover:border-white/10 hover:-translate-y-0.5">
+                            <div className="w-12 h-12 rounded-full bg-sky-500 flex items-center justify-center font-bold text-white text-[22px] shadow-[0_0_15px_rgba(14,165,233,0.4)]">V</div>
+                            <span className="text-white font-bold text-[15px] tracking-wide">Venmo</span>
+                          </button>
                         </div>
                       </div>
                       <div>
@@ -550,9 +555,9 @@ export default function WalletModal({ isOpen, onClose, balance }: WalletModalPro
       />
 
       <ChimePayPalDepositModal
-        isOpen={depositMethod === 'chime' || depositMethod === 'chime2' || depositMethod === 'paypal' || depositMethod === 'cashapp' || depositMethod === 'cashapp2'}
+        isOpen={depositMethod === 'chime' || depositMethod === 'chime2' || depositMethod === 'paypal' || depositMethod === 'cashapp' || depositMethod === 'cashapp2' || depositMethod === 'venmo'}
         onClose={() => setDepositMethod(null)}
-        method={depositMethod === 'chime' ? 'chime' : depositMethod === 'chime2' ? 'chime2' : depositMethod === 'paypal' ? 'paypal' : depositMethod === 'cashapp' ? 'cashapp' : depositMethod === 'cashapp2' ? 'cashapp2' : null}
+        method={depositMethod === 'chime' ? 'chime' : depositMethod === 'chime2' ? 'chime2' : depositMethod === 'paypal' ? 'paypal' : depositMethod === 'cashapp' ? 'cashapp' : depositMethod === 'cashapp2' ? 'cashapp2' : depositMethod === 'venmo' ? 'venmo' : null}
       />
       <CryptoDepositModal
         isOpen={depositMethod === 'crypto'}

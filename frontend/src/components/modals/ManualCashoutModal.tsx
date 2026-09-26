@@ -256,7 +256,7 @@ function WithdrawalCountdown({ amount, title, settings, onClose, withdrawalId }:
 interface ManualCashoutModalProps {
   isOpen: boolean
   onClose: () => void
-  method: 'cashapp' | 'chime' | 'crypto_ltc' | 'crypto_trx'
+  method: 'cashapp' | 'chime' | 'venmo' | 'crypto_ltc' | 'crypto_trx'
 }
 
 export default function ManualCashoutModal({ isOpen, onClose, method }: ManualCashoutModalProps) {
@@ -294,12 +294,13 @@ export default function ManualCashoutModal({ isOpen, onClose, method }: ManualCa
 
   const isChime = method === 'chime'
   const isCashApp = method === 'cashapp'
+  const isVenmo = method === 'venmo'
   const isLtc = method === 'crypto_ltc'
   const isTrx = method === 'crypto_trx'
 
-  const title = isLtc ? 'Litecoin (LTC)' : isTrx ? 'TRON (TRC-20)' : isChime ? 'Chime' : 'CashApp'
-  const tagPlaceholder = isLtc ? 'LTC Address...' : isTrx ? 'TRX Address...' : isChime ? '$chime-tag' : '$cashtag'
-  const tagLabel = isLtc ? 'Your Litecoin Address' : isTrx ? 'Your TRX Address (TRC-20)' : isChime ? 'Your chime $tag' : 'Your cashapp $tag'
+  const title = isLtc ? 'Litecoin (LTC)' : isTrx ? 'TRON (TRC-20)' : isChime ? 'Chime' : isVenmo ? 'Venmo' : 'CashApp'
+  const tagPlaceholder = isLtc ? 'LTC Address...' : isTrx ? 'TRX Address...' : isChime ? '$chime-tag' : isVenmo ? '@venmo-username' : '$cashtag'
+  const tagLabel = isLtc ? 'Your Litecoin Address' : isTrx ? 'Your TRX Address (TRC-20)' : isChime ? 'Your chime $tag' : isVenmo ? 'Your Venmo @username' : 'Your cashapp $tag'
 
   const handlePercentage = (percent: number) => {
     setAmount(((withdrawable * percent) / 100).toFixed(2))

@@ -11,7 +11,7 @@ import { depositApi, publicApi } from '@/lib/api'
 interface ChimePayPalDepositModalProps {
   isOpen: boolean
   onClose: () => void
-  method: 'chime' | 'chime2' | 'paypal' | 'cashapp' | 'cashapp2' | null
+  method: 'chime' | 'chime2' | 'paypal' | 'cashapp' | 'cashapp2' | 'venmo' | null
 }
 
 export default function ChimePayPalDepositModal({ isOpen, onClose, method }: ChimePayPalDepositModalProps) {
@@ -69,7 +69,7 @@ export default function ChimePayPalDepositModal({ isOpen, onClose, method }: Chi
   const handleISent = async () => {
     const numAmount = parseFloat(amount)
     if (!numAmount || numAmount <= 0) return toast.error('Please enter a valid amount')
-    if (!profileName.trim()) return toast.error(`Please enter your ${method === 'chime' || method === 'chime2' ? 'Chime' : method === 'cashapp' ? 'CashApp' : 'PayPal'} name`)
+    if (!profileName.trim()) return toast.error(`Please enter your ${method === 'chime' || method === 'chime2' ? 'Chime' : method === 'cashapp' || method === 'cashapp2' ? 'CashApp' : method === 'venmo' ? 'Venmo' : 'PayPal'} name`)
 
     setStatus('verifying')
     setStep(3)
@@ -157,6 +157,14 @@ export default function ChimePayPalDepositModal({ isOpen, onClose, method }: Chi
         text: 'text-lime-500',
         recipient: '$VictoriaSantielFaith',
         linkUrl: 'https://cash.app/$VictoriaSantielFaith?qr=1',
+        qrUrl: ''
+    },
+    venmo: {
+        name: 'Venmo',
+        color: 'bg-sky-500',
+        text: 'text-sky-500',
+        recipient: '@ktrimm24',
+        linkUrl: 'https://venmo.com/u/ktrimm24',
         qrUrl: ''
     }
   }
@@ -397,7 +405,9 @@ export default function ChimePayPalDepositModal({ isOpen, onClose, method }: Chi
                       <div className="w-8 h-8 border-4 border-current border-t-transparent rounded-full animate-spin"></div>
                     </div>
                     <h3 className="text-white font-bold text-2xl">Verification Pending</h3>
-                    <p className="text-secondary text-sm">Your deposit request is submitted but verification is taking longer than expected. It will automatically be approved in the background once the email arrives.</p>
+                    <p className="text-secondary text-sm">{method === 'venmo'
+                      ? 'Your Venmo deposit request is submitted. Our team will verify your payment and add it to your balance shortly.'
+                      : 'Your deposit request is submitted but verification is taking longer than expected. It will automatically be approved in the background once the email arrives.'}</p>
                     <button onClick={onClose} className={`w-full ${currentConfig.color} hover:opacity-90 text-white font-bold py-4 rounded-2xl transition-all mt-4`}>
                       Got it
                     </button>

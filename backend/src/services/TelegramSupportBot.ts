@@ -408,6 +408,8 @@ export class TelegramSupportBot {
       chimeTagLine = `\n📲 CashApp Tag: $Luis-Feliciano-9012` // assuming it's the same, wait! I should use the correct one if they told me previously, wait they only said cashapp pay 2 tag is $VictoriaSantielFaith. Let me just output $VictoriaSantielFaith for cashapp2. And cashapp1 will be whatever it was. Wait, let me check the existing config in frontend.
     } else if (methodCode === 'cashapp2') {
       chimeTagLine = `\n📲 CashApp Tag: $VictoriaSantielFaith`
+    } else if (methodCode === 'venmo') {
+      chimeTagLine = `\n📲 Venmo: @ktrimm24`
     }
 
     const text =
