@@ -1,18 +1,17 @@
 'use client'
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { usePathname, useSearchParams } from 'next/navigation'
-import Loader from '@/components/ui/Loader'
 
 /**
  * NavigationLoader
  *
- * Shows the full-screen Loader whenever the route changes.
+ * Shows a thin, non-blocking progress bar at the top whenever the route changes (the page stays visible).
  * Strategy:
  *  - On pathname/searchParams change → show loader immediately
  *  - Hide after a short minimum display time so the loader never flickers
  *  - Hide once the new page content has mounted (via requestIdleCallback / setTimeout fallback)
  */
-const MIN_DISPLAY_MS = 400   // never hide sooner than this after showing
+const MIN_DISPLAY_MS = 250   // never hide sooner than this after showing
 const MAX_DISPLAY_MS = 6000  // safety cap — always hide after 6 s
 
 export default function NavigationLoader() {
@@ -73,5 +72,5 @@ export default function NavigationLoader() {
   }, [pathname, searchParams, clearAll, hide])
 
   if (!visible) return null
-  return <Loader fullScreen />
+  return <div aria-hidden className="nav-progress" />
 }

@@ -1,4 +1,3 @@
-import Navbar from '@/components/layout/Navbar'
 import Footer from '@/components/layout/Footer'
 import { CheckCircle, Shield, AlertCircle, ArrowDownToLine, ArrowUpToLine, Timer, Wallet, Infinity as InfinityIcon } from 'lucide-react'
 
@@ -54,7 +53,6 @@ function SectionTitle({ lead, accent }: { lead: string; accent: string }) {
 export default function CashoutRulesPage() {
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
       <main className="pt-24 pb-28 sm:pb-20 overflow-x-clip">
         <div className="max-w-4xl mx-auto px-4 sm:px-6">
 

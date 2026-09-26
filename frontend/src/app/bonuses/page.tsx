@@ -4,7 +4,6 @@ import { motion } from 'framer-motion'
 import { Gift, Check, Star, Zap, ArrowRight } from 'lucide-react'
 import Link from 'next/link'
 import { publicApi } from '@/lib/api'
-import Navbar from '@/components/layout/Navbar'
 import Footer from '@/components/layout/Footer'
 import { useAuthStore } from '@/store/authStore'
 
@@ -90,7 +89,6 @@ export default function BonusesPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
 
       <main className="pt-24 pb-20">
         <div className="max-w-6xl mx-auto px-4">

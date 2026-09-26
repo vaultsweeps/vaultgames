@@ -1,6 +1,5 @@
 'use client'
 import { useState } from 'react'
-import Navbar from '@/components/layout/Navbar'
 import Footer from '@/components/layout/Footer'
 import { motion } from 'framer-motion'
 import { useForm } from 'react-hook-form'
@@ -28,7 +27,6 @@ export default function ContactPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
       <main className="pt-24 pb-20">
         <div className="max-w-5xl mx-auto px-4">
           <div className="text-center mb-14">

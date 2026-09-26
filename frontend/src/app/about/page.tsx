@@ -1,6 +1,5 @@
 'use client'
 import { useState, useEffect } from 'react'
-import Navbar from '@/components/layout/Navbar'
 import Footer from '@/components/layout/Footer'
 import { Shield, Zap, Users, Globe, Award, TrendingUp } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
@@ -33,7 +32,6 @@ export default function AboutPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
       <main className="pt-24 pb-20">
         <div className="max-w-6xl mx-auto px-4">
           {/* Hero */}

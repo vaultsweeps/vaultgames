@@ -8,6 +8,7 @@ import FrustrationDetector from '@/components/ui/FrustrationDetector'
 import { Orbitron, Inter, JetBrains_Mono } from 'next/font/google'
 import VaultIntro from '@/components/ui/VaultIntro'
 import NoPinchZoom from '@/components/ui/NoPinchZoom'
+import SiteNavbar from '@/components/layout/SiteNavbar'
 
 const orbitron = Orbitron({ subsets: ['latin'], weight: ['700', '800', '900'], variable: '--font-orbitron', display: 'swap' })
 const inter = Inter({ subsets: ['latin'], weight: ['400', '500', '600', '700'], variable: '--font-inter', display: 'swap' })
@@ -63,6 +64,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <FrustrationDetector />
           <NoPinchZoom />
           <div className="scan-line" />
+          <SiteNavbar />
           {children}
           <SwipeToaster />
         </ThemeProvider>

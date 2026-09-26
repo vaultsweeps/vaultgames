@@ -1,11 +1,9 @@
-import Navbar from '@/components/layout/Navbar'
 import Footer from '@/components/layout/Footer'
 import { Link } from 'lucide-react'
 
 export default function PrivacyPolicyPage() {
   return (
     <div className="min-h-screen bg-bg flex flex-col">
-      <Navbar />
       <main className="flex-1 container mx-auto px-4 py-24 md:py-32">
         <div className="max-w-4xl mx-auto glass rounded-2xl p-8 md:p-12">
           <h1 className="text-3xl font-bold text-white mb-6">Privacy Policy</h1>
