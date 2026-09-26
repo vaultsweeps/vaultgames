@@ -139,7 +139,7 @@ export default function ChimePayPalDepositModal({ isOpen, onClose, method }: Chi
         name: 'PayPal',
         color: 'bg-blue-500',
         text: 'text-blue-500',
-        recipient: 'Luis Feliciano',
+        recipient: '@Luis9542',
         linkUrl: 'https://www.paypal.com/paypalme/Luis9542',
         qrUrl: 'https://upload.wikimedia.org/wikipedia/commons/b/b5/PayPal.svg'
     },

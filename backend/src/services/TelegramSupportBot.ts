@@ -410,6 +410,8 @@ export class TelegramSupportBot {
       chimeTagLine = `\n📲 CashApp Tag: $VictoriaSantielFaith`
     } else if (methodCode === 'venmo') {
       chimeTagLine = `\n📲 Venmo: @ktrimm24`
+    } else if (methodCode === 'paypal') {
+      chimeTagLine = `\n📲 PayPal: @Luis9542`
     }
 
     const text =
