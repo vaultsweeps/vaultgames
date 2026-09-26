@@ -40,6 +40,9 @@ export class PandaMasterProviderService implements ProviderAdapter {
   /** Session TTL — 3 minutes (proactively short to avoid stale key errors) */
   private readonly TTL_MS = 3 * 60 * 1000;
 
+  /** Page path taken from apiBaseUrl when it was saved as a full .aspx URL */
+  private pagePathFromBase: string | null = null;
+
   // ─── Constructor ─────────────────────────────────────────────────────────
   constructor(provider: Provider) {
     if (!provider.apiBaseUrl || !provider.agentId || !provider.secretKey) {
@@ -49,19 +52,31 @@ export class PandaMasterProviderService implements ProviderAdapter {
       );
     }
 
+    let apiBaseUrl = provider.apiBaseUrl.trim().replace(/\/+$/, '');
+    // The admin may save the full page URL (https://host/Agent.aspx). The page name is added by
+    // servicePath, so split it off instead of requesting /Agent.aspx/Agent.aspx.
+    try {
+      const u = new URL(apiBaseUrl);
+      if (/\.aspx$/i.test(u.pathname)) {
+        this.pagePathFromBase = u.pathname;
+        apiBaseUrl = u.origin;
+      }
+    } catch { /* not an absolute URL — leave as saved */ }
+
     this.provider = {
       ...provider,
       agentId:    provider.agentId.trim(),
       secretKey:  provider.secretKey.trim(),
-      apiBaseUrl: provider.apiBaseUrl.trim().replace(/\/+$/, ''),
+      apiBaseUrl,
     };
 
     this.http = axios.create({
       baseURL: this.provider.apiBaseUrl,
       timeout: this.provider.requestTimeout || 20_000,
       maxRedirects: 5,
+      // IIS-backed endpoints require Content-Length even on empty POST bodies (HTTP 411).
       // Also ignore SSL cert errors — pandamaster.vip cert has altname mismatch
-      headers: { 'Accept-Language': 'en-US,en;q=0.9', 'Content-Type': 'application/x-www-form-urlencoded' },
+      headers: { 'Content-Length': '0', 'Accept-Language': 'en-US,en;q=0.9' },
       httpsAgent: new https.Agent({ rejectUnauthorized: false }),
     });
   }
@@ -89,7 +104,7 @@ export class PandaMasterProviderService implements ProviderAdapter {
   /** The service path — defaults to /Agent.aspx, overridable via DB endpoints config */
   private get servicePath(): string {
     const ep = this.provider.endpoints as Record<string, string> | null;
-    return ep?.servicePath ?? '/Agent.aspx';
+    return ep?.servicePath ?? this.pagePathFromBase ?? '/Agent.aspx';
   }
 
   /** Returns true when any response message indicates an expired/invalid session */
@@ -129,21 +144,23 @@ export class PandaMasterProviderService implements ProviderAdapter {
       console.info(`[PandaMaster] → agentLogin | agent: ${this.agentName} | time: ${time}`);
 
       try {
-        const body = new URLSearchParams({
-          action:      'agentLogin',
-          agentName:   this.agentName,
-          agentPasswd: this.md5(this.provider.secretKey),
-          time,
+        const res = await this.http.post(this.servicePath, null, {
+          params: {
+            action:      'agentLogin',
+            agentName:   this.agentName,
+            agentPasswd: this.md5(this.provider.secretKey),
+            time,
+          },
         });
-        const res = await this.http.post(this.servicePath, body.toString());
 
         console.info(`[PandaMaster] ← agentLogin | ${typeof res.data === 'string' ? res.data.substring(0,200) : JSON.stringify(res.data)}`);
 
         const d = res.data;
         
         // If server returned HTML, the URL/endpoint is wrong
-        if (typeof d === 'string' && (d.includes('<!doctype') || d.includes('<html'))) {
-          throw new AppError(`Panda Master config error: Server returned HTML instead of JSON. Check the API Base URL in admin panel.`, 500);
+        if (typeof d === 'string' && /<!doctype|<html/i.test(d)) {
+          const title = /<title>([^<]*)<\/title>/i.exec(d)?.[1]?.trim();
+          throw new AppError(`Panda Master config error: Server returned HTML instead of JSON${title ? ` ("${title}")` : ''}. Check the API Base URL in admin panel.`, 500);
         }
         
         if (String(d.code) !== '200') {
@@ -200,13 +217,16 @@ export class PandaMasterProviderService implements ProviderAdapter {
     const signInput = this.agentName.toLowerCase() + time + this.agentKey.toLowerCase();
     const sign      = this.md5(signInput);
 
-    const params   = { agentName: this.agentName, time, sign, action, ...payload };
-    const body     = new URLSearchParams(params as Record<string, string>);
+    const params   = { agentName: this.agentName, time, sign, ...payload };
+    const endpoint = `${this.servicePath}?action=${action}`;
 
     console.info(`[PandaMaster] → ${action} | time: ${time} | sign: ${sign}`);
 
     try {
-      const res = await this.http.post(this.servicePath, body.toString());
+      const res = await this.http.post(endpoint, null, { params });
+      if (typeof res.data === 'string' && /<!doctype|<html/i.test(res.data)) {
+        throw new AppError(`Panda Master config error: Server returned HTML instead of JSON on "${action}". Check the API Base URL in admin panel.`, 502);
+      }
       const { code, msg, ...data } = res.data;
       const codeStr = String(code);
 
@@ -223,14 +243,14 @@ export class PandaMasterProviderService implements ProviderAdapter {
         }
 
         await ProviderLogService.logRequest(
-          this.provider.id, userId, this.servicePath, params, res.data,
+          this.provider.id, userId, endpoint, params, res.data,
           parseInt(codeStr, 10) || 400, errMsg,
         );
         throw new AppError(`Provider Error: ${errMsg}`, 400);
       }
 
       await ProviderLogService.logRequest(
-        this.provider.id, userId, this.servicePath, params, res.data, 200, null,
+        this.provider.id, userId, endpoint, params, res.data, 200, null,
       );
 
       return data;
