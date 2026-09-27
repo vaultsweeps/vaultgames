@@ -199,3 +199,35 @@ export async function resolveTelegramLinkToken(token: string): Promise<string | 
     return null
   }
 }
+
+// ─── Live-chat "currently viewing" presence ────────────────────────────────
+// Backs the rule that an in-app notification for a staff reply should only fire when the user is NOT
+// actively looking at the chat right now (they'll see the reply appear live via polling either way — a
+// notification on top of that is just noise). No separate heartbeat endpoint: the frontend already polls
+// GET /support/chat/messages/:id every 4s while the tab is open and visible (LiveChat.tsx), so that
+// existing, authenticated traffic IS the presence signal — getMessages marks it on every call. TTL is a
+// little more than double the poll interval so one delayed/dropped tick doesn't cause a false "not viewing"
+// right as a reply comes in, while still going stale quickly (well under a minute) once the user leaves.
+const CHAT_VIEWING_TTL_SECONDS = 10
+
+export async function markViewingChat(userId: string, conversationId: string): Promise<void> {
+  if (!redis) return
+  try {
+    await redis.setex(`chat_viewing:${userId}`, CHAT_VIEWING_TTL_SECONDS, conversationId)
+  } catch (error) {
+    logger.error(`Redis Set Error for chat presence of user ${userId}:`, error)
+  }
+}
+
+// Fails toward "not viewing" (sends the notification) on any Redis error or when Redis isn't configured —
+// an unnecessary extra notification is a minor annoyance; a missed one defeats the whole point of this.
+export async function isViewingChat(userId: string, conversationId: string): Promise<boolean> {
+  if (!redis) return false
+  try {
+    const value = await redis.get(`chat_viewing:${userId}`)
+    return value === conversationId
+  } catch (error) {
+    logger.error(`Redis Get Error for chat presence of user ${userId}:`, error)
+    return false
+  }
+}

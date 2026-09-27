@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Headphones, MessageCircle, RefreshCw, Clock, AlertCircle, CheckCheck } from 'lucide-react';
+import { Send, Headphones, MessageCircle, RefreshCw, Clock, AlertCircle, CheckCheck, Maximize2, Minimize2 } from 'lucide-react';
 import apiClient from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import { Card, EmptyState, IconTile } from '@/components/dashboard/ui';
 
 // Chat surface height: viewport-relative (dvh so mobile browser chrome never hides the input bar),
-// clamped so it stays comfortable on tiny phones and huge monitors.
+// clamped so it stays comfortable on tiny phones and huge monitors. Ignored in fullscreen mode.
 const CHAT_HEIGHT = 'h-[clamp(440px,calc(100dvh-290px),680px)]';
 
 // How often to re-fetch the message list while the tab is visible and a conversation is open. This
@@ -26,6 +26,7 @@ export default function LiveChat() {
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -39,14 +40,18 @@ export default function LiveChat() {
     try {
       const res = await apiClient.get(`/support/chat/messages/${convId}`);
       if (res.data.success) {
-        // Replace wholesale with the authoritative list from the server — simplest correct way to merge
-        // in new staff replies AND reconcile the just-sent message without hand-rolled de-dupe logic.
-        // Any locally-pending (not-yet-confirmed) optimistic message is preserved until the server list
-        // actually contains its confirmed counterpart, a moment later.
+        // Replace wholesale with the authoritative list from the server, keeping only messages still
+        // genuinely in flight (a send that hasn't resolved yet) or failed — anything that resolved
+        // successfully was already swapped for its real, server-assigned message in sendMessage/
+        // retryMessage below, so it shows up here under its real id with no special-casing needed.
+        // A temp id (assigned client-side before the server has responded) can never equal a real one,
+        // so de-duping by id alone would keep every optimistic bubble forever — sort by created_at
+        // instead of trusting arrival order, since a still-pending message doesn't belong at the end.
         setMessages(prev => {
-          const pending = prev.filter(m => m._pending || m._failed)
-          const serverIds = new Set(res.data.messages.map((m: any) => m.id))
-          return [...res.data.messages, ...pending.filter(m => !serverIds.has(m.id))]
+          const stillLocal = prev.filter(m => m._pending || m._failed)
+          const merged = [...res.data.messages, ...stillLocal]
+          merged.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+          return merged
         })
       }
     } catch (error) {
@@ -112,6 +117,14 @@ export default function LiveChat() {
     prevCount.current = messages.length;
   }, [messages.length]);
 
+  // Lock page scroll behind the chat while it's expanded full-page.
+  useEffect(() => {
+    if (!fullscreen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prevOverflow };
+  }, [fullscreen]);
+
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     const text = inputText.trim();
@@ -124,10 +137,13 @@ export default function LiveChat() {
     setMessages(prev => [...prev, { id: tempId, sender_type: 'user', message: text, created_at: new Date().toISOString(), _pending: true }]);
 
     try {
-      await apiClient.post(`/support/chat/messages`, { conversationId: conversation.id, text });
-      // Pull the authoritative list right away instead of waiting for the next poll tick — replaces the
-      // pending bubble with the confirmed one with no visible gap.
-      await fetchMessages(conversation.id, { silent: true });
+      // The response carries the real, server-saved message (its own id, its own created_at) — swap the
+      // temp bubble for exactly that, directly, rather than re-fetching and hoping to match it up: a
+      // client-assigned temp id can never equal the id the server assigns, so an id-based de-dupe on the
+      // next poll would never have recognized these as the same message.
+      const res = await apiClient.post(`/support/chat/messages`, { conversationId: conversation.id, text });
+      const real = res.data?.message;
+      setMessages(prev => prev.map(m => (m.id === tempId ? (real ? { ...real } : { ...m, _pending: false }) : m)));
     } catch (error) {
       console.error('Failed to send message', error);
       setMessages(prev => prev.map(m => (m.id === tempId ? { ...m, _pending: false, _failed: true } : m)));
@@ -140,9 +156,9 @@ export default function LiveChat() {
     if (!conversation) return;
     setMessages(prev => prev.map(m => (m.id === failedMsg.id ? { ...m, _pending: true, _failed: false } : m)));
     try {
-      await apiClient.post(`/support/chat/messages`, { conversationId: conversation.id, text: failedMsg.message });
-      setMessages(prev => prev.filter(m => m.id !== failedMsg.id));
-      await fetchMessages(conversation.id, { silent: true });
+      const res = await apiClient.post(`/support/chat/messages`, { conversationId: conversation.id, text: failedMsg.message });
+      const real = res.data?.message;
+      setMessages(prev => prev.map(m => (m.id === failedMsg.id ? (real ? { ...real } : { ...m, _pending: false }) : m)));
     } catch {
       setMessages(prev => prev.map(m => (m.id === failedMsg.id ? { ...m, _pending: false, _failed: true } : m)));
     }
@@ -160,7 +176,10 @@ export default function LiveChat() {
   }
 
   return (
-    <div className={`ds-card ${CHAT_HEIGHT} flex flex-col overflow-hidden relative`}>
+    <div className={fullscreen
+      ? 'fixed inset-0 z-[100] bg-background flex flex-col'
+      : `ds-card ${CHAT_HEIGHT} flex flex-col overflow-hidden relative`}
+    >
       {/* Header */}
       <div
         className="flex items-center justify-between gap-3 px-4 py-3.5 sm:px-5 border-b border-border-subtle relative overflow-hidden"
@@ -180,15 +199,26 @@ export default function LiveChat() {
             </p>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={() => { if (conversation) fetchMessages(conversation.id) }}
-          className="w-10 h-10 flex-shrink-0 rounded-full flex items-center justify-center text-secondary hover:text-primary bg-surface border border-border-subtle transition-all hover:brightness-125 active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/60"
-          title="Refresh messages"
-          aria-label="Refresh messages"
-        >
-          <RefreshCw className="w-4 h-4" />
-        </button>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <button
+            type="button"
+            onClick={() => { if (conversation) fetchMessages(conversation.id) }}
+            className="w-10 h-10 flex-shrink-0 rounded-full flex items-center justify-center text-secondary hover:text-primary bg-surface border border-border-subtle transition-all hover:brightness-125 active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/60"
+            title="Refresh messages"
+            aria-label="Refresh messages"
+          >
+            <RefreshCw className="w-4 h-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setFullscreen(f => !f)}
+            className="w-10 h-10 flex-shrink-0 rounded-full flex items-center justify-center text-secondary hover:text-primary bg-surface border border-border-subtle transition-all hover:brightness-125 active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/60"
+            title={fullscreen ? 'Exit full page' : 'Expand to full page'}
+            aria-label={fullscreen ? 'Exit full page' : 'Expand to full page'}
+          >
+            {fullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+          </button>
+        </div>
       </div>
 
       {/* Messages */}
