@@ -2,18 +2,18 @@ import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Send, Headphones, MessageCircle, RefreshCw } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import axios from 'axios';
+import apiClient from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import { Card, EmptyState, IconTile } from '@/components/dashboard/ui';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 // Chat surface height: viewport-relative (dvh so mobile browser chrome never hides the input bar),
 // clamped so it stays comfortable on tiny phones and huge monitors.
 const CHAT_HEIGHT = 'h-[clamp(440px,calc(100dvh-290px),680px)]';
 
 export default function LiveChat() {
-  const { user, token } = useAuthStore() as any;
+  // apiClient (shared with the rest of the app) sends the session cookie automatically and attaches the
+  // fallback Authorization header itself when needed — no raw token read here at all now.
+  const { user } = useAuthStore() as any;
   const [conversation, setConversation] = useState<any>(null);
   const [messages, setMessages] = useState<any[]>([]);
   const [inputText, setInputText] = useState('');
@@ -22,9 +22,7 @@ export default function LiveChat() {
 
   const fetchConversation = async () => {
     try {
-      const res = await axios.get(`${API_URL}/support/chat/conversation`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await apiClient.get(`/support/chat/conversation`);
       if (res.data.success) {
         setConversation(res.data.conversation);
         fetchMessages(res.data.conversation.id);
@@ -37,9 +35,7 @@ export default function LiveChat() {
 
   const fetchMessages = async (convId: string) => {
     try {
-      const res = await axios.get(`${API_URL}/support/chat/messages/${convId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await apiClient.get(`/support/chat/messages/${convId}`);
       if (res.data.success) {
         setMessages(res.data.messages);
       }
@@ -52,10 +48,10 @@ export default function LiveChat() {
   };
 
   useEffect(() => {
-    if (user && token) {
+    if (user) {
       fetchConversation();
     }
-  }, [user, token]);
+  }, [user]);
 
   useEffect(() => {
     if (!conversation) return;
@@ -96,11 +92,7 @@ export default function LiveChat() {
     setInputText('');
 
     try {
-      await axios.post(
-        `${API_URL}/support/chat/messages`,
-        { conversationId: conversation.id, text },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await apiClient.post(`/support/chat/messages`, { conversationId: conversation.id, text });
     } catch (error) {
       console.error('Failed to send message', error);
       // Fallback UI or retry logic could go here

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
+import { headers } from 'next/headers'
 import SwipeToaster from '@/components/ui/SwipeToaster'
 import '@/styles/globals.css'
 import { ThemeProvider } from '@/components/ThemeProvider'
@@ -36,7 +37,11 @@ export const metadata: Metadata = {
   robots: 'index, follow',
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // Set by middleware.ts on every request; the CSP script-src only allows inline scripts carrying this
+  // exact nonce, so it must be threaded through here rather than the script being left un-nonced.
+  const nonce = (await headers()).get('x-nonce') ?? undefined
+
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
       <head>
@@ -45,7 +50,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preload" as="image" href="/images/slide1.png" />
         {/* Inline script: synchronously hide the pre-screen if vault was already seen.
             Runs before first paint — eliminates homepage flash for returning users. */}
-        <script dangerouslySetInnerHTML={{ __html: `(function(){try{if(sessionStorage.getItem('vaultIntroSeen')){var s=document.getElementById('vs-prescreen');if(s)s.style.display='none';}}catch(e){}})();` }} />
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: `(function(){try{if(sessionStorage.getItem('vaultIntroSeen')){var s=document.getElementById('vs-prescreen');if(s)s.style.display='none';}}catch(e){}})();` }} />
       </head>
       <body className={`bg-background text-primary antialiased transition-colors duration-300 ${orbitron.variable} ${inter.variable} ${jetbrains.variable}`} suppressHydrationWarning>
         {/* Pre-screen: server-rendered dark overlay — blocks homepage from showing before vault intro.

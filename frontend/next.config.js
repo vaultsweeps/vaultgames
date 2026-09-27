@@ -2,6 +2,7 @@
 const isProd = process.env.NODE_ENV === 'production'
 
 const nextConfig = {
+  distDir: process.env.NEXT_DIST_DIR || '.next',
   compress: true,
   // Target modern browsers to eliminate legacy JS polyfills
   // This avoids the 'Legacy JavaScript' Lighthouse warning
@@ -17,9 +18,13 @@ const nextConfig = {
     // Responsive sizes for common breakpoints
     deviceSizes: [640, 750, 828, 1080, 1200, 1920],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
-    domains: ['localhost', 'nexus-gaming.com', 'via.placeholder.com'],
+    // No remote host is allowlisted for the optimizer: game thumbnails are an admin-typed URL from whatever
+    // CDN/blog host the source image happened to be on (verified against the live catalogue — 14 distinct
+    // hosts today, e.g. wp-content blogs, S3, postimg, image proxies — with no fixed set, since admins add
+    // games regularly). Those are rendered with `unoptimized` instead (see FeaturedGames.tsx, games/[id] and
+    // dashboard/games), so they still display from any host; only the previous wildcard, which let anyone use
+    // /_next/image?url=<any https URL> as a free image proxy, is removed.
     remotePatterns: [
-      { protocol: 'https', hostname: '**' },
       { protocol: 'http', hostname: 'localhost' }
     ],
     // Cache optimized images for 1 year
@@ -30,7 +35,6 @@ const nextConfig = {
       allowedOrigins: [
         'localhost:3000',
         'vaultsweeps.vercel.app',
-        '*.vercel.app',
         process.env.NEXT_PUBLIC_APP_URL || ''
       ].filter(Boolean)
     },
@@ -68,27 +72,8 @@ const nextConfig = {
           // Sensors the site never uses stay off, even if injected content asks for them
           { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), usb=(), bluetooth=(), serial=()' },
           { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains' },
-          {
-            // Report-Only: browsers log violations to the console but never
-            // block anything, so this can't break the app. It's a starting
-            // point for eventually graduating to an enforcing policy once
-            // violation reports confirm the source list is complete —
-            // fonts are self-hosted via next/font, but framer-motion/gsap
-            // inline styles and the Next.js runtime bootstrap script need
-            // 'unsafe-inline' until this is upgraded to a nonce-based policy.
-            key: 'Content-Security-Policy-Report-Only',
-            value: [
-              "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-              "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' data: https:",
-              "font-src 'self' data:",
-              "connect-src 'self' https: wss:",
-              "frame-ancestors 'self'",
-              "object-src 'none'",
-              "base-uri 'self'",
-            ].join('; '),
-          },
+          // The enforced, nonce-based Content-Security-Policy is set in src/middleware.ts instead of here —
+          // a nonce must be generated per REQUEST, which this static header list cannot do.
         ],
       },
       {
