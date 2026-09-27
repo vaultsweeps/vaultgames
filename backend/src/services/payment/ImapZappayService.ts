@@ -1,5 +1,5 @@
 import imaps from 'imap-simple'
-import { senderDomain, authResultsFailed } from './mailTrust';
+import { senderDomain, authResultsFailed, imapTlsOptions } from './mailTrust';
 import { simpleParser } from 'mailparser'
 import cron from 'node-cron'
 import prisma from '../../lib/prisma'
@@ -32,6 +32,7 @@ export class ImapZappayService {
         host: 'imap.gmail.com',
         port: 993,
         tls: true,
+        tlsOptions: imapTlsOptions(),
         authTimeout: 10000
       }
     };
