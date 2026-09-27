@@ -268,9 +268,9 @@ export async function extraChecks(check: Check) {
     check('authCookies: clearSessionCookies clears the CSRF cookie with the SAME domain it was set with (browsers key a cookie by name+domain+path — a mismatched clear leaves the real cookie behind)', /res\.clearCookie\(CSRF_COOKIE, \{ \.\.\.opts, domain: COOKIE_ROOT_DOMAIN \}\)/.test(cookiesSrc))
     check('authCookies: session cookie itself is left host-only (no domain widening) — only the backend needs to receive it, and HttpOnly already blocks JS regardless, so widening it would add scope without adding capability', /res\.cookie\(SESSION_COOKIE, token, cookieOptions\(maxAgeMs\)\)/.test(cookiesSrc))
 
-    const { csrfProtect } = await import('../src/middleware/csrf')
-    const call = (method: string, cookies: Record<string, string>, headers: Record<string, string>) => new Promise<number>(resolve => {
-      const req: any = { method, cookies, headers }
+    const { csrfProtect, isCsrfExempt } = await import('../src/middleware/csrf')
+    const call = (method: string, cookies: Record<string, string>, headers: Record<string, string>, path = '/api/some/route') => new Promise<number>(resolve => {
+      const req: any = { method, cookies, headers, path }
       const res: any = { status: (c: number) => ({ json: () => resolve(c) }) }
       csrfProtect(req, res, () => resolve(200))
     })
@@ -278,6 +278,21 @@ export async function extraChecks(check: Check) {
     check('csrf: POST with NO session cookie passes through untouched (the Bearer-header / fallback path — nothing ambient to forge)', (await call('POST', {}, {})) === 200)
     check('csrf: POST WITH a session cookie but a missing/wrong CSRF header is rejected (403)', (await call('POST', { vaultsweeps_session: 'x', vaultsweeps_csrf: 'secret' }, {})) === 403 && (await call('POST', { vaultsweeps_session: 'x', vaultsweeps_csrf: 'secret' }, { 'x-csrf-token': 'wrong' })) === 403)
     check('csrf: POST WITH a session cookie and the matching CSRF header succeeds — this is the real, legitimate frontend request shape', (await call('POST', { vaultsweeps_session: 'x', vaultsweeps_csrf: 'secret' }, { 'x-csrf-token': 'secret' })) === 200)
+    // Regression for a real production lockout (found 2026-09-27): a browser holding a stale/mismatched
+    // session cookie (e.g. from before a logout, or from before the cookie-domain fix above shipped) got
+    // "Invalid or missing CSRF token" on the LOGIN request itself, since the check below only looked at
+    // whether a session cookie was present, not whether the endpoint being called actually relies on it.
+    // Login/register authenticate from the request body, not from any ambient cookie, so CSRF protection
+    // gives them nothing and must never be able to block them.
+    const stale = { vaultsweeps_session: 'stale', vaultsweeps_csrf: 'stale' }
+    for (const path of ['/api/auth/login', '/api/auth/register', '/api/auth/forgot-password', '/api/auth/verify-email/abc123', '/api/auth/reset-password/abc123']) {
+      check(`csrf: POST ${path} is exempt even with a stale mismatched session cookie present — these authenticate from the request itself, not an ambient session`, (await call('POST', stale, {}, path)) === 200)
+    }
+    check('csrf: a route that merely CONTAINS an exempt path as a substring/prefix, not an exact or well-formed match, is still protected (no accidental broad exemption)',
+      (await call('POST', { vaultsweeps_session: 'x', vaultsweeps_csrf: 'secret' }, {}, '/api/auth/login/../transfer')) === 403 &&
+      (await call('POST', { vaultsweeps_session: 'x', vaultsweeps_csrf: 'secret' }, {}, '/api/auth/reset-password/abc/../../transfer')) === 403 &&
+      (await call('POST', { vaultsweeps_session: 'x', vaultsweeps_csrf: 'secret' }, {}, '/api/auth/verify-email/')) === 403)
+    check('csrf: genuinely session-dependent auth routes (resend-verification, check-phone, verify-otp, logout) are NOT exempt — they go through `authenticate` and rely on the ambient session', ['/api/auth/resend-verification', '/api/auth/check-phone', '/api/auth/verify-otp', '/api/auth/logout'].every(p => !isCsrfExempt(p)))
 
     const authMwSrc = src('middleware/auth.ts')
     check('authenticate reads the token via extractToken (cookie-first, header-fallback), not the Authorization header alone', /extractToken\(req\)/.test(authMwSrc) && !/authHeader\.split/.test(authMwSrc))
