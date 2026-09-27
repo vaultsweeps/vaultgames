@@ -1,6 +1,6 @@
 import { Response } from 'express'
 import { securityLog, parseMoney } from '../middleware/security'
-import { csvCell, isSafeLinkUrl } from '../utils/safe'
+import { csvCell, isSafeLinkUrl, escapeLike } from '../utils/safe'
 import { evictAuthCache } from '../middleware/auth'
 import { revokeTokensIssuedBefore } from '../lib/redis'
 import prisma from '../lib/prisma'
@@ -100,16 +100,26 @@ export const getUsers = asyncHandler(async (req: AuthRequest, res: Response) => 
 
   const where: any = { role: 'user' }
   if (search) {
+    // escapeLike: `contains`+`insensitive` compiles to Postgres ILIKE, where an unescaped % or _ in the
+    // search term is a wildcard, not a literal character (AUTH-5's issue, applies equally here — an admin
+    // typing "%" would otherwise match every user). Extended to also search the fields the frontend used to
+    // filter on client-side (fullName/phone/telegramUsername) now that this is real server-side pagination
+    // instead of filtering only the 20 rows already fetched.
+    const s = escapeLike(String(search))
     where.OR = [
-      { username: { contains: String(search), mode: 'insensitive' } },
-      { email: { contains: String(search), mode: 'insensitive' } }
+      { username: { contains: s, mode: 'insensitive' } },
+      { email: { contains: s, mode: 'insensitive' } },
+      { profile: { fullName: { contains: s, mode: 'insensitive' } } },
+      { profile: { phone: { contains: s, mode: 'insensitive' } } },
+      { profile: { telegramUsername: { contains: s, mode: 'insensitive' } } },
     ]
   }
   if (status === 'banned') where.isBanned = true
   if (status === 'active') where.isActive = true
   if (status === 'suspended') { where.isActive = false; where.isBanned = false }
+  if (status === 'unverified') where.isVerified = false
 
-  const [users, total] = await Promise.all([
+  const [users, total, bannedTotal] = await Promise.all([
     prisma.user.findMany({
       where, skip, take: Number(limit),
       orderBy: { createdAt: 'desc' },
@@ -120,12 +130,15 @@ export const getUsers = asyncHandler(async (req: AuthRequest, res: Response) => 
         profile: { select: { fullName: true, phone: true, telegramUsername: true, telegramId: true, telegramPhone: true } }
       }
     }),
-    prisma.user.count({ where })
+    prisma.user.count({ where }),
+    // Platform-wide, independent of the current search/status/page — the summary card shows this
+    // regardless of what's currently being filtered, same as "Total users" below it.
+    prisma.user.count({ where: { role: 'user', isBanned: true } })
   ])
 
   res.json({
-    success: true, data: users,
-    pagination: { page: Number(page), limit: Number(limit), total, pages: Math.ceil(total / Number(limit)) }
+    success: true, data: users, bannedTotal,
+    pagination: { page: Number(page), limit: Number(limit), total, pages: Math.max(1, Math.ceil(total / Number(limit))) }
   })
 })
 
