@@ -6,7 +6,7 @@ import { supabase } from '../utils/supabase';
 import { logger } from '../utils/logger';
 import { createNotification } from './notificationService';
 import { invalidateWalletCache } from './WalletService';
-import { resolveTelegramLinkToken } from '../lib/redis';
+import { resolveTelegramLinkToken, isViewingChat } from '../lib/redis';
 
 const prisma = new PrismaClient();
 
@@ -342,17 +342,22 @@ export class TelegramSupportBot {
       }
 
       // Website-sourced conversations (and any linked account) have a real user_id — notify them via the
-      // in-app bell so a reply isn't missed while they're away from the support tab. The chat panel itself
-      // only shows this while open; this is what reaches them the rest of the time.
+      // in-app bell so a reply isn't missed while they're away from the support tab. Only when they're
+      // actually away, though: if the chat panel is open (recent poll activity — see markViewingChat in
+      // supportController.getMessages), they'll see this reply appear live in a few seconds anyway, and a
+      // notification on top of that is just noise, not a signal.
       if (conversation.user_id) {
-        promises.push(
-          createNotification(conversation.user_id, {
-            title: '💬 Support replied',
-            message: text.length > 120 ? `${text.slice(0, 117)}...` : text,
-            type: 'info',
-            link: '/dashboard/support'
-          })
-        );
+        const alreadyWatching = await isViewingChat(conversation.user_id, conversation.id);
+        if (!alreadyWatching) {
+          promises.push(
+            createNotification(conversation.user_id, {
+              title: '💬 Support replied',
+              message: text.length > 120 ? `${text.slice(0, 117)}...` : text,
+              type: 'info',
+              link: '/dashboard/support'
+            })
+          );
+        }
       }
 
       await Promise.all(promises);

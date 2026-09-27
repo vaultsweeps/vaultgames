@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { SupportService } from '../services/SupportService';
 import { TelegramSupportBot } from '../services/TelegramSupportBot';
+import { markViewingChat } from '../lib/redis';
 
 // Ensure you have auth middleware and it adds 'user' to the request.
 // Assuming your existing auth middleware sets req.user.
@@ -42,6 +43,11 @@ export const getMessages = async (req: AuthRequest, res: Response) => {
 
     const messages = await SupportService.getMessagesByConversationId(conversationId);
     res.status(200).json({ success: true, messages });
+    // Fire-and-forget: the frontend polls this endpoint every 4s while the chat tab is open and visible
+    // (LiveChat.tsx), so a successful call here IS the "user is actively looking at this conversation"
+    // signal — used to skip a redundant notification when a staff reply arrives while they're already
+    // watching it live. Never let this delay or fail the response above.
+    markViewingChat(userId, conversationId).catch(() => {});
   } catch (error: any) {
     console.error('Error fetching messages:', error);
     res.status(500).json({ success: false, message: 'Internal Server Error' });
