@@ -248,7 +248,7 @@ export default function GamesPage() {
                 {/* Thumbnail */}
                 <div className={`aspect-[16/10] w-full bg-gradient-to-br ${COLORS[i % COLORS.length]} relative overflow-hidden flex-shrink-0`}>
                   {game.thumbnailUrl ? (
-                    <Image src={game.thumbnailUrl} alt={game.name} fill loading="lazy" sizes="(max-width: 559px) 100vw, (max-width: 1023px) 50vw, (max-width: 1279px) 33vw, 25vw" className="object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
+                    <Image src={game.thumbnailUrl} alt={game.name} fill loading="lazy" sizes="(max-width: 559px) 100vw, (max-width: 1023px) 50vw, (max-width: 1279px) 33vw, 25vw" className="object-cover transition-transform duration-300 group-hover:scale-[1.03]" unoptimized={game.thumbnailUrl.startsWith('http')} />
                   ) : (
                     <div className="absolute inset-0 flex items-center justify-center">
                       <IconTile icon={Gamepad2} tone="blue" size="lg" />
@@ -332,7 +332,7 @@ export default function GamesPage() {
             className="glass-card max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
             <div className={`h-40 bg-gradient-to-br from-blue-900/30 to-purple-900/30 rounded-xl mb-5 relative overflow-hidden`}>
               {selectedGame.thumbnailUrl
-                ? <Image src={selectedGame.thumbnailUrl} alt={selectedGame.name} fill className="object-cover" />
+                ? <Image src={selectedGame.thumbnailUrl} alt={selectedGame.name} fill className="object-cover" unoptimized={selectedGame.thumbnailUrl.startsWith('http')} />
                 : <div className="absolute inset-0 flex items-center justify-center"><Gamepad2 className="w-16 h-16 text-white/30" /></div>
               }
             </div>

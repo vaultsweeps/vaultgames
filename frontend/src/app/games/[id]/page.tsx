@@ -67,13 +67,12 @@ export default function GameDetailsPage() {
   
   const isAuthenticated = useAuthStore(state => state.isAuthenticated)
   const [accountFetched, setAccountFetched] = useState(false)
-  // Start as true if a token cookie exists so we show a skeleton instead of "Get Access" during initial fetch
+  // Start as true if the fallback token cookie exists (still readable, still means "logged in" for browsers
+  // where the primary HttpOnly session cookie doesn't land) OR the store already knows we're authenticated,
+  // so we show a skeleton instead of "Get Access" during initial fetch rather than a login-flash.
   const [accountLoading, setAccountLoading] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const Cookies = require('js-cookie')
-      return !!Cookies.get('vaultsweeps_token')
-    }
-    return false
+    if (typeof window !== 'undefined' && Cookies.get('vaultsweeps_token')) return true
+    return isAuthenticated
   })
 
   useEffect(() => {
@@ -106,10 +105,12 @@ export default function GameDetailsPage() {
         setSettings(settingsRes.data.data || {})
         setLoading(false) // Unblock UI immediately
 
-        // Check cookie directly — more reliable than isAuthenticated on first render
-        // because Zustand's persisted state may not be rehydrated yet.
-        const token = Cookies.get('vaultsweeps_token')
-        if (token) {
+        // Fallback cookie (still readable when present) OR the store's own flag — covers both the primary
+        // HttpOnly-cookie session (no readable cookie to check, so this relies on isAuthenticated) and the
+        // fallback session (readable cookie, checked directly since it's available before any rehydration).
+        // If neither is true yet purely due to the Zustand persisted-store hydration race, the effect below
+        // ("If store hydrates after initial render...") already re-fetches once isAuthenticated catches up.
+        if (Cookies.get('vaultsweeps_token') || isAuthenticated) {
           if (gameRes.data.data.providerId) {
             const results = await Promise.all([
               providerApi.getAccount(id as string).catch(() => ({ data: { data: null } })),
@@ -197,8 +198,7 @@ export default function GameDetailsPage() {
 
 
   const handleDownload = () => {
-    const token = Cookies.get('vaultsweeps_token')
-    if (!token) return router.push('/login')
+    if (!isAuthenticated && !Cookies.get('vaultsweeps_token')) return router.push('/login')
 
     // For Orionstar: show the download popup with Generate Code
     const isOrionstar = game?.providerId?.toLowerCase().includes('orion') || game?.name.toLowerCase().includes('orion')
@@ -345,8 +345,12 @@ export default function GameDetailsPage() {
   }
 
   const handleTransfer = async (amount: number, type: 'recharge' | 'withdraw') => {
+    // A fresh key per user-initiated click; the backend resolves a resubmission of this exact request (a
+    // slow response the user retries, a duplicate network send) to the original attempt's outcome instead of
+    // calling the game provider again for it (FIN-7).
+    const idempotencyKey = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`
     try {
-      await providerApi.transfer({ gameId: id as string, amount, type })
+      await providerApi.transfer({ gameId: id as string, amount, type }, idempotencyKey)
       toast.success(type === 'recharge' ? 'Funds added to game successfully!' : 'Cashed out successfully!')
       
       // Refresh Data

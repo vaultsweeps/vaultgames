@@ -120,7 +120,9 @@ const GameCard = memo(function GameCard({ game, index, onClick }: { game: Game; 
               fill
               sizes={CARD_SIZES}
               priority={eager}
-              unoptimized={(game.thumbnailUrl as string).startsWith('http:')}
+              // Thumbnails are an admin-typed URL from an arbitrary CDN/blog host, so they are never valid
+              // targets for Next's image optimizer allowlist — render the original file directly instead.
+              unoptimized={(game.thumbnailUrl as string).startsWith('http')}
               draggable={false}
               className={`object-cover saturate-[1.15] contrast-[1.05] transition-[opacity,transform] duration-500 ease-out [@media(hover:hover)]:group-hover:scale-105 ${loaded ? 'opacity-100' : 'opacity-0'}`}
               onLoad={() => setLoaded(true)}

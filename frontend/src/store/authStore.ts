@@ -36,8 +36,19 @@ export const useAuthStore = create<AuthStore>()(
         try {
           const response = await authApi.login({ email, password })
           const { user, token } = response.data.data
-          Cookies.set('vaultsweeps_token', token, { expires: 7, secure: true, sameSite: 'strict' })
-          set({ user, token, isAuthenticated: true, isLoading: false })
+          // Clear any stale fallback cookie from a previous session first, so the probe below can only
+          // succeed via the fresh HttpOnly cookie the backend just set on this response — not by
+          // accidentally reusing an old fallback token still sitting in the browser.
+          Cookies.remove('vaultsweeps_token')
+          try {
+            await authApi.getMe()
+            set({ user, token: null, isAuthenticated: true, isLoading: false })
+          } catch {
+            // Cookie didn't land (Safari/ITP or similar blocking the cross-origin cookie) — fall back to
+            // exactly the pre-migration mechanism for this session only, so the user can still log in.
+            Cookies.set('vaultsweeps_token', token, { expires: 7, secure: true, sameSite: 'strict' })
+            set({ user, token, isAuthenticated: true, isLoading: false })
+          }
         } catch (error) {
           set({ isLoading: false })
           throw error
@@ -57,17 +68,28 @@ export const useAuthStore = create<AuthStore>()(
       },
 
       logout: () => {
-        Cookies.remove('vaultsweeps_token')
+        // Revoke the session server-side first — whichever credential this browser is actually using (the
+        // HttpOnly cookie sent automatically, or the fallback header) is what the backend needs to identify
+        // and revoke the session; a token copied before logout must not stay valid for its full lifetime.
+        // Never block the user on it.
+        const serverLogout = Promise.race([
+          authApi.logout().catch(() => {}),
+          new Promise(resolve => setTimeout(resolve, 1500)),
+        ])
         set({ user: null, token: null, isAuthenticated: false })
-        if (typeof window !== 'undefined') window.location.href = '/'
+        serverLogout.finally(() => {
+          Cookies.remove('vaultsweeps_token')
+          if (typeof window !== 'undefined') window.location.href = '/'
+        })
       },
 
+      // Always attempts the call — the browser attaches the HttpOnly session cookie automatically
+      // (withCredentials) for most users, and api.ts's interceptor attaches the fallback header for the rest.
+      // There is no client-visible way to know in advance which of the two applies, so this IS the check.
       fetchMe: async () => {
-        const token = Cookies.get('vaultsweeps_token')
-        if (!token) { set({ isAuthenticated: false }); return }
         try {
           const response = await authApi.getMe()
-          set({ user: response.data.data, isAuthenticated: true, token })
+          set({ user: response.data.data, isAuthenticated: true })
         } catch {
           Cookies.remove('vaultsweeps_token')
           set({ user: null, token: null, isAuthenticated: false, balance: 0 })
@@ -75,8 +97,7 @@ export const useAuthStore = create<AuthStore>()(
       },
 
       fetchBalance: async () => {
-        const token = Cookies.get('vaultsweeps_token')
-        if (!token) return
+        if (!get().isAuthenticated) return
         try {
           const response = await authApi.getBalance()
           if (response.data?.data?.balance !== undefined) {

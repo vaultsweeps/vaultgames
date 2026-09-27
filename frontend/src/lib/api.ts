@@ -3,10 +3,20 @@ import Cookies from 'js-cookie'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
 
+// `vaultsweeps_token` is now a FALLBACK ONLY: the primary session lives in an HttpOnly cookie the backend
+// sets on login, invisible to this code. The fallback exists for browsers that block the cross-origin
+// (SameSite=None) session cookie — Safari/ITP and similar — where authStore detects that after login and
+// falls back to this exact mechanism, unchanged from before. `vaultsweeps_csrf` is the OTHER cookie the
+// backend sets: deliberately readable, so it can be echoed back as a header (double-submit CSRF check).
+const FALLBACK_TOKEN_COOKIE = 'vaultsweeps_token'
+const CSRF_COOKIE = 'vaultsweeps_csrf'
+
 const apiClient: AxiosInstance = axios.create({
   baseURL: API_URL,
   timeout: 30000,
-  headers: { 'Content-Type': 'application/json' }
+  headers: { 'Content-Type': 'application/json' },
+  // Required for the browser to send/receive the cross-origin session + CSRF cookies at all.
+  withCredentials: true,
 })
 
 // Request deduplication cache for GET requests
@@ -31,11 +41,16 @@ apiClient.get = async function (url: string, config?: AxiosRequestConfig) {
   return promise
 }
 
-// Request interceptor - attach JWT token
+// Request interceptor: the HttpOnly session cookie is sent automatically (withCredentials) and never touched
+// here. Only two things are attached manually: the fallback Bearer token (present only in browsers where the
+// cookie didn't work — see authStore.login) and the CSRF header the backend's double-submit check expects
+// whenever the session cookie is in play.
 apiClient.interceptors.request.use(
   (config) => {
-    const token = Cookies.get('vaultsweeps_token')
-    if (token) config.headers.Authorization = `Bearer ${token}`
+    const fallbackToken = Cookies.get(FALLBACK_TOKEN_COOKIE)
+    if (fallbackToken) config.headers.Authorization = `Bearer ${fallbackToken}`
+    const csrfToken = Cookies.get(CSRF_COOKIE)
+    if (csrfToken) config.headers['X-CSRF-Token'] = csrfToken
     return config
   },
   (error) => Promise.reject(error)
@@ -46,7 +61,7 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      Cookies.remove('vaultsweeps_token')
+      Cookies.remove(FALLBACK_TOKEN_COOKIE)
       if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
         window.location.href = '/login'
       }
@@ -144,7 +159,11 @@ export const providerApi = {
   createAccount: (gameId?: string) => apiClient.post('/provider/create-account', {}, { params: gameId ? { gameId } : {} }),
   resetPassword: (gameId?: string) => apiClient.post('/provider/reset-password', {}, { params: gameId ? { gameId } : {} }),
   getTransactions: (gameId?: string) => apiClient.get('/provider/transactions', { params: gameId ? { gameId } : {} }),
-  transfer: (data: { gameId: string, amount: number, type: 'recharge' | 'withdraw' }) => apiClient.post('/provider/transfer', data),
+  // idempotencyKey: pass the SAME value across automatic/manual retries of one logical transfer attempt
+  // (FIN-7) — the backend resolves a repeated key to the original transfer's outcome instead of calling the
+  // game provider a second time. Omit it to get today's exact behaviour (a fresh, never-reused key per call).
+  transfer: (data: { gameId: string, amount: number, type: 'recharge' | 'withdraw' }, idempotencyKey?: string) =>
+    apiClient.post('/provider/transfer', data, idempotencyKey ? { headers: { 'Idempotency-Key': idempotencyKey } } : undefined),
   getAllAccounts: () => apiClient.get('/provider/accounts'),
 }
 
