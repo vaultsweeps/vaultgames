@@ -367,6 +367,12 @@ export class TelegramSupportBot {
   }
 
   // ─── Forward website chat to Telegram ───────────────────────────────────
+  // Telegram-side delivery only — the caller (supportController.sendMessage) already saved the message to
+  // the DB and has its own `message` object from that call. This used to ALSO call SupportService.saveMessage
+  // for the same text, silently writing every user message twice; harmless-looking while the frontend's
+  // Realtime subscription was dead anyway (nothing rendered the duplicate), but became visibly obvious the
+  // moment the chat was fixed to actually display the real message list — every sent message appeared
+  // doubled. Fixed at the root (one save, here) rather than papering over it with frontend de-duping.
   public async forwardWebsiteMessageToTelegram(conversation: any, text: string, userName: string) {
     try {
       let threadId = conversation.telegram_thread_id;
@@ -384,19 +390,11 @@ export class TelegramSupportBot {
         );
       }
 
-      const promises: Promise<any>[] = [
-        SupportService.saveMessage(conversation.id, 'user', text)
-      ];
-
       if (threadId) {
-        promises.push(
-          this.bot.telegram.sendMessage(this.groupId, `User: ${text}`, {
-            message_thread_id: Number(threadId)
-          })
-        );
+        await this.bot.telegram.sendMessage(this.groupId, `User: ${text}`, {
+          message_thread_id: Number(threadId)
+        });
       }
-
-      await Promise.all(promises);
     } catch (e) {
       logger.error('Error forwarding website message to Telegram', e);
     }
