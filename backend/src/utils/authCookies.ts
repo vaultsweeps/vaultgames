@@ -19,6 +19,18 @@ const isProd = process.env.NODE_ENV === 'production'
 export const SESSION_COOKIE = 'vaultsweeps_session'
 export const CSRF_COOKIE = 'vaultsweeps_csrf'
 
+// The CSRF cookie must be readable via `document.cookie` by frontend JS (frontend/src/lib/api.ts echoes it
+// back as the X-CSRF-Token header — that's the whole double-submit design) — but it's set by a response
+// from the API's own (sub)domain, a DIFFERENT origin from the frontend page reading it. With no explicit
+// Domain attribute a cookie defaults to host-only (visible only to the exact host that set it), which
+// `document.cookie` on the frontend's origin can never see, so the header was never actually sent and
+// csrfProtect rejected every non-GET request once the primary cookie session was in play — not a Safari/ITP
+// edge case, the common case. Scoping it to the shared parent domain fixes that. The session cookie itself
+// stays host-only (kept narrower on purpose): only the backend ever needs to receive it, and it's HttpOnly
+// regardless, so widening its scope would add no capability, only a marginally larger blast radius.
+// COOKIE_DOMAIN lets this be overridden without a code change if the production domain ever changes.
+const COOKIE_ROOT_DOMAIN = process.env.COOKIE_DOMAIN || (isProd ? '.vaultsweeps.com' : undefined)
+
 function cookieOptions(maxAgeMs: number) {
   return {
     httpOnly: true,
@@ -34,15 +46,18 @@ function cookieOptions(maxAgeMs: number) {
 export function setSessionCookies(res: Response, token: string, maxAgeMs: number): string {
   const csrfToken = crypto.randomBytes(32).toString('hex')
   res.cookie(SESSION_COOKIE, token, cookieOptions(maxAgeMs))
-  // Same lifetime and SameSite/Secure as the session cookie, but httpOnly:false — see the file comment.
-  res.cookie(CSRF_COOKIE, csrfToken, { ...cookieOptions(maxAgeMs), httpOnly: false })
+  // Same lifetime and SameSite/Secure as the session cookie, but httpOnly:false and domain-scoped so the
+  // frontend can actually read it — see the file comment above.
+  res.cookie(CSRF_COOKIE, csrfToken, { ...cookieOptions(maxAgeMs), httpOnly: false, domain: COOKIE_ROOT_DOMAIN })
   return csrfToken
 }
 
 export function clearSessionCookies(res: Response) {
   const opts = { path: '/', secure: isProd, sameSite: (isProd ? 'none' : 'lax') as 'none' | 'lax' }
   res.clearCookie(SESSION_COOKIE, opts)
-  res.clearCookie(CSRF_COOKIE, opts)
+  // Must match the domain it was SET with (browsers key cookies by name+domain+path), or the real cookie
+  // in the browser is left behind uncleared after logout.
+  res.clearCookie(CSRF_COOKIE, { ...opts, domain: COOKIE_ROOT_DOMAIN })
 }
 
 /** The JWT from the cookie if present, else the legacy `Authorization: Bearer` header (used by clients where
