@@ -1,5 +1,5 @@
 import imaps from 'imap-simple'
-import { senderDomain, authResultsOk } from './mailTrust'
+import { senderDomain, authResultsOk, imapTlsOptions } from './mailTrust'
 import { simpleParser } from 'mailparser'
 import cron from 'node-cron'
 import prisma from '../../lib/prisma'
@@ -68,6 +68,7 @@ export class ImapChimePayPalService {
         host: 'imap.gmail.com',
         port: 993,
         tls: true,
+        tlsOptions: imapTlsOptions(),
         authTimeout: 10000
       }
     }

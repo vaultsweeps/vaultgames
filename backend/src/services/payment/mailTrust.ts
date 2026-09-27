@@ -3,6 +3,24 @@
  */
 
 /**
+ * TLS options for the IMAP connection to imap.gmail.com. Certificate verification stays ON by default —
+ * turning it off would let anyone who can MITM the connection (or a misconfigured/compromised network path)
+ * forge "payment received" emails and self-approve fraudulent deposits, which is the exact hole this was
+ * closed for. If a host's own CA trust store is stale (symptom: DEPTH_ZERO_SELF_SIGNED_CERT against the real
+ * imap.gmail.com), fix that host — e.g. `apt-get install --only-upgrade ca-certificates && update-ca-certificates`
+ * — rather than disabling verification. IMAP_TLS_INSECURE=1 exists only as a temporary, explicit, opt-in
+ * escape hatch while that's being fixed; it must never be the default.
+ */
+export function imapTlsOptions(): { rejectUnauthorized: boolean } | undefined {
+  if (process.env.IMAP_TLS_INSECURE === '1') {
+    console.warn('[mailTrust] IMAP_TLS_INSECURE=1 set — IMAP certificate verification is DISABLED. ' +
+      'This is a temporary escape hatch only; fix the host CA trust store and unset this.')
+    return { rejectUnauthorized: false }
+  }
+  return undefined
+}
+
+/**
  * Domain of an email address, or '' if the address is not a single plain `local@domain`.
  * `From: "x@zappay.com"@evil.example` parses to `x@zappay.com@evil.example`; a naive `split('@')[1]` returns
  * "zappay.com" for it, so the LAST '@' must be used and addresses with more than one '@' are rejected.
