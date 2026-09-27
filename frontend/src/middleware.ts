@@ -13,7 +13,8 @@ import { NextRequest, NextResponse } from 'next/server'
 //   - Supabase Realtime (frontend/src/lib/supabase.ts — chat/withdrawal live updates):
 //       connect-src: https://*.supabase.co, wss://*.supabase.co
 //   - The API itself (frontend/src/lib/api.ts calls NEXT_PUBLIC_API_URL directly, cross-origin):
-//       connect-src: the Render backend + the production custom domain
+//       connect-src: the real backend origin (api.vaultsweeps.com, a VPS behind that domain — see
+//       deployment_topology memory) + the production custom domain
 //   - style-src keeps 'unsafe-inline': framer-motion (used throughout frontend/src/components) sets
 //     inline `style="..."` attributes at runtime as its core animation mechanism — a nonce only covers
 //     <style> elements, not inline style ATTRIBUTES set via JS, so there is no nonce-based way to keep
@@ -24,7 +25,7 @@ import { NextRequest, NextResponse } from 'next/server'
 //     so there is no fixed list to allowlist here without breaking legitimate, frequently-changing images.
 
 const isProd = process.env.NODE_ENV === 'production'
-const API_ORIGINS = ['https://nexsus-c053.onrender.com', 'https://vaultsweeps.com', 'https://www.vaultsweeps.com']
+const API_ORIGINS = ['https://api.vaultsweeps.com', 'https://vaultsweeps.com', 'https://www.vaultsweeps.com']
 
 export function middleware(req: NextRequest) {
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
