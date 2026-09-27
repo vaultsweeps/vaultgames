@@ -103,40 +103,52 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-5 mb-5 sm:mb-6">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="xl:col-span-2 ds-card p-4 sm:p-6 min-w-0">
           <SectionHeading title="Monthly revenue" />
-          <ResponsiveContainer width="100%" height={260}>
-            <AreaChart data={stats.revenueData}>
-              <defs>
-                <linearGradient id="depositGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#38BDF8" stopOpacity={0.28} />
-                  <stop offset="95%" stopColor="#38BDF8" stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="cashoutGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#A78BFA" stopOpacity={0.28} />
-                  <stop offset="95%" stopColor="#A78BFA" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" vertical={false} />
-              <XAxis dataKey="month" tick={AXIS_TICK} axisLine={false} tickLine={false} />
-              <YAxis tick={AXIS_TICK} axisLine={false} tickLine={false} tickFormatter={v => `$${(v/1000).toFixed(0)}k`} />
-              <Tooltip content={<CUSTOM_TOOLTIP />} />
-              <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12, color: 'var(--text-muted)' }} />
-              <Area type="monotone" dataKey="deposits" name="Deposits" stroke="#38BDF8" fill="url(#depositGrad)" strokeWidth={2} />
-              <Area type="monotone" dataKey="cashouts" name="Cashouts" stroke="#A78BFA" fill="url(#cashoutGrad)" strokeWidth={2} />
-            </AreaChart>
-          </ResponsiveContainer>
+          {stats.revenueData?.length > 0 ? (
+            <ResponsiveContainer width="100%" height={260}>
+              <AreaChart data={stats.revenueData}>
+                <defs>
+                  <linearGradient id="depositGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#38BDF8" stopOpacity={0.28} />
+                    <stop offset="95%" stopColor="#38BDF8" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="cashoutGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#A78BFA" stopOpacity={0.28} />
+                    <stop offset="95%" stopColor="#A78BFA" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" vertical={false} />
+                <XAxis dataKey="month" tick={AXIS_TICK} axisLine={false} tickLine={false} />
+                <YAxis tick={AXIS_TICK} axisLine={false} tickLine={false} tickFormatter={v => `$${(v/1000).toFixed(0)}k`} />
+                <Tooltip content={<CUSTOM_TOOLTIP />} />
+                <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12, color: 'var(--text-muted)' }} />
+                <Area type="monotone" dataKey="deposits" name="Deposits" stroke="#38BDF8" fill="url(#depositGrad)" strokeWidth={2} />
+                <Area type="monotone" dataKey="cashouts" name="Cashouts" stroke="#A78BFA" fill="url(#cashoutGrad)" strokeWidth={2} />
+              </AreaChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-[260px] flex items-center justify-center">
+              <EmptyState icon={TrendingUp} title="No revenue data yet" text="Chart appears once deposit/cashout activity is recorded." />
+            </div>
+          )}
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className="ds-card p-4 sm:p-6 min-w-0">
           <SectionHeading title="Daily activity" />
-          <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={stats.dailyData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" vertical={false} />
-              <XAxis dataKey="day" tick={AXIS_TICK} axisLine={false} tickLine={false} />
-              <YAxis tick={AXIS_TICK} axisLine={false} tickLine={false} />
-              <Tooltip content={<CUSTOM_TOOLTIP />} cursor={{ fill: 'var(--ds-hover)' }} />
-              <Bar dataKey="users" name="Users" fill="#34D399" radius={[4, 4, 0, 0]} opacity={0.85} />
-            </BarChart>
-          </ResponsiveContainer>
+          {stats.dailyData?.length > 0 ? (
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={stats.dailyData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" vertical={false} />
+                <XAxis dataKey="day" tick={AXIS_TICK} axisLine={false} tickLine={false} />
+                <YAxis tick={AXIS_TICK} axisLine={false} tickLine={false} />
+                <Tooltip content={<CUSTOM_TOOLTIP />} cursor={{ fill: 'var(--ds-hover)' }} />
+                <Bar dataKey="users" name="Users" fill="#34D399" radius={[4, 4, 0, 0]} opacity={0.85} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-[260px] flex items-center justify-center">
+              <EmptyState icon={Users} title="No activity data yet" text="Chart appears once daily user activity is recorded." />
+            </div>
+          )}
         </motion.div>
       </div>
 
