@@ -556,4 +556,23 @@ export async function extraChecks(check: Check) {
       await prisma.user.deleteMany({ where: { id: { in: [u1.id, u2.id] } } })
     }
   }
+
+  // ── CashMachine/GameRoom/CashFrenzy/Mafia/VegasRoll "remark" field (found live in production
+  // 2026-09-28): all five share CashMachineProviderService's rechargePlayer/withdrawPlayer, which sent
+  // our own internal orderId (post-FIN-7: "TX-<userId>-<idempotencyKey>", hyphenated, 60+ chars) straight
+  // through as the provider's `remark` field — which requires letters/digits only, max 50 chars. Every
+  // recharge/withdraw on any of these five providers failed with "Remarks can only be letters and
+  // numbers, and cannot exceed 50 characters" the moment orderId grew past a bare short code. ──
+  {
+    const { CashMachineProviderService } = await import('../src/services/provider/CashMachineProviderService')
+    const fakeProvider: any = { id: 'qa', name: 'QA', apiBaseUrl: 'https://example.invalid', agentId: 'a', secretKey: 's' }
+    const svc: any = new (CashMachineProviderService as any)(fakeProvider)
+    const realisticOrderId = 'TX-cmr69jqsu000012lh99aj857o-8579521a-3ce3-4c2d-a2ca-7c56c0493289'
+    const remark = svc.sanitizeRemark(realisticOrderId)
+    check('CashMachine/GameRoom/etc "remark": a realistic 65-char hyphenated orderId is sanitized to <= 50 chars', remark.length <= 50, `length=${remark.length}`)
+    check('CashMachine/GameRoom/etc "remark": sanitized value is letters/digits only (provider\'s actual constraint)', /^[a-zA-Z0-9]*$/.test(remark), remark)
+
+    const providerSrc = src('services/provider/CashMachineProviderService.ts')
+    check('CashMachine/GameRoom/etc: rechargePlayer and withdrawPlayer both sanitize the remark, not just one of them', (providerSrc.match(/remark: this\.sanitizeRemark\(orderId\)/g) || []).length === 2)
+  }
 }

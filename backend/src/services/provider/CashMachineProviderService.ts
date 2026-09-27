@@ -451,6 +451,22 @@ export class CashMachineProviderService implements ProviderAdapter {
   }
 
   /**
+   * The provider's `remark` field requires letters/digits only, max 50 chars — but our own orderId
+   * (ProviderTransaction.orderId, e.g. "TX-<userId>-<idempotencyKey>") is a much longer, hyphenated,
+   * internal identifier with no such constraint, since it only ever needs to satisfy OUR OWN uniqueness
+   * requirements. Sending it as-is made every recharge/withdraw on this provider fail with
+   * "Remarks can only be letters and numbers, and cannot exceed 50 characters" the moment orderId grew
+   * past a bare short code (confirmed in production on both CashMachine and GameRoom, which share this
+   * class). Stripping non-alphanumeric characters keeps the value still traceable back to the real
+   * orderId (a cuid/UUID's hex characters survive; only separators are removed) without violating the
+   * provider's constraint — this is a display/reference field on their side, not something either system
+   * uses for matching, so this is safe.
+   */
+  private sanitizeRemark(orderId: string): string {
+    return orderId.replace(/[^a-zA-Z0-9]/g, '').slice(0, 50);
+  }
+
+  /**
    * Add credits to a player.
    * userId here is the provider's numeric player ID (stored in ProviderUser).
    */
@@ -458,7 +474,7 @@ export class CashMachineProviderService implements ProviderAdapter {
     return this.postRequest('/api/player/playerRecharge', {
       id: userId,
       balance: Number(amount.toFixed(2)).toString(),
-      remark: orderId,
+      remark: this.sanitizeRemark(orderId),
     }, userId);
   }
 
@@ -469,7 +485,7 @@ export class CashMachineProviderService implements ProviderAdapter {
     return this.postRequest('/api/player/playerWithdraw', {
       id: userId,
       balance: Number(amount.toFixed(2)).toString(),
-      remark: orderId,
+      remark: this.sanitizeRemark(orderId),
     }, userId);
   }
 
