@@ -1,4 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express'
+import { limit } from '../middleware/security'
 import { getPublicBanners, getPublicFeaturedGames, getPublicBonuses, getPublicFAQs, getPublicStats, sendContactForm, getPublicGameDetails, getPublicSettings } from '../controllers/controllers'
 
 const router = Router()
@@ -15,7 +16,7 @@ router.get('/games/:id', publicCache(120), getPublicGameDetails)
 router.get('/bonuses', publicCache(120), getPublicBonuses)
 router.get('/faqs', publicCache(600), getPublicFAQs)
 router.get('/stats', publicCache(30), getPublicStats)
-router.post('/contact', sendContactForm)
+router.post('/contact', limit({ name: 'contact-form', windowMs: 60 * 60_000, max: 5, scope: 'ip' }), sendContactForm)
 router.get('/settings', publicCache(300), getPublicSettings)
 
 export default router

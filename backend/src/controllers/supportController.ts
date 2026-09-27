@@ -21,7 +21,7 @@ export const getConversation = async (req: AuthRequest, res: Response) => {
     res.status(200).json({ success: true, conversation });
   } catch (error: any) {
     console.error('Error fetching conversation:', error);
-    res.status(500).json({ success: false, message: error.message || 'Internal Server Error' });
+    res.status(500).json({ success: false, message: 'Internal Server Error' });
   }
 };
 
@@ -44,7 +44,7 @@ export const getMessages = async (req: AuthRequest, res: Response) => {
     res.status(200).json({ success: true, messages });
   } catch (error: any) {
     console.error('Error fetching messages:', error);
-    res.status(500).json({ success: false, message: error.message || 'Internal Server Error' });
+    res.status(500).json({ success: false, message: 'Internal Server Error' });
   }
 };
 
@@ -54,8 +54,11 @@ export const sendMessage = async (req: AuthRequest, res: Response) => {
     const userId = req.user?.id;
     const userName = req.user?.username || 'Website User';
 
-    if (!userId || !text) {
+    if (!userId || typeof text !== 'string' || !text.trim() || typeof conversationId !== 'string') {
       return res.status(400).json({ success: false, message: 'Bad Request' });
+    }
+    if (text.length > 2000) {
+      return res.status(400).json({ success: false, message: 'Message is too long (max 2000 characters).' });
     }
 
     const conversation = await SupportService.getConversationById(conversationId);
@@ -73,6 +76,6 @@ export const sendMessage = async (req: AuthRequest, res: Response) => {
     res.status(201).json({ success: true, message });
   } catch (error: any) {
     console.error('Error sending message:', error);
-    res.status(500).json({ success: false, message: error.message || 'Internal Server Error' });
+    res.status(500).json({ success: false, message: 'Internal Server Error' });
   }
 };

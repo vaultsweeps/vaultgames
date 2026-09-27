@@ -3,6 +3,7 @@ import crypto from 'crypto'
 import prisma from '../lib/prisma'
 import { asyncHandler, AppError } from '../middleware/errorHandler'
 import { AuthRequest } from '../middleware/auth'
+import { ReferralService } from '../services/ReferralService'
 
 // ─── Helper ─────────────────────────────────────────────────────────────────
 
@@ -71,12 +72,8 @@ export const getMyReferralInfo = asyncHandler(async (req: AuthRequest, res: Resp
   const totalReferrals = user.referrals.length
   const activeReferrals = user.referrals.filter((r: any) => r.deposits.length > 0).length
   
-  // Calculate total earnings based on actual BonusClaims awarded to this user
-  const bonusClaims = await prisma.bonusClaim.aggregate({
-    where: { userId: userId, bonus: { type: 'referral' } },
-    _sum: { amount: true }
-  })
-  const totalEarnings = bonusClaims._sum.amount || 0
+  // Total earnings across both the legacy BonusClaim rows and the current ReferralReward ledger
+  const totalEarnings = await ReferralService.getTotalEarnings(userId)
 
   const referralLink = `https://vaultsweeps.com/register?ref=${user.referralCode}`
 

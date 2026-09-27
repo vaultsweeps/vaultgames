@@ -12,15 +12,18 @@ const registerIp = limit({ name: 'register-ip', windowMs: 60 * 60_000, max: 15, 
 const forgotIp = limit({ name: 'forgot-password-ip', windowMs: 60 * 60_000, max: 8, scope: 'ip' })
 const forgotIdentity = limit({ name: 'forgot-password-identity', windowMs: 60 * 60_000, max: 3, scope: 'identity', identityField: 'email' })
 const tokenActionIp = limit({ name: 'token-actions', windowMs: 60 * 60_000, max: 30, scope: 'ip' })
+const forgotTarget = limit({ name: 'forgot-password-target', windowMs: 60 * 60_000, max: 30, scope: 'target', identityField: 'email' })
+const resendVerifyUser = limit({ name: 'resend-verification', windowMs: 60 * 60_000, max: 5, scope: 'user' })
+const otpUser = limit({ name: 'verify-otp', windowMs: 60 * 60_000, max: 20, scope: 'user' })
 const lookupIp = limit({ name: 'lookup', windowMs: 60_000, max: 60, scope: 'ip' })
 
 const router = Router()
 
 router.post('/register',
   [
-    body('username').trim().isLength({ min: 3, max: 20 }).matches(/^[a-zA-Z0-9_]+$/).withMessage('Username must be 3-20 chars (letters, numbers, underscores)'),
+    body('username').isString().trim().isLength({ min: 3, max: 20 }).matches(/^[a-zA-Z0-9_]+$/).withMessage('Username must be 3-20 chars (letters, numbers, underscores)'),
     body('email').isEmail().normalizeEmail(),
-    body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
+    body('password').isString().isLength({ min: 8, max: 72 }).withMessage('Password must be 8-72 characters'),
   ],
   validateRequest,
   registerIp,
@@ -29,8 +32,8 @@ router.post('/register',
 
 router.post('/login',
   [
-    body('email').trim().notEmpty().withMessage('Email or username is required'),
-    body('password').notEmpty(),
+    body('email').isString().trim().notEmpty().isLength({ max: 254 }).withMessage('Email or username is required'),
+    body('password').isString().notEmpty().isLength({ max: 200 }),
   ],
   validateRequest,
   loginIp,
@@ -41,18 +44,18 @@ router.post('/login',
 router.get('/me', authenticate, getMe)
 router.get('/balance', authenticate, getBalance)
 router.get('/dashboard-init', authenticate, dashboardInit)
-router.get('/check-username', lookupIp, checkUsername)
+router.get('/check-username', limit({ name: 'check-username', windowMs: 60_000, max: 30, scope: 'ip' }), checkUsername) // also calls the game provider
 router.post('/verify-email/:token', tokenActionIp, verifyEmail)
-router.post('/forgot-password', forgotIp, forgotIdentity, [body('email').isEmail()], validateRequest, forgotPassword)
+router.post('/forgot-password', forgotIp, forgotIdentity, forgotTarget, [body('email').isString().isEmail().isLength({ max: 254 })], validateRequest, forgotPassword)
 router.post('/reset-password/:token',
   tokenActionIp,
-  [body('password').isLength({ min: 8 })],
+  [body('password').isString().isLength({ min: 8, max: 72 })],
   validateRequest,
   resetPassword
 )
 import { resendVerification } from '../controllers/resendVerification'
 
-router.post('/resend-verification', authenticate, resendVerification)
+router.post('/resend-verification', authenticate, resendVerifyUser, resendVerification)
 router.post('/check-phone',
   [body('phone').notEmpty().withMessage('Phone number is required')],
   validateRequest,
@@ -60,7 +63,7 @@ router.post('/check-phone',
   authenticate,
   checkPhone
 )
-router.post('/verify-otp', authenticate, [body('idToken').notEmpty()], validateRequest, verifyPhoneOTP)
+router.post('/verify-otp', authenticate, otpUser, [body('idToken').isString().notEmpty()], validateRequest, verifyPhoneOTP)
 router.post('/logout', authenticate, logout)
 
 export default router

@@ -5,23 +5,28 @@ import prisma from '../lib/prisma';
 import { TelegramService } from '../services/TelegramService';
 
 import { getCached, revokeTokensIssuedBefore } from '../lib/redis';
+import { securityLog } from '../middleware/security';
 
 // ─── GAMES ────────────────────────────────────────────────────────────────────
 export const getGames = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const { category, search, featured, page = 1, limit = 20 } = req.query
-  const skip = (Number(page) - 1) * Number(limit)
+  const category = typeof req.query.category === 'string' ? req.query.category.slice(0, 50) : ''
+  const search = typeof req.query.search === 'string' ? req.query.search.slice(0, 60) : ''
+  const featured = req.query.featured === 'true'
+  const pageNum = Math.min(Math.max(parseInt(String(req.query.page ?? '1'), 10) || 1, 1), 10000)
+  const limitNum = Math.min(Math.max(parseInt(String(req.query.limit ?? '20'), 10) || 20, 1), 100)
+  const skip = (pageNum - 1) * limitNum
   
-  // Create a unique cache key based on the query parameters
-  const cacheKey = `games:${category || 'all'}:${search || 'none'}:${featured || 'false'}:${page}:${limit}`;
+  // Unambiguous cache key: JSON-encoded typed values (a plain join let `?search=none` collide with 'no filter')
+  const cacheKey = `games:${JSON.stringify([category, search, featured, pageNum, limitNum])}`;
 
   const result = await getCached(cacheKey, async () => {
     const where: any = { isActive: true }
     if (category) where.category = category
-    if (featured === 'true') where.isFeatured = true
-    if (search) where.name = { contains: String(search), mode: 'insensitive' }
+    if (featured) where.isFeatured = true
+    if (search) where.name = { contains: search, mode: 'insensitive' }
 
     const [games, total] = await Promise.all([
-      prisma.game.findMany({ where, skip, take: Number(limit), orderBy: { downloadCount: 'desc' } }),
+      prisma.game.findMany({ where, skip, take: limitNum, orderBy: { downloadCount: 'desc' } }),
       prisma.game.count({ where })
     ])
     
@@ -31,7 +36,7 @@ export const getGames = asyncHandler(async (req: AuthRequest, res: Response) => 
   res.json({ 
     success: true, 
     data: result.games, 
-    pagination: { page: Number(page), limit: Number(limit), total: result.total, pages: Math.ceil(result.total / Number(limit)) } 
+    pagination: { page: pageNum, limit: limitNum, total: result.total, pages: Math.ceil(result.total / limitNum) } 
   })
 })
 
@@ -102,6 +107,11 @@ export const claimBonus = asyncHandler(async (req: AuthRequest, res: Response) =
   const bonus = await prisma.bonus.findUnique({ where: { id: req.params.id as string, isActive: true } })
   if (!bonus) throw new AppError('Bonus not found', 404)
   if (bonus.expiresAt && bonus.expiresAt < new Date()) throw new AppError('This bonus has expired', 400)
+  // Wheel prizes, freeplay, referral, welcome and deposit bonuses are granted by their own server-side flows;
+  // wheel/freeplay/referral claims count as wallet balance, so a direct claim by id would be free money.
+  if (['wheel', 'freeplay', 'referral', 'welcome', 'deposit'].includes(String(bonus.type))) {
+    throw new AppError('This bonus is applied automatically and cannot be claimed manually', 400)
+  }
 
   const existing = await prisma.bonusClaim.findUnique({
     where: { userId_bonusId: { userId: req.user!.id, bonusId: bonus.id } }
@@ -135,7 +145,12 @@ export const getTickets = asyncHandler(async (req: AuthRequest, res: Response) =
 })
 
 export const createTicket = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const { subject, message, category = 'general', priority = 'medium' } = req.body
+  const text = (v: unknown, max: number) => (typeof v === 'string' ? v.trim().slice(0, max) : '')
+  const subject = text(req.body.subject, 200)
+  const message = text(req.body.message, 2000)
+  if (!subject || !message) throw new AppError('Subject and message are required', 400)
+  const category = text(req.body.category, 30) || 'general'
+  const priority = ['low', 'medium', 'high', 'urgent'].includes(req.body.priority) ? req.body.priority : 'medium'
   const ticket = await prisma.supportTicket.create({
     data: { userId: req.user!.id, subject, message, category, priority }
   })
@@ -159,8 +174,10 @@ export const replyToTicket = asyncHandler(async (req: AuthRequest, res: Response
   if (!ticket) throw new AppError('Ticket not found', 404)
   if (ticket.status === 'closed') throw new AppError('This ticket is closed', 400)
 
+  const replyText = typeof req.body.message === 'string' ? req.body.message.trim().slice(0, 2000) : ''
+  if (!replyText) throw new AppError('Message is required', 400)
   const reply = await prisma.ticketReply.create({
-    data: { ticketId: ticket.id, userId: req.user!.id, message: req.body.message, isAdmin: false }
+    data: { ticketId: ticket.id, userId: req.user!.id, message: replyText, isAdmin: false }
   })
   res.status(201).json({ success: true, data: reply })
 })
@@ -198,16 +215,35 @@ import { ProviderFactory } from '../services/provider/ProviderFactory'
 
 export const updateProfile = asyncHandler(async (req: AuthRequest, res: Response) => {
   const { fullName, phone, country, telegramUsername } = req.body
+  const str = (v: unknown, max: number, label: string) => {
+    if (v === undefined || v === null) return undefined
+    if (typeof v !== 'string' || v.length > max) throw new AppError(`Invalid ${label}`, 400)
+    return v.trim()
+  }
+  const fullNameV = str(fullName, 100, 'name')
+  const countryV = str(country, 60, 'country')
+  let phoneV = str(phone, 24, 'phone')
+  if (phoneV && !/^\+?[0-9 ()-]{6,24}$/.test(phoneV)) throw new AppError('Invalid phone number', 400)
+  const tgV = str(telegramUsername, 33, 'Telegram username')
+  if (tgV && !/^@?[A-Za-z0-9_]{3,32}$/.test(tgV)) throw new AppError('Invalid Telegram username', 400)
+
+  // The phone recorded by OTP verification is the account's identity anchor — only verifyPhoneOTP may change it.
+  const owner = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { isPhoneVerified: true } })
+  if (owner?.isPhoneVerified) phoneV = undefined
+
   const profile = await prisma.userProfile.upsert({
     where: { userId: req.user!.id },
-    update: { fullName, phone, country, telegramUsername },
-    create: { userId: req.user!.id, fullName, phone, country, telegramUsername }
+    update: { fullName: fullNameV, phone: phoneV, country: countryV, telegramUsername: tgV },
+    create: { userId: req.user!.id, fullName: fullNameV, phone: phoneV, country: countryV, telegramUsername: tgV }
   })
   res.json({ success: true, message: 'Profile updated', data: profile })
 })
 
 export const changePassword = asyncHandler(async (req: AuthRequest, res: Response) => {
   const { currentPassword, newPassword } = req.body
+  if (typeof currentPassword !== 'string' || typeof newPassword !== 'string' || newPassword.length < 8 || newPassword.length > 72) {
+    throw new AppError('New password must be 8-72 characters', 400)
+  }
   const user = await prisma.user.findUnique({ where: { id: req.user!.id } })
   if (!user) throw new AppError('User not found', 404)
 
@@ -215,11 +251,15 @@ export const changePassword = asyncHandler(async (req: AuthRequest, res: Respons
   if (!isMatch) throw new AppError('Current password is incorrect', 400)
 
   const hashed = await bcrypt.hash(newPassword, 12)
-  await prisma.user.update({ where: { id: user.id }, data: { password: hashed } })
-
-  // Invalidate any other outstanding tokens now that the password has changed
-  await revokeTokensIssuedBefore(user.id)
+  // Also invalidate any outstanding password-reset link so it can't be used after this change. tokenVersion
+  // is bumped in this same write, so every other outstanding token becomes invalid durably — independent of
+  // Redis — as long as this update succeeds (which the password change already requires).
+  await prisma.user.update({ where: { id: user.id }, data: { password: hashed, resetToken: null, resetExpiry: null, tokenVersion: { increment: 1 } } })
   evictAuthCache(user.id)
+
+  // Fast-path only (see revokeTokensIssuedBefore's doc comment) — failure here does not weaken the guarantee above.
+  const revoked = await revokeTokensIssuedBefore(user.id)
+  if (!revoked) securityLog('token_revocation_fast_path_failed', req, { userId: user.id, action: 'password_change' })
 
   // Sync password with provider
   try {
@@ -314,7 +354,10 @@ export const getPublicStats = asyncHandler(async (_req: any, res: Response) => {
 })
 
 export const sendContactForm = asyncHandler(async (req: any, res: Response) => {
-  const { name, email, message } = req.body
+  // Bounded + single-line so an anonymous caller can neither flood the log nor forge log lines
+  const clean = (v: unknown, max: number) => (typeof v === 'string' ? v.replace(/[\r\n\t]+/g, ' ').trim().slice(0, max) : '')
+  const name = clean(req.body?.name, 80), email = clean(req.body?.email, 120), message = clean(req.body?.message, 1000)
+  if (!message) throw new AppError('Message is required', 400)
   // In production: send email via nodemailer
   console.log('Contact form:', { name, email, message })
   res.json({ success: true, message: 'Message received! We\'ll get back to you soon.' })

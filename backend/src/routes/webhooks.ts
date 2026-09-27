@@ -3,11 +3,13 @@ import crypto from 'crypto'
 import prisma from '../lib/prisma'
 import { createNotification } from '../services/notificationService'
 import { WalletService, invalidateWalletCache } from '../services/WalletService'
+import { grantDepositBonus } from '../services/DepositBonusService'
 import { ProviderFactory } from '../services/provider/ProviderFactory'
 import { ZappayService } from '../services/payment/ZappayService'
 import { GgusOnePayService } from '../services/payment/GgusOnePayService'
 import { TelegramService } from '../services/TelegramService'
 import { sendAdminNowPaymentsNotification } from '../services/emailService'
+import { securityLog } from '../middleware/security'
 
 const router = Router()
 
@@ -49,12 +51,13 @@ router.post('/payment', async (req: Request, res: Response) => {
         })
 
         if (!deposit) break
-        if (deposit.status === 'approved') break // Already processed
 
-        await prisma.deposit.update({
-          where: { id: deposit.id },
+        // Atomic pending -> approved. A replayed callback, or one for a failed/voided deposit, can never re-approve it.
+        const claim = await prisma.deposit.updateMany({
+          where: { id: deposit.id, status: 'pending' },
           data: { status: 'approved', transactionId, approvedAt: new Date(), webhookData: data }
         })
+        if (claim.count !== 1) break
 
         await createNotification(deposit.userId, {
           title: '✅ Deposit Confirmed!',
@@ -72,9 +75,10 @@ router.post('/payment', async (req: Request, res: Response) => {
       case 'payment.failed': {
         const { reference } = data
         const deposit = await prisma.deposit.findFirst({ where: { paymentReference: reference } })
-        if (!deposit || deposit.status !== 'pending') break
+        if (!deposit) break
 
-        await prisma.deposit.update({ where: { id: deposit.id }, data: { status: 'failed', webhookData: data } })
+        const failedClaim = await prisma.deposit.updateMany({ where: { id: deposit.id, status: 'pending' }, data: { status: 'failed', webhookData: data } })
+        if (failedClaim.count !== 1) break
 
         await createNotification(deposit.userId, {
           title: 'Payment Failed',
@@ -126,28 +130,28 @@ function verifyNowPaymentsSignature(payload: any, signature: string | undefined)
 
 // Crypto payment webhook (NOWPayments IPN)
 router.post('/crypto', async (req: Request, res: Response) => {
-  // Log raw webhook immediately so we never lose it
   let webhookLog: any = null
-  try {
-    webhookLog = await prisma.paymentWebhook.create({
-      data: { provider: 'nowpayments', payload: req.body, status: 'received' }
-    })
-  } catch (logErr) {
-    console.error('[NOWPayments Webhook] Failed to create webhook log:', logErr)
-  }
 
   try {
     const signature = req.headers['x-nowpayments-sig'] as string | undefined
 
     if (!process.env.NOWPAYMENTS_IPN_SECRET) {
       console.error('NOWPAYMENTS_IPN_SECRET is not configured — rejecting crypto webhook')
-      if (webhookLog) await prisma.paymentWebhook.update({ where: { id: webhookLog.id }, data: { status: 'failed', error: 'IPN secret not configured' } }).catch(() => {})
       return res.status(500).json({ success: false, message: 'Webhook not configured' })
     }
 
+    // Unauthenticated callers never cause a database write: verify first, log after.
     if (!verifyNowPaymentsSignature(req.body, signature)) {
-      if (webhookLog) await prisma.paymentWebhook.update({ where: { id: webhookLog.id }, data: { status: 'failed', error: 'Invalid signature' } }).catch(() => {})
+      securityLog('webhook_invalid_signature', req, { provider: 'nowpayments' })
       return res.status(401).json({ success: false, message: 'Invalid signature' })
+    }
+
+    try {
+      webhookLog = await prisma.paymentWebhook.create({
+        data: { provider: 'nowpayments', payload: req.body, status: 'received' }
+      })
+    } catch (logErr) {
+      console.error('[NOWPayments Webhook] Failed to create webhook log:', logErr)
     }
 
     const {
@@ -178,34 +182,56 @@ router.post('/crypto', async (req: Request, res: Response) => {
         return res.json({ success: true, message: 'Already processed' })
       }
 
-      const finalAmount = deposit.amount * 1.2;
+      // The invoice amount reported by the gateway must match what we created (guards against a mismatched/forged order id).
+      // NaN-safe: a missing or non-numeric price_amount must not skip the comparison
+      if (!(Math.abs(Number(price_amount) - deposit.amount) <= 0.01)) {
+        securityLog('webhook_amount_mismatch', req, { provider: 'nowpayments', depositId: deposit.id })
+        if (webhookLog) await prisma.paymentWebhook.update({ where: { id: webhookLog.id }, data: { status: 'failed', error: 'price_amount does not match deposit' } }).catch(() => {})
+        return res.status(400).json({ success: false, message: 'Amount mismatch' })
+      }
+
+      // FIN-6: Deposit.amount is always the real, confirmed amount — the +20% bonus is granted separately
+      // below as its own DepositBonus row (idempotent on depositId), never folded into the deposit itself.
+      const realAmount = deposit.amount;
+
+      // Atomic pending -> approved: two concurrent/replayed IPNs cannot both approve.
+      const claim = await prisma.deposit.updateMany({
+        where: { id: deposit.id, status: 'pending' },
+        data: {
+          status: 'approved',
+          approvedAt: new Date(),
+          transactionId: String(payment_id || ''),
+          webhookData: req.body
+        }
+      })
+      if (claim.count !== 1) {
+        return res.json({ success: true, message: 'Already processed' })
+      }
+      invalidateWalletCache(deposit.userId)
+
+      const bonusGranted = await grantDepositBonus({ depositId: deposit.id, userId: deposit.userId, amount: realAmount * 0.2, type: 'CRYPTO_DEPOSIT_BONUS' })
+      const bonusAmount = bonusGranted ? Math.round(realAmount * 0.2 * 100) / 100 : 0
+      const finalAmount = realAmount + bonusAmount // display only — never written to Deposit.amount
+      if (bonusGranted) invalidateWalletCache(deposit.userId)
 
       await prisma.$transaction([
-        prisma.deposit.update({
-          where: { id: deposit.id },
-          data: {
-            status: 'approved',
-            amount: finalAmount,
-            approvedAt: new Date(),
-            transactionId: String(payment_id || ''),
-            webhookData: req.body
-          }
-        }),
         prisma.transactionLog.create({
           data: {
             type: 'nowpayments_ipn_confirmed',
             entityId: deposit.id,
             userId: deposit.userId,
-            amount: finalAmount,
+            amount: realAmount,
             status: 'approved',
-            metadata: req.body
+            metadata: bonusAmount > 0 ? { ...req.body, bonusAmount, bonusType: 'CRYPTO_DEPOSIT_BONUS' } : req.body
           }
         })
       ])
 
       await createNotification(deposit.userId, {
         title: '₿ Crypto Payment Confirmed!',
-        message: `Your crypto deposit of $${finalAmount.toFixed(2)} has been confirmed and credited (including 20% bonus!).`,
+        message: bonusAmount > 0
+          ? `Your crypto deposit of $${realAmount.toFixed(2)} has been confirmed, plus a $${bonusAmount.toFixed(2)} bonus — $${finalAmount.toFixed(2)} total credited!`
+          : `Your crypto deposit of $${realAmount.toFixed(2)} has been confirmed and credited.`,
         type: 'success',
         link: '/dashboard/deposits'
       })
@@ -235,12 +261,11 @@ router.post('/crypto', async (req: Request, res: Response) => {
 
     } else if (payment_status === 'failed' || payment_status === 'expired') {
       // Only update if still pending — don't overwrite an already-approved deposit
-      if (deposit.status === 'pending') {
-        await prisma.deposit.update({
-          where: { id: deposit.id },
-          data: { status: 'failed', webhookData: req.body }
-        })
-
+      const failClaim = await prisma.deposit.updateMany({
+        where: { id: deposit.id, status: 'pending' },
+        data: { status: 'failed', webhookData: req.body }
+      })
+      if (failClaim.count === 1) {
         await createNotification(deposit.userId, {
           title: '❌ Crypto Payment Failed',
           message: `Your crypto deposit of $${deposit.amount} ${payment_status === 'expired' ? 'expired' : 'failed'}. Please try again.`,
@@ -279,15 +304,15 @@ router.post('/zappay', async (req: Request, res: Response) => {
     const signature = req.headers['x-zappay-signature'] as string || req.query.signature as string;
     const { order_id, amount, status, transaction_id } = req.body;
 
-    // Save raw webhook log
+    // Unauthenticated callers never cause a database write: verify first, log after.
+    if (!signature || !ZappayService.verifyWebhookSignature(req.body, signature)) {
+      securityLog('webhook_invalid_signature', req, { provider: 'zappay' });
+      return res.status(401).json({ success: false, message: 'Invalid signature' });
+    }
+
     const webhookLog = await prisma.paymentWebhook.create({
       data: { provider: 'zappay', payload: req.body, status: 'received' }
     });
-
-    if (!signature || !ZappayService.verifyWebhookSignature(req.body, signature)) {
-      await prisma.paymentWebhook.update({ where: { id: webhookLog.id }, data: { status: 'failed', error: 'Invalid signature' } });
-      return res.status(401).json({ success: false, message: 'Invalid signature' });
-    }
 
     if (status !== 'success' && status !== 'approved') {
       await prisma.paymentWebhook.update({ where: { id: webhookLog.id }, data: { status: 'ignored', error: 'Status not approved' } });
@@ -318,8 +343,23 @@ router.post('/zappay', async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, message: 'Provider not found' });
     }
 
+    // Claim the deposit atomically first so a duplicate callback can never recharge the game account twice.
+    const zClaim = await prisma.deposit.updateMany({ where: { id: deposit.id, status: 'pending' }, data: { status: 'processing' } });
+    if (zClaim.count !== 1) {
+      // Being processed right now (or the first attempt may still revert): ask the gateway to retry instead of acking
+      const cur = await prisma.deposit.findUnique({ where: { id: deposit.id }, select: { status: true } });
+      if (cur?.status === 'processing') return res.status(409).json({ success: false, message: 'Deposit is being processed, retry later' });
+      return res.json({ success: true, message: 'Already processed' });
+    }
+
     // Attempt Recharge
-    const rechargeResult = await providerService.rechargePlayer(providerUser.providerUserId, deposit.amount, deposit.paymentReference!);
+    let rechargeResult: any;
+    try {
+      rechargeResult = await providerService.rechargePlayer(providerUser.providerUserId, deposit.amount, deposit.paymentReference!);
+    } catch (rechargeErr) {
+      await prisma.deposit.updateMany({ where: { id: deposit.id, status: 'processing' }, data: { status: 'pending' } });
+      throw rechargeErr;
+    }
 
     // If successful, update local deposit
     await prisma.$transaction([
@@ -353,8 +393,8 @@ router.post('/zappay', async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error('Zappay Webhook Error:', error);
     await prisma.paymentWebhook.create({
-      data: { provider: 'zappay', payload: req.body, status: 'error', error: error.message }
-    });
+      data: { provider: 'zappay', payload: req.body, status: 'error', error: String(error?.message || error).slice(0, 500) }
+    }).catch(() => {});
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
@@ -366,15 +406,15 @@ router.post('/ggusonepay', async (req: Request, res: Response) => {
   try {
     const signature = req.body.sign as string;
 
-    // Save raw webhook log
+    // Unauthenticated callers never cause a database write: verify first, log after.
+    if (!signature || !GgusOnePayService.verifyWebhookSignature(req.body, signature)) {
+      securityLog('webhook_invalid_signature', req, { provider: 'ggusonepay' });
+      return res.send('fail');
+    }
+
     const webhookLog = await prisma.paymentWebhook.create({
       data: { provider: 'ggusonepay', payload: req.body, status: 'received' }
     });
-
-    if (!signature || !GgusOnePayService.verifyWebhookSignature(req.body, signature)) {
-      await prisma.paymentWebhook.update({ where: { id: webhookLog.id }, data: { status: 'failed', error: 'Invalid signature' } });
-      return res.send('fail');
-    }
 
     // Coerce state to number — gateway may send string or number
     const mchOrderNo = req.body.mchOrderNo as string;
@@ -383,31 +423,54 @@ router.post('/ggusonepay', async (req: Request, res: Response) => {
 
     const deposit = await prisma.deposit.findFirst({
       where: { paymentReference: mchOrderNo },
-      include: { user: true }
+      include: { user: true, paymentMethod: { select: { code: true } } }
     });
 
     if (deposit) {
+      // Only deposits created for this gateway can be settled by this gateway's callback
+      if (deposit.paymentMethod?.code?.toLowerCase() !== 'ggusonepay') {
+        securityLog('webhook_wrong_method', req, { provider: 'ggusonepay', depositId: deposit.id });
+        await prisma.paymentWebhook.update({ where: { id: webhookLog.id }, data: { status: 'failed', error: 'Deposit is not a GgusOnePay deposit' } });
+        return res.send('success');
+      }
+
       // Pay-in order
       if (deposit.status === 'approved') {
         await prisma.paymentWebhook.update({ where: { id: webhookLog.id }, data: { status: 'ignored', error: 'Already approved' } });
         return res.send('success');
       }
 
+      // The amount the gateway settled must match what we charged (cents)
+      if (req.body.amount !== undefined && Number(req.body.amount) !== Math.round(deposit.amount * 100)) {
+        securityLog('webhook_amount_mismatch', req, { provider: 'ggusonepay', depositId: deposit.id });
+        await prisma.paymentWebhook.update({ where: { id: webhookLog.id }, data: { status: 'failed', error: 'Amount mismatch' } });
+        return res.send('success');
+      }
+
+
       if (state === 2) {
         // Payment Successful — credit the user
         // Wallet-only mode for GgusOnePay (don't push to provider automatically)
-        const roundedAmount = Math.ceil(deposit.amount); // Round up (e.g. $9.99 -> $10.00)
+        // Credit exactly what was charged. The one intentional round-up is the $9.99 promo minimum -> $10.00
+        // (a blanket Math.ceil credited up to +$1 extra per deposit, e.g. $10.01 -> $11).
+        const cents = Math.round(deposit.amount * 100);
+        const roundedAmount = cents === 999 ? 10 : cents / 100;
 
-        await prisma.deposit.update({
-          where: { id: deposit.id },
+        // Atomic pending -> approved: replays, and callbacks for failed/voided deposits, can never approve again.
+        const gClaim = await prisma.deposit.updateMany({
+          where: { id: deposit.id, status: 'pending' },
           data: { 
             status: 'approved', 
-            amount: roundedAmount, // Update the database record to the rounded amount
+            amount: roundedAmount,
             transactionId: orderNo || '', 
             approvedAt: new Date(), 
             webhookData: req.body 
           }
         });
+        if (gClaim.count !== 1) {
+          await prisma.paymentWebhook.update({ where: { id: webhookLog.id }, data: { status: 'ignored', error: 'Not pending' } });
+          return res.send('success');
+        }
 
         invalidateWalletCache(deposit.userId);
 
@@ -420,11 +483,11 @@ router.post('/ggusonepay', async (req: Request, res: Response) => {
 
       } else if (state === 3 || state === 4 || state === 5 || state === 6) {
         // Failed / Revoked / Refunded / Closed
-        if (deposit.status === 'pending') {
-          await prisma.deposit.update({
-            where: { id: deposit.id },
-            data: { status: 'failed', webhookData: req.body }
-          });
+        const gFail = await prisma.deposit.updateMany({
+          where: { id: deposit.id, status: 'pending' },
+          data: { status: 'failed', webhookData: req.body }
+        });
+        if (gFail.count === 1) {
           await createNotification(deposit.userId, {
             title: '❌ Deposit Failed',
             message: `Your deposit of $${deposit.amount} could not be processed. Please try again.`,
@@ -438,16 +501,11 @@ router.post('/ggusonepay', async (req: Request, res: Response) => {
       // Not a deposit — check withdrawals
       const withdrawal = await prisma.withdrawal.findFirst({ where: { requestId: mchOrderNo } });
       if (withdrawal) {
-        if (state === 2 && withdrawal.status === 'pending') {
-          await prisma.withdrawal.update({
-            where: { id: withdrawal.id },
-            data: { status: 'approved', approvedAt: new Date() }
-          });
-        } else if (state === 3 && withdrawal.status === 'pending') {
-          await prisma.withdrawal.update({
-            where: { id: withdrawal.id },
-            data: { status: 'rejected', rejectionReason: 'Payout failed at gateway', rejectedAt: new Date() }
-          });
+        // Atomic + lock the row so staff/admin can no longer flip an already-settled payout (a later reject would refund it)
+        if (state === 2) {
+          await prisma.withdrawal.updateMany({ where: { id: withdrawal.id, status: 'pending' }, data: { status: 'approved', approvedAt: new Date(), locked: true } });
+        } else if (state === 3) {
+          await prisma.withdrawal.updateMany({ where: { id: withdrawal.id, status: 'pending' }, data: { status: 'rejected', rejectionReason: 'Payout failed at gateway', rejectedAt: new Date(), locked: true } });
         }
       } else {
         await prisma.paymentWebhook.update({ where: { id: webhookLog.id }, data: { status: 'ignored', error: 'Order not found' } });
@@ -469,14 +527,14 @@ router.post('/ggusonepay/transfer', async (req: Request, res: Response) => {
   try {
     const signature = req.body.sign as string;
 
+    if (!signature || !GgusOnePayService.verifyWebhookSignature(req.body, signature)) {
+      securityLog('webhook_invalid_signature', req, { provider: 'ggusonepay_transfer' });
+      return res.send('fail');
+    }
+
     const webhookLog = await prisma.paymentWebhook.create({
       data: { provider: 'ggusonepay_transfer', payload: req.body, status: 'received' }
     });
-
-    if (!signature || !GgusOnePayService.verifyWebhookSignature(req.body, signature)) {
-      await prisma.paymentWebhook.update({ where: { id: webhookLog.id }, data: { status: 'failed', error: 'Invalid signature' } });
-      return res.send('fail');
-    }
 
     const mchOrderNo = req.body.mchOrderNo as string;
     const state = Number(req.body.state); // 0=Created 1=Transferring 2=Successful 3=Failed 4=Cancelled
@@ -487,16 +545,10 @@ router.post('/ggusonepay/transfer', async (req: Request, res: Response) => {
       return res.send('success');
     }
 
-    if (state === 2 && withdrawal.status === 'pending') {
-      await prisma.withdrawal.update({
-        where: { id: withdrawal.id },
-        data: { status: 'approved', approvedAt: new Date() }
-      });
-    } else if ((state === 3 || state === 4) && withdrawal.status === 'pending') {
-      await prisma.withdrawal.update({
-        where: { id: withdrawal.id },
-        data: { status: 'rejected', rejectionReason: state === 4 ? 'Transfer cancelled' : 'Transfer failed at gateway', rejectedAt: new Date() }
-      });
+    if (state === 2) {
+      await prisma.withdrawal.updateMany({ where: { id: withdrawal.id, status: 'pending' }, data: { status: 'approved', approvedAt: new Date(), locked: true } })
+    } else if (state === 3 || state === 4) {
+      await prisma.withdrawal.updateMany({ where: { id: withdrawal.id, status: 'pending' }, data: { status: 'rejected', rejectionReason: state === 4 ? 'Transfer cancelled' : 'Transfer failed at gateway', rejectedAt: new Date(), locked: true } })
     }
 
     await prisma.paymentWebhook.update({ where: { id: webhookLog.id }, data: { status: 'processed' } });

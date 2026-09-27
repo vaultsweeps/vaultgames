@@ -2,8 +2,9 @@ import axios from 'axios';
 import crypto from 'crypto';
 import { logger } from '../../utils/logger';
 
-const GGUSONEPAY_MERCHANT_ID = process.env.GGUSONEPAY_MERCHANT_ID || '2026096053';
-const GGUSONEPAY_API_KEY = process.env.GGUSONEPAY_API_KEY || 'Pi4DJP5l9A3bhE41265s3d5Nb9l86P1a';
+// No fallbacks: credentials come from the environment only. A missing key makes signing/verification fail closed.
+const GGUSONEPAY_MERCHANT_ID = process.env.GGUSONEPAY_MERCHANT_ID || '';
+const GGUSONEPAY_API_KEY = process.env.GGUSONEPAY_API_KEY || '';
 const GGUSONEPAY_BASE_URL = process.env.GGUSONEPAY_BASE_URL || 'https://www.ggusonepay.com';
 const BACKEND_URL = process.env.BACKEND_URL || 'https://api.vaultsweeps.com';
 
@@ -22,6 +23,7 @@ export class GgusOnePayService {
    * Note: amounts are integer cents; timestamp is 13-digit ms epoch.
    */
   static generateSignature(params: Record<string, any>, signType: 'MD5' | 'SHA1' | 'SHA256' = 'MD5'): string {
+    if (!GGUSONEPAY_API_KEY) throw new Error('GGUSONEPAY_API_KEY is not configured');
     const sortedKeys = Object.keys(params).sort();
     const queryParts: string[] = [];
 
@@ -75,9 +77,14 @@ export class GgusOnePayService {
    * The gateway POSTs application/x-www-form-urlencoded; verify sign before processing.
    */
   static verifyWebhookSignature(payload: Record<string, any>, signature: string): boolean {
-    const signType = (payload.signType as 'MD5' | 'SHA1' | 'SHA256') || 'MD5';
-    const expectedSignature = this.generateSignature(payload, signType);
-    return expectedSignature === signature.toUpperCase();
+    if (!GGUSONEPAY_API_KEY || typeof signature !== 'string' || !signature) return false;
+    // Algorithm is fixed (we always request MD5): never let the caller pick a weaker/other one via `signType`.
+    const expected = Buffer.from(this.generateSignature(payload, 'MD5'));
+    const given = Buffer.from(signature.toUpperCase());
+    if (expected.length !== given.length || !crypto.timingSafeEqual(expected, given)) return false;
+    // If the gateway echoes our merchant number it must be ours.
+    if (payload.mchNo !== undefined && GGUSONEPAY_MERCHANT_ID && String(payload.mchNo) !== GGUSONEPAY_MERCHANT_ID) return false;
+    return true;
   }
 
 
@@ -122,7 +129,7 @@ export class GgusOnePayService {
     params.sign = this.generateSignature(params);
 
     logger.info(`[GgusOnePay] Creating pay-in order: mchNo=${GGUSONEPAY_MERCHANT_ID} orderSn=${orderSn} amount=${amountCents} wayCode=${wayCode}`);
-    logger.info(`[GgusOnePay] Request Parameters (Pay-In): ${JSON.stringify(params)}`);
+    logger.info(`[GgusOnePay] Request Parameters (Pay-In): ${JSON.stringify({ ...params, sign: '[REDACTED]' })}`);
 
     try {
       const response = await axios.post(`${GGUSONEPAY_BASE_URL}/api/pay/create`, params, {
@@ -134,7 +141,7 @@ export class GgusOnePayService {
 
       // API returns code=0 for success (see Response Codes §01)
       if (response.data.code !== 0) {
-        logger.error(`[GgusOnePay] Gateway error code=${response.data.code}: ${response.data.msg || JSON.stringify(response.data)}\n[GgusOnePay] FAILED REQUEST PARAMS: ${JSON.stringify(params)}`);
+        logger.error(`[GgusOnePay] Gateway error code=${response.data.code}: ${response.data.msg || JSON.stringify(response.data)}\n[GgusOnePay] FAILED REQUEST PARAMS: ${JSON.stringify({ ...params, sign: '[REDACTED]' })}`);
         throw new Error(`[GgusOnePay] Gateway error code=${response.data.code}: ${response.data.msg || JSON.stringify(response.data)}`);
       }
 

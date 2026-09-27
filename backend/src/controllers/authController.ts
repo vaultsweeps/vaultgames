@@ -6,7 +6,9 @@ import { asyncHandler, AppError } from '../middleware/errorHandler'
 import { generateToken, evictAuthCache } from '../middleware/auth'
 import { sendVerificationEmail, sendPasswordResetEmail, sendWelcomeEmail } from '../services/emailService'
 import { AuthRequest } from '../middleware/auth'
-import { securityLog } from '../middleware/security'
+import { securityLog, bumpFailure, getFailures, clearFailures } from '../middleware/security'
+import { escapeLike } from '../utils/safe'
+import { setSessionCookies, clearSessionCookies } from '../utils/authCookies'
 import { ProviderFactory } from '../services/provider/ProviderFactory'
 import { WalletService } from '../services/WalletService'
 import { revokeTokensIssuedBefore, markEmailVerifyTokenIssued, isEmailVerifyTokenValid, clearEmailVerifyToken, createTelegramLinkToken } from '../lib/redis'
@@ -14,13 +16,20 @@ import { auth } from '../lib/firebaseAdmin'
 import { createNotification } from '../services/notificationService'
 
 
+const LOGIN_MAX_FAILS = 30
+const LOGIN_FAIL_WINDOW_SEC = 15 * 60
+
 // POST /api/auth/register
 export const register = asyncHandler(async (req: Request, res: Response) => {
-  const { username, email, password, referralCode, couponCode } = req.body
+  const { username, email, password } = req.body
+  // Untyped JSON: anything but a plain string must never reach a query (Prisma would treat an object as an operator)
+  const referralCode = typeof req.body.referralCode === 'string' ? req.body.referralCode.trim().slice(0, 40) : ''
+  const couponCode = typeof req.body.couponCode === 'string' ? req.body.couponCode.trim().slice(0, 60) : ''
 
-  // Check existing
+  // Check existing — username uniqueness is case-insensitive (login matches case-insensitively, so "Admin" and "admin"
+  // would otherwise be two accounts one of which can never be logged in to unambiguously)
   const existing = await prisma.user.findFirst({
-    where: { OR: [{ email }, { username }] }
+    where: { OR: [{ email }, { username: { equals: escapeLike(username), mode: 'insensitive' } }] }
   })
   if (existing) {
     if (existing.email === email) throw new AppError('Email already registered', 409)
@@ -36,6 +45,16 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
     if (coupon.expiresAt && coupon.expiresAt < new Date()) throw new AppError('Coupon code has expired', 400)
     if (coupon.usageLimit !== null && coupon.usedCount >= coupon.usageLimit) throw new AppError('Coupon code usage limit reached', 400)
   }
+  const claimCoupon = async (c: NonNullable<typeof coupon>, userId: string) => {
+    // The check above is only a fast path: the counter itself is claimed atomically so concurrent sign-ups cannot exceed the limit
+    const claimed = await prisma.coupon.updateMany({
+      where: c.usageLimit !== null ? { id: c.id, usedCount: { lt: c.usageLimit } } : { id: c.id },
+      data: { usedCount: { increment: 1 } }
+    })
+    if (claimed.count !== 1) return false
+    await prisma.couponUsage.create({ data: { couponId: c.id, userId } })
+    return true
+  }
 
   const hashedPassword = await bcrypt.hash(password, 10)
   const verifyToken = crypto.randomBytes(32).toString('hex')
@@ -45,8 +64,8 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
     const referrer = await prisma.user.findFirst({
       where: {
         OR: [
-          { referralCode: { equals: referralCode, mode: 'insensitive' } },
-          { promoCode: { equals: referralCode, mode: 'insensitive' } }
+          { referralCode: { equals: escapeLike(referralCode), mode: 'insensitive' } },
+          { promoCode: { equals: escapeLike(referralCode), mode: 'insensitive' } }
         ]
       }
     })
@@ -64,7 +83,9 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
       referredById,
       profile: { 
         create: {
-          telegramUsername: req.body.telegramUsername ? (req.body.telegramUsername.startsWith('@') ? req.body.telegramUsername : `@${req.body.telegramUsername}`) : null
+          telegramUsername: typeof req.body.telegramUsername === 'string' && /^@?[A-Za-z0-9_]{3,32}$/.test(req.body.telegramUsername.trim())
+            ? `@${req.body.telegramUsername.trim().replace(/^@/, '')}`
+            : null
         } 
       }
     },
@@ -72,19 +93,7 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
   })
 
   // Process coupon if present
-  if (coupon) {
-    await prisma.$transaction([
-      prisma.couponUsage.create({
-        data: {
-          couponId: coupon.id,
-          userId: user.id
-        }
-      }),
-      prisma.coupon.update({
-        where: { id: coupon.id },
-        data: { usedCount: { increment: 1 } }
-      })
-    ])
+  if (coupon && (await claimCoupon(coupon, user.id))) {
 
     // Find or create freeplay bonus definition
     let freeplayBonus = await prisma.bonus.findFirst({ where: { type: 'freeplay' } })
@@ -108,6 +117,12 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
       }
     })
   }
+
+  // Records the signup IP so a later referral reward can compare it against the referrer's — see
+  // ReferralService.assessAbuseSignals. TRUST_PROXY-aware via req.ip, same as every other IP-based check.
+  prisma.activityLog.create({
+    data: { userId: user.id, action: 'register', ip: req.ip, userAgent: req.headers['user-agent'] }
+  }).catch(e => console.error('Activity log error:', e))
 
   // Send verification email asynchronously so it doesn't block registration
   markEmailVerifyTokenIssued(verifyToken).catch(() => {})
@@ -166,14 +181,15 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
 // POST /api/auth/login
 export const login = asyncHandler(async (req: Request, res: Response) => {
   const { email, password } = req.body
-  const identifier = (email || '').trim()
+  if (typeof email !== 'string' || typeof password !== 'string') throw new AppError('Invalid credentials', 401)
+  const identifier = email.trim()
 
   // Look up by email OR username (case-insensitive for username)
   const user = await prisma.user.findFirst({
     where: {
       OR: [
         { email: identifier },
-        { username: { equals: identifier, mode: 'insensitive' } }
+        { username: { equals: escapeLike(identifier), mode: 'insensitive' } }
       ]
     },
     include: { profile: true }
@@ -187,14 +203,29 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     securityLog('login_failed', req, { reason: 'unknown_account' })
     throw new AppError('Invalid credentials', 401)
   }
-  if (!user.isActive) throw new AppError('Account is suspended. Contact support.', 403)
-  if (user.isBanned) throw new AppError('Account has been banned.', 403)
+  // Per-ACCOUNT throttle, independent of IP and of whether the e-mail or the username was typed
+  const failKey = `login:${user.id}`
+  const throttled = (await getFailures(failKey)) >= LOGIN_MAX_FAILS
 
   const isMatch = await bcrypt.compare(password, user.password)
+  if (throttled) {
+    // The account is under a guessing attack. Never let a *guess* succeed, but do not lock the real owner out either:
+    // a correct password is accepted only from an address that already logged in to this account successfully before.
+    const knownIp = isMatch && req.ip ? await prisma.activityLog.findFirst({ where: { userId: user.id, action: 'login', ip: req.ip }, select: { id: true } }) : null
+    if (!knownIp) {
+      securityLog('login_account_throttled', req, { targetUserId: user.id, targetRole: user.role })
+      throw new AppError('Too many failed login attempts. Please wait a few minutes and try again.', 429)
+    }
+  }
   if (!isMatch) {
-    securityLog('login_failed', req, { reason: 'bad_password', targetUserId: user.id, targetRole: user.role })
+    const n = await bumpFailure(failKey, LOGIN_FAIL_WINDOW_SEC)
+    securityLog('login_failed', req, { reason: 'bad_password', targetUserId: user.id, targetRole: user.role, failures: n })
     throw new AppError('Invalid credentials', 401)
   }
+  // Account state is revealed only to someone who proved they know the password
+  if (!user.isActive) throw new AppError('Account is suspended. Contact support.', 403)
+  if (user.isBanned) throw new AppError('Account has been banned.', 403)
+  clearFailures(failKey).catch(() => {})
   if (user.role === 'admin') securityLog('admin_login', req, { adminId: user.id })
 
   // Update last login (async)
@@ -213,14 +244,23 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     }
   }).catch(e => console.error('Activity log error:', e))
 
-  const token = generateToken({ id: user.id, role: user.role, email: user.email })
+  // Admin sessions are short-lived: a stolen admin token is the highest-impact credential in the system
+  const isAdmin = user.role === 'admin'
+  const maxAgeMs = isAdmin ? 12 * 60 * 60 * 1000 : 7 * 24 * 60 * 60 * 1000
+  const token = generateToken({ id: user.id, role: user.role, email: user.email, tokenVersion: user.tokenVersion }, isAdmin ? '12h' : '7d')
+
+  // Primary path: an HttpOnly cookie the frontend never reads directly, plus a separate, deliberately
+  // JS-readable CSRF cookie (double-submit pattern — see middleware/csrf.ts). `token` is still returned in
+  // the body too: browsers where the cross-origin cookie doesn't land (Safari/ITP) fall back to sending it
+  // as an Authorization header exactly as before — see frontend/src/lib/api.ts.
+  const csrfToken = setSessionCookies(res, token, maxAgeMs)
 
   const { password: _, verifyToken, resetToken, resetExpiry, ...safeUser } = user
 
   res.json({
     success: true,
     message: 'Login successful',
-    data: { user: safeUser, token }
+    data: { user: safeUser, token, csrfToken }
   })
 })
 
@@ -276,27 +316,30 @@ export const verifyEmail = asyncHandler(async (req: Request, res: Response) => {
 export const forgotPassword = asyncHandler(async (req: Request, res: Response) => {
   const { email } = req.body
 
-  const user = await prisma.user.findUnique({ where: { email } })
-  // Don't reveal if user exists
-  if (!user) {
-    return res.json({ success: true, message: 'If that email is registered, you will receive reset instructions.' })
+  const GENERIC = { success: true, message: 'If that email is registered, you will receive reset instructions.' }
+  if (typeof email !== 'string') return res.json(GENERIC)
+
+  const user = await prisma.user.findFirst({ where: { email: { equals: escapeLike(email.trim()), mode: 'insensitive' } } })
+  // Same response whether or not the account exists (and whether or not the mail could be sent)
+  if (!user) return res.json(GENERIC)
+
+  // Re-send a still-valid token instead of rotating it: rotating let anyone who knows the address invalidate the
+  // link in the owner's earlier mail just by submitting the form again.
+  const reusable = !!user.resetToken && !!user.resetExpiry && user.resetExpiry.getTime() > Date.now() + 5 * 60 * 1000
+  const resetToken = reusable ? user.resetToken! : crypto.randomBytes(32).toString('hex')
+  const resetExpiry = reusable ? user.resetExpiry! : new Date(Date.now() + 60 * 60 * 1000) // 1 hour
+
+  if (!reusable) {
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { resetToken, resetExpiry }
+    })
   }
 
-  const resetToken = crypto.randomBytes(32).toString('hex')
-  const resetExpiry = new Date(Date.now() + 60 * 60 * 1000) // 1 hour
+  // Not awaited: the time SMTP takes must not tell an attacker the address exists
+  sendPasswordResetEmail(user.email, user.username, resetToken).catch((e) => console.error('Reset email send error:', e?.message))
 
-  await prisma.user.update({
-    where: { id: user.id },
-    data: { resetToken, resetExpiry }
-  })
-
-  try {
-    await sendPasswordResetEmail(email, user.username, resetToken)
-  } catch (e) {
-    throw new AppError('Failed to send reset email. Please try again.', 500)
-  }
-
-  res.json({ success: true, message: 'Password reset instructions sent to your email.' })
+  res.json(GENERIC)
 })
 
 // POST /api/auth/reset-password/:token
@@ -315,16 +358,20 @@ export const resetPassword = asyncHandler(async (req: Request, res: Response) =>
 
   const hashedPassword = await bcrypt.hash(password, 12)
 
+  // A password reset must invalidate any JWTs issued before this moment — otherwise a token stolen prior to
+  // the reset keeps working for its full remaining lifetime even after the user has "secured" their account.
+  // tokenVersion is bumped in the SAME write as the password change, so this guarantee holds as long as this
+  // DB call succeeds (which the reset already requires) — it does not depend on Redis being reachable.
   await prisma.user.update({
     where: { id: user.id },
-    data: { password: hashedPassword, resetToken: null, resetExpiry: null }
+    data: { password: hashedPassword, resetToken: null, resetExpiry: null, tokenVersion: { increment: 1 } }
   })
-
-  // A password reset should invalidate any JWTs issued before this moment —
-  // otherwise a token stolen prior to the reset keeps working for its full
-  // remaining lifetime even after the user has "secured" their account.
-  await revokeTokensIssuedBefore(user.id)
   evictAuthCache(user.id)
+
+  // Fast-path only, see revokeTokensIssuedBefore's doc comment — the durable guarantee is the tokenVersion
+  // bump above, which just happened regardless of this call's outcome.
+  const revoked = await revokeTokensIssuedBefore(user.id)
+  if (!revoked) securityLog('token_revocation_fast_path_failed', req, { userId: user.id, action: 'password_reset' })
 
   // Sync password with provider (async)
   try {
@@ -347,16 +394,22 @@ export const resetPassword = asyncHandler(async (req: Request, res: Response) =>
 // POST /api/auth/logout
 export const logout = asyncHandler(async (req: AuthRequest, res: Response) => {
   if (req.user?.id) {
-    // Invalidate the token being used for this request (and any other
-    // outstanding tokens for this user) so logout actually terminates the
-    // session server-side instead of only clearing client-side state.
-    await revokeTokensIssuedBefore(req.user.id)
+    // Durable revocation: bump the DB tokenVersion in the same write every time, so logout is fully
+    // effective even if Redis is down, unreachable, or was never configured — see middleware/auth.ts.
+    await prisma.user.update({ where: { id: req.user.id }, data: { tokenVersion: { increment: 1 } } })
     evictAuthCache(req.user.id)
+
+    // Fast-path only (see revokeTokensIssuedBefore's doc comment): failure here does not weaken the
+    // revocation above, but it does mean the 30s in-process auth cache on OTHER instances could still
+    // accept the old token briefly, so it's worth a security log line.
+    const revoked = await revokeTokensIssuedBefore(req.user.id)
+    if (!revoked) securityLog('token_revocation_fast_path_failed', req, { userId: req.user.id, action: 'logout' })
 
     await prisma.activityLog.create({
       data: { userId: req.user.id, action: 'logout', ip: req.ip }
     }).catch(() => {})
   }
+  clearSessionCookies(res)
   res.json({ success: true, message: 'Logged out successfully' })
 })
 
@@ -419,7 +472,7 @@ export const checkUsername = asyncHandler(async (req: Request, res: Response) =>
   }
 
   // Check our DB
-  const existing = await prisma.user.findFirst({ where: { username: { equals: username, mode: 'insensitive' } } })
+  const existing = await prisma.user.findFirst({ where: { username: { equals: escapeLike(username), mode: 'insensitive' } } })
   if (existing) {
     return res.json({ available: false, reason: 'Username already taken on this platform.' })
   }
@@ -473,12 +526,18 @@ export const verifyPhoneOTP = asyncHandler(async (req: AuthRequest, res: Respons
   const { idToken } = req.body;
   const userId = req.user!.id;
 
-  if (!idToken) {
+  if (!idToken || typeof idToken !== 'string') {
     throw new AppError('Firebase ID token is required', 400);
   }
 
-  try {
-    const decodedToken = await auth.verifyIdToken(idToken);
+  {
+    let decodedToken: any;
+    try {
+      decodedToken = await auth.verifyIdToken(idToken);
+    } catch (error: any) {
+      console.error('[Firebase Admin] Error verifying ID token:', error?.code || error?.message);
+      throw new AppError('Invalid or expired Firebase ID token', 400);
+    }
     const phoneNumber = decodedToken.phone_number;
 
     if (!phoneNumber) {
@@ -528,8 +587,5 @@ export const verifyPhoneOTP = asyncHandler(async (req: AuthRequest, res: Respons
     }
 
     res.json({ success: true, message: 'Phone number verified successfully' });
-  } catch (error: any) {
-    console.error('[Firebase Admin] Error verifying ID token:', error);
-    throw new AppError('Invalid or expired Firebase ID token', 400);
   }
 });

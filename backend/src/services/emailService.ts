@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer'
+import { escapeHtml } from '../utils/safe'
 
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || 'smtp.gmail.com',
@@ -49,7 +50,7 @@ export const sendVerificationEmail = async (email: string, username: string, tok
     subject: '⚡ Verify Your Vault Sweeps Account',
     html: baseTemplate(`
       <h2 style="color:#fff;font-family:monospace;font-size:24px;margin:0 0 8px;">VERIFY YOUR EMAIL</h2>
-      <p style="color:#94a3b8;font-size:15px;margin:0 0 24px;">Hi ${username}! One last step to activate your account.</p>
+      <p style="color:#94a3b8;font-size:15px;margin:0 0 24px;">Hi ${escapeHtml(username)}! One last step to activate your account.</p>
       <a href="${verifyUrl}" style="display:block;background:linear-gradient(135deg,#00D4FF,#7B2FFF);color:#fff;text-align:center;padding:14px 32px;border-radius:8px;text-decoration:none;font-family:monospace;font-weight:700;font-size:14px;letter-spacing:2px;margin-bottom:24px;">VERIFY EMAIL →</a>
       <p style="color:#475569;font-size:12px;text-align:center;">Link expires in 24 hours. If you didn't create this account, ignore this email.</p>
     `)
@@ -65,7 +66,7 @@ export const sendPasswordResetEmail = async (email: string, username: string, to
     subject: '🔐 Reset Your Vault Sweeps Password',
     html: baseTemplate(`
       <h2 style="color:#fff;font-family:monospace;font-size:24px;margin:0 0 8px;">RESET PASSWORD</h2>
-      <p style="color:#94a3b8;font-size:15px;margin:0 0 24px;">Hi ${username}, click below to reset your password.</p>
+      <p style="color:#94a3b8;font-size:15px;margin:0 0 24px;">Hi ${escapeHtml(username)}, click below to reset your password.</p>
       <a href="${resetUrl}" style="display:block;background:linear-gradient(135deg,#7B2FFF,#FF2D9B);color:#fff;text-align:center;padding:14px 32px;border-radius:8px;text-decoration:none;font-family:monospace;font-weight:700;font-size:14px;letter-spacing:2px;margin-bottom:24px;">RESET PASSWORD →</a>
       <p style="color:#475569;font-size:12px;text-align:center;">Link expires in 1 hour. If you didn't request this, ignore this email.</p>
     `)
@@ -79,7 +80,7 @@ export const sendWelcomeEmail = async (email: string, username: string) => {
     subject: '🎮 Welcome to Vault Sweeps!',
     html: baseTemplate(`
       <h2 style="color:#00D4FF;font-family:monospace;font-size:28px;margin:0 0 8px;text-align:center;">WELCOME TO THE VAULT SWEEPS!</h2>
-      <p style="color:#94a3b8;font-size:15px;margin:0 0 24px;text-align:center;">Hey ${username}! Your account is verified and ready to go.</p>
+      <p style="color:#94a3b8;font-size:15px;margin:0 0 24px;text-align:center;">Hey ${escapeHtml(username)}! Your account is verified and ready to go.</p>
       <div style="background:rgba(0,212,255,0.05);border:1px solid rgba(0,212,255,0.15);border-radius:12px;padding:20px;margin-bottom:24px;">
         <p style="color:#e2e8f0;font-size:14px;margin:0 0 12px;font-weight:600;">Get started:</p>
         <p style="color:#94a3b8;font-size:13px;margin:4px 0;">• Make your first deposit and claim your 500% Welcome Bonus</p>
@@ -101,7 +102,7 @@ export const sendDepositNotification = async (email: string, username: string, a
       <h2 style="color:${isApproved ? '#00FF88' : '#FF4444'};font-family:monospace;font-size:24px;margin:0 0 8px;">
         DEPOSIT ${isApproved ? 'APPROVED' : 'REJECTED'}
       </h2>
-      <p style="color:#94a3b8;font-size:15px;margin:0 0 24px;">Hi ${username}!</p>
+      <p style="color:#94a3b8;font-size:15px;margin:0 0 24px;">Hi ${escapeHtml(username)}!</p>
       <div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:16px;margin-bottom:24px;">
         <p style="color:#64748b;font-size:12px;margin:0 0 4px;">AMOUNT</p>
         <p style="color:#00D4FF;font-family:monospace;font-size:28px;font-weight:900;margin:0;">$${amount}</p>
@@ -127,10 +128,10 @@ export const sendAdminZappayNotification = async (amount: number, accountName: s
         <p style="color:#00D4FF;font-family:monospace;font-size:28px;font-weight:900;margin:0 0 12px;">$${amount}</p>
         
         <p style="color:#64748b;font-size:12px;margin:0 0 4px;">ZAPPAY PROFILE NAME</p>
-        <p style="color:#fff;font-size:16px;font-weight:600;margin:0 0 12px;">${accountName || 'Not provided'}</p>
+        <p style="color:#fff;font-size:16px;font-weight:600;margin:0 0 12px;">${escapeHtml(String(accountName || 'Not provided').slice(0, 80))}</p>
         
         <p style="color:#64748b;font-size:12px;margin:0 0 4px;">REFERENCE</p>
-        <p style="color:#fff;font-size:14px;font-family:monospace;margin:0;">${paymentReference}</p>
+        <p style="color:#fff;font-size:14px;font-family:monospace;margin:0;">${escapeHtml(paymentReference)}</p>
       </div>
       <p style="color:#94a3b8;font-size:14px;">Please verify this payment in your Zappay account and approve or reject it from the admin panel.</p>
     `)
@@ -150,10 +151,10 @@ export const sendAdminNowPaymentsNotification = async (amount: number, currency:
         <p style="color:#00D4FF;font-family:monospace;font-size:28px;font-weight:900;margin:0 0 12px;">$${amount}</p>
         
         <p style="color:#64748b;font-size:12px;margin:0 0 4px;">CURRENCY</p>
-        <p style="color:#fff;font-size:16px;font-weight:600;margin:0 0 12px;">${currency}</p>
+        <p style="color:#fff;font-size:16px;font-weight:600;margin:0 0 12px;">${escapeHtml(currency)}</p>
         
         <p style="color:#64748b;font-size:12px;margin:0 0 4px;">NOWPAYMENTS ID (IRN)</p>
-        <p style="color:#fff;font-size:14px;font-family:monospace;margin:0;">${paymentId}</p>
+        <p style="color:#fff;font-size:14px;font-family:monospace;margin:0;">${escapeHtml(paymentId)}</p>
       </div>
       <p style="color:#94a3b8;font-size:14px;">This deposit has been automatically credited to the user's account.</p>
     `)

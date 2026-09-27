@@ -27,7 +27,13 @@ const REJECTION_REASONS = [
 // `*_\`` characters into fields that end up in admin-facing approval
 // messages, rendering as a real clickable link or breaking formatting.
 function escMd(s: any): string {
-  return String(s ?? '').replace(/([_*`\[\]])/g, '\\$1')
+  return String(s ?? '').replace(/([\\_*`\[\]])/g, '\\$1')
+}
+
+// Inside a `code span` legacy Markdown has no escape sequence, so a backtick (or backslash) in user-controlled text
+// would close the span and let the rest be parsed as Markdown. Strip them instead.
+function escCode(s: any): string {
+  return String(s ?? '').replace(/[`\\]/g, '')
 }
 
 const VOID_REASONS = [
@@ -239,11 +245,9 @@ export class TelegramSupportBot {
 
       // Fire and forget profile sync to save latency
       try {
+        // Match on the immutable Telegram id ONLY. telegramUsername is a free-text field users can edit in their own
+        // profile, so matching on it let a user claim someone else's handle and have that row overwritten.
         const orConditions: any[] = [{ telegramId: telegramUserId }];
-        if (telegramUsername) {
-          orConditions.push({ telegramUsername: { equals: `@${telegramUsername.replace('@', '')}`, mode: 'insensitive' } });
-          orConditions.push({ telegramUsername: { equals: telegramUsername.replace('@', ''), mode: 'insensitive' } });
-        }
 
         prisma.userProfile.findFirst({
           where: { OR: orConditions }
@@ -534,8 +538,9 @@ export class TelegramSupportBot {
       }
 
       const newStatus = action === 'approve' ? 'approved' : 'failed';
-      const updatedDeposit = await prisma.deposit.update({
-        where: { id: depositId },
+      // Atomic claim: only one of two concurrent clicks (or a click racing the IMAP auto-approver) can flip pending -> final
+      const claim = await prisma.deposit.updateMany({
+        where: { id: depositId, status: 'pending' },
         data: {
           status: newStatus,
           approvedBy: action === 'approve' ? agentName : undefined,
@@ -545,6 +550,11 @@ export class TelegramSupportBot {
           rejectionReason: action === 'reject' ? 'No payment received' : undefined,
         }
       });
+      if (claim.count !== 1) {
+        await ctx.reply(`⚠️ Deposit was already processed by someone else. No changes made.`, { parse_mode: 'Markdown' });
+        return;
+      }
+      const updatedDeposit = { ...deposit, status: newStatus };
 
       // Fire cache invalidation immediately (non-blocking) — user sees balance update ASAP
       invalidateWalletCache(deposit.userId);
@@ -567,7 +577,7 @@ export class TelegramSupportBot {
         const senderName = escMd(deposit.notes?.trim() || 'Not provided');
         const editedText =
           `${emoji} *Deposit ${action === 'approve' ? 'Approved' : 'Rejected'}* by ${escMd(agentName)}\n\n` +
-          `📋 Ref: \`${deposit.paymentReference}\`\n` +
+          `📋 Ref: \`${escCode(deposit.paymentReference)}\`\n` +
           `👤 User: ${escMd(deposit.user?.username || 'Unknown')} (${escMd(deposit.user?.email || 'N/A')})\n` +
           `💰 Amount: *$${Number(deposit.amount).toFixed(2)}*\n` +
           `💳 Method: ${methodName}\n` +
@@ -620,7 +630,7 @@ export class TelegramSupportBot {
       `👤 User: ${escMd(user?.username || 'Unknown')} (${escMd(user?.email || 'N/A')})\n` +
       `💰 Amount: *$${Number(withdrawal.amount).toFixed(2)}*\n` +
       `💳 Method: ${escMd(withdrawal.paymentMethodStr || 'Unknown')}\n` +
-      `🏦 Account: \`${escMd(withdrawal.accountDetails || withdrawal.accountInfo || 'N/A')}\`\n` +
+      `🏦 Account: \`${escCode(withdrawal.accountDetails || withdrawal.accountInfo || 'N/A')}\`\n` +
       `📅 Created: ${createdAt}\n` +
       `📊 Status: Pending ⏳`;
 
@@ -666,7 +676,7 @@ export class TelegramSupportBot {
       `👤 User: ${escMd(withdrawal.user?.username || 'Unknown')} (${escMd(withdrawal.user?.email || 'N/A')})\n` +
       `💰 Amount: *$${Number(withdrawal.amount).toFixed(2)}*\n` +
       `💳 Method: ${escMd(withdrawal.paymentMethodStr || 'Unknown')}\n` +
-      `🏦 Account: \`${escMd(withdrawal.accountDetails || withdrawal.accountInfo || 'N/A')}\`\n` +
+      `🏦 Account: \`${escCode(withdrawal.accountDetails || withdrawal.accountInfo || 'N/A')}\`\n` +
       `📊 Status: ${statusText}\n` +
       (action === 'approved'
         ? `✅ Approved by: ${escMd(withdrawal.approvedBy || 'Admin')}`
@@ -721,7 +731,7 @@ export class TelegramSupportBot {
 
       const reasonButtons = VOID_REASONS.map(r => ([{
         text: r,
-        callback_data: `dep_void_reason_${depositId}__${r}`
+        callback_data: `dep_void_reason_${depositId}__${VOID_REASONS.indexOf(r)}` // index, not text: Telegram caps callback_data at 64 bytes
       }]));
 
       await ctx.reply(
@@ -741,7 +751,9 @@ export class TelegramSupportBot {
       if (separatorIdx === -1) return;
 
       const depositId = withoutPrefix.substring(0, separatorIdx);
-      const reason = withoutPrefix.substring(separatorIdx + 2);
+      const rawVoid = withoutPrefix.substring(separatorIdx + 2);
+      const reason = /^\d+$/.test(rawVoid) ? VOID_REASONS[Number(rawVoid)] : (VOID_REASONS.includes(rawVoid) ? rawVoid : undefined);
+      if (!reason) { await safeCbAnswer('Unknown reason'); return; }
 
       await safeCbAnswer('Voiding deposit...');
       await this.processDepositVoid(ctx, depositId, reason);
@@ -761,9 +773,9 @@ export class TelegramSupportBot {
       const requestId = data.replace('wd_reject_', '');
       await safeCbAnswer('Select rejection reason...');
 
-      const reasonButtons = REJECTION_REASONS.map(r => ([{
+      const reasonButtons = REJECTION_REASONS.map((r, i) => ([{
         text: r,
-        callback_data: `wd_reason_${requestId}__${r}`
+        callback_data: `wd_reason_${requestId}__${i}`
       }]));
       reasonButtons.push([{ text: '🚫 Reject Without Reason', callback_data: `wd_reason_${requestId}__NONE` }]);
 
@@ -785,7 +797,9 @@ export class TelegramSupportBot {
 
       const requestId = withoutPrefix.substring(0, separatorIdx);
       const rawReason = withoutPrefix.substring(separatorIdx + 2);
-      const reason = rawReason === 'NONE' ? null : rawReason;
+      const reason = rawReason === 'NONE' ? null
+        : /^\d+$/.test(rawReason) ? (REJECTION_REASONS[Number(rawReason)] ?? null)
+        : (REJECTION_REASONS.includes(rawReason) ? rawReason : null);
 
       await safeCbAnswer('Processing rejection...');
       await this.processWithdrawal(ctx, requestId, 'reject', reason);
@@ -818,10 +832,14 @@ export class TelegramSupportBot {
       }
 
       const adminNotes = (deposit.notes || '') + `\nVoided by ${agentName}: ${reason}`;
-      await prisma.deposit.update({
-        where: { id: depositId },
+      const voidClaim = await prisma.deposit.updateMany({
+        where: { id: depositId, status: 'approved' },
         data: { status: 'failed', notes: adminNotes }
       });
+      if (voidClaim.count !== 1) {
+        await ctx.reply(`⚠️ Deposit was already changed by someone else. No changes made.`, { parse_mode: 'Markdown' });
+        return;
+      }
 
       // Invalidate wallet cache so balance deduction is instant
       invalidateWalletCache(deposit.userId);
@@ -849,8 +867,8 @@ export class TelegramSupportBot {
       // Edit original Telegram message
       if (deposit.telegramMessageId && deposit.telegramChatId) {
         const editedText =
-          `🚫 *Deposit Voided* by ${agentName}\n\n` +
-          `📋 Ref: \`${deposit.paymentReference}\`\n` +
+          `🚫 *Deposit Voided* by ${escMd(agentName)}\n\n` +
+          `📋 Ref: \`${escCode(deposit.paymentReference)}\`\n` +
           `👤 User: ${escMd(deposit.user?.username || 'Unknown')} (${escMd(deposit.user?.email || 'N/A')})\n` +
           `💵 Amount: *$${Number(deposit.amount).toFixed(2)}*\n` +
           `📊 Status: Voided 🚫\n` +
@@ -929,9 +947,11 @@ export class TelegramSupportBot {
           updateData.rejectionReason = reason;
         }
 
-        return tx.withdrawal.update({
+        // Guarded write: two concurrent callbacks both pass the read above under READ COMMITTED, only one may win here
+        const won = await tx.withdrawal.updateMany({ where: { id: withdrawal.id, locked: false }, data: updateData });
+        if (won.count !== 1) throw new Error(`ALREADY_PROCESSED:${withdrawal.status}`);
+        return tx.withdrawal.findUniqueOrThrow({
           where: { id: withdrawal.id },
-          data: updateData,
           include: { user: { select: { username: true, email: true } } }
         });
       });

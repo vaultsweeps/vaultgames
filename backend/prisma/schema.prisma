@@ -27,6 +27,10 @@ model User {
   updatedAt            DateTime              @updatedAt
   referredById         String?
   isPhoneVerified      Boolean               @default(false)
+  // Durable, Redis-independent session revocation. Bumped by logout, password reset/change and admin
+  // ban/suspend; a JWT's embedded tokenVersion must match this or it is rejected, even if Redis (which
+  // backs the faster `revoked_before` check) is down, unreachable, or was never configured.
+  tokenVersion         Int                   @default(0)
   activityLogs         ActivityLog[]
   bonusClaims          BonusClaim[]
   conversations        Conversation[]
@@ -42,10 +46,60 @@ model User {
   referrals            User[]                @relation("Referrals")
   profile              UserProfile?
   withdrawals          Withdrawal[]
+  referralRewardsGiven    ReferralReward[]    @relation("ReferralRewardsGiven")
+  referralRewardsReceived ReferralReward[]    @relation("ReferralRewardsReceived")
+  wheelSpins              WheelSpin[]
+  depositBonuses          DepositBonus[]
 
   @@index([email])
   @@index([username])
   @@index([referralCode])
+}
+
+// One row per referee who has ever triggered a referral reward for their referrer. `refereeId` is unique
+// (not a composite with referrerId): each referee has exactly one referrer (User.referredById), so "one
+// reward per referee, ever" is exactly what a unique referee id expresses — while placing no limit at all on
+// how many different referees one referrer can earn from. This replaces the old design of writing a
+// BonusClaim keyed on (referrer, the single shared 'referral' Bonus definition row), which could only ever
+// hold one row per referrer in total and made every referral after the first silently fail.
+model ReferralReward {
+  id               String    @id @default(cuid())
+  referrerId       String
+  refereeId        String    @unique
+  amount           Float
+  // 'paid' counts toward the referrer's wallet balance immediately. 'flagged' is held for manual admin
+  // review (see AbuseFlag reasoning in ReferralService) and does NOT count until approved. 'rejected' never
+  // counts. Nothing is ever silently dropped — every reward decision is a row here.
+  status           String    @default("paid")
+  triggerSource    String // 'first_deposit' | 'first_recharge' — which qualifying event created this row
+  triggerDepositId String?
+  flagReason       String?
+  reviewedBy       String?
+  reviewedAt       DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  referrer         User      @relation("ReferralRewardsGiven", fields: [referrerId], references: [id])
+  referee          User      @relation("ReferralRewardsReceived", fields: [refereeId], references: [id])
+
+  @@index([referrerId])
+  @@index([status])
+}
+
+// One row per wheel-spin attempt (win or "Try Again" alike), replacing the old design of writing a
+// BonusClaim keyed on (user, the specific prize's Bonus row): winning the SAME prize (very commonly "Try
+// Again") a second time hit that unique constraint and crashed the request. A plain history table has no
+// such ceiling, and it is also the ledger the 48h cooldown and win-pattern counter both read from.
+model WheelSpin {
+  id        String   @id @default(cuid())
+  userId    String
+  bonusId   String // which prize (Bonus catalog row) was awarded, Try Again included
+  amount    Float    @default(0)
+  isWin     Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+  bonus     Bonus    @relation(fields: [bonusId], references: [id])
+
+  @@index([userId, createdAt])
 }
 
 model UserProfile {
@@ -85,9 +139,29 @@ model Deposit {
   paymentMethod     PaymentMethod?      @relation(fields: [paymentMethodId], references: [id])
   user              User                @relation(fields: [userId], references: [id])
   transaction       DepositTransaction?
+  depositBonus      DepositBonus?
 
   @@index([status])
   @@index([userId, status])
+}
+
+// A promotional bonus tied to one specific deposit (e.g. the 20% crypto-deposit bonus), kept OUT of
+// Deposit.amount so the deposit always represents the real confirmed amount only. `depositId` is unique:
+// that is what makes granting it atomic/idempotent — a repeated provider callback for the same deposit
+// hits this constraint and is a safe no-op, exactly like ReferralReward.refereeId is for referral rewards.
+// Never summed into totalDeposited/withdrawableBalance — see WalletService.
+model DepositBonus {
+  id        String   @id @default(cuid())
+  depositId String   @unique
+  userId    String
+  amount    Float
+  type      String // e.g. 'CRYPTO_DEPOSIT_BONUS' — kept as a plain string so a new promo type needs no migration
+  status    String   @default("paid") // 'paid' | 'reversed' (if the underlying deposit is later refunded/reversed)
+  createdAt DateTime @default(now())
+  deposit   Deposit  @relation(fields: [depositId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
 }
 
 model Withdrawal {
@@ -196,6 +270,7 @@ model Bonus {
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
   claims       BonusClaim[]
+  wheelSpins   WheelSpin[]
 }
 
 model BonusClaim {
@@ -404,7 +479,15 @@ model ProviderTransaction {
   amount          Float
   orderId         String   @unique
   providerOrderId String?
+  // 'pending' (row created, provider not yet called or awaiting response) | 'success' | 'failed' (a
+  // definitive provider rejection) | 'unknown' (an ambiguous/network-level failure — the provider may or may
+  // not have processed it; needs reconciliation, never silently retried). orderId's uniqueness is what makes
+  // a retry/duplicate request for the same logical transfer resolve to this same row instead of a new one.
   status          String
+  errorMessage    String? // sanitized (no provider secrets/credentials) — set on 'failed'/'unknown'
+  balanceBefore   Float? // live game balance snapshot taken right before the provider call, for reconciling
+                          // a row stuck in 'unknown' later (an admin/reconciliation job compares it against
+                          // the CURRENT live balance rather than needing to have caught it within the request)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   provider        Provider @relation(fields: [providerId], references: [id])

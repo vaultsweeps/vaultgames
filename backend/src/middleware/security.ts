@@ -4,6 +4,7 @@ import { Request, Response, NextFunction } from 'express'
 import { logger } from '../utils/logger'
 import { redis } from '../lib/redis'
 import type { AuthRequest } from './auth'
+import { ipv6Prefix64 } from '../utils/safe'
 
 /* ───────────────────────── security event logging ─────────────────────────
  * One structured line per event, greppable with "[SECURITY]". Callers pass only non-secret
@@ -13,6 +14,12 @@ const TOKEN_IN_PATH = /(reset-password|verify-email|download-code)\/[^/?]+/gi
 
 export function clientIp(req: Request): string {
   return req.ip || req.socket?.remoteAddress || 'unknown'
+}
+
+/** Rate-limit bucket key for the client address (IPv6 collapsed to its /64). */
+function ipBucket(req: Request): string {
+  const ip = clientIp(req)
+  return ip.includes(':') ? ipv6Prefix64(ip) : ip
 }
 
 export function securityLog(event: string, req: Request, meta: Record<string, unknown> = {}) {
@@ -47,7 +54,7 @@ function ipUsable(req: Request): boolean {
   return true
 }
 
-export type LimitScope = 'ip' | 'user' | 'ip+user' | 'identity'
+export type LimitScope = 'ip' | 'user' | 'ip+user' | 'identity' | 'target'
 
 interface LimitOptions {
   name: string
@@ -75,11 +82,12 @@ export function limit(o: LimitOptions) {
     skip: (req) => (scope === 'ip' || (scope === 'ip+user' && !(req as AuthRequest).user?.id)) ? !ipUsable(req) : false,
     keyGenerator: (req) => {
       const uid = (req as AuthRequest).user?.id
-      const ip = clientIp(req)
+      const ip = ipBucket(req)
       if (scope === 'user') return uid ? `u:${uid}` : `ip:${ip}`
       if (scope === 'ip+user') return `${ip}|${uid ?? '-'}`
-      if (scope === 'identity') {
+      if (scope === 'identity' || scope === 'target') {
         const raw = String((req.body && o.identityField ? req.body[o.identityField] : '') ?? '').trim().toLowerCase().slice(0, 200)
+        if (scope === 'target') return `t:${raw ? hash(raw) : '-'}`
         return `${ipUsable(req) ? ip : 'shared'}|${raw ? hash(raw) : '-'}`
       }
       return `ip:${ip}`
@@ -89,6 +97,43 @@ export function limit(o: LimitOptions) {
       res.status(429).json({ success: false, message: o.message || 'Too many requests. Please slow down and try again shortly.' })
     },
   })
+}
+
+/* ───────────────────────── per-account failure counter ─────────────────────────
+ * The login limiters are keyed by IP(+identity), so a botnet spreading guesses over many IPs, or alternating between
+ * the e-mail and the username of one account, is never throttled. This counter is keyed by the ACCOUNT only.
+ */
+const failMem = new Map<string, { n: number; exp: number }>()
+
+export async function bumpFailure(key: string, windowSec: number): Promise<number> {
+  const k = `fail:${key}`
+  if (redis) {
+    try {
+      const n = await redis.incr(k)
+      if (n === 1) await redis.expire(k, windowSec)
+      return n
+    } catch { /* fall through to memory */ }
+  }
+  const now = Date.now()
+  const cur = failMem.get(k)
+  if (!cur || cur.exp < now) { failMem.set(k, { n: 1, exp: now + windowSec * 1000 }); return 1 }
+  cur.n += 1
+  return cur.n
+}
+
+export async function getFailures(key: string): Promise<number> {
+  const k = `fail:${key}`
+  if (redis) {
+    try { return Number((await redis.get(k)) ?? 0) } catch { /* fall through */ }
+  }
+  const cur = failMem.get(k)
+  return cur && cur.exp > Date.now() ? cur.n : 0
+}
+
+export async function clearFailures(key: string): Promise<void> {
+  const k = `fail:${key}`
+  failMem.delete(k)
+  if (redis) { try { await redis.del(k) } catch { /* expires on its own */ } }
 }
 
 /* ───────────────────────── per-user wallet lock ─────────────────────────
@@ -126,13 +171,23 @@ export function serializePerUser(scope: string, ttlSec = 90) {
     const release = async () => {
       if (released) return
       released = true
+      clearTimeout(backstop)
       localLocks.delete(key)
       if (redisHeld && redis) {
         try { if ((await redis.get(key)) === token) await redis.del(key) } catch { /* lock expires on its own */ }
       }
     }
-    res.on('finish', release)
-    res.on('close', release)
+    // A client that disconnects mid-request does NOT stop the handler (provider call + DB writes keep running),
+    // so releasing on 'close' let a second request re-read a balance that didn't include the in-flight transfer.
+    // Release only when the handler ends the response; the TTL is the backstop for a handler that never does.
+    const backstop = setTimeout(() => { void release() }, ttlSec * 1000)
+    backstop.unref?.()
+    const originalEnd = res.end.bind(res) as (...a: any[]) => Response
+    res.end = ((...args: any[]) => {
+      const out = originalEnd(...args)
+      void release()
+      return out
+    }) as any
     next()
   }
 }

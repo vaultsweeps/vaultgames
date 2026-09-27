@@ -44,3 +44,34 @@ export const upload = multer({
     }
   }
 })
+
+// The client-declared MIME type is just a header. After multer has stored the file, check the real signature
+// (magic bytes) so a script/HTML/SVG payload renamed to .png is rejected; rejected or failed uploads are deleted.
+const SIGNATURES: Record<string, (b: Buffer) => boolean> = {
+  'image/jpeg': b => b.length > 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff,
+  'image/png': b => b.length > 8 && b.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])),
+  'image/gif': b => b.length > 6 && (b.subarray(0, 6).toString('latin1') === 'GIF87a' || b.subarray(0, 6).toString('latin1') === 'GIF89a'),
+  'image/webp': b => b.length > 12 && b.subarray(0, 4).toString('latin1') === 'RIFF' && b.subarray(8, 12).toString('latin1') === 'WEBP',
+}
+
+export const verifyUploadedImage = (req: any, res: any, next: any) => {
+  const file = req.file as Express.Multer.File | undefined
+  if (!file) return next()
+  const discard = () => fs.unlink(file.path, () => {})
+  try {
+    const fd = fs.openSync(file.path, 'r')
+    const head = Buffer.alloc(16)
+    fs.readSync(fd, head, 0, 16, 0)
+    fs.closeSync(fd)
+    if (!Object.values(SIGNATURES).some(check => check(head))) {
+      discard()
+      return res.status(400).json({ success: false, message: 'The uploaded file is not a valid image.' })
+    }
+  } catch {
+    discard()
+    return res.status(400).json({ success: false, message: 'Could not read the uploaded file.' })
+  }
+  // If the request later fails (validation, balance, lock...), don't leave an orphaned file behind
+  res.on('finish', () => { if (res.statusCode >= 400) discard() })
+  next()
+}
