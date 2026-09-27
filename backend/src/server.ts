@@ -124,6 +124,13 @@ app.use(cors({
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key', 'X-CSRF-Token'],
+  // Without this, browsers cache a CORS preflight for only a few seconds (or not at all), so every
+  // non-simple cross-origin request (i.e. almost all of them, since the frontend and API are on different
+  // subdomains and send Content-Type/Authorization/X-CSRF-Token) pays a fresh ~300ms OPTIONS round-trip on
+  // top of its own response time — measured in production: 8-10 preflights on a single page load, 270-330ms
+  // each, 2.5-3s of pure overhead before any real work even starts. 86400s (24h) is the spec max; Chromium
+  // clamps it to 2h and Firefox honors up to 24h internally, so this is safe to set this high everywhere.
+  maxAge: 86400,
 }))
 
 app.use(cookieParser())

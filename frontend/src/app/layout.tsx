@@ -46,8 +46,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="en" className="dark" suppressHydrationWarning>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-        <link rel="preload" as="image" href="/intro.png" />
-        <link rel="preload" as="image" href="/images/slide1.png" />
+        {/* No manual <link rel="preload"> for intro.png/slide1.png here: both now render via next/image
+            with `priority` (VaultIntro.tsx, HeroSlider.tsx), which auto-injects its own preload for the
+            correctly-SIZED/optimized variant. A manual preload pointing at the raw original file forced
+            an extra full-size download (1.8MB + 545KB) on every single page load, on top of whatever
+            next/image itself already fetched — pure wasted bandwidth, found via a real network audit. */}
         {/* Inline script: synchronously hide the pre-screen if vault was already seen.
             Runs before first paint — eliminates homepage flash for returning users. */}
         <script nonce={nonce} dangerouslySetInnerHTML={{ __html: `(function(){try{if(sessionStorage.getItem('vaultIntroSeen')){var s=document.getElementById('vs-prescreen');if(s)s.style.display='none';}}catch(e){}})();` }} />
