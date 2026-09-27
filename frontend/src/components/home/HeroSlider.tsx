@@ -63,13 +63,27 @@ export default function HeroSlider() {
     }
   }
 
-  // Auto-play timer
+  const goTo = (index: number) => {
+    setCurrent(((index % slides.length) + slides.length) % slides.length)
+  }
+
+  // Auto-play timer — re-arms on every `current` change (auto-advance, dot click, or a manual swipe
+  // below), so a swipe never gets immediately undone by the timer firing a moment later.
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrent(c => (c + 1) % slides.length)
-    }, 5000)
+    const timer = setInterval(() => goTo(current + 1), 5000)
     return () => clearInterval(timer)
-  }, [slides.length])
+  }, [current, slides.length])
+
+  // Swipe: a real drag gesture (touch or mouse) that rubber-bands back to center on release —
+  // dragConstraints locks it to 0 so it's a gesture detector, not a physically-dragged track; the actual
+  // slide change is a discrete index update using the same keyed-remount transition dots already use.
+  // touchAction: 'pan-y' keeps vertical page scroll working normally for a swipe that starts on the hero.
+  const SWIPE_DISTANCE = 60
+  const SWIPE_VELOCITY = 400
+  const handleDragEnd = (_: unknown, info: { offset: { x: number }; velocity: { x: number } }) => {
+    if (info.offset.x < -SWIPE_DISTANCE || info.velocity.x < -SWIPE_VELOCITY) goTo(current + 1)
+    else if (info.offset.x > SWIPE_DISTANCE || info.velocity.x > SWIPE_VELOCITY) goTo(current - 1)
+  }
 
   const slide = slides[current]
   const nextSlide = slides[(current + 1) % slides.length]
@@ -85,9 +99,14 @@ export default function HeroSlider() {
   return (
     <section className="pt-6 pb-4 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
       <div className="relative w-full h-[280px] sm:h-[320px] lg:h-[380px] rounded-[2rem] overflow-hidden shadow-[0_0_40px_rgba(123,47,255,0.15)] group bg-surface">
-        <div
+        <motion.div
           key={slide.id}
-          className={`absolute inset-0 bg-gradient-to-r ${slide.gradient} transition-all duration-500`}
+          drag="x"
+          dragConstraints={{ left: 0, right: 0 }}
+          dragElastic={0.4}
+          onDragEnd={handleDragEnd}
+          style={{ touchAction: 'pan-y' }}
+          className={`absolute inset-0 bg-gradient-to-r ${slide.gradient} transition-all duration-500 cursor-grab active:cursor-grabbing`}
         >
           {/* subtle overlay */}
           <div className="absolute inset-0 bg-black/10 mix-blend-overlay"></div>
@@ -180,7 +199,7 @@ export default function HeroSlider() {
               </motion.div>
             </motion.div>
           </div>
-        </div>
+        </motion.div>
 
         {warmNext && nextSlide && nextSlide.id !== slide.id && (
           <div aria-hidden className="absolute w-px h-px overflow-hidden opacity-0 pointer-events-none">
