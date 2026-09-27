@@ -5,6 +5,7 @@
 // — eliminating the homepage flash entirely for first-time visitors.
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import Image from 'next/image'
 
 // ─── CONFIG ──────────────────────────────────────────────────────────────────
 const N_BLADES = 10
@@ -141,17 +142,22 @@ export default function VaultIntro() {
               }}
               transition={{ duration: 1.4, ease: [0.22, 0.08, 0.12, 1.0] }}
             >
-              <img
-                src="/intro.png"
-                alt="Vault Sweeps"
-                style={{
-                  width: '90%',
-                  height: '90%',
-                  objectFit: 'contain',
-                  display: 'block',
-                }}
-                draggable={false}
-              />
+              {/* next/image instead of a raw <img>: the source file is a 1254x1254 (~1.8MB) PNG, but this
+                  renders at a small fraction of that on most screens — the optimizer serves a properly
+                  sized WebP/AVIF variant instead of the full original on every load. `priority` makes
+                  Next inject its own correctly-sized preload tag, replacing the old raw-file <link
+                  rel="preload"> in layout.tsx (which forced the full original to download regardless). */}
+              <div style={{ position: 'relative', width: '90%', height: '90%' }}>
+                <Image
+                  src="/intro.png"
+                  alt="Vault Sweeps"
+                  fill
+                  priority
+                  sizes="(max-width: 560px) 88vw, 560px"
+                  style={{ objectFit: 'contain' }}
+                  draggable={false}
+                />
+              </div>
             </motion.div>
 
             {/* ══ LAYER 2: SVG vault mechanism ══ */}

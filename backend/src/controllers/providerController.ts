@@ -94,6 +94,28 @@ export const createProviderAccount = asyncHandler(async (req: AuthRequest, res: 
   }
 })
 
+// GET /api/provider/account-fast?gameId=xxx — DB-only, no external provider call. Returns just enough to
+// show the account name (and, on the frontend, its locally-remembered password) immediately. Measured in
+// production: the full /account endpoint's live balance fetch from the provider's own API can take 3+
+// seconds (external network dependency, largely outside our control to speed up directly), which was
+// blocking the credentials card from showing anything at all for that whole time even though the account
+// name itself is a same-DB lookup that resolves in a couple hundred ms. The frontend now shows credentials
+// from this endpoint immediately, then fills in the live balance from the existing (slower) endpoint
+// separately, in the background — same data, same accuracy, just no longer serialized behind each other.
+export const getProviderAccountFast = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const userId = req.user!.id
+  const gameId = req.query.gameId as string | undefined
+  if (!gameId) return res.json({ success: true, data: { accountName: null, hasAccount: false } })
+
+  const providerId = await ProviderFactory.getProviderIdForGame(gameId)
+  if (!providerId) return res.json({ success: true, data: { accountName: null, hasAccount: false, isMaintenance: true } })
+
+  const providerUser = await prisma.providerUser.findFirst({ where: { userId, providerId }, include: { provider: true } })
+  if (!providerUser) return res.json({ success: true, data: { accountName: null, hasAccount: false } })
+
+  res.json({ success: true, data: { accountName: providerUser.accountName, hasAccount: true, providerName: providerUser.provider?.name || '' } })
+})
+
 // GET /api/provider/account?gameId=xxx
 export const getProviderAccount = asyncHandler(async (req: AuthRequest, res: Response) => {
   const startTotal = performance.now();

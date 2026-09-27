@@ -155,6 +155,9 @@ export const profileApi = {
 
 // Provider APIs
 export const providerApi = {
+  // DB-only, no live provider balance call — resolves in a couple hundred ms vs 3+ seconds for getAccount.
+  // Used to show credentials immediately; getAccount is then called separately to fill in the live balance.
+  getAccountFast: (gameId?: string) => apiClient.get('/provider/account-fast', { params: gameId ? { gameId } : {} }),
   getAccount: (gameId?: string) => apiClient.get('/provider/account', { params: gameId ? { gameId } : {} }),
   createAccount: (gameId?: string) => apiClient.post('/provider/create-account', {}, { params: gameId ? { gameId } : {} }),
   resetPassword: (gameId?: string) => apiClient.post('/provider/reset-password', {}, { params: gameId ? { gameId } : {} }),

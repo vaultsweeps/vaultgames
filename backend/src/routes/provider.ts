@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { authenticate } from '../middleware/auth'
 import { limit, idempotency, serializePerUser, parseMoney } from '../middleware/security'
 import { Request, Response, NextFunction } from 'express'
-import { createProviderAccount, getProviderAccount, resetProviderPassword, getProviderTransactions, transferFunds, getAllProviderAccounts } from '../controllers/providerController'
+import { createProviderAccount, getProviderAccount, getProviderAccountFast, resetProviderPassword, getProviderTransactions, transferFunds, getAllProviderAccounts } from '../controllers/providerController'
 
 const router = Router()
 
@@ -25,6 +25,7 @@ function validateTransfer(req: Request, res: Response, next: NextFunction) {
 router.use(authenticate)
 
 router.post('/create-account', accountLimiter, createProviderAccount)
+router.get('/account-fast', getProviderAccountFast)
 router.get('/account', getProviderAccount)
 router.post('/reset-password', accountLimiter, resetProviderPassword)
 router.get('/transactions', getProviderTransactions)

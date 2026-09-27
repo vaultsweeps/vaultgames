@@ -112,8 +112,14 @@ export default function GameDetailsPage() {
         // ("If store hydrates after initial render...") already re-fetches once isAuthenticated catches up.
         if (Cookies.get('vaultsweeps_token') || isAuthenticated) {
           if (gameRes.data.data.providerId) {
+            // getAccountFast is DB-only (accountName/hasAccount, no live provider balance call) — it's what
+            // unblocks the credentials card below. The full getAccount call (which additionally fetches the
+            // LIVE balance from the provider's own API — measured in production at 3+ seconds, an external
+            // dependency, not something our own code can speed up) runs separately afterward, in the
+            // background, and only updates the balance fields once it resolves. Same data, same accuracy —
+            // credentials just no longer wait on a call that has nothing to do with displaying them.
             const results = await Promise.all([
-              providerApi.getAccount(id as string).catch(() => ({ data: { data: null } })),
+              providerApi.getAccountFast(id as string).catch(() => ({ data: { data: null } })),
               providerApi.getTransactions(id as string).catch(() => ({ data: { data: [] } })),
               authApi.getBalance().catch(() => ({ data: { data: { balance: 0 } } }))
             ])
@@ -124,6 +130,14 @@ export default function GameDetailsPage() {
                 setMaintenanceModalOpen(true)
               } else {
                 setAccount(accRes.data.data)
+                if (accRes.data.data.hasAccount) {
+                  providerApi.getAccount(id as string).then(fullRes => {
+                    if (fullRes.data?.data) {
+                      setAccount((prev: any) => ({ ...prev, balance: fullRes.data.data.balance, totalDeposited: fullRes.data.data.totalDeposited }))
+                      setLastUpdate(new Date())
+                    }
+                  }).catch(() => {})
+                }
               }
             }
 
@@ -171,7 +185,7 @@ export default function GameDetailsPage() {
       try {
         if (game?.providerId) {
           const [accRes, txRes, balRes] = await Promise.all([
-            providerApi.getAccount(id as string).catch(() => ({ data: { data: null } })),
+            providerApi.getAccountFast(id as string).catch(() => ({ data: { data: null } })),
             providerApi.getTransactions(id as string).catch(() => ({ data: { data: [] } })),
             authApi.getBalance().catch(() => ({ data: { data: { balance: 0 } } }))
           ])
@@ -181,6 +195,11 @@ export default function GameDetailsPage() {
               setMaintenanceModalOpen(true)
             } else {
               setAccount(accRes.data.data)
+              if (accRes.data.data.hasAccount) {
+                providerApi.getAccount(id as string).then(fullRes => {
+                  if (fullRes.data?.data) setAccount((prev: any) => ({ ...prev, balance: fullRes.data.data.balance, totalDeposited: fullRes.data.data.totalDeposited }))
+                }).catch(() => {})
+              }
             }
           }
 
