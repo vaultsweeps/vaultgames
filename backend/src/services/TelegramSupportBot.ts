@@ -340,7 +340,21 @@ export class TelegramSupportBot {
           ctx.telegram.copyMessage(conversation.telegram_user_id, ctx.chat.id, ctx.message.message_id)
         );
       }
-      
+
+      // Website-sourced conversations (and any linked account) have a real user_id — notify them via the
+      // in-app bell so a reply isn't missed while they're away from the support tab. The chat panel itself
+      // only shows this while open; this is what reaches them the rest of the time.
+      if (conversation.user_id) {
+        promises.push(
+          createNotification(conversation.user_id, {
+            title: '💬 Support replied',
+            message: text.length > 120 ? `${text.slice(0, 117)}...` : text,
+            type: 'info',
+            link: '/dashboard/support'
+          })
+        );
+      }
+
       await Promise.all(promises);
     } catch (e) {
       logger.error('Error handling group message', e);
