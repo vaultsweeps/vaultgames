@@ -4,6 +4,8 @@ import { asyncHandler, AppError } from '../middleware/errorHandler'
 import { ProviderService } from '../services/provider/ProviderService'
 import { createProviderService, ProviderFactory } from '../services/provider/ProviderFactory'
 import * as XLSX from 'xlsx'
+import { assertPublicHttpUrl } from '../utils/safe'
+import { securityLog } from '../middleware/security'
 
 // The raw secretKey (used to sign requests to the provider's real-money API)
 // should never round-trip back to the browser — only a short preview so the
@@ -21,8 +23,29 @@ export const getProviders = asyncHandler(async (req: Request, res: Response) => 
   res.json({ success: true, data: providers.map(maskProvider) })
 })
 
+// Provider credentials are sent to whatever URL is configured here, so the URL is validated like an outbound-request target:
+// http(s) only, no embedded credentials, and never a loopback/private/metadata host (SSRF + secret-exfiltration guard).
+async function validateProviderInput(body: any) {
+  if (body.apiBaseUrl !== undefined) {
+    try { await assertPublicHttpUrl(String(body.apiBaseUrl)) } catch (e: any) { throw new AppError(`Invalid API base URL: ${e.message}`, 400) }
+  }
+  if (body.endpoints !== undefined && body.endpoints !== null) {
+    if (typeof body.endpoints !== 'object' || Array.isArray(body.endpoints)) throw new AppError('Endpoints must be an object', 400)
+    for (const [k, v] of Object.entries(body.endpoints as Record<string, unknown>)) {
+      // An absolute URL here would override the base URL and bypass the check above
+      if (typeof v === 'string' && /^(https?:)?\/\//i.test(v.trim())) throw new AppError(`Endpoint "${k}" must be a path, not a full URL`, 400)
+    }
+  }
+  const t = body.requestTimeout !== undefined && body.requestTimeout !== '' ? Number(body.requestTimeout) : undefined
+  if (t !== undefined && (!Number.isFinite(t) || t < 1000 || t > 60000)) throw new AppError('Timeout must be between 1000 and 60000 ms', 400)
+  const r = body.retryCount !== undefined && body.retryCount !== '' ? Number(body.retryCount) : undefined
+  if (r !== undefined && (!Number.isFinite(r) || r < 0 || r > 5)) throw new AppError('Retry count must be between 0 and 5', 400)
+}
+
 export const createProvider = asyncHandler(async (req: Request, res: Response) => {
   const { name, apiBaseUrl, agentId, secretKey, logo, requestTimeout, retryCount, endpoints } = req.body
+  await validateProviderInput(req.body)
+  securityLog('admin_action', req as any, { action: 'provider_create', name: String(name).slice(0, 60) })
   const provider = await prisma.provider.create({
     data: { name, apiBaseUrl, agentId, secretKey, logo, requestTimeout: Number(requestTimeout), retryCount: Number(retryCount), endpoints: endpoints || {} }
   })
@@ -32,6 +55,19 @@ export const createProvider = asyncHandler(async (req: Request, res: Response) =
 export const updateProvider = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params
   const { name, apiBaseUrl, agentId, secretKey, logo, requestTimeout, retryCount, status, endpoints } = req.body
+  await validateProviderInput(req.body)
+
+  // Pointing an existing provider at a different host would make the server send the STORED secret to that host
+  // (masked in the UI, but sent in the login request). Changing the URL therefore requires re-entering the secret.
+  if (apiBaseUrl !== undefined) {
+    const current = await prisma.provider.findUnique({ where: { id: id as string }, select: { apiBaseUrl: true } })
+    if (!current) throw new AppError('Provider not found', 404)
+    const norm = (u: string) => String(u).trim().replace(/\/+$/, '').toLowerCase()
+    if (norm(current.apiBaseUrl) !== norm(apiBaseUrl) && !secretKey) {
+      throw new AppError('When you change the API base URL, please re-enter the secret key as well.', 400)
+    }
+  }
+  securityLog('admin_action', req as any, { action: 'provider_update', providerId: String(id), urlChanged: apiBaseUrl !== undefined, secretChanged: !!secretKey })
   const data: any = { name, apiBaseUrl, agentId, logo, status }
   if (secretKey) data.secretKey = secretKey
   if (requestTimeout) data.requestTimeout = Number(requestTimeout)
@@ -59,7 +95,7 @@ export const testConnection = asyncHandler(async (req: Request, res: Response) =
     const balance = await service.getAgentBalance()
     res.json({ success: true, message: 'Connection successful', data: { balance } })
   } catch (error: any) {
-    res.status(400).json({ success: false, message: error.message || 'Connection failed' })
+    res.status(400).json({ success: false, message: String(error.message || 'Connection failed').slice(0, 300) })
   }
 })
 
@@ -464,4 +500,48 @@ async function fetchProviderAgentBalances() {
 export const getProviderAgentBalances = asyncHandler(async (req: Request, res: Response) => {
   const data = await fetchProviderAgentBalances()
   res.json({ success: true, data })
+})
+
+// GET /api/admin/provider-transactions/unresolved — transactions stuck in 'pending' or 'unknown', for manual
+// reconciliation (FIN-7). 'pending' rows older than a few minutes indicate the request never got as far as a
+// provider response at all (a crashed process, most likely); 'unknown' rows are the genuinely ambiguous ones
+// transferFunds could not resolve on its own.
+export const getUnresolvedProviderTransactions = asyncHandler(async (req: Request, res: Response) => {
+  const rows = await prisma.providerTransaction.findMany({
+    where: { status: { in: ['pending', 'unknown'] } },
+    orderBy: { createdAt: 'asc' },
+    include: { user: { select: { username: true, email: true } }, provider: { select: { name: true } } },
+    take: 200,
+  })
+  res.json({ success: true, data: rows })
+})
+
+// PATCH /api/admin/provider-transactions/:id/resolve — body: { resolution: 'success' | 'failed', notes?: string }
+// Manually finalizes a transaction an admin has confirmed the true outcome of (by checking the provider's own
+// dashboard/live balance for that player). This does NOT re-run the provider call and does NOT grant any
+// welcome/deposit/referral bonus automatically — those decisions require the same human judgment call about
+// what actually happened, so an admin marking 'success' here should grant any owed bonus separately via the
+// existing add-balance tooling if appropriate. This endpoint's job is narrowly to stop the transaction from
+// being silently stuck forever and to make its final state count (or not count) correctly in wallet balance math.
+export const resolveProviderTransaction = asyncHandler(async (req: Request, res: Response) => {
+  const id = req.params.id as string
+  const { resolution, notes } = req.body as { resolution?: string; notes?: string }
+  if (resolution !== 'success' && resolution !== 'failed') {
+    throw new AppError("resolution must be 'success' or 'failed'", 400)
+  }
+
+  const tx = await prisma.providerTransaction.findUnique({ where: { id } })
+  if (!tx) throw new AppError('Transaction not found', 404)
+  if (tx.status !== 'pending' && tx.status !== 'unknown') {
+    throw new AppError(`Only pending/unknown transactions can be manually resolved (this one is ${tx.status})`, 400)
+  }
+
+  const claim = await prisma.providerTransaction.updateMany({
+    where: { id, status: tx.status },
+    data: { status: resolution, errorMessage: notes ? `[admin-resolved] ${notes}`.slice(0, 300) : tx.errorMessage },
+  })
+  if (claim.count !== 1) throw new AppError('This transaction was just changed by someone else — refresh and check its status', 409)
+
+  securityLog('admin_action', req as any, { action: 'provider_transaction_resolve', transactionId: id, resolution, orderId: tx.orderId })
+  res.json({ success: true, message: `Transaction marked ${resolution}` })
 })

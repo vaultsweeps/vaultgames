@@ -1,4 +1,8 @@
 import { Response } from 'express'
+import { securityLog, parseMoney } from '../middleware/security'
+import { csvCell, isSafeLinkUrl } from '../utils/safe'
+import { evictAuthCache } from '../middleware/auth'
+import { revokeTokensIssuedBefore } from '../lib/redis'
 import prisma from '../lib/prisma'
 import { asyncHandler, AppError } from '../middleware/errorHandler'
 import { AuthRequest } from '../middleware/auth'
@@ -7,6 +11,7 @@ import { logger } from '../utils/logger'
 import { supabase } from '../utils/supabase'
 import { WalletService, invalidateWalletCache } from '../services/WalletService'
 import { ReferralService } from '../services/ReferralService'
+import { grantDepositBonus, reverseDepositBonus } from '../services/DepositBonusService'
 import { redis, getCached } from '../lib/redis'
 import { ProviderFactory } from '../services/provider/ProviderFactory'
 import * as XLSX from 'xlsx'
@@ -260,16 +265,18 @@ export const getUserDetails = asyncHandler(async (req: AuthRequest, res: Respons
 
 export const voidUserBalance = asyncHandler(async (req: AuthRequest, res: Response) => {
   const id = req.params.id as string
-  const { amount, reason } = req.body
-
-  if (!amount || amount <= 0) {
-    throw new AppError('Valid amount is required', 400)
+  const { reason } = req.body
+  const maxAdjust = Number(process.env.ADMIN_MAX_ADJUSTMENT) > 0 ? Number(process.env.ADMIN_MAX_ADJUSTMENT) : 10000
+  const amount = parseMoney(req.body.amount, { max: maxAdjust })
+  if (amount === null) {
+    throw new AppError(`Valid amount is required (0.01 - ${maxAdjust})`, 400)
   }
 
   const user = await prisma.user.findUnique({ where: { id } })
   if (!user) {
     throw new AppError('User not found', 404)
   }
+  securityLog('admin_action', req, { action: 'balance_void', targetUserId: id, amount })
 
   // Check if user has enough balance
   const currentBalance = await WalletService.getWalletBalance(user.id)
@@ -281,7 +288,7 @@ export const voidUserBalance = asyncHandler(async (req: AuthRequest, res: Respon
   const withdrawal = await prisma.withdrawal.create({
     data: {
       userId: user.id,
-      amount: parseFloat(amount),
+      amount,
       currency: 'USD',
       accountInfo: 'Admin Void',
       status: 'paid', // Immediately marks it as paid to deduct balance
@@ -300,14 +307,16 @@ export const voidUserBalance = asyncHandler(async (req: AuthRequest, res: Respon
 // POST /api/admin/users/:id/add-balance
 export const addUserBalance = asyncHandler(async (req: AuthRequest, res: Response) => {
   const id = req.params.id as string
-  const { amount, reason } = req.body
-
-  if (!amount || amount <= 0) {
-    throw new AppError('Valid amount is required', 400)
+  const { reason } = req.body
+  const maxAdjust = Number(process.env.ADMIN_MAX_ADJUSTMENT) > 0 ? Number(process.env.ADMIN_MAX_ADJUSTMENT) : 10000
+  const amount = parseMoney(req.body.amount, { max: maxAdjust })
+  if (amount === null) {
+    throw new AppError(`Valid amount is required (0.01 - ${maxAdjust})`, 400)
   }
 
   const user = await prisma.user.findUnique({ where: { id } })
   if (!user) throw new AppError('User not found', 404)
+  securityLog('admin_action', req, { action: 'balance_add', targetUserId: id, amount })
 
   // Find or create a generic 'manual' payment method reference
   let manualMethod = await prisma.paymentMethod.findFirst({ where: { code: 'manual' } })
@@ -328,7 +337,7 @@ export const addUserBalance = asyncHandler(async (req: AuthRequest, res: Respons
   const deposit = await prisma.deposit.create({
     data: {
       userId: user.id,
-      amount: parseFloat(amount),
+      amount,
       currency: 'USD',
       paymentMethodId: manualMethod.id,
       status: 'approved',
@@ -341,7 +350,7 @@ export const addUserBalance = asyncHandler(async (req: AuthRequest, res: Respons
   // Notify user
   await createNotification(user.id, {
     title: 'Balance Added',
-    message: `$${parseFloat(amount).toFixed(2)} has been added to your wallet by admin.`,
+    message: `$${amount.toFixed(2)} has been added to your wallet by admin.`,
     type: 'success'
   })
 
@@ -355,10 +364,20 @@ export const addUserBalance = asyncHandler(async (req: AuthRequest, res: Respons
 // PATCH /api/admin/users/:id/ban
 export const banUser = asyncHandler(async (req: AuthRequest, res: Response) => {
   const id = req.params.id as string
+  const target = await prisma.user.findUnique({ where: { id }, select: { role: true } })
+  if (!target) throw new AppError('User not found', 404)
+  if (target.role === 'admin') throw new AppError('Administrator accounts cannot be banned from the panel', 403)
+  // tokenVersion bumped in the same write, so the ban is durable even if Redis is unreachable — the
+  // isActive:false check in the auth middleware already covers this once the 30s cache expires, but the
+  // version bump also invalidates the token immediately on any instance with a cold cache.
   const user = await prisma.user.update({
     where: { id },
-    data: { isBanned: true, isActive: false }
+    data: { isBanned: true, isActive: false, tokenVersion: { increment: 1 } }
   })
+  evictAuthCache(id)
+  const revoked = await revokeTokensIssuedBefore(id)
+  if (!revoked) securityLog('token_revocation_fast_path_failed', req, { userId: id, action: 'ban' })
+  securityLog('admin_action', req, { action: 'user_ban', targetUserId: id })
   createNotification(id, { title: 'Account Banned', message: 'Your account has been banned. Contact support.', type: 'error' })
   res.json({ success: true, message: 'User banned successfully' })
 })
@@ -366,9 +385,18 @@ export const banUser = asyncHandler(async (req: AuthRequest, res: Response) => {
 // PATCH /api/admin/users/:id/suspend
 export const suspendUser = asyncHandler(async (req: AuthRequest, res: Response) => {
   const id = req.params.id as string
-  const user = await prisma.user.findUnique({ where: { id }, select: { isActive: true } })
+  const user = await prisma.user.findUnique({ where: { id }, select: { isActive: true, role: true } })
   if (!user) throw new AppError('User not found', 404)
-  await prisma.user.update({ where: { id }, data: { isActive: !user.isActive } })
+  if (user.role === 'admin' && user.isActive) throw new AppError('Administrator accounts cannot be suspended from the panel', 403)
+  // Only bump tokenVersion when suspending (isActive going false), not when reactivating: reactivating an
+  // account should not also invalidate the session the admin just restored access for.
+  await prisma.user.update({ where: { id }, data: { isActive: !user.isActive, ...(user.isActive ? { tokenVersion: { increment: 1 } } : {}) } })
+  evictAuthCache(id)
+  if (user.isActive) {
+    const revoked = await revokeTokensIssuedBefore(id)
+    if (!revoked) securityLog('token_revocation_fast_path_failed', req, { userId: id, action: 'suspend' })
+  }
+  securityLog('admin_action', req, { action: user.isActive ? 'user_suspend' : 'user_activate', targetUserId: id })
   res.json({ success: true, message: `User ${user.isActive ? 'suspended' : 'activated'} successfully` })
 })
 
@@ -414,28 +442,43 @@ export const approveDeposit = asyncHandler(async (req: AuthRequest, res: Respons
   if (!deposit) throw new AppError('Deposit not found', 404)
   if (deposit.status === 'approved') throw new AppError('Deposit already approved', 400)
 
-  let finalAmount = deposit.amount;
-  if (deposit.paymentMethod?.code?.toLowerCase() === 'crypto') {
-    finalAmount = finalAmount * 1.2;
-  }
+  // FIN-6: Deposit.amount is always the real, confirmed amount — the +20% crypto bonus is NEVER folded into
+  // it. It's granted separately below as its own DepositBonus row, kept out of totalDeposited/withdrawable
+  // cash. (Re-approving a voided/failed deposit only qualifies from 'pending', same guard as before, so this
+  // still can't compound on re-approval.)
+  const isCryptoFirstApproval = deposit.paymentMethod?.code?.toLowerCase() === 'crypto' && deposit.status === 'pending'
+  const realAmount = deposit.amount
 
-  await prisma.deposit.update({
-    where: { id },
-    data: { status: 'approved', amount: finalAmount, notes, approvedBy: req.user!.id, approvedAt: new Date() }
+  // Atomic: only succeeds if the deposit is still in the status we just read (two concurrent approvals can't both run their side effects)
+  const approveClaim = await prisma.deposit.updateMany({
+    where: { id, status: deposit.status },
+    data: { status: 'approved', notes, approvedBy: req.user!.id, approvedAt: new Date() }
   })
+  if (approveClaim.count !== 1) throw new AppError('This deposit was just changed by someone else — refresh and check its status', 409)
+  invalidateWalletCache(deposit.userId)
+
+  let bonusAmount = 0
+  if (isCryptoFirstApproval) {
+    const granted = await grantDepositBonus({ depositId: id, userId: deposit.userId, amount: realAmount * 0.2, type: 'CRYPTO_DEPOSIT_BONUS' })
+    if (granted) { bonusAmount = Math.round(realAmount * 0.2 * 100) / 100; invalidateWalletCache(deposit.userId) }
+  }
+  const finalAmount = realAmount + bonusAmount // display/notification total only — never written to Deposit.amount
+  securityLog('admin_action', req, { action: 'deposit_approve', depositId: id, amount: realAmount, bonusAmount })
 
   createNotification(deposit.userId, {
     title: 'Deposit Approved! ✓',
-    message: `Your deposit of $${finalAmount.toFixed(2)} has been approved and is ready to use.`,
+    message: bonusAmount > 0
+      ? `Your deposit of $${realAmount.toFixed(2)} has been approved, plus a $${bonusAmount.toFixed(2)} bonus — $${finalAmount.toFixed(2)} total is ready to use.`
+      : `Your deposit of $${realAmount.toFixed(2)} has been approved and is ready to use.`,
     type: 'success', link: '/dashboard/deposits'
   })
 
   await prisma.transactionLog.create({
-    data: { type: 'deposit_approved', entityId: id, userId: req.user!.id, amount: finalAmount, status: 'approved' }
+    data: { type: 'deposit_approved', entityId: id, userId: req.user!.id, amount: realAmount, status: 'approved', metadata: bonusAmount > 0 ? { bonusAmount, bonusType: 'CRYPTO_DEPOSIT_BONUS' } : undefined }
   })
 
-  // Process potential referral bonus
-  await ReferralService.processFirstDepositBonus(deposit.userId, deposit.amount)
+  // Process potential referral bonus — always off the real confirmed amount, never the bonus-inflated one
+  await ReferralService.processFirstDepositBonus(deposit.userId, realAmount, id)
 
   res.json({ success: true, message: 'Deposit approved successfully' })
 })
@@ -448,7 +491,10 @@ export const rejectDeposit = asyncHandler(async (req: AuthRequest, res: Response
   const deposit = await prisma.deposit.findUnique({ where: { id } })
   if (!deposit) throw new AppError('Deposit not found', 404)
 
-  await prisma.deposit.update({ where: { id }, data: { status: 'failed', notes } })
+  // Rejecting an already-approved deposit silently removed its credit (use Void for that); only pending deposits can be rejected.
+  const rejectClaim = await prisma.deposit.updateMany({ where: { id, status: 'pending' }, data: { status: 'failed', notes } })
+  if (rejectClaim.count !== 1) throw new AppError(`Only pending deposits can be rejected (this one is ${deposit.status})`, 400)
+  securityLog('admin_action', req, { action: 'deposit_reject', depositId: id })
 
   createNotification(deposit.userId, {
     title: 'Deposit Rejected',
@@ -470,7 +516,13 @@ export const voidDeposit = asyncHandler(async (req: AuthRequest, res: Response) 
 
   const adminNotes = (deposit.notes || '') + '\nVoided: ' + (notes || 'No reason provided')
   
-  await prisma.deposit.update({ where: { id }, data: { status: 'failed', notes: adminNotes } })
+  const voidClaim = await prisma.deposit.updateMany({ where: { id, status: 'approved' }, data: { status: 'failed', notes: adminNotes } })
+  if (voidClaim.count !== 1) throw new AppError('Only approved deposits can be voided', 400)
+  securityLog('admin_action', req, { action: 'deposit_void', depositId: id, amount: deposit.amount })
+
+  // FIN-6: a voided deposit's promotional bonus (if any) is reversed too, so it stops counting toward the
+  // user's balance — a voided deposit must not leave its 20% bonus still withdrawable.
+  await reverseDepositBonus(id)
 
   // Invalidate wallet cache
   invalidateWalletCache(deposit.userId)
@@ -519,10 +571,12 @@ export const approveWithdrawal = asyncHandler(async (req: AuthRequest, res: Resp
   const withdrawal = await prisma.withdrawal.findUnique({ where: { id } })
   if (!withdrawal) throw new AppError('Withdrawal not found', 404)
 
-  await prisma.withdrawal.update({
-    where: { id },
+  const wApprove = await prisma.withdrawal.updateMany({
+    where: { id, locked: false, status: 'pending' },
     data: { status: 'approved', adminNotes: notes, processedBy: req.user!.id }
   })
+  if (wApprove.count !== 1) throw new AppError(`Only pending withdrawals can be approved (this one is ${withdrawal.status})`, 400)
+  securityLog('admin_action', req, { action: 'withdrawal_approve', withdrawalId: id, amount: withdrawal.amount })
 
   createNotification(withdrawal.userId, {
     title: 'Cashout Approved',
@@ -541,7 +595,11 @@ export const rejectWithdrawal = asyncHandler(async (req: AuthRequest, res: Respo
   const withdrawal = await prisma.withdrawal.findUnique({ where: { id } })
   if (!withdrawal) throw new AppError('Withdrawal not found', 404)
 
-  await prisma.withdrawal.update({ where: { id }, data: { status: 'rejected', adminNotes: notes } })
+  // A paid-out (or already rejected) withdrawal can't be rejected: that would refund money that already left
+  const wReject = await prisma.withdrawal.updateMany({ where: { id, locked: false, status: { in: ['pending', 'approved'] } }, data: { status: 'rejected', adminNotes: notes } })
+  if (wReject.count !== 1) throw new AppError(`This withdrawal can no longer be rejected (status: ${withdrawal.status})`, 400)
+  invalidateWalletCache(withdrawal.userId)
+  securityLog('admin_action', req, { action: 'withdrawal_reject', withdrawalId: id, amount: withdrawal.amount })
 
   createNotification(withdrawal.userId, {
     title: 'Cashout Rejected',
@@ -558,7 +616,9 @@ export const markWithdrawalPaid = asyncHandler(async (req: AuthRequest, res: Res
   const withdrawal = await prisma.withdrawal.findUnique({ where: { id } })
   if (!withdrawal) throw new AppError('Withdrawal not found', 404)
 
-  await prisma.withdrawal.update({ where: { id }, data: { status: 'paid', processedAt: new Date() } })
+  const wPaid = await prisma.withdrawal.updateMany({ where: { id, status: { in: ['pending', 'approved'] } }, data: { status: 'paid', processedAt: new Date() } })
+  if (wPaid.count !== 1) throw new AppError(`Only pending or approved withdrawals can be marked paid (this one is ${withdrawal.status})`, 400)
+  securityLog('admin_action', req, { action: 'withdrawal_paid', withdrawalId: id, amount: withdrawal.amount })
 
   createNotification(withdrawal.userId, {
     title: 'Cashout Paid! 💰',
@@ -725,6 +785,15 @@ export const updateSettings = asyncHandler(async (req: AuthRequest, res: Respons
   if (entries.length === 0) {
     return res.json({ success: true, message: 'No settings to update' })
   }
+  if (entries.length > 100) throw new AppError('Too many settings in one request', 400)
+  for (const [key, value] of entries) {
+    if (!/^[A-Za-z0-9_.-]{1,64}$/.test(key)) throw new AppError(`Invalid setting key: ${key.slice(0, 40)}`, 400)
+    if (typeof value === 'object' && value !== null) throw new AppError(`Setting ${key} must be a simple value`, 400)
+    if (String(value).length > 2000) throw new AppError(`Setting ${key} is too long`, 400)
+    // Links shown to every visitor (Telegram/Facebook/…): only http(s)/tg/site-relative — never javascript: or data:
+    if (/(_url|_link|url)$/i.test(key) && !isSafeLinkUrl(value)) throw new AppError(`Setting ${key} must be an http(s) link`, 400)
+  }
+  securityLog('admin_action', req, { action: 'settings_update', keys: entries.map(([k]) => k).slice(0, 30) })
 
   const now = new Date()
   const { v4: uuidv4 } = await import('uuid')
@@ -879,9 +948,9 @@ export const exportEnhancedWithdrawalsCSV = asyncHandler(async (req: AuthRequest
     w.user?.email || '',
     w.amount.toFixed(2),
     w.paymentMethodStr || '',
-    (w.accountDetails || '').replace(/,/g, ';'),
+    w.accountDetails || '',
     w.status,
-    (w.rejectionReason || '').replace(/,/g, ';'),
+    w.rejectionReason || '',
     w.approvedBy || '',
     w.approvedAt ? w.approvedAt.toISOString() : '',
     w.rejectedBy || '',
@@ -889,7 +958,7 @@ export const exportEnhancedWithdrawalsCSV = asyncHandler(async (req: AuthRequest
     w.createdAt.toISOString()
   ])
 
-  const csv = [header, ...rows].map(r => r.join(',')).join('\n')
+  const csv = [header, ...rows].map(r => r.map(csvCell).join(',')).join('\n')
   res.setHeader('Content-Type', 'text/csv')
   res.setHeader('Content-Disposition', `attachment; filename=withdrawals_${Date.now()}.csv`)
   res.send(csv)
@@ -910,16 +979,17 @@ export const adminApproveEnhancedWithdrawal = asyncHandler(async (req: AuthReque
     if (!withdrawal) throw new AppError('Withdrawal request not found', 404)
     if (withdrawal.locked) throw new AppError(`Request ${requestId} has already been processed (status: ${withdrawal.status})`, 409)
 
-    return tx.withdrawal.update({
-      where: { id: withdrawal.id },
+    const claim = await tx.withdrawal.updateMany({
+      where: { id: withdrawal.id, locked: false, status: 'pending' },
       data: {
         status: 'approved',
         approvedBy: adminUsername,
         approvedAt: new Date(),
         locked: true
-      },
-      include: { user: { select: { id: true, username: true } } }
+      }
     })
+    if (claim.count !== 1) throw new AppError(`Request ${requestId} has already been processed`, 409)
+    return tx.withdrawal.findUniqueOrThrow({ where: { id: withdrawal.id }, include: { user: { select: { id: true, username: true } } } })
   })
 
   // Broadcast via Supabase Realtime
@@ -976,17 +1046,18 @@ export const adminRejectEnhancedWithdrawal = asyncHandler(async (req: AuthReques
     if (!withdrawal) throw new AppError('Withdrawal request not found', 404)
     if (withdrawal.locked) throw new AppError(`Request ${requestId} has already been processed (status: ${withdrawal.status})`, 409)
 
-    return tx.withdrawal.update({
-      where: { id: withdrawal.id },
+    const claim = await tx.withdrawal.updateMany({
+      where: { id: withdrawal.id, locked: false, status: 'pending' },
       data: {
         status: 'rejected',
         rejectedBy: adminUsername,
         rejectedAt: new Date(),
         rejectionReason: reason || null,
         locked: true
-      },
-      include: { user: { select: { id: true, username: true } } }
+      }
     })
+    if (claim.count !== 1) throw new AppError(`Request ${requestId} has already been processed`, 409)
+    return tx.withdrawal.findUniqueOrThrow({ where: { id: withdrawal.id }, include: { user: { select: { id: true, username: true } } } })
   })
 
   // Broadcast via Supabase Realtime

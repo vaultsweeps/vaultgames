@@ -1,4 +1,5 @@
 import { logger } from '../utils/logger'
+import { stripInternal } from '../utils/safe'
 import { Response } from 'express'
 import prisma from '../lib/prisma'
 import { v4 as uuidv4 } from 'uuid'
@@ -35,7 +36,7 @@ export const getDeposits = asyncHandler(async (req: AuthRequest, res: Response) 
 
   res.json({
     success: true,
-    data: deposits,
+    data: deposits.map(d => stripInternal(d, ['telegramChatId', 'telegramMessageId'])),
     pagination: { page: Number(page), limit: Number(limit), total, pages: Math.ceil(total / Number(limit)) }
   })
 })
@@ -154,7 +155,7 @@ export const createDeposit = asyncHandler(async (req: AuthRequest, res: Response
     }
 
     try {
-      const clientIp = req.headers['x-forwarded-for'] || req.connection.remoteAddress || '1.1.1.1';
+      const clientIp = req.ip || '1.1.1.1'; // req.ip honours TRUST_PROXY; the raw X-Forwarded-For header is client-controlled
       
       const orderRes = await GgusOnePayService.createPayInOrder(
         Math.round(amount * 100),
@@ -253,10 +254,10 @@ export const getPaymentMethods = asyncHandler(async (req: AuthRequest, res: Resp
 export const getDeposit = asyncHandler(async (req: AuthRequest, res: Response) => {
   const deposit = await prisma.deposit.findFirst({
     where: { id: req.params.id as string, userId: req.user!.id },
-    include: { paymentMethod: true }
+    include: { paymentMethod: true } // apiConfig is removed by stripInternal
   })
   if (!deposit) throw new AppError('Deposit not found', 404)
-  res.json({ success: true, data: deposit })
+  res.json({ success: true, data: stripInternal(deposit, ['telegramChatId', 'telegramMessageId']) })
 })
 
 // GET /api/deposits/crypto-currencies

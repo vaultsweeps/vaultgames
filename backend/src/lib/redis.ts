@@ -99,12 +99,22 @@ export async function invalidateCached(key: string): Promise<void> {
 // Stored in Redis rather than the DB to avoid a schema migration.
 const REVOCATION_TTL_SECONDS = 8 * 24 * 60 * 60 // slightly longer than the 7-day access token lifetime
 
-export async function revokeTokensIssuedBefore(userId: string, atMs: number = Date.now()): Promise<void> {
-  if (!redis) return
+/**
+ * Best-effort FAST-PATH revocation record. Returns true only if the write was actually confirmed durable
+ * in Redis; false if Redis is unconfigured or the write failed (network error, Upstash outage, etc). A
+ * caller must NEVER report a security action ("logged out", "password reset") as fully successful based on
+ * this alone — the durable guarantee is the DB-backed `User.tokenVersion` bump each caller also performs in
+ * the same request (see middleware/auth.ts). This function only makes revocation take effect immediately
+ * instead of waiting up to 30s for the in-process auth cache to expire.
+ */
+export async function revokeTokensIssuedBefore(userId: string, atMs: number = Date.now()): Promise<boolean> {
+  if (!redis) return false
   try {
     await redis.setex(`revoked_before:${userId}`, REVOCATION_TTL_SECONDS, atMs)
+    return true
   } catch (error) {
     logger.error(`Redis Set Error for revocation of user ${userId}:`, error)
+    return false
   }
 }
 

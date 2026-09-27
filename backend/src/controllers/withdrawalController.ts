@@ -1,4 +1,5 @@
 import { Response } from 'express'
+import { stripInternal } from '../utils/safe'
 import { Prisma } from '@prisma/client'
 import prisma from '../lib/prisma'
 import { asyncHandler, AppError } from '../middleware/errorHandler'
@@ -47,7 +48,7 @@ export const getWithdrawals = asyncHandler(async (req: AuthRequest, res: Respons
 
   res.json({
     success: true,
-    data: withdrawals,
+    data: withdrawals.map(w => stripInternal(w, ['telegramChatId', 'telegramMessageId', 'adminNotes', 'processedBy'])),
     pagination: { page: Number(page), limit: Number(limit), total, pages: Math.ceil(total / Number(limit)) }
   })
 })
@@ -122,10 +123,10 @@ export const createWithdrawal = asyncHandler(async (req: AuthRequest, res: Respo
 export const getWithdrawal = asyncHandler(async (req: AuthRequest, res: Response) => {
   const withdrawal = await prisma.withdrawal.findFirst({
     where: { id: req.params.id as string, userId: req.user!.id },
-    include: { paymentMethod: true }
+    include: { paymentMethod: true } // apiConfig is removed by stripInternal
   })
   if (!withdrawal) throw new AppError('Withdrawal not found', 404)
-  res.json({ success: true, data: withdrawal })
+  res.json({ success: true, data: stripInternal(withdrawal, ['telegramChatId', 'telegramMessageId', 'adminNotes', 'processedBy']) })
 })
 
 // ─── POST /api/withdrawals/manual ────────────────────────────────────────
@@ -270,10 +271,10 @@ export const createEnhancedWithdrawal = asyncHandler(async (req: AuthRequest, re
   let withdrawal
   try {
     withdrawal = await prisma.$transaction(async (tx) => {
-      const { displayBalance } = await WalletService.getBalancesRaw(userId, tx as any)
-      if (numAmount > displayBalance) {
+      const { withdrawableBalance } = await WalletService.getBalancesRaw(userId, tx as any)
+      if (numAmount > withdrawableBalance) {
         throw new AppError(
-          `Insufficient balance. Your current balance is $${displayBalance.toFixed(2)}, but you requested $${numAmount.toFixed(2)}.`,
+          `Insufficient cashable balance. Your cashable balance is $${withdrawableBalance.toFixed(2)}, but you requested $${numAmount.toFixed(2)}.`,
           400
         )
       }

@@ -1,4 +1,5 @@
 import imaps from 'imap-simple'
+import { senderDomain, authResultsOk } from './mailTrust'
 import { simpleParser } from 'mailparser'
 import cron from 'node-cron'
 import prisma from '../../lib/prisma'
@@ -28,18 +29,18 @@ function trustedDomainsFor(method: 'chime' | 'paypal'): string[] {
   return DEFAULT_TRUSTED_DOMAINS[method]
 }
 
-function senderIsTrusted(fromAddress: string, method: 'chime' | 'paypal'): boolean {
-  const domain = fromAddress.split('@')[1]?.toLowerCase().trim()
+export function senderIsTrusted(fromAddress: string, method: 'chime' | 'paypal'): boolean {
+  const domain = senderDomain(fromAddress)
   if (!domain) return false
   return trustedDomainsFor(method).some(trusted => domain === trusted || domain.endsWith(`.${trusted}`))
 }
 
 /** Returns true when first name and first letter of last name match */
-function namesMatch(emailName: string, profileName: string): boolean {
+export function namesMatch(emailName: string, profileName: string): boolean {
   const emailTokens = normalize(emailName).split(' ').filter(Boolean)
   const profileTokens = normalize(profileName).split(' ').filter(Boolean)
 
-  if (emailTokens.length === 0 || profileTokens.length === 0) return false
+  if (emailTokens.length === 0 || profileTokens.length < 2) return false // first name alone is too weak to auto-approve
 
   // First name must match exactly
   if (emailTokens[0] !== profileTokens[0]) return false
@@ -67,7 +68,6 @@ export class ImapChimePayPalService {
         host: 'imap.gmail.com',
         port: 993,
         tls: true,
-        tlsOptions: { rejectUnauthorized: false },
         authTimeout: 10000
       }
     }
@@ -204,8 +204,8 @@ export class ImapChimePayPalService {
           // can send mail to this inbox could forge a "payment received" notice
           // and self-approve a deposit.
           const fromAddress = mail.from?.value?.[0]?.address || ''
-          if (!senderIsTrusted(fromAddress, paymentMethod)) {
-            logger.warn(`[ImapChimePayPal] Ignoring email from untrusted sender "${fromAddress}" claiming a ${paymentMethod} payment of $${amount}`)
+          if (!senderIsTrusted(fromAddress, paymentMethod) || !authResultsOk((mail as any).headers)) {
+            logger.warn(`[ImapChimePayPal] Ignoring email from untrusted/unauthenticated sender "${fromAddress}" claiming a ${paymentMethod} payment of $${amount}`)
             continue
           }
 
@@ -226,18 +226,22 @@ export class ImapChimePayPalService {
             include: { user: true, paymentMethod: true }
           })
 
-          const match = pending.find(d => {
-            const profile = (d.notes || '').trim()
-            return (
-              Math.abs(d.amount - amount!) < 0.01 &&
-              namesMatch(senderName!, profile)
-            )
-          })
+          const candidates = pending
+            .filter(d => Math.abs(d.amount - amount!) < 0.01 && namesMatch(senderName!, (d.notes || '').trim()))
+            .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
 
-          if (!match) {
+          if (candidates.length === 0) {
             logger.info(`[ImapChimePayPal] No match for sender:"${senderName}" amount:$${amount}`)
             continue
           }
+          // Two pending deposits fit the same payment (same name + amount): a stranger could have pre-created one to
+          // capture someone else's payment. Never guess — leave both for staff (the Telegram alert already went out).
+          // (several pending deposits from the SAME user are just a double submit: take the oldest)
+          if (new Set(candidates.map(c => c.userId)).size > 1) {
+            logger.warn(`[ImapChimePayPal] ${candidates.length} pending deposits match sender:"${senderName}" amount:$${amount} — not auto-approving, needs manual review`)
+            continue
+          }
+          const match = candidates[0]
 
           logger.info(`[ImapChimePayPal] ✅ Matched deposit ${match.id} — approving`)
 
@@ -245,8 +249,8 @@ export class ImapChimePayPalService {
           await connection.addFlags(item.attributes.uid, ['\\Seen']).catch(() => {})
 
           // Approve deposit and save emailId to transactionId to prevent double processing
-          await prisma.deposit.update({
-            where: { id: match.id },
+          const imapClaim = await prisma.deposit.updateMany({
+            where: { id: match.id, status: 'pending' },
             data: { 
               status: 'approved', 
               approvedAt: new Date(), 
@@ -254,12 +258,13 @@ export class ImapChimePayPalService {
               transactionId: emailId
             }
           })
+          if (imapClaim.count !== 1) continue // approved/rejected meanwhile by staff or the Telegram button
 
           // Invalidate wallet cache (balance is computed from approved deposits)
           invalidateWalletCache(match.userId)
 
           // Process potential referral bonus
-          await ReferralService.processFirstDepositBonus(match.userId, match.amount)
+          await ReferralService.processFirstDepositBonus(match.userId, match.amount, match.id)
 
           // Transaction log
           await prisma.transactionLog.create({

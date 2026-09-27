@@ -58,13 +58,6 @@ export class ProviderService implements ProviderAdapter {
     const strToHash = `${this.provider.agentId}:${timestamp}:${this.provider.secretKey}`;
     const token = crypto.createHash('md5').update(strToHash).digest('hex').toLowerCase();
 
-    console.info('=== PROVIDER AUTHENTICATION DEBUG ===');
-    console.info(`Agent ID: ${this.provider.agentId}`);
-    console.info(`Timestamp format: ${format}`);
-    console.info(`Timestamp: ${timestamp}`);
-    console.info(`String before hashing: ${strToHash}`);
-    console.info(`Generated Token: ${token}`);
-    console.info('=====================================');
 
     return {
       agent_id: this.provider.agentId,

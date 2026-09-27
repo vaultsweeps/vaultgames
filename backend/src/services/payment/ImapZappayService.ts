@@ -1,4 +1,5 @@
 import imaps from 'imap-simple'
+import { senderDomain, authResultsFailed } from './mailTrust';
 import { simpleParser } from 'mailparser'
 import cron from 'node-cron'
 import prisma from '../../lib/prisma'
@@ -13,7 +14,7 @@ import { invalidateWalletCache } from '../WalletService'
 // monitored inbox from forging a "payment received" notice and self-approving
 // a deposit. Override via env if Zappay's real notification domain differs.
 function senderIsTrusted(fromAddress: string): boolean {
-  const domain = fromAddress.split('@')[1]?.toLowerCase().trim()
+  const domain = senderDomain(fromAddress)
   if (!domain) return false
   const trusted = (process.env.ZAPPAY_SENDER_DOMAINS || 'zappay.com')
     .split(',').map(d => d.trim().toLowerCase()).filter(Boolean)
@@ -31,7 +32,6 @@ export class ImapZappayService {
         host: 'imap.gmail.com',
         port: 993,
         tls: true,
-        tlsOptions: { rejectUnauthorized: false },
         authTimeout: 10000
       }
     };
@@ -97,7 +97,7 @@ export class ImapZappayService {
           if (!amountStr || !senderName) continue;
 
           const fromAddress = mail.from?.value?.[0]?.address || '';
-          if (!senderIsTrusted(fromAddress)) {
+          if (!senderIsTrusted(fromAddress) || authResultsFailed((mail as any).headers)) {
             console.warn(`[ImapZappayService] Ignoring email from untrusted sender "${fromAddress}" claiming a payment of $${amountStr}`);
             continue;
           }
@@ -114,7 +114,7 @@ export class ImapZappayService {
           });
 
           // Match logic:
-          const match = pendingDeposits.find(d => {
+          const matches = pendingDeposits.filter(d => {
             const profileName = d.notes?.trim() || '';
             // If the user entered "Nick Roger", we look for "Nick Roger" in the email
             return (
@@ -122,6 +122,10 @@ export class ImapZappayService {
               profileName.toLowerCase() === senderName.toLowerCase()
             );
           });
+          // Ambiguous (several identical pending deposits) -> never guess, leave for staff
+          // (several pending deposits from the SAME user are just a double submit: take the oldest)
+          const sameUser = matches.length > 0 && new Set(matches.map(m => m.userId)).size === 1;
+          const match = sameUser ? [...matches].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())[0] : undefined;
 
           if (match) {
             console.log(`[ImapZappayService] Match found! Approving deposit ${match.id}`);
@@ -130,8 +134,8 @@ export class ImapZappayService {
             await connection.addFlags(item.attributes.uid, ['\\Seen']);
 
             // Update deposit
-            await prisma.deposit.update({
-              where: { id: match.id },
+            const zClaim = await prisma.deposit.updateMany({
+              where: { id: match.id, status: 'pending' },
               data: {
                 status: 'approved',
                 transactionId: txnId,
@@ -139,6 +143,7 @@ export class ImapZappayService {
                 approvedBy: 'system'
               }
             });
+            if (zClaim.count !== 1) continue;
 
             // Log
             await prisma.transactionLog.create({
@@ -163,7 +168,7 @@ export class ImapZappayService {
             
             invalidateWalletCache(match.userId)
             
-            await ReferralService.processFirstDepositBonus(match.userId, match.amount)
+            await ReferralService.processFirstDepositBonus(match.userId, match.amount, match.id)
           }
         }
       }

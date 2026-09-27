@@ -16,11 +16,11 @@ export class WalletService {
    * Returns the total referral bonus balance earned by the user historically.
    */
   static async getHistoricalReferralBonus(userId: string): Promise<number> {
-    const referralBonuses = await prisma.bonusClaim.aggregate({
-      where: { userId, bonus: { type: 'referral' } },
-      _sum: { amount: true }
-    });
-    return referralBonuses._sum.amount || 0;
+    const [legacy, current] = await Promise.all([
+      prisma.bonusClaim.aggregate({ where: { userId, bonus: { type: 'referral' } }, _sum: { amount: true } }),
+      prisma.referralReward.aggregate({ where: { referrerId: userId, status: 'paid' }, _sum: { amount: true } }),
+    ]);
+    return (legacy._sum.amount || 0) + (current._sum.amount || 0);
   }
 
   /**
@@ -29,29 +29,36 @@ export class WalletService {
   static async getBalances(userId: string) {
     return getCached(`wallet_balances:${userId}`, async () => {
       // Run all aggregates in parallel for maximum speed
-      const [deposits, withdrawals, gameRecharges, gameWithdrawals, referralBonuses, freeplayBonuses, wheelBonuses] = await Promise.all([
+      const [deposits, withdrawals, gameRecharges, gameWithdrawals, referralBonuses, freeplayBonuses, wheelBonuses, referralRewards, wheelSpinWins, depositBonuses] = await Promise.all([
         prisma.deposit.aggregate({ where: { userId, status: 'approved' }, _sum: { amount: true } }),
         prisma.withdrawal.aggregate({ where: { userId, status: { in: ['pending', 'approved', 'paid'] } }, _sum: { amount: true } }),
         prisma.providerTransaction.aggregate({ where: { userId, type: 'recharge', status: 'success' }, _sum: { amount: true } }),
         prisma.providerTransaction.aggregate({ where: { userId, type: 'withdraw', status: 'success' }, _sum: { amount: true } }),
+        // Legacy source (rows written before the ReferralReward/WheelSpin ledgers existed) — kept so past
+        // balances never shift; new referral/wheel money is recorded only in the two ledgers below.
         prisma.bonusClaim.aggregate({ where: { userId, bonus: { type: 'referral' } }, _sum: { amount: true } }),
         prisma.bonusClaim.aggregate({ where: { userId, bonus: { type: 'freeplay' } }, _sum: { amount: true } }),
-        prisma.bonusClaim.aggregate({ where: { userId, bonus: { type: 'wheel' } }, _sum: { amount: true } })
+        prisma.bonusClaim.aggregate({ where: { userId, bonus: { type: 'wheel' } }, _sum: { amount: true } }),
+        prisma.referralReward.aggregate({ where: { referrerId: userId, status: 'paid' }, _sum: { amount: true } }),
+        prisma.wheelSpin.aggregate({ where: { userId, isWin: true }, _sum: { amount: true } }),
+        // FIN-6: the 20% crypto-deposit bonus, kept out of Deposit.amount — see DepositBonusService.
+        prisma.depositBonus.aggregate({ where: { userId, status: 'paid' }, _sum: { amount: true } }),
       ]);
 
       const totalDeposited = deposits._sum.amount || 0;
       const totalWithdrawn = withdrawals._sum.amount || 0;
       const totalGameRecharges = gameRecharges._sum.amount || 0;
       const totalGameWithdrawals = gameWithdrawals._sum.amount || 0;
-      const totalReferralBonus = referralBonuses._sum.amount || 0;
+      const totalReferralBonus = (referralBonuses._sum.amount || 0) + (referralRewards._sum.amount || 0);
       const totalFreeplayBonus = freeplayBonuses._sum.amount || 0;
-      const totalWheelBonus = wheelBonuses._sum.amount || 0;
+      const totalWheelBonus = (wheelBonuses._sum.amount || 0) + (wheelSpinWins._sum.amount || 0);
+      const totalDepositBonus = depositBonuses._sum.amount || 0;
 
-      const totalNonWithdrawable = totalReferralBonus + totalFreeplayBonus + totalWheelBonus;
+      const totalNonWithdrawable = totalReferralBonus + totalFreeplayBonus + totalWheelBonus + totalDepositBonus;
 
       // 1. Calculate the absolute total wallet balance mathematically
       const totalWalletBalance = totalDeposited + totalGameWithdrawals + totalNonWithdrawable - totalWithdrawn - totalGameRecharges;
-      
+
       // Ensure it never technically drops below 0 due to floating point or weird manual edits
       const displayBalance = Math.max(0, totalWalletBalance);
 
@@ -61,7 +68,7 @@ export class WalletService {
       // 3. The withdrawable cash is simply whatever is left over after reserving the remaining bonus
       const withdrawableBalance = Math.max(0, displayBalance - remainingBonus);
 
-      return { displayBalance, withdrawableBalance, remainingBonus };
+      return { displayBalance, withdrawableBalance, remainingBonus, totalDepositBonus };
     }, WALLET_CACHE_TTL);
   }
 
@@ -71,26 +78,30 @@ export class WalletService {
    * Serializable transaction to get a race-safe read of the current balance
    * (used right before debiting funds, e.g. withdrawal creation).
    */
-  static async getBalancesRaw(userId: string, client: Pick<typeof prisma, 'deposit' | 'withdrawal' | 'providerTransaction' | 'bonusClaim'> = prisma) {
-    const [deposits, withdrawals, gameRecharges, gameWithdrawals, referralBonuses, freeplayBonuses, wheelBonuses] = await Promise.all([
+  static async getBalancesRaw(userId: string, client: Pick<typeof prisma, 'deposit' | 'withdrawal' | 'providerTransaction' | 'bonusClaim' | 'referralReward' | 'wheelSpin' | 'depositBonus'> = prisma) {
+    const [deposits, withdrawals, gameRecharges, gameWithdrawals, referralBonuses, freeplayBonuses, wheelBonuses, referralRewards, wheelSpinWins, depositBonuses] = await Promise.all([
       client.deposit.aggregate({ where: { userId, status: 'approved' }, _sum: { amount: true } }),
       client.withdrawal.aggregate({ where: { userId, status: { in: ['pending', 'approved', 'paid'] } }, _sum: { amount: true } }),
       client.providerTransaction.aggregate({ where: { userId, type: 'recharge', status: 'success' }, _sum: { amount: true } }),
       client.providerTransaction.aggregate({ where: { userId, type: 'withdraw', status: 'success' }, _sum: { amount: true } }),
       client.bonusClaim.aggregate({ where: { userId, bonus: { type: 'referral' } }, _sum: { amount: true } }),
       client.bonusClaim.aggregate({ where: { userId, bonus: { type: 'freeplay' } }, _sum: { amount: true } }),
-      client.bonusClaim.aggregate({ where: { userId, bonus: { type: 'wheel' } }, _sum: { amount: true } })
+      client.bonusClaim.aggregate({ where: { userId, bonus: { type: 'wheel' } }, _sum: { amount: true } }),
+      client.referralReward.aggregate({ where: { referrerId: userId, status: 'paid' }, _sum: { amount: true } }),
+      client.wheelSpin.aggregate({ where: { userId, isWin: true }, _sum: { amount: true } }),
+      client.depositBonus.aggregate({ where: { userId, status: 'paid' }, _sum: { amount: true } }),
     ]);
 
     const totalDeposited = deposits._sum.amount || 0;
     const totalWithdrawn = withdrawals._sum.amount || 0;
     const totalGameRecharges = gameRecharges._sum.amount || 0;
     const totalGameWithdrawals = gameWithdrawals._sum.amount || 0;
-    const totalReferralBonus = referralBonuses._sum.amount || 0;
+    const totalReferralBonus = (referralBonuses._sum.amount || 0) + (referralRewards._sum.amount || 0);
     const totalFreeplayBonus = freeplayBonuses._sum.amount || 0;
-    const totalWheelBonus = wheelBonuses._sum.amount || 0;
+    const totalWheelBonus = (wheelBonuses._sum.amount || 0) + (wheelSpinWins._sum.amount || 0);
+    const totalDepositBonus = depositBonuses._sum.amount || 0;
 
-    const totalNonWithdrawable = totalReferralBonus + totalFreeplayBonus + totalWheelBonus;
+    const totalNonWithdrawable = totalReferralBonus + totalFreeplayBonus + totalWheelBonus + totalDepositBonus;
 
     const totalWalletBalance = totalDeposited + totalGameWithdrawals + totalNonWithdrawable - totalWithdrawn - totalGameRecharges;
     const displayBalance = Math.max(0, totalWalletBalance);

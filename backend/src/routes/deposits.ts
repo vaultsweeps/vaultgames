@@ -9,11 +9,14 @@ const router = Router()
 
 router.use(authenticate)
 
+// These fan out to the NOWPayments API (1 + N calls per request): cap them per user so one account cannot exhaust the gateway's rate limit
+const cryptoLookup = limit({ name: 'crypto-lookup', windowMs: 60_000, max: 30, scope: 'user' })
+
 router.get('/', getDeposits)
 router.get('/payment-methods', getPaymentMethods)
-router.get('/crypto-currencies', getCryptoCurrencies)
-router.get('/crypto-coins', getCryptoCoinsForAmount)
-router.get('/crypto-min-amount', getCoinMinAmount)
+router.get('/crypto-currencies', cryptoLookup, getCryptoCurrencies)
+router.get('/crypto-coins', cryptoLookup, getCryptoCoinsForAmount)
+router.get('/crypto-min-amount', cryptoLookup, getCoinMinAmount)
 router.get('/:id', getDeposit)
 router.post('/',
   limit({ name: 'deposit-create', windowMs: 10 * 60_000, max: 20, scope: 'user' }),

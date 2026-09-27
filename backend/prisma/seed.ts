@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
+import crypto from 'crypto'
 
 const prisma = new PrismaClient()
 
@@ -7,7 +8,17 @@ async function main() {
   console.log('🌱 Seeding database...')
 
   // Create admin user
-  const adminPassword = await bcrypt.hash('Admin@123456', 12)
+  // No hard-coded admin password: use SEED_ADMIN_PASSWORD, or (outside production) a random one printed once.
+  let plainAdminPassword = process.env.SEED_ADMIN_PASSWORD
+  if (!plainAdminPassword) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('Refusing to seed an admin account in production without SEED_ADMIN_PASSWORD')
+    }
+    plainAdminPassword = crypto.randomBytes(12).toString('base64url')
+    console.log('🔑 Generated admin password (shown once):', plainAdminPassword)
+  }
+  if (plainAdminPassword.length < 12) throw new Error('SEED_ADMIN_PASSWORD must be at least 12 characters')
+  const adminPassword = await bcrypt.hash(plainAdminPassword, 12)
   const admin = await prisma.user.upsert({
     where: { email: 'admin@nexusgaming.com' },
     update: {},
@@ -52,8 +63,7 @@ async function main() {
 
   console.log('\n🎮 Database seeded successfully!')
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
-  console.log('Admin:  admin@nexusgaming.com / Admin@123456')
-  console.log('Player: player@nexusgaming.com / User@123456')
+  console.log('Admin:  admin@nexusgaming.com (password: SEED_ADMIN_PASSWORD, or the one printed above)')
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
 }
 

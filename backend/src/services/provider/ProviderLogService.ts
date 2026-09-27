@@ -1,7 +1,7 @@
 import prisma from '../../lib/prisma';
 
 // Field names whose values must never be written to the database log
-const SENSITIVE_KEY = /pass(word|wd)?|secret|token|agentkey|appsecret|^sign$|authorization|cookie|api_?key|credential/i
+const SENSITIVE_KEY = /pass(word|wd)?|(^|_)pwd|login_?pwd|secret|token|agentkey|appsecret|^sign$|authorization|cookie|api_?key|credential/i
 
 /** Deep-copies a request/response, masking sensitive fields and any `sign=`/`agentKey=`-style query values. */
 export function redactForLog<T>(value: T, depth = 0): T {

@@ -18,7 +18,8 @@ import {
 import {
   getProviders, createProvider, updateProvider, deleteProvider,
   testConnection, getProviderLogs, getProviderTransactions, assignGamesToProvider,
-  getGameBalanceReport, getLiveGameBalance, exportGameBalanceReport, getProviderAgentBalances
+  getGameBalanceReport, getLiveGameBalance, exportGameBalanceReport, getProviderAgentBalances,
+  getUnresolvedProviderTransactions, resolveProviderTransaction
 } from '../controllers/providerAdminController'
 
 const router = Router()
@@ -30,7 +31,8 @@ router.use(limit({ name: 'admin', windowMs: 15 * 60_000, max: 3000, scope: 'user
 router.get('/stats', getDashboardStats)
 
 // Users
-router.get('/users/export', exportUsersXLS)
+// Heavy admin operations (full-table exports, live provider API fan-out) get their own per-admin ceiling
+router.get('/users/export', limit({ name: 'admin-export-users', windowMs: 600000, max: 10, scope: 'user' }), exportUsersXLS)
 router.get('/users', getUsers)
 router.get('/users/:id', getUserDetails)
 router.patch('/users/:id/ban', banUser)
@@ -52,7 +54,7 @@ router.patch('/withdrawals/:id/reject', rejectWithdrawal)
 router.patch('/withdrawals/:id/paid', markWithdrawalPaid)
 
 // Enhanced Withdrawals (new module — order matters: export before :requestId)
-router.get('/enhanced-withdrawals/export', exportEnhancedWithdrawalsCSV)
+router.get('/enhanced-withdrawals/export', limit({ name: 'admin-export-withdrawals', windowMs: 600000, max: 10, scope: 'user' }), exportEnhancedWithdrawalsCSV)
 router.get('/enhanced-withdrawals', getAdminEnhancedWithdrawals)
 router.patch('/enhanced-withdrawals/:requestId/approve', adminApproveEnhancedWithdrawal)
 router.patch('/enhanced-withdrawals/:requestId/reject', adminRejectEnhancedWithdrawal)
@@ -93,15 +95,18 @@ router.post('/providers/:id/test', testConnection)
 router.put('/providers/:id/games', assignGamesToProvider)
 router.get('/provider-logs', getProviderLogs)
 router.get('/provider-transactions', getProviderTransactions)
+// FIN-7: manual reconciliation for transfers stuck in pending/unknown (an ambiguous provider outcome)
+router.get('/provider-transactions/unresolved', getUnresolvedProviderTransactions)
+router.patch('/provider-transactions/:id/resolve', resolveProviderTransaction)
 
 // Game Balance Report — points added/withdrawn per user+game, over a
 // selectable window (8h/24h/all-time), plus on-demand live balance and
 // Excel export. Declared before any conflicting param routes wouldn't be
 // needed here since none of these paths overlap with a `:id` pattern.
 router.get('/game-balance-report', getGameBalanceReport)
-router.get('/game-balance-report/live-balance', getLiveGameBalance)
-router.get('/game-balance-report/export', exportGameBalanceReport)
-router.get('/game-balance-report/provider-balances', getProviderAgentBalances)
+router.get('/game-balance-report/live-balance', limit({ name: 'admin-live-balance', windowMs: 60000, max: 20, scope: 'user' }), getLiveGameBalance)
+router.get('/game-balance-report/export', limit({ name: 'admin-export-balance', windowMs: 600000, max: 10, scope: 'user' }), exportGameBalanceReport)
+router.get('/game-balance-report/provider-balances', limit({ name: 'admin-provider-balances', windowMs: 60000, max: 20, scope: 'user' }), getProviderAgentBalances)
 
 // Coupons
 router.get('/coupons', getCoupons)

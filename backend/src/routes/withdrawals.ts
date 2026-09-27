@@ -10,7 +10,7 @@ import {
 } from '../controllers/withdrawalController'
 import { authenticate } from '../middleware/auth'
 import { validateRequest } from '../middleware/validate'
-import { upload } from '../middleware/upload'
+import { upload, verifyUploadedImage } from '../middleware/upload'
 import { limit, idempotency, serializePerUser } from '../middleware/security'
 
 const router = Router()
@@ -53,6 +53,6 @@ router.post('/',
   validateRequest,
   createWithdrawal
 )
-router.post('/manual', withdrawLimiter, idempotency('withdraw'), serializePerUser('wallet'), upload.single('qrCode'), createManualWithdrawal)
+router.post('/manual', withdrawLimiter, idempotency('withdraw'), serializePerUser('wallet'), upload.single('qrCode'), verifyUploadedImage, createManualWithdrawal)
 
 export default router
