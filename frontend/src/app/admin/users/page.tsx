@@ -1,8 +1,8 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import toast from 'react-hot-toast'
-import { Search, Eye, Ban, UserCheck, RefreshCw, Check, Download, Phone, Send, User, Users, ShieldOff, X } from 'lucide-react'
+import { Search, Eye, Ban, UserCheck, RefreshCw, Check, Download, Phone, Send, User, Users, ShieldOff, X, ChevronLeft, ChevronRight } from 'lucide-react'
 import { adminApi } from '@/lib/api'
 import Link from 'next/link'
 import { Badge, Button, Card, EmptyState, IconTile, PageHeader, Skeleton, buttonClass, cn } from '@/components/dashboard/ui'
@@ -40,33 +40,69 @@ const Avatar = ({ name, size = 'md' }: { name: string; size?: 'md' | 'lg' }) => 
   </div>
 )
 
+const PAGE_SIZE = 20
+
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('all')
+  const [page, setPage] = useState(1)
+  const [pagination, setPagination] = useState<{ total: number; pages: number } | null>(null)
+  const [bannedTotal, setBannedTotal] = useState(0)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [exporting, setExporting] = useState(false)
 
-  const fetchUsers = async () => {
+  // Server-side pagination/search/filter — this used to fetch only the 20 most-recently-created users
+  // ONCE with no params, so any real user outside that top-20 was invisible, and "search" only filtered
+  // within those same 20 rows client-side (searching for an existing older user by exact name found
+  // nothing). The backend already supported page/limit/search/status; this page just never sent them.
+  const fetchUsers = async (opts?: { page?: number; search?: string; filter?: string }) => {
     setLoading(true)
     try {
-      const res = await adminApi.getUsers()
+      const res = await adminApi.getUsers({
+        page: opts?.page ?? page,
+        limit: PAGE_SIZE,
+        search: (opts?.search ?? search) || undefined,
+        status: (opts?.filter ?? filter) !== 'all' ? (opts?.filter ?? filter) : undefined,
+      })
       setUsers(res.data.data)
+      setPagination(res.data.pagination)
+      setBannedTotal(res.data.bannedTotal ?? 0)
     } catch { toast.error('Failed to load users') } finally {
       setLoading(false)
     }
   }
 
-  useEffect(() => { fetchUsers() }, [])
+  useEffect(() => { fetchUsers({ page: 1 }) }, [])
 
-  const filtered = users.filter(u =>
-    (filter === 'all' || (filter === 'banned' ? u.isBanned : filter === 'unverified' ? !u.isVerified : filter === 'active' ? u.isActive && !u.isBanned : true)) &&
-    (u.username.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase()) ||
-      u.profile?.fullName?.toLowerCase().includes(search.toLowerCase()) ||
-      u.profile?.phone?.includes(search) ||
-      u.profile?.telegramUsername?.toLowerCase().includes(search.toLowerCase()))
-  )
+  // Debounce search input so it doesn't fire a request per keystroke; jumping straight to a fresh
+  // page 1 search feels instant, whereas an unrelated navigation shouldn't drop the reader on
+  // a page number that may no longer exist for the new filter.
+  const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const onSearchChange = (value: string) => {
+    setSearch(value)
+    if (searchDebounce.current) clearTimeout(searchDebounce.current)
+    searchDebounce.current = setTimeout(() => {
+      setPage(1)
+      fetchUsers({ page: 1, search: value })
+    }, 400)
+  }
+
+  const onFilterChange = (value: string) => {
+    setFilter(value)
+    setPage(1)
+    fetchUsers({ page: 1, filter: value })
+  }
+
+  const goToPage = (p: number) => {
+    if (p < 1 || (pagination && p > pagination.pages)) return
+    setPage(p)
+    fetchUsers({ page: p })
+  }
+
+  // The server now already returns exactly the filtered/paginated set — no client-side re-filtering.
+  const filtered = users
 
   const handleAction = async (userId: string, action: string) => {
     try {
@@ -155,7 +191,7 @@ export default function AdminUsersPage() {
                 <Download className="w-4 h-4" />
                 {exporting ? 'Exporting...' : 'Export XLS'}
               </Button>
-              <Button variant="secondary" size="sm" onClick={fetchUsers} aria-label="Refresh users" className="!px-3">
+              <Button variant="secondary" size="sm" onClick={() => fetchUsers()} aria-label="Refresh users" className="!px-3">
                 <RefreshCw className="w-4 h-4" />
               </Button>
             </>
@@ -168,15 +204,15 @@ export default function AdminUsersPage() {
         <div className="ds-card p-4 flex items-center gap-3 min-w-0">
           <IconTile icon={Users} tone="cyan" size="md" />
           <div className="min-w-0">
-            <p className="text-2xl font-bold text-primary leading-none tabular-nums">{users.length}</p>
-            <p className="text-[13px] text-secondary mt-1.5">Total users</p>
+            <p className="text-2xl font-bold text-primary leading-none tabular-nums">{pagination?.total ?? 0}</p>
+            <p className="text-[13px] text-secondary mt-1.5">{search || filter !== 'all' ? 'Matching users' : 'Total users'}</p>
           </div>
         </div>
         <div className="ds-card p-4 flex items-center gap-3 min-w-0">
           <IconTile icon={ShieldOff} tone="red" size="md" />
           <div className="min-w-0">
-            <p className="text-2xl font-bold text-primary leading-none tabular-nums">{users.filter(u => u.isBanned).length}</p>
-            <p className="text-[13px] text-secondary mt-1.5">Banned</p>
+            <p className="text-2xl font-bold text-primary leading-none tabular-nums">{bannedTotal}</p>
+            <p className="text-[13px] text-secondary mt-1.5">Banned (platform-wide)</p>
           </div>
         </div>
       </div>
@@ -185,9 +221,9 @@ export default function AdminUsersPage() {
       <div className="flex flex-col sm:flex-row gap-3 mb-4 sm:mb-5">
         <div className="relative flex-1 min-w-0">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
-          <input type="text" placeholder="Search by name, email, phone, telegram..." value={search} onChange={e => setSearch(e.target.value)} className="ds-input pl-11" aria-label="Search users" />
+          <input type="text" placeholder="Search by name, email, phone, telegram..." value={search} onChange={e => onSearchChange(e.target.value)} className="ds-input pl-11" aria-label="Search users" />
         </div>
-        <select value={filter} onChange={e => setFilter(e.target.value)} className="ds-input w-full sm:w-44" aria-label="Filter users">
+        <select value={filter} onChange={e => onFilterChange(e.target.value)} className="ds-input w-full sm:w-44" aria-label="Filter users">
           <option value="all">All Users</option>
           <option value="active">Active</option>
           <option value="banned">Banned</option>
@@ -295,6 +331,36 @@ export default function AdminUsersPage() {
           </Card>
         ))}
       </div>
+
+      {/* Pagination — the backend has always paginated (20/page); this page just never surfaced it, so
+          any user outside the newest 20 (matching the current search/filter) was unreachable. */}
+      {!loading && pagination && pagination.pages > 1 && (
+        <div className="flex items-center justify-between gap-3 mt-4">
+          <p className="text-[13px] text-muted">
+            Page {page} of {pagination.pages} &middot; {pagination.total} total
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => goToPage(page - 1)}
+              disabled={page <= 1}
+              className={cn(ICON_BTN, 'bg-surface-elevated border-border-strong text-secondary hover:text-primary disabled:opacity-40 disabled:pointer-events-none')}
+              aria-label="Previous page"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => goToPage(page + 1)}
+              disabled={page >= pagination.pages}
+              className={cn(ICON_BTN, 'bg-surface-elevated border-border-strong text-secondary hover:text-primary disabled:opacity-40 disabled:pointer-events-none')}
+              aria-label="Next page"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* User quick-view modal */}
       {selectedUser && (
