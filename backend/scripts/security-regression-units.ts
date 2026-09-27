@@ -519,4 +519,41 @@ export async function extraChecks(check: Check) {
     check('FIN-7: bonus grants (BonusClaim upsert, referral reward) happen only after the provider call succeeds, not before', providerCtlSrc.indexOf('await providerService.rechargePlayer') < providerCtlSrc.indexOf("data: { status: 'success', amount: creditedAmount }"))
     check('FIN-7: the pending ProviderTransaction row is created BEFORE the provider is called (durable intent)', providerCtlSrc.indexOf("status: 'pending', balanceBefore") < providerCtlSrc.indexOf('4. Call the provider EXACTLY ONCE'))
   }
+
+  // ── Coupon claim race (found live in production 2026-09-28, "2/1" used on a usageLimit:1 coupon):
+  // usedCount vs usageLimit was read, then separately re-read inside a $transaction, then written — Prisma's
+  // default (Read Committed) isolation does not lock a row on a plain read inside a transaction, so two
+  // concurrent claims both saw usedCount < usageLimit before either committed. Fixed the same way the
+  // register-time claim in authController.ts already was: the counter is claimed atomically via updateMany
+  // with the limit check baked into its WHERE clause, so the database enforces the limit, not a race between
+  // two application-level reads. ──
+  {
+    const { claimCoupon } = await import('../src/controllers/couponController')
+    const code = `QARACE${Date.now()}`.slice(0, 20)
+    const coupon = await prisma.coupon.create({ data: { code, amount: 1, usageLimit: 1, isActive: true } })
+    const u1 = await prisma.user.create({ data: { username: `qa_cp1_${Date.now()}`, email: `qa-cp1-${Date.now()}@example.invalid`, password: 'x', isVerified: true, isActive: true } })
+    const u2 = await prisma.user.create({ data: { username: `qa_cp2_${Date.now()}`, email: `qa-cp2-${Date.now()}@example.invalid`, password: 'x', isVerified: true, isActive: true } })
+    try {
+      const call = (userId: string) => new Promise<{ status: number; body: any }>(resolve => {
+        const req: any = { body: { code }, user: { id: userId } }
+        const res: any = {
+          json: (b: any) => resolve({ status: 200, body: b }),
+          status: (c: number) => ({ json: (b: any) => resolve({ status: c, body: b }) })
+        }
+        claimCoupon(req, res, (err: any) => resolve({ status: err?.statusCode || 500, body: { message: err?.message } }))
+      })
+      const [r1, r2] = await Promise.all([call(u1.id), call(u2.id)])
+      const successes = [r1, r2].filter(r => r.body?.success).length
+      const finalCoupon = await prisma.coupon.findUnique({ where: { id: coupon.id } })
+      const usageRows = await prisma.couponUsage.count({ where: { couponId: coupon.id } })
+      check('Coupon claim: two concurrent claims against a usageLimit:1 coupon result in exactly ONE success, not both', successes === 1, `successes=${successes}`)
+      check('Coupon claim: usedCount never exceeds usageLimit after concurrent claims (this was the actual production "2/1" bug)', finalCoupon?.usedCount === 1, `usedCount=${finalCoupon?.usedCount}`)
+      check('Coupon claim: exactly one CouponUsage row exists after the race (no orphaned bonus grant)', usageRows === 1, `usageRows=${usageRows}`)
+    } finally {
+      await prisma.bonusClaim.deleteMany({ where: { userId: { in: [u1.id, u2.id] } } })
+      await prisma.couponUsage.deleteMany({ where: { couponId: coupon.id } })
+      await prisma.coupon.delete({ where: { id: coupon.id } }).catch(() => {})
+      await prisma.user.deleteMany({ where: { id: { in: [u1.id, u2.id] } } })
+    }
+  }
 }

@@ -19,7 +19,8 @@ export const claimCoupon = asyncHandler(async (req: AuthRequest, res: Response) 
   if (coupon.expiresAt && coupon.expiresAt < new Date()) throw new AppError('Coupon code has expired', 400)
   if (coupon.usageLimit !== null && coupon.usedCount >= coupon.usageLimit) throw new AppError('Coupon code usage limit reached', 400)
 
-  // Check if user already claimed this coupon
+  // Check if user already claimed this coupon (fast path — the DB-level unique constraint on
+  // CouponUsage(couponId, userId) is what actually prevents a duplicate no matter how this races)
   const existingUsage = await prisma.couponUsage.findFirst({
     where: { userId, couponId: coupon.id }
   })
@@ -39,41 +40,35 @@ export const claimCoupon = asyncHandler(async (req: AuthRequest, res: Response) 
     })
   }
 
-  // Apply coupon in a transaction
-  await prisma.$transaction(async (tx) => {
-    // Re-check lock
-    const lockedCoupon = await tx.coupon.findUnique({
-      where: { id: coupon.id },
-      select: { usedCount: true, usageLimit: true }
-    })
-    if (lockedCoupon?.usageLimit !== null && (lockedCoupon?.usedCount || 0) >= (lockedCoupon?.usageLimit || 0)) {
-      throw new AppError('Coupon code usage limit reached', 400)
-    }
-
-    // 1. Create usage
-    await tx.couponUsage.create({
-      data: {
-        userId,
-        couponId: coupon.id
-      }
-    })
-
-    // 2. Increment usage count
-    await tx.coupon.update({
-      where: { id: coupon.id },
-      data: { usedCount: { increment: 1 } }
-    })
-
-    // 3. Grant freeplay bonus record
-    await tx.bonusClaim.create({
-      data: {
-        userId,
-        bonusId: freeplayBonus.id,
-        amount: coupon.amount
-      }
-    })
+  // The checks above are only a fast path: reading usedCount and later writing it in separate steps (or
+  // even re-reading it inside a transaction, which was the previous approach here) does not stop two
+  // concurrent claims from both passing the check before either commits — Prisma's default transaction
+  // isolation (Read Committed) does not lock the row on a plain read. Same fix as the register-time claim
+  // in authController.ts: the counter itself is claimed atomically, with the limit check baked into the
+  // UPDATE's WHERE clause, so the database — not application logic racing itself — is what enforces the
+  // limit. This is the confirmed root cause of coupons showing e.g. "2/1" used.
+  const claimed = await prisma.coupon.updateMany({
+    where: coupon.usageLimit !== null ? { id: coupon.id, usedCount: { lt: coupon.usageLimit } } : { id: coupon.id },
+    data: { usedCount: { increment: 1 } }
   })
-  
+  if (claimed.count !== 1) throw new AppError('Coupon code usage limit reached', 400)
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      // Guarded by the unique constraint on (couponId, userId): a genuinely simultaneous double-submit by
+      // the same user (past the fast-path check above) throws P2002 here rather than granting twice.
+      await tx.couponUsage.create({ data: { userId, couponId: coupon.id } })
+      await tx.bonusClaim.create({ data: { userId, bonusId: freeplayBonus.id, amount: coupon.amount } })
+    })
+  } catch (err: any) {
+    // Release the slot this request claimed above but couldn't actually use, and surface the same
+    // friendly message the fast-path check gives — otherwise a genuine double-submit race would both
+    // permanently consume a use of the coupon AND throw a raw 500.
+    await prisma.coupon.update({ where: { id: coupon.id }, data: { usedCount: { decrement: 1 } } }).catch(() => {})
+    if (err?.code === 'P2002') throw new AppError('You have already claimed this coupon', 400)
+    throw err
+  }
+
   // Invalidate wallet cache so next balance fetch is fresh
   await invalidateWalletCache(userId)
 
