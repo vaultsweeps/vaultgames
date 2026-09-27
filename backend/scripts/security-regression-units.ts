@@ -257,6 +257,16 @@ export async function extraChecks(check: Check) {
     const cookiesSrc = src('utils/authCookies.ts')
     check('authCookies: session cookie is httpOnly; CSRF cookie is deliberately not', /httpOnly: true/.test(cookiesSrc) && /httpOnly: false/.test(cookiesSrc))
     check('authCookies: SameSite=None+Secure in production (required for the cross-origin frontend/backend), Lax+non-Secure outside it', /sameSite: \(isProd \? 'none' : 'lax'\)/.test(cookiesSrc) && /secure: isProd/.test(cookiesSrc))
+    // Regression for a real production bug (found 2026-09-27): the CSRF cookie was set with no `domain`,
+    // which defaults it host-only to the API's own (sub)domain — invisible to `document.cookie` on the
+    // frontend's different (sub)domain, so the frontend could never actually read it to send X-CSRF-Token,
+    // and EVERY non-GET request from a primary-cookie-session user was rejected by csrfProtect. The unit
+    // tests above only ever exercised the middleware's comparison logic with an already-known cookie value,
+    // never whether the browser would let the frontend obtain that value in the real cross-domain deployment
+    // in the first place — this check closes that gap by asserting the cookie is actually domain-scoped.
+    check('authCookies: CSRF cookie is set with an explicit parent domain, so frontend JS on a different subdomain can actually read it via document.cookie (not host-only to the API)', /domain: COOKIE_ROOT_DOMAIN/.test(cookiesSrc) && /res\.cookie\(CSRF_COOKIE,.*domain: COOKIE_ROOT_DOMAIN/.test(cookiesSrc.replace(/\n/g, ' ')))
+    check('authCookies: clearSessionCookies clears the CSRF cookie with the SAME domain it was set with (browsers key a cookie by name+domain+path — a mismatched clear leaves the real cookie behind)', /res\.clearCookie\(CSRF_COOKIE, \{ \.\.\.opts, domain: COOKIE_ROOT_DOMAIN \}\)/.test(cookiesSrc))
+    check('authCookies: session cookie itself is left host-only (no domain widening) — only the backend needs to receive it, and HttpOnly already blocks JS regardless, so widening it would add scope without adding capability', /res\.cookie\(SESSION_COOKIE, token, cookieOptions\(maxAgeMs\)\)/.test(cookiesSrc))
 
     const { csrfProtect } = await import('../src/middleware/csrf')
     const call = (method: string, cookies: Record<string, string>, headers: Record<string, string>) => new Promise<number>(resolve => {
