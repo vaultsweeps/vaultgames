@@ -13,7 +13,7 @@ export class MilkywayProviderService implements ProviderAdapter {
   private agentKey: string | null = null;
   private agentBalance: number = 0;
   private lastAuthTime: number = 0;
-  private authPromise: Promise<void> | null = null;
+  private authPromise: Promise<string> | null = null;
 
   /**
    * 3 minutes — deliberately short.
@@ -98,10 +98,17 @@ export class MilkywayProviderService implements ProviderAdapter {
 
   // ─── Authentication ───────────────────────────────────────────────────────
 
-  private async authenticate(): Promise<void> {
+  // Returns the key this SPECIFIC call obtained (or the still-fresh cached one), rather than leaving
+  // callers to re-read the shared this.agentKey field afterward — this instance is cached and reused
+  // across concurrent requests (ProviderFactory.providerCache), so a different in-flight request's
+  // invalidateSession() (e.g. its own auth-error retry path) can null out the shared field in the gap
+  // between this call's authenticate() resolving and its next line running. A locally-held return value
+  // can't be affected by another request's session invalidation. Confirmed as the actual cause of a real
+  // "No agentKey after authenticate()" production error on a recharge.
+  private async authenticate(): Promise<string> {
     // Key is still fresh — nothing to do
     if (this.agentKey && (Date.now() - this.lastAuthTime) < this.TTL_MS) {
-      return;
+      return this.agentKey;
     }
 
     // Another concurrent call is already logging in — share its result
@@ -150,6 +157,8 @@ export class MilkywayProviderService implements ProviderAdapter {
         // Sleep so the next request's timestamp is in a different second from this login.
         await this.sleep(2000);
 
+        return key;
+
       } catch (err: any) {
         this.invalidateSession();
         if (err instanceof AppError) throw err;
@@ -171,15 +180,18 @@ export class MilkywayProviderService implements ProviderAdapter {
     userId: string | null = null,
     isRetry = false,
   ): Promise<any> {
-    await this.authenticate();
+    const agentKey = await this.authenticate();
 
-    if (!this.agentKey) {
+    if (!agentKey) {
       throw new AppError('[MilkyWay] No agentKey after authenticate() — this should never happen', 500);
     }
 
     const time      = this.nowSeconds();
     // Per official docs: sign = MD5(agentName.toLowerCase() + time + agentKey.toLowerCase())
-    const signInput = this.agentName.toLowerCase() + time + this.agentKey.toLowerCase();
+    // Uses the key THIS call just obtained, not the shared this.agentKey field — that field can be wiped
+    // by a different concurrent request's own auth-error retry in the gap between the line above
+    // resolving and this line running, since this service instance is cached and reused across requests.
+    const signInput = this.agentName.toLowerCase() + time + agentKey.toLowerCase();
     const sign      = this.md5(signInput);
 
     const params   = { agentName: this.agentName, time, sign, ...payload };
