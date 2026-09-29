@@ -6,6 +6,7 @@ import { GameRoomProviderService } from './GameRoomProviderService';
 import { CashFrenzyProviderService } from './CashFrenzyProviderService';
 import { VegasRollProviderService } from './VegasRollProviderService';
 import { MilkywayProviderService } from './MilkywayProviderService';
+import { FireKirinProviderService } from './FireKirinProviderService';
 import { MafiaProviderService } from './MafiaProviderService';
 import { PandaMasterProviderService } from './PandaMasterProviderService';
 import { RiversweepsProviderService } from './RiversweepsProviderService';
@@ -38,6 +39,9 @@ export function createProviderService(provider: Provider): ProviderAdapter {
   }
   if (name.includes('milkyway') || name.includes('milky way') || name.includes('milky_way')) {
     return new MilkywayProviderService(provider);
+  }
+  if (name.includes('firekirin') || name.includes('fire kirin') || name.includes('fire_kirin')) {
+    return new FireKirinProviderService(provider);
   }
   if (name.includes('mafia')) {
     return new MafiaProviderService(provider);
