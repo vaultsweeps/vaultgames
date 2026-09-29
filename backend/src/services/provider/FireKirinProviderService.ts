@@ -192,6 +192,8 @@ export class FireKirinProviderService implements ProviderAdapter {
         this.lastAuthTime = Date.now();
 
         console.info(`[FireKirin] Session established | balance: ${this.agentBalance}`);
+        // TEMP DIAGNOSTIC (remove once the signature error is root-caused)
+        console.info(`[FireKirin][DEBUG] raw login response keys=${JSON.stringify(Object.keys(d))} extractedKey="${key}" (len=${key.length})`);
 
         // Doc: "Time will expire after being used successfully once and needs to be replaced" — sleep so
         // the next request's timestamp (1-second resolution) lands in a different second than this login.
@@ -229,6 +231,13 @@ export class FireKirinProviderService implements ProviderAdapter {
     // Per doc: sign = md5((agentName + time + agentKey).toLowerCase())
     const signInput = this.agentName.toLowerCase() + time + agentKey.toLowerCase();
     const sign      = this.md5(signInput);
+
+    // TEMP DIAGNOSTIC (remove once the signature error is root-caused) — agentKey is a session token that
+    // rotates on every login, not a long-term secret, so logging it short-term while actively debugging a
+    // live signature failure is safe. Quoted so any invisible leading/trailing whitespace is visible.
+    if (action !== 'agentLogin') {
+      console.info(`[FireKirin][DEBUG] action=${action} agentKey="${agentKey}" (len=${agentKey.length}) signInput="${signInput}" sign=${sign}`);
+    }
 
     const params   = { agentName: this.agentName, time, sign, ...payload };
     const endpoint = `${this.servicePath}?action=${action}`;
