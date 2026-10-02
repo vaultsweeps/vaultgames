@@ -688,7 +688,19 @@ export const updateGame = asyncHandler(async (req: AuthRequest, res: Response) =
 })
 
 export const deleteGame = asyncHandler(async (req: AuthRequest, res: Response) => {
-  await prisma.game.delete({ where: { id: req.params.id as string } })
+  const id = req.params.id as string
+  const existing = await prisma.game.findUnique({ where: { id } })
+  if (!existing) throw new AppError('Game not found', 404)
+
+  // Any user who downloaded this game has a GameDownload row pointing at it — the foreign key blocks the
+  // delete. Surfaced clearly instead of a raw DB error; deactivating removes it from listings without
+  // touching that history.
+  const downloadCount = await prisma.gameDownload.count({ where: { gameId: id } })
+  if (downloadCount > 0) {
+    throw new AppError(`This game has download history from ${downloadCount} user(s) and cannot be deleted — deactivate it instead to remove it from listings.`, 400)
+  }
+
+  await prisma.game.delete({ where: { id } })
   res.json({ success: true, message: 'Game deleted successfully' })
 })
 
@@ -1176,9 +1188,17 @@ export const updateCoupon = asyncHandler(async (req: AuthRequest, res: Response)
 
 export const deleteCoupon = asyncHandler(async (req: AuthRequest, res: Response) => {
   const id = req.params.id as string
-  
+
   const existing = await prisma.coupon.findUnique({ where: { id } })
   if (!existing) throw new AppError('Coupon not found', 404)
+
+  // A coupon that's already been claimed has CouponUsage rows pointing at it, which Postgres' foreign key
+  // constraint blocks a delete on — surfaced here as a clear reason instead of a raw DB error, and resolved
+  // by deactivating (no claim history is ever removed).
+  const usageCount = await prisma.couponUsage.count({ where: { couponId: id } })
+  if (usageCount > 0) {
+    throw new AppError(`This coupon has already been claimed by ${usageCount} user(s) and cannot be deleted — deactivate it instead to stop further claims.`, 400)
+  }
 
   await prisma.coupon.delete({ where: { id } })
 
