@@ -134,7 +134,7 @@ export default function GameDetailsPage() {
                 if (accRes.data.data.hasAccount) {
                   providerApi.getAccount(id as string).then(fullRes => {
                     if (fullRes.data?.data) {
-                      setAccount((prev: any) => ({ ...prev, balance: fullRes.data.data.balance, totalDeposited: fullRes.data.data.totalDeposited }))
+                      setAccount((prev: any) => ({ ...prev, balance: fullRes.data.data.balance, totalDeposited: fullRes.data.data.totalDeposited, activeFundingSource: fullRes.data.data.activeFundingSource }))
                       setLastUpdate(new Date())
                     }
                   }).catch(() => {})
@@ -200,7 +200,7 @@ export default function GameDetailsPage() {
               setAccount(accRes.data.data)
               if (accRes.data.data.hasAccount) {
                 providerApi.getAccount(id as string).then(fullRes => {
-                  if (fullRes.data?.data) setAccount((prev: any) => ({ ...prev, balance: fullRes.data.data.balance, totalDeposited: fullRes.data.data.totalDeposited }))
+                  if (fullRes.data?.data) setAccount((prev: any) => ({ ...prev, balance: fullRes.data.data.balance, totalDeposited: fullRes.data.data.totalDeposited, activeFundingSource: fullRes.data.data.activeFundingSource }))
                 }).catch(() => {})
               }
             }
@@ -648,6 +648,7 @@ export default function GameDetailsPage() {
           gameBalance={account.balance || 0}
           walletBalance={walletBalance}
           bonusBalance={bonusBalance}
+          activeFundingSource={(account as any)?.activeFundingSource}
           totalDeposited={account.totalDeposited || 0}
           startAmount={transactions.find(t => t.type === 'recharge' && t.status === 'success')?.amount || 5}
           onTransfer={handleTransfer}
