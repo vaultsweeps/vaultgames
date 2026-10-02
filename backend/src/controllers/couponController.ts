@@ -59,7 +59,17 @@ export const claimCoupon = asyncHandler(async (req: AuthRequest, res: Response) 
       // Guarded by the unique constraint on (couponId, userId): a genuinely simultaneous double-submit by
       // the same user (past the fast-path check above) throws P2002 here rather than granting twice.
       const usage = await tx.couponUsage.create({ data: { userId, couponId: coupon.id } })
-      await tx.bonusClaim.create({ data: { userId, bonusId: freeplayBonus.id, amount: coupon.amount } })
+      // Upsert, not a bare create: EVERY coupon shares this same single "freeplay" Bonus definition row, so a
+      // plain create() would hit BonusClaim's (userId, bonusId) unique constraint on a user's SECOND-EVER
+      // coupon redemption (regardless of it being a different coupon) and roll back the whole claim — this was
+      // a real bug that made a second coupon redemption always fail with a misleading "already claimed"
+      // error. Upsert-with-increment accumulates the total, matching the same pattern already used for the
+      // welcome/deposit bonus elsewhere in this codebase.
+      await tx.bonusClaim.upsert({
+        where: { userId_bonusId: { userId, bonusId: freeplayBonus.id } },
+        create: { userId, bonusId: freeplayBonus.id, amount: coupon.amount },
+        update: { amount: { increment: coupon.amount } },
+      })
       // Additive: the legacy BonusClaim row above stays (existing consumers keep working), and the new Bonus
       // Balance ledger is credited in the SAME transaction so a coupon claim can never grant one without the
       // other.
