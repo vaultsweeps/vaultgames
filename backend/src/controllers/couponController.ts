@@ -2,7 +2,7 @@ import { Response } from 'express'
 import prisma from '../lib/prisma'
 import { asyncHandler, AppError } from '../middleware/errorHandler'
 import { AuthRequest } from '../middleware/auth'
-import { invalidateWalletCache } from '../services/WalletService'
+import { invalidateWalletCache, BONUS_BALANCE_CUTOVER_AT } from '../services/WalletService'
 import { BonusLedgerService } from '../services/BonusLedgerService'
 
 export const claimCoupon = asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -59,17 +59,22 @@ export const claimCoupon = asyncHandler(async (req: AuthRequest, res: Response) 
       // Guarded by the unique constraint on (couponId, userId): a genuinely simultaneous double-submit by
       // the same user (past the fast-path check above) throws P2002 here rather than granting twice.
       const usage = await tx.couponUsage.create({ data: { userId, couponId: coupon.id } })
-      // Upsert, not a bare create: EVERY coupon shares this same single "freeplay" Bonus definition row, so a
-      // plain create() would hit BonusClaim's (userId, bonusId) unique constraint on a user's SECOND-EVER
-      // coupon redemption (regardless of it being a different coupon) and roll back the whole claim — this was
-      // a real bug that made a second coupon redemption always fail with a misleading "already claimed"
-      // error. Upsert-with-increment accumulates the total, matching the same pattern already used for the
-      // welcome/deposit bonus elsewhere in this codebase.
-      await tx.bonusClaim.upsert({
-        where: { userId_bonusId: { userId, bonusId: freeplayBonus.id } },
-        create: { userId, bonusId: freeplayBonus.id, amount: coupon.amount },
-        update: { amount: { increment: coupon.amount } },
-      })
+      // Legacy BonusClaim ledger — maintained ONLY for claims happening before the Bonus Balance cutover.
+      // EVERY coupon shares this same single "freeplay" Bonus definition row per user, so upserting into it
+      // past the cutover would be wrong in a subtler way than a bare create(): Prisma's `update` never
+      // touches an existing row's `createdAt`, so for any account whose row was first created BEFORE the
+      // cutover, every later increment — even ones happening long after the cutover — would keep re-landing
+      // under that frozen pre-cutover `createdAt` and so keep passing WalletService's `createdAt < CUTOVER`
+      // filter forever, double-counting every future coupon claim into Wallet Balance indefinitely. Once
+      // past the cutover there is no reason to touch this table at all — only the new UserBonus ledger below
+      // is the source of truth for a post-cutover grant.
+      if (new Date() < BONUS_BALANCE_CUTOVER_AT) {
+        await tx.bonusClaim.upsert({
+          where: { userId_bonusId: { userId, bonusId: freeplayBonus.id } },
+          create: { userId, bonusId: freeplayBonus.id, amount: coupon.amount },
+          update: { amount: { increment: coupon.amount } },
+        })
+      }
       // Additive: the legacy BonusClaim row above stays (existing consumers keep working), and the new Bonus
       // Balance ledger is credited in the SAME transaction so a coupon claim can never grant one without the
       // other.
