@@ -128,17 +128,17 @@ const GameTransferModal = React.memo(function GameTransferModal({
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="bg-background w-full max-w-md rounded-3xl overflow-hidden shadow-2xl border border-border-subtle flex flex-col relative"
+          className="bg-background w-full max-w-md max-h-[90vh] rounded-3xl overflow-hidden shadow-2xl border border-border-subtle flex flex-col relative"
         >
           {/* Header */}
-          <div className="p-5 flex justify-between items-center">
+          <div className="p-5 flex justify-between items-center shrink-0">
             <h2 className="text-white font-bold text-xl">{type === 'deposit' ? 'Add Cash' : 'Cash Out'}</h2>
             <button onClick={onClose} className="text-secondary hover:text-white transition-colors">
               <X className="w-6 h-6" />
             </button>
           </div>
 
-          <div className="px-5 pb-6 space-y-5">
+          <div className="px-5 pb-6 space-y-5 overflow-y-auto">
             {/* Game Info Card */}
             <div className="bg-surface rounded-2xl p-4 flex items-center gap-4 border border-border-subtle relative">
               <div className="w-16 h-16 rounded-xl overflow-hidden bg-black/50 shrink-0">
@@ -149,16 +149,29 @@ const GameTransferModal = React.memo(function GameTransferModal({
                 )}
               </div>
               
-              <div className="flex-1">
-                <div className="flex justify-between items-start">
-                  <h3 className="text-white font-bold text-lg leading-tight">
-                    {gameName} 
+              <div className="flex-1 min-w-0">
+                <div className="flex justify-between items-start gap-2">
+                  <h3 className="text-white font-bold text-lg leading-tight min-w-0 truncate">
+                    {gameName}
                     {onChangeGame && (
                       <span onClick={onChangeGame} className="text-[#2AC3FF] text-sm font-normal cursor-pointer ml-2 hover:underline">
                         change
                       </span>
                     )}
                   </h3>
+                  {onRefresh && (
+                    <button
+                      onClick={async () => {
+                        setRefreshing(true)
+                        await onRefresh()
+                        setRefreshing(false)
+                      }}
+                      disabled={refreshing}
+                      className="text-muted hover:text-white transition-colors disabled:opacity-50 shrink-0"
+                    >
+                      <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+                    </button>
+                  )}
                 </div>
                 <div className="flex justify-between mt-2">
                   <div>
@@ -171,19 +184,6 @@ const GameTransferModal = React.memo(function GameTransferModal({
                   </div>
                 </div>
               </div>
-              {onRefresh && (
-                <button 
-                  onClick={async () => {
-                    setRefreshing(true)
-                    await onRefresh()
-                    setRefreshing(false)
-                  }}
-                  disabled={refreshing}
-                  className="absolute right-4 top-10 text-muted hover:text-white transition-colors disabled:opacity-50"
-                >
-                  <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
-                </button>
-              )}
             </div>
 
             {/* Input Section */}
@@ -366,14 +366,6 @@ const GameTransferModal = React.memo(function GameTransferModal({
               </div>
             )}
             
-            {/* Cashout range info */}
-            {!noSession && type === 'cashout' && (
-              <div className="bg-surface rounded-2xl p-4 border border-border-subtle flex justify-between items-center">
-                <span className="text-muted text-sm">Cashouts range <strong className="text-white">from ${minCashout} to ${maxCashout}</strong></span>
-                <button onClick={() => setShowCashoutRules(true)} className="w-5 h-5 rounded-full bg-surface-elevated text-secondary hover:text-neon-blue hover:bg-neon-blue/10 flex items-center justify-center text-xs font-bold italic transition-colors border border-border-strong">i</button>
-              </div>
-            )}
-
             {insufficientWallet && (
               <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl p-4 flex gap-3 cursor-pointer hover:bg-orange-500/20 transition-colors">
                 <AlertCircle className="w-5 h-5 text-orange-500 shrink-0 mt-0.5" />

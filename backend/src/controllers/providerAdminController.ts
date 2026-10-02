@@ -82,7 +82,28 @@ export const updateProvider = asyncHandler(async (req: Request, res: Response) =
 })
 
 export const deleteProvider = asyncHandler(async (req: Request, res: Response) => {
-  await prisma.provider.delete({ where: { id: req.params.id as string } })
+  const id = req.params.id as string
+  const existing = await prisma.provider.findUnique({ where: { id } })
+  if (!existing) throw new AppError('Provider not found', 404)
+
+  // Games assigned to this provider, and any user's game account/transaction history under it, all hold a
+  // foreign key to this row — Postgres blocks the delete rather than silently orphaning or cascading away
+  // real transaction history. Surfaced clearly instead of a raw DB error; deactivating (status: false) stops
+  // it being used without touching any of that history.
+  const [gameCount, userCount, txCount] = await Promise.all([
+    prisma.game.count({ where: { providerId: id } }),
+    prisma.providerUser.count({ where: { providerId: id } }),
+    prisma.providerTransaction.count({ where: { providerId: id } }),
+  ])
+  if (gameCount > 0 || userCount > 0 || txCount > 0) {
+    const parts = []
+    if (gameCount > 0) parts.push(`${gameCount} game(s)`)
+    if (userCount > 0) parts.push(`${userCount} user account(s)`)
+    if (txCount > 0) parts.push(`${txCount} transaction(s)`)
+    throw new AppError(`This provider has ${parts.join(', ')} tied to it and cannot be deleted — deactivate it instead.`, 400)
+  }
+
+  await prisma.provider.delete({ where: { id } })
   res.json({ success: true, message: 'Provider deleted' })
 })
 
