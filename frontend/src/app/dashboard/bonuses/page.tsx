@@ -1,10 +1,144 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Gift, Clock, Check, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react'
+import { Gift, Clock, Check, ChevronDown, ChevronUp, RefreshCw, Wallet, Info } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { bonusesApi } from '@/lib/api'
+import { bonusesApi, bonusApi } from '@/lib/api'
 import { Card, PageHeader, Button, Badge, IconTile, EmptyState, Skeleton, GiftIcon, TONES, type Tone } from '@/components/dashboard/ui'
+import BonusCashoutRulesModal from '@/components/modals/BonusCashoutRulesModal'
+
+const SOURCE_TYPE_LABEL: Record<string, string> = {
+  CRYPTO_BONUS: 'Crypto Bonus',
+  FREEPLAY: 'Freeplay',
+  REFERRAL_BONUS: 'Referral Bonus',
+  COUPON: 'Coupon',
+  FREE_SPIN: 'Free Spin',
+}
+
+interface UserBonusRow {
+  id: string
+  sourceType: string
+  originalAmount: number
+  remainingAmount: number
+  status: string
+  expiresAt: string | null
+  createdAt: string
+}
+
+interface BonusTransactionRow {
+  id: string
+  type: string
+  sourceType: string | null
+  amount: number
+  createdAt: string
+}
+
+interface BonusConversionRow {
+  id: string
+  totalWinnings: number
+  eligibleWalletCredit: number
+  primarySourceType: string | null
+  createdAt: string
+}
+
+function BonusBalanceSummary() {
+  const [bonusBalance, setBonusBalance] = useState(0)
+  const [activeBonuses, setActiveBonuses] = useState<UserBonusRow[]>([])
+  const [transactions, setTransactions] = useState<BonusTransactionRow[]>([])
+  const [conversions, setConversions] = useState<BonusConversionRow[]>([])
+  const [loading, setLoading] = useState(true)
+  const [showRules, setShowRules] = useState(false)
+
+  const load = async () => {
+    setLoading(true)
+    try {
+      const [balRes, histRes] = await Promise.all([
+        bonusApi.getBalance(),
+        bonusApi.getHistory(25),
+      ])
+      setBonusBalance(balRes.data?.data?.bonusBalance || 0)
+      setActiveBonuses(balRes.data?.data?.activeBonuses || [])
+      setTransactions(histRes.data?.data?.transactions || [])
+      setConversions(histRes.data?.data?.conversions || [])
+    } catch {
+      // Non-critical — the bonus catalog below still loads independently
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => { load() }, [])
+
+  return (
+    <Card className="!p-5 sm:!p-6 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <IconTile icon={Wallet} tone="cyan" size="md" />
+          <div>
+            <p className="text-secondary text-[13px]">Bonus Balance</p>
+            {loading ? <Skeleton className="h-8 w-24 mt-1" /> : (
+              <p className="text-[28px] font-bold text-primary tabular-nums">${bonusBalance.toFixed(2)}</p>
+            )}
+          </div>
+        </div>
+        <Button variant="secondary" size="sm" onClick={() => setShowRules(true)}>
+          <Info className="w-4 h-4" /> View Bonus Cashout Rules
+        </Button>
+      </div>
+
+      <p className="mt-4 text-[13px] text-secondary leading-relaxed">
+        Bonus funds are promotional and separate from your Wallet Balance. They can fund a game recharge only
+        when your Wallet Balance is $0, and any winnings follow the active Bonus Cashout Rules before converting
+        to real, withdrawable Wallet Balance.
+      </p>
+
+      {!loading && activeBonuses.length > 0 && (
+        <div className="mt-5">
+          <p className="text-[13px] font-semibold text-primary mb-2">Active bonuses</p>
+          <div className="divide-y divide-[var(--border-subtle)] border-y border-border-subtle">
+            {activeBonuses.map((b) => (
+              <div key={b.id} className="flex items-center justify-between gap-3 py-2.5 text-[14px]">
+                <div>
+                  <span className="font-medium text-primary">{SOURCE_TYPE_LABEL[b.sourceType] || b.sourceType}</span>
+                  {b.expiresAt && (
+                    <span className="ml-2 text-[12px] text-secondary inline-flex items-center gap-1">
+                      <Clock className="w-3 h-3" /> Expires {new Date(b.expiresAt).toLocaleDateString()}
+                    </span>
+                  )}
+                </div>
+                <span className="font-semibold text-primary tabular-nums">
+                  ${b.remainingAmount.toFixed(2)} <span className="text-secondary font-normal">/ ${b.originalAmount.toFixed(2)}</span>
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {!loading && (transactions.length > 0 || conversions.length > 0) && (
+        <div className="mt-5">
+          <p className="text-[13px] font-semibold text-primary mb-2">Recent bonus activity</p>
+          <div className="divide-y divide-[var(--border-subtle)] border-y border-border-subtle max-h-64 overflow-y-auto">
+            {[...transactions.map(t => ({ key: `t-${t.id}`, date: t.createdAt, label: t.type.replace(/_/g, ' '), amount: t.amount })),
+              ...conversions.map(c => ({ key: `c-${c.id}`, date: c.createdAt, label: `Bonus cashout conversion (${SOURCE_TYPE_LABEL[c.primarySourceType || ''] || c.primarySourceType || 'bonus'})`, amount: c.eligibleWalletCredit }))]
+              .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+              .slice(0, 15)
+              .map((row) => (
+                <div key={row.key} className="flex items-center justify-between gap-3 py-2.5 text-[13px]">
+                  <span className="text-secondary capitalize">{row.label.toLowerCase()}</span>
+                  <span className={`font-semibold tabular-nums ${row.amount >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {row.amount >= 0 ? '+' : ''}${row.amount.toFixed(2)}
+                  </span>
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
+
+      <BonusCashoutRulesModal isOpen={showRules} onClose={() => setShowRules(false)} />
+    </Card>
+  )
+}
 
 const TYPE_BADGE: Record<string, { label: string; tone: Tone }> = {
   welcome: { label: 'Welcome', tone: 'gold' },
@@ -183,6 +317,8 @@ export default function BonusesPage() {
           </Button>
         }
       />
+
+      <BonusBalanceSummary />
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5" aria-busy="true">

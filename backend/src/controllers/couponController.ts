@@ -3,6 +3,7 @@ import prisma from '../lib/prisma'
 import { asyncHandler, AppError } from '../middleware/errorHandler'
 import { AuthRequest } from '../middleware/auth'
 import { invalidateWalletCache } from '../services/WalletService'
+import { BonusLedgerService } from '../services/BonusLedgerService'
 
 export const claimCoupon = asyncHandler(async (req: AuthRequest, res: Response) => {
   const { code } = req.body
@@ -57,8 +58,17 @@ export const claimCoupon = asyncHandler(async (req: AuthRequest, res: Response) 
     await prisma.$transaction(async (tx) => {
       // Guarded by the unique constraint on (couponId, userId): a genuinely simultaneous double-submit by
       // the same user (past the fast-path check above) throws P2002 here rather than granting twice.
-      await tx.couponUsage.create({ data: { userId, couponId: coupon.id } })
+      const usage = await tx.couponUsage.create({ data: { userId, couponId: coupon.id } })
       await tx.bonusClaim.create({ data: { userId, bonusId: freeplayBonus.id, amount: coupon.amount } })
+      // Additive: the legacy BonusClaim row above stays (existing consumers keep working), and the new Bonus
+      // Balance ledger is credited in the SAME transaction so a coupon claim can never grant one without the
+      // other.
+      await BonusLedgerService.grantUserBonusTx(tx, {
+        userId,
+        sourceType: 'COUPON',
+        amount: coupon.amount,
+        referenceId: usage.id,
+      })
     })
   } catch (err: any) {
     // Release the slot this request claimed above but couldn't actually use, and surface the same

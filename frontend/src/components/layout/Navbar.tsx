@@ -29,12 +29,13 @@ export default function Navbar() {
   const [profileOpen, setProfileOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
   
-  const { user, isAuthenticated, logout, balance, fetchBalance, authModalOpen, authModalView, openAuthModal, closeAuthModal } = useAuthStore(
+  const { user, isAuthenticated, logout, balance, bonusBalance, fetchBalance, authModalOpen, authModalView, openAuthModal, closeAuthModal } = useAuthStore(
     useShallow((state) => ({
       user: state.user,
       isAuthenticated: state.isAuthenticated,
       logout: state.logout,
       balance: state.balance,
+      bonusBalance: state.bonusBalance,
       fetchBalance: state.fetchBalance,
       authModalOpen: state.authModalOpen,
       authModalView: state.authModalView,
@@ -381,6 +382,9 @@ export default function Navbar() {
                       <div>
                         <p className="text-[10px] text-secondary uppercase font-bold tracking-wider">Balance</p>
                         <p className="text-base font-black text-white">${balance.toFixed(2)}</p>
+                        {bonusBalance > 0 && (
+                          <p className="text-[11px] font-bold text-[#2AC3FF]">+${bonusBalance.toFixed(2)} bonus</p>
+                        )}
                       </div>
                     </div>
                     <button onClick={() => { setMobileOpen(false); setWalletOpen(true); }} className="w-10 h-10 rounded-full bg-[#0ea5e9] hover:bg-[#38bdf8] flex items-center justify-center transition-colors shadow-lg shadow-sky-500/20">
@@ -490,7 +494,7 @@ export default function Navbar() {
       <ExpandableContactFab />
     </div>
 
-      <WalletModal isOpen={walletOpen} onClose={() => setWalletOpen(false)} balance={balance} />
+      <WalletModal isOpen={walletOpen} onClose={() => setWalletOpen(false)} balance={balance} bonusBalance={bonusBalance} />
       <AuthModal isOpen={authModalOpen} onClose={closeAuthModal} initialView={authModalView} />
     </>
   )

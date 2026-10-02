@@ -11,6 +11,7 @@ import { escapeLike } from '../utils/safe'
 import { setSessionCookies, clearSessionCookies } from '../utils/authCookies'
 import { ProviderFactory } from '../services/provider/ProviderFactory'
 import { WalletService } from '../services/WalletService'
+import { BonusService } from '../services/BonusService'
 import { revokeTokensIssuedBefore, markEmailVerifyTokenIssued, isEmailVerifyTokenValid, clearEmailVerifyToken, createTelegramLinkToken } from '../lib/redis'
 import { auth } from '../lib/firebaseAdmin'
 import { createNotification } from '../services/notificationService'
@@ -415,8 +416,20 @@ export const logout = asyncHandler(async (req: AuthRequest, res: Response) => {
 
 // GET /api/auth/balance
 export const getBalance = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const balances = await WalletService.getBalances(req.user!.id);
-  res.json({ success: true, data: { balance: balances.displayBalance, withdrawable: balances.withdrawableBalance } });
+  const [balances, bonusBalance] = await Promise.all([
+    WalletService.getBalances(req.user!.id),
+    BonusService.getBonusBalance(req.user!.id),
+  ]);
+  res.json({
+    success: true,
+    data: {
+      // `balance`/`withdrawable` kept exactly as before for backward compatibility with existing consumers.
+      balance: balances.displayBalance,
+      withdrawable: balances.withdrawableBalance,
+      walletBalance: balances.displayBalance,
+      bonusBalance,
+    },
+  });
 })
 
 // GET /api/auth/dashboard-init?gameId=xxx
@@ -425,12 +438,13 @@ export const dashboardInit = asyncHandler(async (req: AuthRequest, res: Response
   const userId = req.user!.id
   const gameId = req.query.gameId as string | undefined
 
-  const [userRes, balanceRes, providerUserRes] = await Promise.allSettled([
+  const [userRes, balanceRes, bonusBalanceRes, providerUserRes] = await Promise.allSettled([
     prisma.user.findUnique({
       where: { id: userId },
       select: { id: true, username: true, email: true, role: true, isVerified: true, isActive: true, isBanned: true, lastLogin: true, createdAt: true, profile: true }
     }),
     WalletService.getWalletBalance(userId),
+    BonusService.getBonusBalance(userId),
     gameId
       ? (async () => {
           const providerId = await ProviderFactory.getProviderIdForGame(gameId)
@@ -442,6 +456,7 @@ export const dashboardInit = asyncHandler(async (req: AuthRequest, res: Response
 
   const user = userRes.status === 'fulfilled' ? userRes.value : null
   const balance = balanceRes.status === 'fulfilled' ? balanceRes.value : 0
+  const bonusBalance = bonusBalanceRes.status === 'fulfilled' ? bonusBalanceRes.value : 0
   const providerUser = providerUserRes.status === 'fulfilled' ? providerUserRes.value : null
   const telegramLinkToken = user ? await createTelegramLinkToken(user.id) : null
 
@@ -450,6 +465,7 @@ export const dashboardInit = asyncHandler(async (req: AuthRequest, res: Response
     data: {
       user: user ? { ...user, telegramLinkToken } : user,
       balance,
+      bonusBalance,
       providerAccount: providerUser
         ? (providerUser as any).isMaintenance
           ? { isMaintenance: true, hasAccount: false }

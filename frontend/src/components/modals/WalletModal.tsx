@@ -16,6 +16,7 @@ interface WalletModalProps {
   isOpen: boolean
   onClose: () => void
   balance: number
+  bonusBalance?: number
 }
 
 type PaymentMethodType = {
@@ -117,7 +118,7 @@ function TxRow({ tx }: { tx: TxItem }) {
   )
 }
 
-export default function WalletModal({ isOpen, onClose, balance }: WalletModalProps) {
+export default function WalletModal({ isOpen, onClose, balance, bonusBalance = 0 }: WalletModalProps) {
   const [activeTab, setActiveTab] = useState<'deposit' | 'cashout' | 'history'>('deposit')
   const [cashoutMethod, setCashoutMethod] = useState<'chime' | 'cashapp' | 'venmo' | null>(null)
   const [depositMethod, setDepositMethod] = useState<'chime' | 'chime2' | 'paypal' | 'cashapp' | 'cashapp2' | 'venmo' | 'crypto' | 'ggusonepay' | null>(null)
@@ -222,11 +223,17 @@ export default function WalletModal({ isOpen, onClose, balance }: WalletModalPro
                 {/* Balance Card */}
                 <div className="bg-[#1C1F2E] rounded-[24px] p-6 flex flex-col items-center justify-center mb-6 shadow-[0_4px_20px_rgba(0,0,0,0.2)] border border-white/5 relative overflow-hidden">
                   <div className="absolute inset-0 bg-gradient-to-b from-blue-500/5 to-transparent pointer-events-none" />
-                  <p className="text-white/50 text-sm mb-1.5 font-medium tracking-wide">Balance</p>
+                  <p className="text-white/50 text-sm mb-1.5 font-medium tracking-wide">Wallet Balance</p>
                   <div className="flex items-baseline gap-1.5 relative z-10">
                     <span className="text-[#2AC3FF] font-bold text-3xl">$</span>
                     <span className="text-white font-black text-[42px] tracking-tight">{balance.toFixed(2)}</span>
                   </div>
+                  {bonusBalance > 0 && (
+                    <div className="mt-2 pt-2 border-t border-white/10 flex items-center gap-1.5 relative z-10">
+                      <span className="text-white/50 text-xs font-medium">Bonus Balance:</span>
+                      <span className="text-[#2AC3FF] font-bold text-sm">${bonusBalance.toFixed(2)}</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Tabs */}

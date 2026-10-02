@@ -1184,3 +1184,180 @@ export const deleteCoupon = asyncHandler(async (req: AuthRequest, res: Response)
 
   res.json({ success: true, message: 'Coupon deleted successfully' })
 })
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BONUS CASHOUT RULES (Admin) — Bonus Balance system
+// ═══════════════════════════════════════════════════════════════════════════
+
+function validateBonusCashoutRuleInput(body: any, isPartial: boolean): { data: any; error?: string } {
+  const data: any = {}
+
+  if (!isPartial || body.sourceTypes !== undefined) {
+    if (body.sourceTypes !== undefined && !Array.isArray(body.sourceTypes)) {
+      return { data, error: 'sourceTypes must be an array of strings (empty array or ["ALL"] applies to every source type)' }
+    }
+    data.sourceTypes = body.sourceTypes || []
+  }
+  if (!isPartial || body.minAmount !== undefined) {
+    const minAmount = parseFloat(body.minAmount)
+    if (!Number.isFinite(minAmount) || minAmount < 0) return { data, error: 'minAmount must be >= 0' }
+    data.minAmount = Math.round(minAmount * 100) / 100
+  }
+  if (!isPartial || body.maxAmount !== undefined) {
+    const maxAmount = parseFloat(body.maxAmount)
+    if (!Number.isFinite(maxAmount)) return { data, error: 'maxAmount must be a number' }
+    data.maxAmount = Math.round(maxAmount * 100) / 100
+  }
+  if (data.minAmount !== undefined && data.maxAmount !== undefined && data.maxAmount < data.minAmount) {
+    return { data, error: 'maxAmount must be >= minAmount' }
+  }
+  if (!isPartial || body.walletCreditAmount !== undefined) {
+    const walletCreditAmount = parseFloat(body.walletCreditAmount)
+    if (!Number.isFinite(walletCreditAmount) || walletCreditAmount < 0) return { data, error: 'walletCreditAmount must be >= 0' }
+    data.walletCreditAmount = Math.round(walletCreditAmount * 100) / 100
+  }
+  if (body.priority !== undefined) {
+    const priority = parseInt(body.priority, 10)
+    if (!Number.isFinite(priority)) return { data, error: 'priority must be an integer' }
+    data.priority = priority
+  }
+  if (body.isActive !== undefined) data.isActive = !!body.isActive
+
+  return { data }
+}
+
+/** True if [minA,maxA] and [minB,maxB] overlap and both rules would match at least one shared sourceType. */
+function rulesOverlap(a: { sourceTypes: string[]; minAmount: number; maxAmount: number }, b: { sourceTypes: string[]; minAmount: number; maxAmount: number }): boolean {
+  const rangesOverlap = a.minAmount <= b.maxAmount && b.minAmount <= a.maxAmount
+  if (!rangesOverlap) return false
+  const aIsWildcard = a.sourceTypes.length === 0 || a.sourceTypes.includes('ALL')
+  const bIsWildcard = b.sourceTypes.length === 0 || b.sourceTypes.includes('ALL')
+  if (aIsWildcard || bIsWildcard) return true
+  return a.sourceTypes.some((st) => b.sourceTypes.includes(st))
+}
+
+export const getAdminBonusCashoutRules = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const rules = await prisma.bonusCashoutRule.findMany({ orderBy: [{ priority: 'desc' }, { createdAt: 'desc' }] })
+  res.json({ success: true, data: rules })
+})
+
+export const createBonusCashoutRule = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { data, error } = validateBonusCashoutRuleInput(req.body, false)
+  if (error) throw new AppError(error, 400)
+
+  const existingActive = await prisma.bonusCashoutRule.findMany({ where: { isActive: true } })
+  const overlapWarning = existingActive.some((r) => rulesOverlap(r, data))
+
+  const rule = await prisma.bonusCashoutRule.create({ data: { ...data, createdBy: req.user!.id } })
+  res.status(201).json({ success: true, data: rule, overlapWarning, message: overlapWarning ? 'Rule created, but its range overlaps an existing active rule for at least one shared source type — the higher-priority (then newest) rule will win at conversion time.' : 'Rule created' })
+})
+
+export const updateBonusCashoutRule = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const id = req.params.id as string
+  const existing = await prisma.bonusCashoutRule.findUnique({ where: { id } })
+  if (!existing) throw new AppError('Bonus cashout rule not found', 404)
+
+  const { data, error } = validateBonusCashoutRuleInput(req.body, true)
+  if (error) throw new AppError(error, 400)
+
+  const merged = { sourceTypes: existing.sourceTypes, minAmount: existing.minAmount, maxAmount: existing.maxAmount, ...data }
+  if (merged.maxAmount < merged.minAmount) throw new AppError('maxAmount must be >= minAmount', 400)
+
+  const otherActive = await prisma.bonusCashoutRule.findMany({ where: { isActive: true, id: { not: id } } })
+  const overlapWarning = (merged.isActive ?? existing.isActive) && otherActive.some((r) => rulesOverlap(r, merged))
+
+  const rule = await prisma.bonusCashoutRule.update({ where: { id }, data })
+  // Historical BonusConversion rows already snapshot the rule's fields at the time they were created (see
+  // BonusConversion.ruleMinAmountSnapshot/etc.) — this update never touches past conversions.
+  res.json({ success: true, data: rule, overlapWarning })
+})
+
+export const deleteBonusCashoutRule = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const id = req.params.id as string
+  const referencedCount = await prisma.bonusConversion.count({ where: { ruleId: id } })
+  if (referencedCount > 0) {
+    throw new AppError(`This rule has been applied to ${referencedCount} historical conversion(s) and cannot be deleted — deactivate it instead to stop new conversions from using it.`, 400)
+  }
+  await prisma.bonusCashoutRule.delete({ where: { id } })
+  res.json({ success: true, message: 'Bonus cashout rule deleted' })
+})
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BONUS BALANCE REPORTING (Admin) — read-only inspection views
+// ═══════════════════════════════════════════════════════════════════════════
+
+function parsePagination(req: AuthRequest) {
+  const page = Math.max(1, parseInt(String(req.query.page || '1'), 10) || 1)
+  const limit = Math.min(100, Math.max(1, parseInt(String(req.query.limit || '25'), 10) || 25))
+  return { page, limit, skip: (page - 1) * limit }
+}
+
+export const getAdminUserBonuses = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { page, limit, skip } = parsePagination(req)
+  const { userId, sourceType, status } = req.query
+  const where: any = {}
+  if (userId) where.userId = String(userId)
+  if (sourceType) where.sourceType = String(sourceType)
+  if (status) where.status = String(status)
+
+  const [total, items] = await Promise.all([
+    prisma.userBonus.count({ where }),
+    prisma.userBonus.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: limit, include: { user: { select: { username: true, email: true } } } }),
+  ])
+  res.json({ success: true, data: items, pagination: { page, limit, total, pages: Math.ceil(total / limit) } })
+})
+
+export const getAdminBonusTransactions = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { page, limit, skip } = parsePagination(req)
+  const { userId, type } = req.query
+  const where: any = {}
+  if (userId) where.userId = String(userId)
+  if (type) where.type = String(type)
+
+  const [total, items] = await Promise.all([
+    prisma.bonusTransaction.count({ where }),
+    prisma.bonusTransaction.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: limit, include: { user: { select: { username: true, email: true } } } }),
+  ])
+  res.json({ success: true, data: items, pagination: { page, limit, total, pages: Math.ceil(total / limit) } })
+})
+
+export const getAdminBonusConversions = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { page, limit, skip } = parsePagination(req)
+  const { userId } = req.query
+  const where: any = {}
+  if (userId) where.userId = String(userId)
+
+  const [total, items] = await Promise.all([
+    prisma.bonusConversion.count({ where }),
+    prisma.bonusConversion.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: limit, include: { user: { select: { username: true, email: true } }, rule: true } }),
+  ])
+  res.json({ success: true, data: items, pagination: { page, limit, total, pages: Math.ceil(total / limit) } })
+})
+
+export const getAdminSundayFreeplayClaims = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { page, limit, skip } = parsePagination(req)
+  const { userId, weekKey } = req.query
+  const where: any = {}
+  if (userId) where.userId = String(userId)
+  if (weekKey) where.weekKey = String(weekKey)
+
+  const [total, items] = await Promise.all([
+    prisma.sundayFreeplayClaim.count({ where }),
+    prisma.sundayFreeplayClaim.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: limit, include: { user: { select: { username: true, email: true } } } }),
+  ])
+  res.json({ success: true, data: items, pagination: { page, limit, total, pages: Math.ceil(total / limit) } })
+})
+
+export const getAdminWalletTransactions = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { page, limit, skip } = parsePagination(req)
+  const { userId, type } = req.query
+  const where: any = {}
+  if (userId) where.userId = String(userId)
+  if (type) where.type = String(type)
+
+  const [total, items] = await Promise.all([
+    prisma.walletTransaction.count({ where }),
+    prisma.walletTransaction.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: limit, include: { user: { select: { username: true, email: true } } } }),
+  ])
+  res.json({ success: true, data: items, pagination: { page, limit, total, pages: Math.ceil(total / limit) } })
+})

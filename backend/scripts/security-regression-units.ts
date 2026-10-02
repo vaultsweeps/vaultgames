@@ -575,4 +575,113 @@ export async function extraChecks(check: Check) {
     const providerSrc = src('services/provider/CashMachineProviderService.ts')
     check('CashMachine/GameRoom/etc: rechargePlayer and withdrawPlayer both sanitize the remark, not just one of them', (providerSrc.match(/remark: this\.sanitizeRemark\(orderId\)/g) || []).length === 2)
   }
+
+  // ── Bonus Balance system — offline checks (pure functions, no DB) ───────────────────────────────────
+  {
+    const { getUTCISOWeekKey } = await import('../src/services/SundayFreeplayService')
+    // 2026-01-01 is a Thursday, so ISO week 1 of 2026 contains it.
+    check('getUTCISOWeekKey: known Thursday maps to W01', getUTCISOWeekKey(new Date('2026-01-01T12:00:00.000Z')) === '2026-W01')
+    // A Sunday belongs to the ISO week that STARTED the preceding Monday (ISO weeks run Mon-Sun).
+    const monday = new Date('2026-03-02T00:05:00.000Z') // a Monday
+    const followingSunday = new Date('2026-03-08T00:05:00.000Z') // the Sunday ending that same ISO week
+    check('getUTCISOWeekKey: a Monday and the Sunday 6 days later fall in the SAME ISO week', getUTCISOWeekKey(monday) === getUTCISOWeekKey(followingSunday), `${getUTCISOWeekKey(monday)} vs ${getUTCISOWeekKey(followingSunday)}`)
+    const nextMonday = new Date('2026-03-09T00:05:00.000Z')
+    check('getUTCISOWeekKey: the following Monday is a DIFFERENT ISO week', getUTCISOWeekKey(nextMonday) !== getUTCISOWeekKey(followingSunday))
+
+    const { BonusCashoutRuleService } = await import('../src/services/BonusCashoutRuleService')
+    const rule100 = { walletCreditAmount: 20 } as any
+    check('computeEligibleWalletCredit: caps at the configured wallet credit when winnings exceed it', BonusCashoutRuleService.computeEligibleWalletCredit(100, rule100) === 20)
+    const ruleHuge = { walletCreditAmount: 500 } as any
+    check('computeEligibleWalletCredit: NEVER exceeds the actual winnings, even if the rule credit is larger', BonusCashoutRuleService.computeEligibleWalletCredit(30, ruleHuge) === 30)
+    check('computeEligibleWalletCredit: $0 when no rule matched', BonusCashoutRuleService.computeEligibleWalletCredit(100, null) === 0)
+    check('computeEligibleWalletCredit: never negative', BonusCashoutRuleService.computeEligibleWalletCredit(0, rule100) === 0)
+  }
+
+  // ── Bonus Balance system — grant-hook wiring (found this session: grants must land in the SAME
+  // transaction as the event that causes them, using the atomic debitUserBonusFIFO/grantUserBonusTx
+  // primitives — never a separate read-then-write). Live-DB, throwaway qa_* users, cleaned up after. ──
+  {
+    const { claimCoupon } = await import('../src/controllers/couponController')
+    const code = `QABONUS${Date.now()}`.slice(0, 20)
+    const coupon = await prisma.coupon.create({ data: { code, amount: 5, usageLimit: 1, isActive: true } })
+    const u = await prisma.user.create({ data: { username: `qa_cpb_${Date.now()}`, email: `qa-cpb-${Date.now()}@example.invalid`, password: 'x', isVerified: true, isActive: true } })
+    try {
+      const call = () => new Promise<{ status: number; body: any }>(resolve => {
+        const req: any = { body: { code }, user: { id: u.id } }
+        const res: any = {
+          json: (b: any) => resolve({ status: 200, body: b }),
+          status: (c: number) => ({ json: (b: any) => resolve({ status: c, body: b }) })
+        }
+        claimCoupon(req, res, (err: any) => resolve({ status: err?.statusCode || 500, body: { message: err?.message } }))
+      })
+      const result = await call()
+      const userBonus = await prisma.userBonus.findFirst({ where: { userId: u.id, sourceType: 'COUPON' } })
+      check('Coupon grant hook: claiming a coupon also creates a UserBonus(sourceType=COUPON) for the same amount', result.body?.success && userBonus?.originalAmount === 5 && userBonus?.remainingAmount === 5, JSON.stringify({ success: result.body?.success, userBonus }))
+
+      const { BonusService } = await import('../src/services/BonusService')
+      const bonusBalance = await BonusService.getBonusBalanceRaw(u.id)
+      check('BonusService.getBonusBalanceRaw: reflects the freshly granted coupon bonus', bonusBalance === 5, `bonusBalance=${bonusBalance}`)
+    } finally {
+      await prisma.bonusTransaction.deleteMany({ where: { userId: u.id } })
+      await prisma.userBonus.deleteMany({ where: { userId: u.id } })
+      await prisma.couponUsage.deleteMany({ where: { couponId: coupon.id } })
+      await prisma.bonusClaim.deleteMany({ where: { userId: u.id } })
+      await prisma.coupon.delete({ where: { id: coupon.id } }).catch(() => {})
+      await prisma.user.delete({ where: { id: u.id } }).catch(() => {})
+    }
+  }
+
+  // ── Bonus Balance system — concurrent debit race safety (the same class of bug the coupon race above
+  // was fixed for: debitUserBonusFIFO MUST use the atomic per-row updateMany guard, not read-then-write,
+  // so two concurrent game recharges can never both spend the same bonus dollar). Live-DB. ──
+  {
+    const { BonusLedgerService } = await import('../src/services/BonusLedgerService')
+    const u = await prisma.user.create({ data: { username: `qa_bfd_${Date.now()}`, email: `qa-bfd-${Date.now()}@example.invalid`, password: 'x', isVerified: true, isActive: true } })
+    const userBonus = await prisma.userBonus.create({ data: { userId: u.id, sourceType: 'FREEPLAY', originalAmount: 10, remainingAmount: 10 } })
+    try {
+      // Two concurrent debits of $8 each against a $10 balance — at most one can fully succeed.
+      const results = await Promise.allSettled([
+        BonusLedgerService.debitUserBonusFIFO(u.id, 8, 'qa-race-1'),
+        BonusLedgerService.debitUserBonusFIFO(u.id, 8, 'qa-race-2'),
+      ])
+      const succeeded = results.filter(r => r.status === 'fulfilled').length
+      const finalRow = await prisma.userBonus.findUnique({ where: { id: userBonus.id } })
+      check('debitUserBonusFIFO: two concurrent $8 debits against a $10 balance — at most ONE fully succeeds', succeeded <= 1, `succeeded=${succeeded}`)
+      check('debitUserBonusFIFO: remainingAmount never goes negative under concurrent debits', (finalRow?.remainingAmount ?? -1) >= 0, `remainingAmount=${finalRow?.remainingAmount}`)
+    } finally {
+      await prisma.bonusTransaction.deleteMany({ where: { userId: u.id } })
+      await prisma.userBonus.deleteMany({ where: { userId: u.id } })
+      await prisma.user.delete({ where: { id: u.id } }).catch(() => {})
+    }
+  }
+
+  // ── Bonus Balance system — BonusConversion double-conversion protection. The unique constraint on
+  // providerTransactionOrderId is the hard backstop even if the idempotent-replay check in transferFunds
+  // were ever bypassed (e.g. a reconciliation re-run) — verified directly against the DB constraint. ──
+  {
+    const u = await prisma.user.create({ data: { username: `qa_bcv_${Date.now()}`, email: `qa-bcv-${Date.now()}@example.invalid`, password: 'x', isVerified: true, isActive: true } })
+    const orderId = `qa-conv-${Date.now()}`
+    try {
+      await prisma.bonusConversion.create({ data: { userId: u.id, providerTransactionOrderId: orderId, totalWinnings: 100, eligibleWalletCredit: 20, sourceBreakdown: { FREEPLAY: 3 } } })
+      let secondFailed = false
+      try {
+        await prisma.bonusConversion.create({ data: { userId: u.id, providerTransactionOrderId: orderId, totalWinnings: 100, eligibleWalletCredit: 20, sourceBreakdown: { FREEPLAY: 3 } } })
+      } catch (e: any) {
+        secondFailed = e?.code === 'P2002'
+      }
+      const count = await prisma.bonusConversion.count({ where: { providerTransactionOrderId: orderId } })
+      check('BonusConversion: providerTransactionOrderId uniqueness blocks a second conversion for the same cashout', secondFailed && count === 1, `secondFailed=${secondFailed} count=${count}`)
+    } finally {
+      await prisma.bonusConversion.deleteMany({ where: { providerTransactionOrderId: orderId } })
+      await prisma.user.delete({ where: { id: u.id } }).catch(() => {})
+    }
+  }
+
+  // ── Bonus Balance system — the existing 100%/30% signup/deposit bonus must stay entirely separate from
+  // UserBonus/BonusCashoutRule (explicit user instruction: "keep it as it is"). Static source-level check. ──
+  {
+    const providerCtlSrc = src('controllers/providerController.ts')
+    check('providerController: the 100%/30% bonus computation block never references UserBonus/BonusCashoutRule', !/bonusAmount[\s\S]{0,400}(UserBonus|BonusCashoutRule)/.test(providerCtlSrc.slice(providerCtlSrc.indexOf('let bonusAmount'), providerCtlSrc.indexOf('let bonusAmount') + 2000)))
+    check('providerController: a Bonus-Balance-funded recharge sends the exact amount with no 100%/30% inflation', providerCtlSrc.includes("fundingSource === 'BONUS'") && providerCtlSrc.includes('debitUserBonusFIFO'))
+  }
 }

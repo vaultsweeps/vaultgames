@@ -25,7 +25,8 @@ export interface UserProfile {
 export interface AuthState {
   user: User | null
   token: string | null
-  balance: number
+  balance: number // Wallet Balance — kept as the original field name for backward compatibility
+  bonusBalance: number // Bonus Balance — CRYPTO_BONUS/FREEPLAY/REFERRAL_BONUS/COUPON/FREE_SPIN only, never merged into `balance`
   isLoading: boolean
   isAuthenticated: boolean
 }

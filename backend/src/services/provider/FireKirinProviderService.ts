@@ -228,15 +228,11 @@ export class FireKirinProviderService implements ProviderAdapter {
     }
 
     const time = this.nowSeconds();
-    // Doc says sign = md5((agentName + time + agentKey).toLowerCase()) — but the doc's own worked example
-    // uses a lowercase agentKey ("cb71121e..."), so that instruction was never actually exercised against
-    // a mixed-case key in the example itself. The live server returns UPPERCASE keys (confirmed via
-    // debug logging: "0CDDF6CAD17146A5B1B98984061C722D"), and every call using a lowercased version of it
-    // got "Signature error." — consistent with the real server not actually lowercasing the key
-    // server-side when it recomputes the signature to compare, despite what the doc claims. agentName
-    // ("vault675") is naturally already lowercase for us either way, so that part is moot; the key is kept
-    // exactly as returned instead of forced to lowercase.
-    const signInput = this.agentName.toLowerCase() + time + agentKey;
+    // Per doc: sign = md5((agentName + time + agentKey).toLowerCase()) — verified byte-for-byte correct
+    // against the doc's own worked example (agentName=agent01, time=1595756537, agentKey=cb71121e...
+    // -> sign=1097bf94...). A live-server test WITHOUT lowercasing the (uppercase) agentKey was also tried
+    // and failed identically, ruling that out as the fix — reverted to the documented, verified formula.
+    const signInput = this.agentName.toLowerCase() + time + agentKey.toLowerCase();
     const sign      = this.md5(signInput);
 
     // TEMP DIAGNOSTIC (remove once the signature error is root-caused) — agentKey is a session token that

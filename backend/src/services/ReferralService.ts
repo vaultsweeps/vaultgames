@@ -1,6 +1,7 @@
 import prisma from '../lib/prisma';
 import { logger } from '../utils/logger';
 import { invalidateWalletCache } from './WalletService';
+import { BonusLedgerService } from './BonusLedgerService';
 
 const MAX_REFERRAL_BONUS = 10;
 const REFERRAL_BONUS_PERCENT = 0.5;
@@ -53,16 +54,31 @@ export class ReferralService {
     const abuse = await this.assessAbuseSignals(referrerId, refereeId)
 
     try {
-      const reward = await prisma.referralReward.create({
-        data: {
-          referrerId,
-          refereeId,
-          amount,
-          triggerSource,
-          triggerDepositId,
-          status: abuse.flag ? 'flagged' : 'paid',
-          flagReason: abuse.flag ? abuse.reason : null,
-        },
+      // The ReferralReward create and the Bonus Balance grant happen in the SAME transaction, so a grant can
+      // never be orphaned relative to the reward row that caused it — if either write fails, both roll back.
+      const reward = await prisma.$transaction(async (tx) => {
+        const r = await tx.referralReward.create({
+          data: {
+            referrerId,
+            refereeId,
+            amount,
+            triggerSource,
+            triggerDepositId,
+            status: abuse.flag ? 'flagged' : 'paid',
+            flagReason: abuse.flag ? abuse.reason : null,
+          },
+        })
+        // Flagged rewards do not grant Bonus Balance until/unless a staff review approves them — there is no
+        // existing "approve a flagged referral" flow yet, so a flagged reward simply never grants today.
+        if (!abuse.flag) {
+          await BonusLedgerService.grantUserBonusTx(tx, {
+            userId: referrerId,
+            sourceType: 'REFERRAL_BONUS',
+            amount,
+            referenceId: r.id,
+          })
+        }
+        return r
       })
 
       if (abuse.flag) {

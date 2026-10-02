@@ -53,7 +53,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             next/image itself already fetched — pure wasted bandwidth, found via a real network audit. */}
         {/* Inline script: synchronously hide the pre-screen if vault was already seen.
             Runs before first paint — eliminates homepage flash for returning users. */}
-        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: `(function(){try{if(sessionStorage.getItem('vaultIntroSeen')){var s=document.getElementById('vs-prescreen');if(s)s.style.display='none';}}catch(e){}})();` }} />
+        {/* suppressHydrationWarning: expected, documented React/Next.js behavior for nonce-based CSP — browsers
+            deliberately hide a script's `nonce` attribute value from the DOM once applied (it reads back as ""
+            client-side) so injected/XSS code can't read and reuse it, even though the real nonce was correctly
+            set and sent. This makes React's hydration check see a mismatch that isn't actually one; the nonce
+            still works correctly for CSP enforcement on both renders. See https://nextjs.org/docs/app/guides/content-security-policy */}
+        <script nonce={nonce} suppressHydrationWarning dangerouslySetInnerHTML={{ __html: `(function(){try{if(sessionStorage.getItem('vaultIntroSeen')){var s=document.getElementById('vs-prescreen');if(s)s.style.display='none';}}catch(e){}})();` }} />
       </head>
       <body className={`bg-background text-primary antialiased transition-colors duration-300 ${orbitron.variable} ${inter.variable} ${jetbrains.variable}`} suppressHydrationWarning>
         {/* Pre-screen: server-rendered dark overlay — blocks homepage from showing before vault intro.

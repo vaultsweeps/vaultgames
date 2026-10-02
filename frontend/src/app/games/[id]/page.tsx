@@ -54,6 +54,7 @@ export default function GameDetailsPage() {
   const [maintenanceModalOpen, setMaintenanceModalOpen] = useState(false)
   const [transferType, setTransferType] = useState<'deposit' | 'cashout'>('deposit')
   const [walletBalance, setWalletBalance] = useState<number>(0)
+  const [bonusBalance, setBonusBalance] = useState<number>(0)
   
   const [password, setPassword] = useState('Default123!')
   const [showPassword, setShowPassword] = useState(false)
@@ -147,12 +148,14 @@ export default function GameDetailsPage() {
 
             if (balRes.data?.data?.balance !== undefined) {
               setWalletBalance(balRes.data.data.balance)
+              setBonusBalance(balRes.data.data.bonusBalance ?? 0)
             }
           } else {
             // Game has no provider, only fetch the wallet balance
             const balRes = await authApi.getBalance().catch(() => ({ data: { data: { balance: 0 } } }))
             if (balRes.data?.data?.balance !== undefined) {
               setWalletBalance(balRes.data.data.balance)
+              setBonusBalance(balRes.data.data.bonusBalance ?? 0)
             }
           }
         }
@@ -204,10 +207,16 @@ export default function GameDetailsPage() {
           }
 
           if (txRes.data?.data) setTransactions(txRes.data.data)
-          if (balRes.data?.data?.balance !== undefined) setWalletBalance(balRes.data.data.balance)
+          if (balRes.data?.data?.balance !== undefined) {
+            setWalletBalance(balRes.data.data.balance)
+            setBonusBalance(balRes.data.data.bonusBalance ?? 0)
+          }
         } else {
           const balRes = await authApi.getBalance().catch(() => ({ data: { data: { balance: 0 } } }))
-          if (balRes.data?.data?.balance !== undefined) setWalletBalance(balRes.data.data.balance)
+          if (balRes.data?.data?.balance !== undefined) {
+            setWalletBalance(balRes.data.data.balance)
+            setBonusBalance(balRes.data.data.bonusBalance ?? 0)
+          }
         }
       } catch {}
     }
@@ -354,6 +363,7 @@ export default function GameDetailsPage() {
       }
       if (balRes.data?.data) {
         setWalletBalance(balRes.data.data.balance)
+        setBonusBalance(balRes.data.data.bonusBalance ?? 0)
       }
       toast.success('Balance synced successfully!')
     } catch (e) {
@@ -363,24 +373,27 @@ export default function GameDetailsPage() {
     }
   }
 
-  const handleTransfer = async (amount: number, type: 'recharge' | 'withdraw') => {
+  const handleTransfer = async (amount: number, type: 'recharge' | 'withdraw', useBonus?: boolean) => {
     // A fresh key per user-initiated click; the backend resolves a resubmission of this exact request (a
     // slow response the user retries, a duplicate network send) to the original attempt's outcome instead of
     // calling the game provider again for it (FIN-7).
     const idempotencyKey = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`
     try {
-      await providerApi.transfer({ gameId: id as string, amount, type }, idempotencyKey)
+      await providerApi.transfer({ gameId: id as string, amount, type, useBonus }, idempotencyKey)
       toast.success(type === 'recharge' ? 'Funds added to game successfully!' : 'Cashed out successfully!')
-      
+
       // Refresh Data
       const [accRes, balRes, txRes] = await Promise.all([
         providerApi.getAccount(id as string),
         authApi.getBalance(),
         providerApi.getTransactions(id as string)
       ])
-      
+
       if (accRes.data?.data) setAccount(accRes.data.data)
-      if (balRes.data?.data) setWalletBalance(balRes.data.data.balance)
+      if (balRes.data?.data) {
+        setWalletBalance(balRes.data.data.balance)
+        setBonusBalance(balRes.data.data.bonusBalance ?? 0)
+      }
       if (txRes.data?.data) setTransactions(txRes.data.data)
       
       setLastUpdate(new Date())
@@ -634,6 +647,7 @@ export default function GameDetailsPage() {
           accountName={account.accountName || ''}
           gameBalance={account.balance || 0}
           walletBalance={walletBalance}
+          bonusBalance={bonusBalance}
           totalDeposited={account.totalDeposited || 0}
           startAmount={transactions.find(t => t.type === 'recharge' && t.status === 'success')?.amount || 5}
           onTransfer={handleTransfer}

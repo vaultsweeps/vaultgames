@@ -3,6 +3,7 @@ import React from 'react';
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, RefreshCw, AlertCircle, Banknote } from 'lucide-react'
+import BonusCashoutRulesModal from './BonusCashoutRulesModal'
 
 interface GameTransferModalProps {
   isOpen: boolean
@@ -13,9 +14,10 @@ interface GameTransferModalProps {
   accountName: string
   gameBalance: number
   walletBalance: number
+  bonusBalance?: number
   totalDeposited: number
   startAmount: number
-  onTransfer: (amount: number, type: 'recharge' | 'withdraw') => Promise<void>
+  onTransfer: (amount: number, type: 'recharge' | 'withdraw', useBonus?: boolean) => Promise<void>
   onChangeGame?: () => void
   onRefresh?: () => Promise<void>
 }
@@ -27,13 +29,19 @@ const presets = [
   { label: 'X2', value: 'x2' },
 ] as const
 
-const GameTransferModal = React.memo(function GameTransferModal({ 
-  isOpen, onClose, type, gameName, gameThumbnail, accountName, gameBalance, walletBalance, totalDeposited, startAmount, onTransfer, onChangeGame, onRefresh
+const GameTransferModal = React.memo(function GameTransferModal({
+  isOpen, onClose, type, gameName, gameThumbnail, accountName, gameBalance, walletBalance, bonusBalance = 0, totalDeposited, startAmount, onTransfer, onChangeGame, onRefresh
 }: GameTransferModalProps) {
   const [amount, setAmount] = useState<string>('')
   const [loading, setLoading] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [showCashoutRules, setShowCashoutRules] = useState(false)
+  const [showBonusCashoutRules, setShowBonusCashoutRules] = useState(false)
+  // Only ever selectable when Wallet Balance is $0 and there's actually bonus money to use — the server
+  // independently re-validates this regardless of what gets sent, but the UI shouldn't offer a toggle that
+  // will just be rejected.
+  const canUseBonus = walletBalance <= 0 && bonusBalance > 0
+  const [useBonus, setUseBonus] = useState(false)
 
   useEffect(() => {
     if (isOpen) {
@@ -43,6 +51,11 @@ const GameTransferModal = React.memo(function GameTransferModal({
     }
     return () => { document.body.style.overflow = 'unset' }
   }, [isOpen])
+
+  // Reset the toggle whenever it's no longer a valid choice (modal reopened, wallet balance arrived, etc.)
+  useEffect(() => {
+    if (!canUseBonus) setUseBonus(false)
+  }, [canUseBonus])
 
   if (!isOpen) return null
 
@@ -88,22 +101,24 @@ const GameTransferModal = React.memo(function GameTransferModal({
     const finalAmount = type === 'cashout' ? fullGameBalance : parsedAmount;
     if (finalAmount <= 0) return
     setLoading(true)
-    await onTransfer(finalAmount, type === 'deposit' ? 'recharge' : 'withdraw')
+    await onTransfer(finalAmount, type === 'deposit' ? 'recharge' : 'withdraw', type === 'deposit' && canUseBonus && useBonus)
     setLoading(false)
     onClose()
     if (type === 'deposit') setAmount('')
   }
 
-  // Warnings
-  const insufficientWallet = type === 'deposit' && parsedAmount > walletBalance
+  // Warnings — when funding from Bonus Balance, check against bonusBalance instead of walletBalance
+  const insufficientWallet = type === 'deposit' && !(canUseBonus && useBonus) && parsedAmount > walletBalance
+  const insufficientBonus = type === 'deposit' && canUseBonus && useBonus && parsedAmount > bonusBalance
   const insufficientGame = type === 'cashout' && parsedAmount > gameBalance
   const noSession = type === 'cashout' && gameBalance === 0
 
   const restrictDeposit = type === 'deposit' && gameBalance > 2
 
   return (
+    <>
     <AnimatePresence>
-      <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <div key="transfer-modal" className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -212,6 +227,42 @@ const GameTransferModal = React.memo(function GameTransferModal({
                   <span className="text-secondary text-sm">Wallet balance</span>
                   <span className="text-white font-bold text-sm">${walletBalance.toFixed(2)}</span>
                 </div>
+
+                {/* Bonus Balance Info + "Use Bonus Balance" toggle — only ever shown/usable when Wallet
+                    Balance is $0 and there's bonus money available. The server independently re-validates
+                    this regardless of the toggle's state. */}
+                {bonusBalance > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center py-2 border-b border-border-subtle">
+                      <span className="text-secondary text-sm">Bonus balance</span>
+                      <span className="text-[#2AC3FF] font-bold text-sm">${bonusBalance.toFixed(2)}</span>
+                    </div>
+                    <label className={`flex items-center justify-between gap-3 bg-surface rounded-xl p-3 border border-border-subtle ${canUseBonus ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}>
+                      <span className="text-sm text-white font-semibold">Use Bonus Balance</span>
+                      <input
+                        type="checkbox"
+                        checked={canUseBonus && useBonus}
+                        disabled={!canUseBonus}
+                        onChange={(e) => setUseBonus(e.target.checked)}
+                        className="w-5 h-5 accent-[#2AC3FF]"
+                      />
+                    </label>
+                    {!canUseBonus && (
+                      <p className="text-xs text-muted">Bonus Balance can be used once your Wallet Balance reaches $0.</p>
+                    )}
+                    {canUseBonus && useBonus && (
+                      <div className="bg-[#2AC3FF]/10 border border-[#2AC3FF]/20 rounded-xl p-3 space-y-1">
+                        <p className="text-xs text-[#2AC3FF]">
+                          Bonus funds are promotional and follow Bonus Cashout Rules — only part of any winnings
+                          converts to withdrawable Wallet Balance.
+                        </p>
+                        <button type="button" onClick={() => setShowBonusCashoutRules(true)} className="text-xs font-bold text-[#2AC3FF] underline hover:text-white transition-colors">
+                          View Bonus Cashout Rules
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </>
             )}
 
@@ -297,8 +348,18 @@ const GameTransferModal = React.memo(function GameTransferModal({
               <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl p-4 flex gap-3 cursor-pointer hover:bg-orange-500/20 transition-colors">
                 <AlertCircle className="w-5 h-5 text-orange-500 shrink-0 mt-0.5" />
                 <p className="text-sm text-orange-200">
-                  <span className="font-bold text-orange-500 block">Not enough funds!</span> 
+                  <span className="font-bold text-orange-500 block">Not enough funds!</span>
                   Click on this message to deposit ${(parsedAmount - walletBalance).toFixed(2)} to your wallet.
+                </p>
+              </div>
+            )}
+
+            {insufficientBonus && (
+              <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl p-4 flex gap-3">
+                <AlertCircle className="w-5 h-5 text-orange-500 shrink-0 mt-0.5" />
+                <p className="text-sm text-orange-200">
+                  <span className="font-bold text-orange-500 block">Not enough bonus balance!</span>
+                  You only have ${bonusBalance.toFixed(2)} in Bonus Balance available.
                 </p>
               </div>
             )}
@@ -337,7 +398,7 @@ const GameTransferModal = React.memo(function GameTransferModal({
                 <>
                   <button
                     onClick={handleSubmit}
-                    disabled={loading || insufficientWallet || (noSession && type === 'cashout') || (!isCashoutValid && type === 'cashout') || (type === 'deposit' && parsedAmount <= 0)}
+                    disabled={loading || insufficientWallet || insufficientBonus || (noSession && type === 'cashout') || (!isCashoutValid && type === 'cashout') || (type === 'deposit' && parsedAmount <= 0)}
                     className="flex-1 bg-[#2AC3FF] hover:bg-[#1CA0D9] text-white font-bold py-3.5 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {loading ? 'Processing...' : type === 'deposit' ? 'Add Cash' : 'Cash Out'}
@@ -354,7 +415,7 @@ const GameTransferModal = React.memo(function GameTransferModal({
       </div>
 
       {/* Cashout Rules Popup */}
-      <AnimatePresence>
+      <AnimatePresence key="cashout-rules-wrapper">
         {showCashoutRules && (
           <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
             <motion.div
@@ -458,6 +519,9 @@ const GameTransferModal = React.memo(function GameTransferModal({
         )}
       </AnimatePresence>
     </AnimatePresence>
+
+    <BonusCashoutRulesModal isOpen={showBonusCashoutRules} onClose={() => setShowBonusCashoutRules(false)} />
+    </>
   )
 })
 
