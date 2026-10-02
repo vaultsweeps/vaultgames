@@ -11,6 +11,23 @@ export class FastApiProviderService implements ProviderAdapter {
   private appsecret: string;
 
   private isAuthenticated: boolean = false;
+  // True only for the static pre-configured appid/appsecret mode (endpoints.appid/appsecret set) — that
+  // session never expires from our side (there is no login call to refresh it with), so it is never subject
+  // to the TTL/retry logic below. The dynamic agent-login mode below it is.
+  private readonly isStaticConfig: boolean;
+
+  // ─── Session state (dynamic agent-login mode only) ─────────────────────────
+  private lastAuthTime: number = 0;
+  private authPromise: Promise<void> | null = null;
+  /**
+   * 4 minutes — deliberately short. This service instance is cached and reused across every concurrent
+   * request for up to 5 minutes (ProviderFactory.providerCache), and `isAuthenticated` previously had no
+   * expiry at all: once a login succeeded, every later request trusted that same appid/appsecret forever,
+   * even after the provider's own server-side session for it had long since expired — producing exactly the
+   * "Invalid Signature ... not exists this app_id" error this was found to cause in production. A cached
+   * session older than this is proactively discarded before any call, so a stale appid is never reused.
+   */
+  private readonly TTL_MS = 4 * 60 * 1000;
 
   constructor(provider: Provider) {
     if (!provider.apiBaseUrl || !provider.agentId || !provider.secretKey) {
@@ -29,10 +46,30 @@ export class FastApiProviderService implements ProviderAdapter {
 
     // If both appid and appsecret are pre-configured in endpoints, skip the agentLogin step entirely.
     // The stored credentials are already the post-login static API credentials.
-    if (endpointsConfig.appid && endpointsConfig.appsecret) {
+    this.isStaticConfig = !!(endpointsConfig.appid && endpointsConfig.appsecret);
+    if (this.isStaticConfig) {
       this.isAuthenticated = true;
       console.info(`[FastApiProviderService] Using pre-configured appid/appsecret for ${provider.name} — skipping agentLogin`);
     }
+  }
+
+  /** Wipe session state so the next call triggers a fresh login. No-op in static-config mode. */
+  private invalidateSession(): void {
+    if (this.isStaticConfig) return;
+    this.isAuthenticated = false;
+    this.lastAuthTime = 0;
+    this.authPromise = null;
+  }
+
+  /** True for a provider response that means "your session/appid/signature is no longer valid." */
+  private isAuthError(message: string): boolean {
+    const m = message.toLowerCase();
+    return (
+      m.includes('invalid signature') ||
+      m.includes('not exists this app_id') ||
+      m.includes('app_id') ||
+      m.includes('agent name or password error')
+    );
   }
 
   private generateAesKey(password: string): Buffer {
@@ -51,52 +88,67 @@ export class FastApiProviderService implements ProviderAdapter {
     return decrypted;
   }
 
-  private async authenticate() {
-    if (this.isAuthenticated) return;
+  private async authenticate(): Promise<void> {
+    if (this.isStaticConfig) return; // pre-configured appid/appsecret — nothing to log in with/refresh
 
-    const endpoint = this.getEndpoint('agentLogin', '/fast/agent/login');
-    const url = this.buildUrl(endpoint);
+    // Still fresh — nothing to do
+    if (this.isAuthenticated && (Date.now() - this.lastAuthTime) < this.TTL_MS) return;
 
-    const requestData: Record<string, any> = {
-      appid: this.appid,
-      requestid: crypto.randomBytes(16).toString('hex'),
-      timestamp: Date.now().toString(),
-      account: this.provider.agentId,
-      passwd: this.provider.secretKey
-    };
+    // Another concurrent call on this same cached instance is already logging in — share its result rather
+    // than both racing a separate /fast/agent/login and overwriting each other's appid/appsecret.
+    if (this.authPromise) return this.authPromise;
 
-    // Sign the initial login request with the provided appsecret
-    const sortedKeys = Object.keys(requestData).sort();
-    const strArr: string[] = [];
-    for (const key of sortedKeys) {
-      strArr.push(`${key}=${requestData[key]}`);
-    }
-    const strToHash = strArr.join('&') + this.appsecret;
-    requestData.sign = crypto.createHash('md5').update(strToHash).digest('hex');
+    this.authPromise = (async () => {
+      const endpoint = this.getEndpoint('agentLogin', '/fast/agent/login');
+      const url = this.buildUrl(endpoint);
 
-    try {
-      const response = await this.postForm(url, new URLSearchParams(requestData).toString(), this.provider.requestTimeout || 10000);
+      const requestData: Record<string, any> = {
+        appid: this.appid,
+        requestid: crypto.randomBytes(16).toString('hex'),
+        timestamp: Date.now().toString(),
+        account: this.provider.agentId,
+        passwd: this.provider.secretKey
+      };
 
-      const code = response.data.code;
-      const message = this.extractMessage(response.data);
-      const data = response.data.data;
-      
-      if (code !== 200 && code !== 0) {
-        const errorMsg = this.mapProviderError(code, message);
-        throw new AppError(`Agent Login failed: ${errorMsg} (Code: ${code}, Message: ${message})`, 400);
+      // Sign the initial login request with the provided appsecret
+      const sortedKeys = Object.keys(requestData).sort();
+      const strArr: string[] = [];
+      for (const key of sortedKeys) {
+        strArr.push(`${key}=${requestData[key]}`);
       }
+      const strToHash = strArr.join('&') + this.appsecret;
+      requestData.sign = crypto.createHash('md5').update(strToHash).digest('hex');
 
-      this.appid = data.appid;
-      const key = this.generateAesKey(this.provider.secretKey);
-      this.appsecret = this.aesDecrypt(data.appsecret_encrypted, key);
-      this.isAuthenticated = true;
-    } catch (e: any) {
-      if (e instanceof AppError) throw e;
-      const status = e.response?.status;
-      const data = JSON.stringify(e.response?.data || {});
-      console.error(`[FastApiProviderService] Login failed for ${url} - Status: ${status} - Response: ${data}`);
-      throw new AppError(`Agent Login connection failed (Make sure your IP is whitelisted! URL: ${url}): ${e.message}`, 502);
-    }
+      try {
+        const response = await this.postForm(url, new URLSearchParams(requestData).toString(), this.provider.requestTimeout || 10000);
+
+        const code = response.data.code;
+        const message = this.extractMessage(response.data);
+        const data = response.data.data;
+
+        if (code !== 200 && code !== 0) {
+          const errorMsg = this.mapProviderError(code, message);
+          throw new AppError(`Agent Login failed: ${errorMsg} (Code: ${code}, Message: ${message})`, 400);
+        }
+
+        this.appid = data.appid;
+        const key = this.generateAesKey(this.provider.secretKey);
+        this.appsecret = this.aesDecrypt(data.appsecret_encrypted, key);
+        this.isAuthenticated = true;
+        this.lastAuthTime = Date.now();
+      } catch (e: any) {
+        this.invalidateSession();
+        if (e instanceof AppError) throw e;
+        const status = e.response?.status;
+        const data = JSON.stringify(e.response?.data || {});
+        console.error(`[FastApiProviderService] Login failed for ${url} - Status: ${status} - Response: ${data}`);
+        throw new AppError(`Agent Login connection failed (Make sure your IP is whitelisted! URL: ${url}): ${e.message}`, 502);
+      } finally {
+        this.authPromise = null;
+      }
+    })();
+
+    return this.authPromise;
   }
 
   /**
@@ -230,9 +282,9 @@ export class FastApiProviderService implements ProviderAdapter {
     return errorMap[code] || defaultMsg || 'Unknown Provider Error';
   }
 
-  private async makeRequest(endpoint: string, payload: Record<string, any>, userId: string | null = null): Promise<any> {
+  private async makeRequest(endpoint: string, payload: Record<string, any>, userId: string | null = null, isRetry = false): Promise<any> {
     await this.authenticate();
-    
+
     const startTime = Date.now();
     const requestData = this.generateRequestData(payload);
     const url = this.buildUrl(endpoint);
@@ -257,6 +309,16 @@ export class FastApiProviderService implements ProviderAdapter {
       // 200 is success, 0 is success for some endpoints, 1 is "New User Is Created" success
       if (code !== 200 && code !== 0 && code !== 1) {
         const errorMsg = this.mapProviderError(code, message);
+
+        // Retry once on a session/signature-type error with a fresh login — e.g. the server-side session
+        // for our cached appid expired before our own TTL caught it. Never retried in static-config mode,
+        // where there is no login to refresh with.
+        if (!isRetry && !this.isStaticConfig && this.isAuthError(errorMsg + ' ' + message)) {
+          console.warn(`[FastApiProviderService] Auth error on "${endpoint}": "${errorMsg}" — refreshing session and retrying...`);
+          this.invalidateSession();
+          return this.makeRequest(endpoint, payload, userId, true);
+        }
+
         console.error(JSON.stringify({ ...logData, status: 200, response: response.data, message: errorMsg, duration }));
         await ProviderLogService.logRequest(this.provider.id, userId, endpoint, requestData, response.data, code, errorMsg);
         throw new AppError(`Provider Error: ${errorMsg} (Code: ${code}, Message: ${message})`, 400);
@@ -264,7 +326,7 @@ export class FastApiProviderService implements ProviderAdapter {
 
       console.info(JSON.stringify({ ...logData, status: 200, response: 'Success', duration }));
       await ProviderLogService.logRequest(this.provider.id, userId, endpoint, requestData, response.data, 200, null);
-      
+
       return data;
     } catch (error: any) {
       if (error instanceof AppError) throw error;
