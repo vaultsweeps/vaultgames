@@ -168,7 +168,7 @@ export const getProviderAccount = asyncHandler(async (req: AuthRequest, res: Res
     logger.info(`[getAccount] Parallel Balance & Recharge fetch took ${t3 - t2}ms`);
     logger.info(`[getAccount] Total Request Time: ${performance.now() - startTotal}ms`);
 
-    return res.json({ success: true, data: { accountName: providerUser.accountName, balance, totalDeposited, hasAccount: true, providerName: providerUser.provider?.name || '' } })
+    return res.json({ success: true, data: { accountName: providerUser.accountName, balance, totalDeposited, hasAccount: true, providerName: providerUser.provider?.name || '', activeFundingSource: providerUser.activeFundingSource } })
   }
 
   // No gameId — return any provider account the user has (generic dashboard use)
@@ -205,7 +205,8 @@ export const getProviderAccount = asyncHandler(async (req: AuthRequest, res: Res
       balance,
       totalDeposited,
       hasAccount: true,
-      providerName: providerUser.provider?.name || ''
+      providerName: providerUser.provider?.name || '',
+      activeFundingSource: providerUser.activeFundingSource
     }
   })
 })

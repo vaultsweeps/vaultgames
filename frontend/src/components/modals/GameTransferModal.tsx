@@ -15,6 +15,10 @@ interface GameTransferModalProps {
   gameBalance: number
   walletBalance: number
   bonusBalance?: number
+  // The game account's CURRENT funding source ('WALLET' | 'BONUS' | null/undefined), as reported by the
+  // backend (ProviderUser.activeFundingSource). Drives which cashout rules the "cashout" view shows — the
+  // existing wallet-deposit-tier table is meaningless for a Bonus-Balance-funded session.
+  activeFundingSource?: string | null
   totalDeposited: number
   startAmount: number
   onTransfer: (amount: number, type: 'recharge' | 'withdraw', useBonus?: boolean) => Promise<void>
@@ -30,8 +34,9 @@ const presets = [
 ] as const
 
 const GameTransferModal = React.memo(function GameTransferModal({
-  isOpen, onClose, type, gameName, gameThumbnail, accountName, gameBalance, walletBalance, bonusBalance = 0, totalDeposited, startAmount, onTransfer, onChangeGame, onRefresh
+  isOpen, onClose, type, gameName, gameThumbnail, accountName, gameBalance, walletBalance, bonusBalance = 0, activeFundingSource, totalDeposited, startAmount, onTransfer, onChangeGame, onRefresh
 }: GameTransferModalProps) {
+  const isBonusFundedSession = type === 'cashout' && activeFundingSource === 'BONUS'
   const [amount, setAmount] = useState<string>('')
   const [loading, setLoading] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
@@ -292,36 +297,61 @@ const GameTransferModal = React.memo(function GameTransferModal({
                 <div className="bg-surface rounded-2xl p-5 border border-border-subtle space-y-5">
                   <div className="flex justify-between items-center text-muted text-sm">
                     <span>Session</span>
-                    <span className="flex items-center gap-1 font-bold text-white"><Banknote className="w-4 h-4" /> Cash</span>
+                    <span className="flex items-center gap-1 font-bold text-white">
+                      <Banknote className="w-4 h-4" /> {isBonusFundedSession ? 'Bonus' : 'Cash'}
+                    </span>
                   </div>
-                  
-                  <div className="flex justify-between items-center text-muted text-sm">
-                    <span>Total deposited</span>
-                    <span className="font-bold text-[#2AC3FF]">$ {totalDeposited.toFixed(2)}</span>
-                  </div>
-                  
+
+                  {!isBonusFundedSession && (
+                    <div className="flex justify-between items-center text-muted text-sm">
+                      <span>Total deposited</span>
+                      <span className="font-bold text-[#2AC3FF]">$ {totalDeposited.toFixed(2)}</span>
+                    </div>
+                  )}
+
                   <div className="flex justify-between items-center text-muted text-sm">
                     <span>Game balance (full)</span>
                     <span className="font-bold text-white">$ {fullGameBalance.toFixed(2)}</span>
                   </div>
 
-                  <div className="flex justify-between items-center text-muted text-sm">
-                    <span>Will be credited to wallet</span>
-                    <span className="font-bold text-emerald-400">$ {creditedAmount.toFixed(2)}</span>
-                  </div>
-
-                  {voidedAmount > 0 && (
+                  {isBonusFundedSession ? (
                     <div className="flex justify-between items-center text-muted text-sm">
-                      <span>Will be voided (over limit)</span>
-                      <span className="font-bold text-red-400">- $ {voidedAmount.toFixed(2)}</span>
+                      <span>Eligible wallet credit</span>
+                      <span className="font-bold text-[#2AC3FF]">Set by Bonus Cashout Rules</span>
                     </div>
+                  ) : (
+                    <>
+                      <div className="flex justify-between items-center text-muted text-sm">
+                        <span>Will be credited to wallet</span>
+                        <span className="font-bold text-emerald-400">$ {creditedAmount.toFixed(2)}</span>
+                      </div>
+                      {voidedAmount > 0 && (
+                        <div className="flex justify-between items-center text-muted text-sm">
+                          <span>Will be voided (over limit)</span>
+                          <span className="font-bold text-red-400">- $ {voidedAmount.toFixed(2)}</span>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
 
-                <div className="bg-surface rounded-2xl p-4 border border-border-subtle flex justify-between items-center">
-                  <span className="text-muted text-sm">Cashouts range <strong className="text-white">from ${minCashout} to ${maxCashout}</strong></span>
-                  <button onClick={() => setShowCashoutRules(true)} className="w-5 h-5 rounded-full bg-surface-elevated text-secondary hover:text-neon-blue hover:bg-neon-blue/10 flex items-center justify-center text-xs font-bold italic transition-colors border border-border-strong">i</button>
-                </div>
+                {isBonusFundedSession ? (
+                  <div className="bg-[#2AC3FF]/10 border border-[#2AC3FF]/20 rounded-2xl p-4 space-y-2">
+                    <p className="text-xs text-[#2AC3FF]">
+                      This session was funded by Bonus Balance. Your full game balance is swept, and the amount
+                      that converts to Wallet Balance is capped by the active Bonus Cashout Rule for your total
+                      winnings — not the full amount.
+                    </p>
+                    <button type="button" onClick={() => setShowBonusCashoutRules(true)} className="text-xs font-bold text-[#2AC3FF] underline hover:text-white transition-colors">
+                      View Bonus Cashout Rules
+                    </button>
+                  </div>
+                ) : (
+                  <div className="bg-surface rounded-2xl p-4 border border-border-subtle flex justify-between items-center">
+                    <span className="text-muted text-sm">Cashouts range <strong className="text-white">from ${minCashout} to ${maxCashout}</strong></span>
+                    <button onClick={() => setShowCashoutRules(true)} className="w-5 h-5 rounded-full bg-surface-elevated text-secondary hover:text-neon-blue hover:bg-neon-blue/10 flex items-center justify-center text-xs font-bold italic transition-colors border border-border-strong">i</button>
+                  </div>
+                )}
               </>
             )}
 
