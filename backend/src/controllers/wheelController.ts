@@ -4,6 +4,7 @@ import { asyncHandler, AppError } from '../middleware/errorHandler'
 import { AuthRequest } from '../middleware/auth'
 import prisma from '../lib/prisma'
 import { invalidateWalletCache } from '../services/WalletService'
+import { BonusLedgerService } from '../services/BonusLedgerService'
 
 // Fast, in-process reject on top of the DB-level guard below (serializePerUser on the route + the
 // Serializable transaction here) — this just saves a wasted round trip for the common double-click case.
@@ -171,6 +172,17 @@ export const spinWheel = asyncHandler(async (req: AuthRequest, res: Response) =>
         const spin = await tx.wheelSpin.create({
           data: { userId, bonusId: wonPrize.id, amount: isTryAgain ? 0 : (wonPrize.amount || 0), isWin: !isTryAgain },
         })
+
+        // A real cash win grants Bonus Balance (FREE_SPIN) in the SAME transaction as the WheelSpin row, so
+        // a win can never be recorded without also granting the bonus, or vice versa.
+        if (!isTryAgain && (wonPrize.amount || 0) > 0) {
+          await BonusLedgerService.grantUserBonusTx(tx, {
+            userId,
+            sourceType: 'FREE_SPIN',
+            amount: wonPrize.amount || 0,
+            referenceId: spin.id,
+          })
+        }
 
         return { wonPrize, winningIndex, isTryAgain, spinId: spin.id }
       }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })

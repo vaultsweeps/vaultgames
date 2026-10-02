@@ -45,7 +45,10 @@ export function middleware(req: NextRequest) {
     `style-src 'self' 'unsafe-inline'`,
     `img-src 'self' data: blob: https:`,
     `font-src 'self' data:`,
-    `connect-src 'self' ${API_ORIGINS.join(' ')} https://*.supabase.co wss://*.supabase.co https://*.googleapis.com https://www.google-analytics.com https://*.firebaseio.com`,
+    // Dev-only: NEXT_PUBLIC_API_URL points at a local backend (http://localhost:5000) when developing
+    // against it directly instead of the deployed API — without this, every API call is silently blocked by
+    // the CSP with no CORS error, just a connect-src violation in the console. Production never adds this.
+    `connect-src 'self' ${API_ORIGINS.join(' ')} ${isProd ? '' : 'http://localhost:* http://127.0.0.1:* ws://localhost:* '}https://*.supabase.co wss://*.supabase.co https://*.googleapis.com https://www.google-analytics.com https://*.firebaseio.com`,
     `frame-src 'self' https://www.google.com https://*.firebaseapp.com`,
     `frame-ancestors 'self'`,
     `object-src 'none'`,

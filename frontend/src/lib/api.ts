@@ -165,9 +165,18 @@ export const providerApi = {
   // idempotencyKey: pass the SAME value across automatic/manual retries of one logical transfer attempt
   // (FIN-7) — the backend resolves a repeated key to the original transfer's outcome instead of calling the
   // game provider a second time. Omit it to get today's exact behaviour (a fresh, never-reused key per call).
-  transfer: (data: { gameId: string, amount: number, type: 'recharge' | 'withdraw' }, idempotencyKey?: string) =>
+  // useBonus: requests funding this recharge from Bonus Balance instead of Wallet Balance. The server
+  // independently re-validates eligibility (Wallet Balance must be $0, sufficient Bonus Balance, no mixing
+  // with an already-active different-source session) regardless of this flag — it is never trusted alone.
+  transfer: (data: { gameId: string, amount: number, type: 'recharge' | 'withdraw', useBonus?: boolean }, idempotencyKey?: string) =>
     apiClient.post('/provider/transfer', data, idempotencyKey ? { headers: { 'Idempotency-Key': idempotencyKey } } : undefined),
   getAllAccounts: () => apiClient.get('/provider/accounts'),
+}
+
+// Bonus Balance APIs (authenticated)
+export const bonusApi = {
+  getBalance: () => apiClient.get('/bonuses/balance'),
+  getHistory: (limit?: number) => apiClient.get('/bonuses/history', { params: limit ? { limit } : {} }),
 }
 
 // Public APIs (no auth required)
@@ -181,6 +190,7 @@ export const publicApi = {
   getAnnouncements: () => apiClient.get('/public/announcements'),
   sendContact: (data: object) => apiClient.post('/public/contact', data),
   getSettings: () => apiClient.get('/public/settings'),
+  getBonusCashoutRules: () => apiClient.get('/public/bonus-cashout-rules'),
 }
 
 // Admin APIs
@@ -230,6 +240,19 @@ export const adminApi = {
   createCoupon: (data: object) => apiClient.post('/admin/coupons', data),
   updateCoupon: (id: string, data: object) => apiClient.put(`/admin/coupons/${id}`, data),
   deleteCoupon: (id: string) => apiClient.delete(`/admin/coupons/${id}`),
+
+  // Bonus Cashout Rules (Bonus Balance system)
+  getBonusCashoutRules: () => apiClient.get('/admin/bonus-cashout-rules'),
+  createBonusCashoutRule: (data: object) => apiClient.post('/admin/bonus-cashout-rules', data),
+  updateBonusCashoutRule: (id: string, data: object) => apiClient.put(`/admin/bonus-cashout-rules/${id}`, data),
+  deleteBonusCashoutRule: (id: string) => apiClient.delete(`/admin/bonus-cashout-rules/${id}`),
+
+  // Bonus Balance reporting
+  getUserBonuses: (params?: object) => apiClient.get('/admin/user-bonuses', { params }),
+  getBonusTransactions: (params?: object) => apiClient.get('/admin/bonus-transactions', { params }),
+  getBonusConversions: (params?: object) => apiClient.get('/admin/bonus-conversions', { params }),
+  getSundayFreeplayClaims: (params?: object) => apiClient.get('/admin/sunday-freeplay-claims', { params }),
+  getWalletTransactions: (params?: object) => apiClient.get('/admin/wallet-transactions', { params }),
 
   // Banners
   getBanners: (params?: object) => apiClient.get('/admin/banners', { params }),

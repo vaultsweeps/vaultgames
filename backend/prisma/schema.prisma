@@ -50,6 +50,11 @@ model User {
   referralRewardsReceived ReferralReward[]    @relation("ReferralRewardsReceived")
   wheelSpins              WheelSpin[]
   depositBonuses          DepositBonus[]
+  userBonuses             UserBonus[]
+  bonusTransactions       BonusTransaction[]
+  bonusConversions        BonusConversion[]
+  sundayFreeplayClaims    SundayFreeplayClaim[]
+  walletTransactions      WalletTransaction[]
 
   @@index([email])
   @@index([username])
@@ -451,6 +456,13 @@ model ProviderUser {
   updatedAt      DateTime @updatedAt
   provider       Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // 'WALLET' | 'BONUS' | null — set on first recharge into an empty game balance, cleared on every full
+  // cashout (which always sweeps to zero). Mixing sources into one still-active game balance is blocked
+  // server-side, so this always reflects the single funding source of whatever is currently on the game.
+  activeFundingSource         String?
+  // Accumulates [{userBonusId, sourceType, amountConsumed}] across every BONUS-funded recharge in the
+  // current session; reset on full cashout.
+  activeSessionBonusBreakdown Json?
 
   @@unique([providerId, providerUserId])
   @@unique([userId, providerId])
@@ -469,6 +481,123 @@ model ProviderLog {
   ipAddress    String?
   createdAt    DateTime  @default(now())
   provider     Provider? @relation(fields: [providerId], references: [id])
+}
+
+// A per-grant balance instance for the new, genuinely separate Bonus Balance. Distinct from the existing
+// `Bonus` (admin catalog/wheel prize definitions) and `BonusClaim` models, which are untouched and keep
+// working exactly as they do today — this is a new, additive concept, not a replacement.
+model UserBonus {
+  id              String   @id @default(cuid())
+  userId          String
+  sourceType      String // 'CRYPTO_BONUS' | 'FREEPLAY' | 'REFERRAL_BONUS' | 'COUPON' | 'FREE_SPIN'
+  originalAmount  Float
+  remainingAmount Float // decrements as bonus-funded recharges consume it; sums to "Bonus Balance"
+  status          String   @default("active") // 'active' | 'depleted' | 'reversed' | 'expired'
+  referenceId     String? // id of the originating row (ReferralReward/CouponUsage/WheelSpin/DepositBonus/SundayFreeplayClaim) — traceability only
+  expiresAt       DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  user            User     @relation(fields: [userId], references: [id])
+  transactions    BonusTransaction[]
+
+  @@index([userId, status, createdAt])
+  @@index([sourceType])
+}
+
+model BonusTransaction {
+  id            String   @id @default(cuid())
+  userId        String
+  userBonusId   String?
+  type          String // BONUS_CREDIT | BONUS_GAME_DEBIT | BONUS_GAME_WIN | BONUS_CONVERSION | BONUS_EXPIRED | BONUS_REVERSAL
+  sourceType    String?
+  amount        Float
+  balanceBefore Float
+  balanceAfter  Float
+  referenceId   String?
+  metadata      Json?
+  createdAt     DateTime @default(now())
+  user          User       @relation(fields: [userId], references: [id])
+  userBonus     UserBonus? @relation(fields: [userBonusId], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([userBonusId])
+  @@index([type])
+}
+
+model BonusCashoutRule {
+  id                 String   @id @default(cuid())
+  sourceTypes        String[] // empty array / contains 'ALL' = applies to every source type
+  minAmount          Float
+  maxAmount          Float
+  walletCreditAmount Float
+  priority           Int      @default(0)
+  isActive           Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  createdBy          String?
+  conversions        BonusConversion[]
+
+  @@index([isActive, priority])
+}
+
+// `providerTransactionOrderId` is the idempotency boundary — one conversion per cashout, ever. The rule*
+// Snapshot fields capture the matched rule's numeric values AT THE TIME of conversion so that a later admin
+// edit to the live BonusCashoutRule row can never retroactively change what a past conversion is shown to
+// have applied.
+model BonusConversion {
+  id                         String   @id @default(cuid())
+  userId                     String
+  providerTransactionOrderId String   @unique
+  totalWinnings              Float
+  eligibleWalletCredit       Float
+  ruleId                     String?
+  ruleMinAmountSnapshot      Float?
+  ruleMaxAmountSnapshot      Float?
+  ruleWalletCreditSnapshot   Float?
+  primarySourceType          String?
+  sourceBreakdown            Json
+  status                     String   @default("completed") // 'completed' | 'reversed'
+  createdAt                  DateTime @default(now())
+  user                       User              @relation(fields: [userId], references: [id])
+  rule                       BonusCashoutRule? @relation(fields: [ruleId], references: [id])
+
+  @@index([userId])
+  @@index([ruleId])
+}
+
+// The [userId, weekKey] unique constraint IS the weekly cron's idempotency boundary — a re-run or
+// crash-recovery simply hits a unique-constraint violation and moves on to the next user.
+model SundayFreeplayClaim {
+  id          String   @id @default(cuid())
+  userId      String
+  weekKey     String // UTC ISO week-year, e.g. "2026-W40"
+  amount      Float    @default(3)
+  userBonusId String?
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, weekKey])
+  @@index([userId])
+}
+
+// Audit trail for the WALLET side, mirroring BonusTransaction. Written best-effort alongside existing
+// money-moving writes. NOT the source of truth for balance — WalletService's derived aggregate remains
+// authoritative (rewriting every existing money-moving code path to a ledger-of-record model is out of
+// scope for this feature).
+model WalletTransaction {
+  id            String   @id @default(cuid())
+  userId        String
+  type          String // DEPOSIT | BONUS_CONVERSION | GAME_DEBIT | GAME_WIN | WITHDRAWAL_HOLD | WITHDRAWAL | WITHDRAWAL_REVERSAL | ADMIN_ADJUSTMENT
+  amount        Float
+  balanceBefore Float
+  balanceAfter  Float
+  referenceId   String?
+  metadata      Json?
+  createdAt     DateTime @default(now())
+  user          User     @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([type])
 }
 
 model ProviderTransaction {
@@ -492,6 +621,10 @@ model ProviderTransaction {
   updatedAt       DateTime @updatedAt
   provider        Provider @relation(fields: [providerId], references: [id])
   user            User     @relation(fields: [userId], references: [id])
+  // 'WALLET' | 'BONUS' — null for withdraws and pre-feature rows (treated as WALLET by WalletService's
+  // `fundingSource: { not: 'BONUS' }` filter, never by an explicit 'WALLET' equality check).
+  fundingSource        String?
+  bonusSourceBreakdown Json?
 
   @@index([userId, type, status])
   @@index([providerId, userId, type, status])

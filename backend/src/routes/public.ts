@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express'
 import { limit } from '../middleware/security'
 import { getPublicBanners, getPublicFeaturedGames, getPublicBonuses, getPublicFAQs, getPublicStats, sendContactForm, getPublicGameDetails, getPublicSettings } from '../controllers/controllers'
+import { getPublicBonusCashoutRules } from '../controllers/bonusBalanceController'
 
 const router = Router()
 
@@ -18,5 +19,6 @@ router.get('/faqs', publicCache(600), getPublicFAQs)
 router.get('/stats', publicCache(30), getPublicStats)
 router.post('/contact', limit({ name: 'contact-form', windowMs: 60 * 60_000, max: 5, scope: 'ip' }), sendContactForm)
 router.get('/settings', publicCache(300), getPublicSettings)
+router.get('/bonus-cashout-rules', publicCache(120), getPublicBonusCashoutRules)
 
 export default router

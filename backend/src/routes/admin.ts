@@ -13,7 +13,9 @@ import {
   getAdminEnhancedWithdrawals, exportEnhancedWithdrawalsCSV,
   adminApproveEnhancedWithdrawal, adminRejectEnhancedWithdrawal,
   getUserDetails, voidUserBalance, addUserBalance, exportUsersXLS,
-  getCoupons, createCoupon, updateCoupon, deleteCoupon
+  getCoupons, createCoupon, updateCoupon, deleteCoupon,
+  getAdminBonusCashoutRules, createBonusCashoutRule, updateBonusCashoutRule, deleteBonusCashoutRule,
+  getAdminUserBonuses, getAdminBonusTransactions, getAdminBonusConversions, getAdminSundayFreeplayClaims, getAdminWalletTransactions
 } from '../controllers/adminController'
 import {
   getProviders, createProvider, updateProvider, deleteProvider,
@@ -113,6 +115,19 @@ router.get('/coupons', getCoupons)
 router.post('/coupons', createCoupon)
 router.put('/coupons/:id', updateCoupon)
 router.delete('/coupons/:id', deleteCoupon)
+
+// Bonus Cashout Rules (Bonus Balance system)
+router.get('/bonus-cashout-rules', getAdminBonusCashoutRules)
+router.post('/bonus-cashout-rules', createBonusCashoutRule)
+router.put('/bonus-cashout-rules/:id', updateBonusCashoutRule)
+router.delete('/bonus-cashout-rules/:id', deleteBonusCashoutRule)
+
+// Bonus Balance reporting (read-only)
+router.get('/user-bonuses', getAdminUserBonuses)
+router.get('/bonus-transactions', getAdminBonusTransactions)
+router.get('/bonus-conversions', getAdminBonusConversions)
+router.get('/sunday-freeplay-claims', getAdminSundayFreeplayClaims)
+router.get('/wallet-transactions', getAdminWalletTransactions)
 
 // Payment Methods
 router.get('/payment-methods', async (req, res) => {

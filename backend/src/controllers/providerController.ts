@@ -10,6 +10,11 @@ import { createNotification } from '../services/notificationService'
 import { TelegramService } from '../services/TelegramService'
 import { ReferralService } from '../services/ReferralService'
 import { logger } from '../utils/logger'
+import { Prisma } from '@prisma/client'
+import { BonusService, invalidateBonusCache } from '../services/BonusService'
+import { BonusLedgerService, BonusDebitBreakdownEntry } from '../services/BonusLedgerService'
+import { BonusCashoutRuleService } from '../services/BonusCashoutRuleService'
+import { recordWalletTransaction } from '../services/WalletTransactionService'
 
 // POST /api/provider/create-account?gameId=xxx
 export const createProviderAccount = asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -320,12 +325,16 @@ async function resolveAmbiguousTransfer(opts: {
 }
 
 export const transferFunds = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const { gameId, amount, type } = req.body; // type: 'recharge' | 'withdraw'
+  const { gameId, amount, type, useBonus } = req.body; // type: 'recharge' | 'withdraw'
   const userId = req.user!.id;
 
   if (!gameId || !amount || amount <= 0 || !['recharge', 'withdraw'].includes(type)) {
     throw new AppError('Invalid transfer parameters', 400);
   }
+
+  // Only a strict boolean `true` is ever treated as a bonus-funding request — never a truthy string/number
+  // from a malformed client. The server re-validates eligibility independently below regardless of this flag.
+  const requestedUseBonus = useBonus === true;
 
   // Idempotency key for this logical transfer: if the frontend sends the SAME key again (a retry after a
   // timeout, a double-click that got through, a duplicate submit from two tabs), it resolves to the SAME
@@ -338,16 +347,22 @@ export const transferFunds = asyncHandler(async (req: AuthRequest, res: Response
     : `TX${Date.now()}${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
 
   // Parallelize: get provider config (cached) AND look up user's game account at same time
-  const [providerId, walletBalanceForRecharge, unresolvedRecharges] = await Promise.all([
+  const [providerId, walletBalanceForRecharge, bonusBalanceForRecharge, unresolvedWalletRecharges, unresolvedBonusRecharges] = await Promise.all([
     ProviderFactory.getProviderIdForGame(gameId),
     // Fresh, uncached read: the 10s cached balance could let parallel/rapid requests pass the same check
     type === 'recharge' ? WalletService.getBalancesRaw(userId).then(b => b.displayBalance) : Promise.resolve(null),
+    type === 'recharge' ? BonusService.getBonusBalanceRaw(userId) : Promise.resolve(null),
     // Any recharge still pending/unresolved counts as already-spent for THIS eligibility check — otherwise a
     // second recharge attempt while a prior one's outcome is still unknown could spend the same wallet money
-    // twice if that prior one turns out to have actually succeeded at the provider.
+    // twice if that prior one turns out to have actually succeeded at the provider. Split by funding source
+    // (NULL-safe: a bare `fundingSource: { not: 'BONUS' }` is not something to trust on a nullable column —
+    // see WalletService) so a pending bonus-funded recharge never blocks wallet eligibility and vice versa.
     type === 'recharge'
-      ? prisma.providerTransaction.aggregate({ where: { userId, type: 'recharge', status: { in: ['pending', 'unknown'] } }, _sum: { amount: true } }).then(r => r._sum.amount || 0)
-      : Promise.resolve(0)
+      ? prisma.providerTransaction.aggregate({ where: { userId, type: 'recharge', status: { in: ['pending', 'unknown'] }, OR: [{ fundingSource: null }, { fundingSource: { not: 'BONUS' } }] }, _sum: { amount: true } }).then(r => r._sum.amount || 0)
+      : Promise.resolve(0),
+    type === 'recharge'
+      ? prisma.providerTransaction.aggregate({ where: { userId, type: 'recharge', status: { in: ['pending', 'unknown'] }, fundingSource: 'BONUS' }, _sum: { amount: true } }).then(r => r._sum.amount || 0)
+      : Promise.resolve(0),
   ]);
 
   const providerUser = await prisma.providerUser.findFirst({ where: { userId, providerId: providerId ?? '' } });
@@ -390,15 +405,56 @@ export const transferFunds = asyncHandler(async (req: AuthRequest, res: Response
     console.warn(`Could not force player ${providerUser.providerUserId} offline:`, error);
   }
 
+  // Live game balance, fetched once up front for a recharge — reused below both (a) as the reconciliation
+  // snapshot (replacing a second, now-redundant fetch later), and (b) to detect a session that's actually
+  // empty right now even if a stale ProviderUser.activeFundingSource is still set from a prior session that
+  // never explicitly cashed out (e.g. the player lost everything via gameplay rather than withdrawing) —
+  // without this check, that stale value would permanently trap the user on one funding source.
+  let liveBalanceNow: number | undefined;
+  if (type === 'recharge') {
+    try { liveBalanceNow = await providerService.getPlayerBalance(providerUser.providerUserId) } catch { /* best-effort */ }
+  }
+  // Fail SAFE, not open: if the balance fetch itself failed (`undefined`), we do NOT know the game is empty,
+  // so treat it as NOT empty — preserving whatever mixing-guard/breakdown state already existed. Treating a
+  // failed fetch as "empty" would let a transient provider hiccup silently bypass the mixing guard and wipe
+  // activeSessionBonusBreakdown even though the game might still hold real money from a different source.
+  const gameIsEmpty = liveBalanceNow !== undefined && liveBalanceNow < 0.01;
+
   // 1. Check balances
   let minCashout = 50, maxCashout = 50, liveGameBalance = 0;
+  let fundingSource: 'WALLET' | 'BONUS' | null = null;
+  let bonusDebitBreakdown: BonusDebitBreakdownEntry[] = [];
+  let capturedFundingSourceForWithdraw: string | null = null;
   if (type === 'recharge') {
-    const availableForRecharge = (walletBalanceForRecharge ?? 0) - unresolvedRecharges;
-    if (availableForRecharge < amount) {
-      throw new AppError(`Not enough funds! Click on this message to deposit $${(amount - availableForRecharge).toFixed(2)}`, 400);
+    const existingActiveSource = gameIsEmpty ? null : providerUser.activeFundingSource;
+
+    if (requestedUseBonus) {
+      // Server-side re-validation, never trust the client flag alone.
+      if ((walletBalanceForRecharge ?? 0) > 0) {
+        throw new AppError('Bonus Balance can only be used to recharge when your Wallet Balance is $0.', 400);
+      }
+      const availableBonus = (bonusBalanceForRecharge ?? 0) - unresolvedBonusRecharges;
+      if (availableBonus < amount) {
+        throw new AppError(`Not enough bonus balance available. Available: $${Math.max(0, availableBonus).toFixed(2)}`, 400);
+      }
+      if (existingActiveSource && existingActiveSource !== 'BONUS') {
+        throw new AppError('Your game balance is currently funded by your Wallet. Please cash out before switching to Bonus Balance.', 400);
+      }
+      fundingSource = 'BONUS';
+    } else {
+      const availableForRecharge = (walletBalanceForRecharge ?? 0) - unresolvedWalletRecharges;
+      if (availableForRecharge < amount) {
+        throw new AppError(`Not enough funds! Click on this message to deposit $${(amount - availableForRecharge).toFixed(2)}`, 400);
+      }
+      if (existingActiveSource && existingActiveSource !== 'WALLET') {
+        throw new AppError('Your game balance is currently funded by Bonus Balance. Please cash out before adding Wallet funds.', 400);
+      }
+      fundingSource = 'WALLET';
     }
   } else {
-    // withdraw (cash out from game)
+    // withdraw (cash out from game) — captured BEFORE any mutation; used after a successful sweep below.
+    capturedFundingSourceForWithdraw = providerUser.activeFundingSource;
+
     const lastRecharge = await prisma.providerTransaction.findFirst({
       where: { userId, providerId: providerUser.providerId, type: 'recharge', status: 'success' },
       orderBy: { createdAt: 'desc' }
@@ -438,14 +494,19 @@ export const transferFunds = asyncHandler(async (req: AuthRequest, res: Response
   // 2. Compute (but do not yet GRANT) whichever bonus this recharge would qualify for. The actual DB writes
   // (BonusClaim upsert, referral reward) only happen after the provider call is confirmed successful, below —
   // a failed or ambiguous transfer must never create a permanent reward for money that was never moved.
+  // This entire block is the EXISTING, untouched 100%/30% game-recharge promotional bonus mechanism — it is
+  // deliberately separate from the Bonus Balance system (UserBonus/BonusCashoutRule) and only ever applies to
+  // a WALLET-funded recharge; a Bonus-Balance-funded recharge sends the exact requested amount with no
+  // inflation (see the `fundingSource === 'BONUS'` branch below).
   let finalProviderAmount = amount;
   let bonusAmount = 0;
   let bonusKind: 'welcome' | 'deposit' | null = null;
+  let wonWelcomeClaim = false;
   let user: { id: string; username: string; email: string; isVerified: boolean; isPhoneVerified: boolean; referredById: string | null } | null = null;
   let userProfile: { phone: string | null } | null = null;
   let welcomeBonusDef: { id: string } | null = null, depositBonusDef: { id: string } | null = null, referralBonusDef: { id: string } | null = null;
 
-  if (type === 'recharge') {
+  if (type === 'recharge' && fundingSource === 'WALLET') {
     // NOTE: firstRechargeCheck is GLOBAL (across all games) — the 100% signup bonus
     // is a one-time reward for the very first ever recharge on the platform.
     [user, userProfile, welcomeBonusDef, depositBonusDef, referralBonusDef] = await Promise.all([
@@ -456,12 +517,22 @@ export const transferFunds = asyncHandler(async (req: AuthRequest, res: Response
       prisma.bonus.findFirst({ where: { type: 'referral' } })
     ]);
 
-    const welcomeClaim = welcomeBonusDef
-      ? await prisma.bonusClaim.findUnique({ where: { userId_bonusId: { userId, bonusId: welcomeBonusDef.id } } })
-      : null;
-    const hasClaimedWelcome = !!welcomeClaim;
+    if (welcomeBonusDef && user?.isVerified && user?.isPhoneVerified) {
+      // Atomic claim of the one-time welcome-bonus slot: `create` (not a read-then-upsert) against the
+      // unique [userId, bonusId] constraint is the race's winner-takes-it-all gate — a concurrent duplicate
+      // attempt hits P2002 and falls back to the regular 30% bonus below. This closes a real pre-existing
+      // race where two simultaneous "first recharge" requests could both read "not yet claimed" and both
+      // receive the 100% bonus before either had written its claim. Reversed (deleted) below if THIS specific
+      // recharge later definitively fails, so a failed attempt never permanently burns the one-time bonus.
+      try {
+        await prisma.bonusClaim.create({ data: { userId, bonusId: welcomeBonusDef.id, amount } });
+        wonWelcomeClaim = true;
+      } catch (e: any) {
+        if (e?.code !== 'P2002') throw e;
+      }
+    }
 
-    if (!hasClaimedWelcome && user?.isVerified && user?.isPhoneVerified) {
+    if (wonWelcomeClaim) {
       bonusAmount = amount; // 100% signup bonus
       bonusKind = 'welcome';
     } else {
@@ -473,21 +544,31 @@ export const transferFunds = asyncHandler(async (req: AuthRequest, res: Response
 
   // Snapshot the live game balance right before the provider call — stored on the durable row so an
   // ambiguous outcome can be reconciled later (by this request if it fails, or by an admin afterwards) by
-  // comparing against the CURRENT live balance, using only the adapter's existing getPlayerBalance capability.
-  let balanceBeforeForReconciliation: number | undefined;
-  if (type === 'recharge') {
-    try { balanceBeforeForReconciliation = await providerService.getPlayerBalance(providerUser.providerUserId) } catch { /* best-effort */ }
-  } else {
-    balanceBeforeForReconciliation = liveGameBalance;
-  }
+  // comparing against the CURRENT live balance. For a recharge this reuses the fetch already taken above
+  // (the mixing-guard staleness check) instead of a second, redundant provider round trip.
+  const balanceBeforeForReconciliation: number | undefined = type === 'recharge' ? liveBalanceNow : liveGameBalance;
 
   // 3. Create the durable PENDING record BEFORE calling the provider. orderId is unique, so this IS the
   // idempotency boundary: a concurrent or replayed request for the same orderId (see the replay check above)
   // can never create a second row, and this exact orderId is what gets passed to the provider as its own
-  // transaction reference.
+  // transaction reference. fundingSource is stamped now (not just on success) because the unresolved-recharge
+  // aggregates above read pending/unknown rows to block double-spending the same money.
   await prisma.providerTransaction.create({
-    data: { providerId: providerUser.providerId, userId, type, amount, orderId, status: 'pending', balanceBefore: balanceBeforeForReconciliation }
+    data: { providerId: providerUser.providerId, userId, type, amount, orderId, status: 'pending', balanceBefore: balanceBeforeForReconciliation, fundingSource: type === 'recharge' ? fundingSource : null }
   });
+
+  // 3.5 For a Bonus-Balance-funded recharge, debit atomically BEFORE calling the provider — never read-then-
+  // write (see BonusLedgerService). If the debit itself can't fully complete (a concurrent race), the pending
+  // row must not be left dangling, since the idempotent-replay check above would otherwise treat it as
+  // "already being processed" forever.
+  if (type === 'recharge' && fundingSource === 'BONUS') {
+    try {
+      bonusDebitBreakdown = await BonusLedgerService.debitUserBonusFIFO(userId, amount, orderId);
+    } catch (err: any) {
+      await prisma.providerTransaction.updateMany({ where: { orderId, status: 'pending' }, data: { status: 'failed', errorMessage: String(err?.message || 'Bonus debit failed').slice(0, 300) } });
+      throw err;
+    }
+  }
 
   // 4. Call the provider EXACTLY ONCE for this orderId.
   let creditedAmount = amount;
@@ -507,28 +588,99 @@ export const transferFunds = asyncHandler(async (req: AuthRequest, res: Response
   } catch (err: any) {
     const { resolvedAsFailed } = await resolveAmbiguousTransfer({ err, providerService, providerUser, type, orderId, userId, balanceBefore: balanceBeforeForReconciliation });
     if (resolvedAsFailed) {
+      // Only reverse on a DEFINITIVE failure — an ambiguous/unknown outcome might have actually reached the
+      // provider, so reversing now would risk letting the same money be spent twice (mirrors the existing
+      // wallet-side reasoning: nothing is "given back" in the ambiguous branch below either).
+      if (bonusDebitBreakdown.length > 0) {
+        await BonusLedgerService.reverseUserBonusDebit(userId, bonusDebitBreakdown, orderId).catch((e) => logger.error('[transferFunds] Failed to reverse bonus debit after a definitively failed recharge:', e));
+      }
+      if (wonWelcomeClaim && welcomeBonusDef) {
+        // Release the one-time welcome-bonus slot claimed earlier so a future genuine first recharge can
+        // still receive it — this attempt never actually moved any money.
+        await prisma.bonusClaim.deleteMany({ where: { userId, bonusId: welcomeBonusDef.id } }).catch((e) => logger.error('[transferFunds] Failed to release welcome-bonus claim after a definitively failed recharge:', e));
+      }
       throw new AppError(`Transfer failed: ${String(err?.message || 'Unknown error').slice(0, 300)}`, err instanceof AppError ? err.statusCode : 502);
     }
     return res.status(202).json({ success: false, message: 'Your transfer could not be confirmed and is being verified. Please check back in a few minutes before trying again.', data: { reconciling: true } });
   }
 
-  // 5. SUCCESS — finalize the durable record atomically, THEN (only now) grant whichever bonus was computed.
-  await prisma.providerTransaction.update({ where: { orderId }, data: { status: 'success', amount: creditedAmount } });
+  // 5. SUCCESS — for a bonus-origin cashout, resolve the final eligible Wallet credit BEFORE finalizing the
+  // durable record, since the stored `amount` must be the capped credit, never the full swept winnings.
+  let bonusConversionResult: { eligibleWalletCredit: number; forfeitedAmount: number; ruleApplied: boolean; totalWinnings: number } | null = null;
+  if (type === 'withdraw' && capturedFundingSourceForWithdraw === 'BONUS') {
+    bonusConversionResult = await settleBonusCashoutConversion({
+      userId,
+      orderId,
+      totalWinnings: creditedAmount,
+      sessionBreakdown: (providerUser.activeSessionBonusBreakdown as Record<string, number> | null) || {},
+    });
+    creditedAmount = bonusConversionResult.eligibleWalletCredit;
+  }
+
+  // Finalize the durable record atomically, THEN (only now) grant whichever bonus was computed.
+  await prisma.providerTransaction.update({
+    where: { orderId },
+    data: {
+      status: 'success',
+      amount: creditedAmount,
+      ...(type === 'recharge' && fundingSource === 'BONUS' ? { bonusSourceBreakdown: bonusDebitBreakdown as any } : {}),
+    },
+  });
   invalidateWalletCache(userId);
 
-  if (type === 'recharge' && bonusAmount > 0 && user) {
-    if (bonusKind === 'welcome' && welcomeBonusDef) {
-      try {
-        // Upsert: records the claim without failing if user played another game before
-        await prisma.bonusClaim.upsert({
-          where: { userId_bonusId: { userId, bonusId: welcomeBonusDef.id } },
-          create: { userId, bonusId: welcomeBonusDef.id, amount: bonusAmount },
-          update: { amount: { increment: bonusAmount } },
-        });
-      } catch (e) {
-        // Silently continue — bonus is already credited to game
-      }
+  if (type === 'recharge' && fundingSource === 'WALLET') {
+    if (!providerUser.activeFundingSource || gameIsEmpty) {
+      await prisma.providerUser.update({
+        where: { id: providerUser.id },
+        data: { activeFundingSource: 'WALLET', ...(gameIsEmpty ? { activeSessionBonusBreakdown: Prisma.JsonNull } : {}) },
+      }).catch((e) => logger.error('[transferFunds] Failed to stamp activeFundingSource=WALLET:', e));
+    }
+    // Audit-only — WalletService's derived aggregate remains the authoritative balance (unchanged by this row).
+    recordWalletTransaction({
+      userId,
+      type: 'GAME_DEBIT',
+      amount: -amount,
+      balanceBefore: walletBalanceForRecharge ?? 0,
+      balanceAfter: (walletBalanceForRecharge ?? 0) - amount,
+      referenceId: orderId,
+    });
+  } else if (type === 'recharge' && fundingSource === 'BONUS') {
+    const priorBreakdown: Record<string, number> = gameIsEmpty ? {} : ((providerUser.activeSessionBonusBreakdown as Record<string, number> | null) || {});
+    const mergedBreakdown = { ...priorBreakdown };
+    for (const entry of bonusDebitBreakdown) {
+      mergedBreakdown[entry.sourceType] = Math.round(((mergedBreakdown[entry.sourceType] || 0) + entry.amountConsumed) * 100) / 100;
+    }
+    await prisma.providerUser.update({
+      where: { id: providerUser.id },
+      data: { activeFundingSource: 'BONUS', activeSessionBonusBreakdown: mergedBreakdown },
+    }).catch((e) => logger.error('[transferFunds] Failed to merge activeSessionBonusBreakdown:', e));
+  } else if (type === 'withdraw') {
+    // The sweep always drains the ENTIRE live game balance, so after any successful cashout the game account
+    // is empty again regardless of its prior funding source — clear the tag so the next recharge is free to
+    // choose either Wallet or Bonus Balance.
+    await prisma.providerUser.update({
+      where: { id: providerUser.id },
+      data: { activeFundingSource: null, activeSessionBonusBreakdown: Prisma.JsonNull },
+    }).catch((e) => logger.error('[transferFunds] Failed to clear activeFundingSource after cashout:', e));
 
+    if (capturedFundingSourceForWithdraw !== 'BONUS') {
+      // The bonus-origin case already records its own BONUS_CONVERSION row inside settleBonusCashoutConversion.
+      recordWalletTransaction({
+        userId,
+        type: 'GAME_WIN',
+        amount: creditedAmount,
+        balanceBefore: 0,
+        balanceAfter: creditedAmount,
+        referenceId: orderId,
+        metadata: voidedAmount > 0 ? { voidedAmount } : undefined,
+      });
+    }
+  }
+
+  if (type === 'recharge' && fundingSource === 'WALLET' && bonusAmount > 0 && user) {
+    if (bonusKind === 'welcome' && welcomeBonusDef) {
+      // The BonusClaim row was already atomically created at decision time above (the race-closing claim) —
+      // it must NOT be upserted/incremented again here, or this one-time bonus would be double-counted.
       createNotification(userId, {
         title: '🎉 100% Welcome Bonus Claimed!',
         message: `Congratulations! A $${bonusAmount.toFixed(2)} welcome bonus has been added to your game balance because you verified both your email and phone number.`,
@@ -576,12 +728,18 @@ export const transferFunds = asyncHandler(async (req: AuthRequest, res: Response
     }
   }
 
-  // 6. Build response message (unchanged contract)
+  // 6. Build response message (wallet-path contract unchanged)
   let message: string;
   if (type === 'recharge' && bonusAmount > 0) {
     message = `Transfer successful! Added $${bonusAmount.toFixed(2)} bonus to your game balance.`;
+  } else if (type === 'recharge' && fundingSource === 'BONUS') {
+    message = `Transfer successful! $${amount.toFixed(2)} funded from your Bonus Balance.`;
   } else if (type === 'withdraw') {
-    if (voidedAmount > 0) {
+    if (bonusConversionResult) {
+      message = bonusConversionResult.ruleApplied
+        ? `Cashout successful! Your $${bonusConversionResult.totalWinnings.toFixed(2)} bonus-origin win converted to $${bonusConversionResult.eligibleWalletCredit.toFixed(2)} Wallet credit under the applicable Bonus Cashout Rule.`
+        : `Cashout successful! Your bonus-origin winnings did not meet any active Bonus Cashout Rule, so no Wallet credit was issued this time.`;
+    } else if (voidedAmount > 0) {
       message = `Cashout successful! $${creditedAmount.toFixed(2)} has been credited to your wallet. $${voidedAmount.toFixed(2)} was voided (exceeded your cashout limit).`;
     } else {
       message = `Cashout successful! $${creditedAmount.toFixed(2)} has been credited to your wallet.`;
@@ -593,9 +751,100 @@ export const transferFunds = asyncHandler(async (req: AuthRequest, res: Response
   res.json({
     success: true,
     message,
-    data: type === 'withdraw' ? { credited: creditedAmount, voided: voidedAmount } : undefined
+    data: type === 'withdraw'
+      ? {
+          credited: creditedAmount,
+          voided: voidedAmount,
+          ...(bonusConversionResult ? {
+            bonusConversion: {
+              totalWinnings: bonusConversionResult.totalWinnings,
+              eligibleWalletCredit: bonusConversionResult.eligibleWalletCredit,
+              forfeitedAmount: bonusConversionResult.forfeitedAmount,
+            },
+          } : {}),
+        }
+      : undefined
   });
 })
+
+/**
+ * Settles a bonus-origin game cashout: finds the matching BonusCashoutRule, computes the eligible Wallet
+ * credit, and atomically records BonusConversion + the two BonusTransaction audit rows. Idempotent on
+ * BonusConversion.providerTransactionOrderId — a retried/duplicate call for the same orderId re-reads the
+ * already-recorded outcome instead of ever crediting twice (the idempotent-replay check at the very top of
+ * transferFunds already short-circuits a genuine HTTP retry before this is ever reached again for the same
+ * orderId; the unique constraint is kept as a hard backstop regardless, e.g. against a reconciliation re-run).
+ */
+async function settleBonusCashoutConversion(opts: {
+  userId: string
+  orderId: string
+  totalWinnings: number
+  sessionBreakdown: Record<string, number>
+}): Promise<{ eligibleWalletCredit: number; forfeitedAmount: number; ruleApplied: boolean; totalWinnings: number }> {
+  const { userId, orderId, sessionBreakdown } = opts
+  const totalWinnings = Math.round(opts.totalWinnings * 100) / 100
+  const sessionSourceTypes = Object.keys(sessionBreakdown)
+
+  const rule = await BonusCashoutRuleService.findMatchingRule(totalWinnings, sessionSourceTypes.length > 0 ? sessionSourceTypes : ['ALL'])
+  const eligibleWalletCredit = BonusCashoutRuleService.computeEligibleWalletCredit(totalWinnings, rule)
+  const forfeitedAmount = Math.round(Math.max(0, totalWinnings - eligibleWalletCredit) * 100) / 100
+  const currentBonusBalance = await BonusService.getBonusBalanceRaw(userId)
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.bonusConversion.create({
+        data: {
+          userId,
+          providerTransactionOrderId: orderId,
+          totalWinnings,
+          eligibleWalletCredit,
+          ruleId: rule?.id,
+          ruleMinAmountSnapshot: rule?.minAmount,
+          ruleMaxAmountSnapshot: rule?.maxAmount,
+          ruleWalletCreditSnapshot: rule?.walletCreditAmount,
+          primarySourceType: sessionSourceTypes[0],
+          sourceBreakdown: sessionBreakdown,
+        },
+      })
+      // Audit-only rows — the game win itself never touches Bonus Balance (it was already spent funding the
+      // recharge), and the conversion credits WALLET balance, not Bonus Balance, so before/after are the
+      // current (unchanged) bonus balance for both.
+      await tx.bonusTransaction.create({
+        data: { userId, type: 'BONUS_GAME_WIN', amount: totalWinnings, balanceBefore: currentBonusBalance, balanceAfter: currentBonusBalance, referenceId: orderId, metadata: { sourceBreakdown: sessionBreakdown } },
+      })
+      await tx.bonusTransaction.create({
+        data: { userId, type: 'BONUS_CONVERSION', amount: eligibleWalletCredit, balanceBefore: currentBonusBalance, balanceAfter: currentBonusBalance, referenceId: orderId, metadata: { totalWinnings, forfeitedAmount, ruleId: rule?.id } },
+      })
+    })
+  } catch (err: any) {
+    if (err?.code === 'P2002') {
+      // A BonusConversion for this orderId already exists — re-read what was already recorded rather than
+      // ever crediting a second time.
+      const existing = await prisma.bonusConversion.findUnique({ where: { providerTransactionOrderId: orderId } })
+      if (existing) {
+        return {
+          eligibleWalletCredit: existing.eligibleWalletCredit,
+          forfeitedAmount: Math.round(Math.max(0, existing.totalWinnings - existing.eligibleWalletCredit) * 100) / 100,
+          ruleApplied: !!existing.ruleId,
+          totalWinnings: existing.totalWinnings,
+        }
+      }
+    }
+    throw err
+  }
+
+  recordWalletTransaction({
+    userId,
+    type: 'BONUS_CONVERSION',
+    amount: eligibleWalletCredit,
+    balanceBefore: 0, // WalletService's derived aggregate remains the authoritative balance; this row is audit-only
+    balanceAfter: eligibleWalletCredit,
+    referenceId: orderId,
+    metadata: { totalWinnings, forfeitedAmount, ruleId: rule?.id },
+  })
+
+  return { eligibleWalletCredit, forfeitedAmount, ruleApplied: !!rule, totalWinnings }
+}
 
 // GET /api/provider/accounts
 export const getAllProviderAccounts = asyncHandler(async (req: AuthRequest, res: Response) => {

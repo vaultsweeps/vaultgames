@@ -226,6 +226,7 @@ app.use(errorHandler)
 import { TelegramSupportBot } from './services/TelegramSupportBot'
 import { ImapZappayService } from './services/payment/ImapZappayService'
 import { ImapChimePayPalService } from './services/payment/ImapChimePayPalService'
+import { SundayFreeplayService } from './services/SundayFreeplayService'
 import prisma from './lib/prisma'
 
 // Auto-fail stale pending crypto deposits after 8 hours
@@ -263,6 +264,7 @@ app.listen(PORT, () => {
   TelegramSupportBot.getInstance().start()
   ImapZappayService.startCron()
   ImapChimePayPalService.startCron()
+  SundayFreeplayService.startCron()
 
   // Run once on startup, then every hour
   failStaleCryptoDeposits()

@@ -21,6 +21,7 @@ const NAV_ITEMS = [
   { href: '/admin/games', icon: Gamepad2, label: 'Games' },
   { href: '/admin/bonuses', icon: Gift, label: 'Bonuses' },
   { href: '/admin/coupons', icon: Gift, label: 'Coupons' },
+  { href: '/admin/bonus-cashout-rules', icon: Wallet, label: 'Bonus Cashout Rules' },
   { href: '/admin/banners', icon: ImageIcon, label: 'Banners' },
   { href: '/admin/support', icon: HelpCircle, label: 'Support' },
   { href: '/admin/reports', icon: BarChart3, label: 'Reports' },

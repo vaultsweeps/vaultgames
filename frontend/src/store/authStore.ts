@@ -13,6 +13,7 @@ interface AuthStore extends AuthState {
   setUser: (user: User) => void
   setToken: (token: string) => void
   setBalance: (balance: number) => void
+  setBonusBalance: (bonusBalance: number) => void
   // Auth modal global trigger
   authModalOpen: boolean
   authModalView: 'login' | 'register'
@@ -26,6 +27,7 @@ export const useAuthStore = create<AuthStore>()(
       user: null,
       token: null,
       balance: 0,
+      bonusBalance: 0,
       isLoading: false,
       isAuthenticated: false,
       authModalOpen: false,
@@ -92,7 +94,7 @@ export const useAuthStore = create<AuthStore>()(
           set({ user: response.data.data, isAuthenticated: true })
         } catch {
           Cookies.remove('vaultsweeps_token')
-          set({ user: null, token: null, isAuthenticated: false, balance: 0 })
+          set({ user: null, token: null, isAuthenticated: false, balance: 0, bonusBalance: 0 })
         }
       },
 
@@ -100,8 +102,9 @@ export const useAuthStore = create<AuthStore>()(
         if (!get().isAuthenticated) return
         try {
           const response = await authApi.getBalance()
-          if (response.data?.data?.balance !== undefined) {
-            set({ balance: response.data.data.balance })
+          const data = response.data?.data
+          if (data?.balance !== undefined) {
+            set({ balance: data.balance, bonusBalance: data.bonusBalance ?? 0 })
           }
         } catch {}
       },
@@ -109,6 +112,7 @@ export const useAuthStore = create<AuthStore>()(
       setUser: (user: User) => set({ user }),
       setToken: (token: string) => set({ token }),
       setBalance: (balance: number) => set({ balance }),
+      setBonusBalance: (bonusBalance: number) => set({ bonusBalance }),
       openAuthModal: (view: 'login' | 'register' = 'login') => set({ authModalOpen: true, authModalView: view }),
       closeAuthModal: () => set({ authModalOpen: false }),
     }),
@@ -119,7 +123,7 @@ export const useAuthStore = create<AuthStore>()(
       // api.ts actually reads on every request), so persisting a second copy
       // to localStorage only doubles the JWT's exposure surface without
       // being read back by anything.
-      partialize: (state) => ({ user: state.user, isAuthenticated: state.isAuthenticated, balance: state.balance })
+      partialize: (state) => ({ user: state.user, isAuthenticated: state.isAuthenticated, balance: state.balance, bonusBalance: state.bonusBalance })
     }
   )
 )
