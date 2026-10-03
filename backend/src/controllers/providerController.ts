@@ -8,7 +8,7 @@ import { WalletService, invalidateWalletCache } from '../services/WalletService'
 import { SyncService } from '../services/syncService'
 import { createNotification } from '../services/notificationService'
 import { TelegramService } from '../services/TelegramService'
-import { ReferralService } from '../services/ReferralService'
+import { ReferralService, computeReferralBonusAmount } from '../services/ReferralService'
 import { logger } from '../utils/logger'
 import { Prisma } from '@prisma/client'
 import { BonusService, invalidateBonusCache } from '../services/BonusService'
@@ -699,7 +699,7 @@ export const transferFunds = asyncHandler(async (req: AuthRequest, res: Response
       // whichever happens first, but never both — the shared unique-per-referee ledger row means the
       // second trigger (from either path) is always a safe no-op rather than a double payment.
       if (user.referredById && referralBonusDef) {
-        const refBonus = Math.min(amount * 0.5, 10);
+        const refBonus = computeReferralBonusAmount(amount);
         const { granted } = await ReferralService.grantReferralReward({
           referrerId: user.referredById,
           refereeId: userId,

@@ -126,7 +126,7 @@ const HOW_IT_WORKS = [
   { title: 'Share your referral link', text: 'Send your invite link or code to your friends.' },
   { title: 'Your friend signs up', text: 'They register on VaultSweeps using your link.' },
   { title: 'They make their first deposit', text: 'Your bonus is earned once that deposit is approved.' },
-  { title: 'You receive your referral bonus', text: '50% of their deposit, up to $10. No limit on referrals — keep inviting!' },
+  { title: 'You receive your referral bonus', text: '$5 if they deposit under $10, or $10 if they deposit $10+. No limit on referrals — keep inviting!' },
 ]
 
 export default function InvitePage() {
@@ -265,8 +265,8 @@ export default function InvitePage() {
             Invite &amp; Earn
           </h1>
           <p className="mt-2 sm:max-w-md text-[15px] leading-relaxed text-white/70">
-            Earn a{' '}
-            <span className="font-semibold text-amber-300 whitespace-nowrap">50% bonus (up to $10)</span>
+            Earn{' '}
+            <span className="font-semibold text-amber-300 whitespace-nowrap">$5–$10</span>
             {' '}on your referrals&apos; first deposit!
           </p>
 

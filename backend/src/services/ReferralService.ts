@@ -4,7 +4,16 @@ import { invalidateWalletCache } from './WalletService';
 import { BonusLedgerService } from './BonusLedgerService';
 
 const MAX_REFERRAL_BONUS = 10;
-const REFERRAL_BONUS_PERCENT = 0.5;
+
+/**
+ * Tiered (not percentage-based) referral reward: the referee's qualifying amount (their first approved
+ * deposit, or their first game recharge if that happens first) decides a flat reward for the referrer —
+ * $5 if it's under $10, $10 if it's $10 or more. Still only ever paid once per referee, via
+ * grantReferralReward's unique-per-referee gate.
+ */
+export function computeReferralBonusAmount(qualifyingAmount: number): number {
+  return qualifyingAmount < 10 ? 5 : 10;
+}
 
 // Extracted as a pure function so it's unit-testable on its own: a live database check is not possible for
 // this specific signal, because UserProfile.phone carries a partial unique index (phone IS NOT NULL AND
@@ -139,9 +148,9 @@ export class ReferralService {
   }
 
   /**
-   * Processes a referral bonus if this is the user's FIRST approved deposit. Gives the referrer 50% of the
-   * deposit amount, up to a maximum of $10. Safe to call more than once for the same deposit (e.g. a retried
-   * webhook) — grantReferralReward is the idempotency boundary.
+   * Processes a referral bonus if this is the user's FIRST approved deposit. Gives the referrer a flat $5 or
+   * $10 depending on the deposit amount — see computeReferralBonusAmount. Safe to call more than once for
+   * the same deposit (e.g. a retried webhook) — grantReferralReward is the idempotency boundary.
    */
   static async processFirstDepositBonus(userId: string, depositAmount: number, depositId?: string) {
     try {
@@ -152,7 +161,7 @@ export class ReferralService {
       const approvedDepositsCount = await prisma.deposit.count({ where: { userId, status: 'approved' } });
       if (approvedDepositsCount > 1) return; // Not their first deposit
 
-      const bonusAmount = Math.min(MAX_REFERRAL_BONUS, depositAmount * REFERRAL_BONUS_PERCENT);
+      const bonusAmount = computeReferralBonusAmount(depositAmount);
       await this.grantReferralReward({
         referrerId: user.referredById,
         refereeId: userId,

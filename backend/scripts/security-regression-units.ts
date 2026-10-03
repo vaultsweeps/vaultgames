@@ -684,4 +684,20 @@ export async function extraChecks(check: Check) {
     check('providerController: the 100%/30% bonus computation block never references UserBonus/BonusCashoutRule', !/bonusAmount[\s\S]{0,400}(UserBonus|BonusCashoutRule)/.test(providerCtlSrc.slice(providerCtlSrc.indexOf('let bonusAmount'), providerCtlSrc.indexOf('let bonusAmount') + 2000)))
     check('providerController: a Bonus-Balance-funded recharge sends the exact amount with no 100%/30% inflation', providerCtlSrc.includes("fundingSource === 'BONUS'") && providerCtlSrc.includes('debitUserBonusFIFO'))
   }
+
+  // ── Referral reward — tiered flat amount (2026-10-03 rule change): $5 if the referee's qualifying amount
+  // is under $10, $10 if it's $10 or more. Replaced the old 50%-of-amount-capped-at-$10 formula at both
+  // trigger sites (first approved deposit, first game recharge). ──
+  {
+    const { computeReferralBonusAmount } = await import('../src/services/ReferralService')
+    check('computeReferralBonusAmount: $4.99 deposit -> $5', computeReferralBonusAmount(4.99) === 5)
+    check('computeReferralBonusAmount: $9.99 deposit -> $5', computeReferralBonusAmount(9.99) === 5)
+    check('computeReferralBonusAmount: exactly $10 -> $10', computeReferralBonusAmount(10) === 10)
+    check('computeReferralBonusAmount: $500 deposit -> still just $10 (flat, not percentage)', computeReferralBonusAmount(500) === 10)
+
+    const providerCtlSrc = src('controllers/providerController.ts')
+    check('providerController: first-recharge referral trigger uses the shared tiered helper, not an inline percentage', providerCtlSrc.includes('computeReferralBonusAmount(amount)') && !providerCtlSrc.includes('Math.min(amount * 0.5, 10)'))
+    const referralSrc = src('services/ReferralService.ts')
+    check('ReferralService: first-deposit trigger uses the shared tiered helper, not the old percent formula', referralSrc.includes('computeReferralBonusAmount(depositAmount)') && !referralSrc.includes('REFERRAL_BONUS_PERCENT'))
+  }
 }
