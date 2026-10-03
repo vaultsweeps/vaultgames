@@ -127,7 +127,12 @@ export class ProviderFactory {
   }
 
   /**
-   * Returns the provider DB record ID assigned to a game.
+   * Returns the provider DB record ID assigned to a game — but only if that provider is currently enabled
+   * (status: true). Returns null for a disabled provider too, not just an unassigned one, so every caller
+   * that already treats "no providerId" as "show maintenance" (getProviderAccount/getProviderAccountFast)
+   * correctly reacts to an admin disabling a provider, instead of silently continuing to send live traffic
+   * to it — this was a real gap found while debugging UltraPanda: disabling it in Admin did not actually
+   * stop recharge/account requests from still being attempted against it.
    */
   static async getProviderIdForGame(gameId: string): Promise<string | null> {
     return this.gameProviderIdCache.getOrCompute(gameId, async () => {
@@ -136,9 +141,10 @@ export class ProviderFactory {
 
       const game = await prisma.game.findUnique({
         where: { id: targetId },
-        select: { providerId: true },
+        select: { providerId: true, provider: { select: { status: true } } },
       });
-      return game?.providerId || null;
+      if (!game?.providerId || !game.provider?.status) return null;
+      return game.providerId;
     }, id => id === null);
   }
 }

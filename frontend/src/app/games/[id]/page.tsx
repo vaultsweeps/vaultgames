@@ -678,14 +678,20 @@ export default function GameDetailsPage() {
               </p>
             </div>
             <div className="flex flex-col gap-3">
-              <button 
-                onClick={() => { setMaintenanceModalOpen(false); setAgentModalOpen(true); }} 
+              <button
+                onClick={() => { setMaintenanceModalOpen(false); setAgentModalOpen(true); }}
                 className="w-full bg-violet-500 hover:bg-violet-600 text-white font-bold py-3 rounded-xl transition-colors flex items-center justify-center gap-2 shadow-lg shadow-violet-500/20"
               >
                 <Bot className="w-5 h-5" /> Play with Agent instead
               </button>
-              <button 
-                onClick={() => setMaintenanceModalOpen(false)} 
+              <button
+                onClick={() => { setMaintenanceModalOpen(false); handleDownload() }}
+                className="w-full bg-surface-elevated hover:bg-white/5 border border-border-strong text-white font-bold py-3 rounded-xl transition-colors flex items-center justify-center gap-2"
+              >
+                <Download className="w-5 h-5" /> Download Game
+              </button>
+              <button
+                onClick={() => setMaintenanceModalOpen(false)}
                 className="w-full bg-surface-elevated hover:bg-surface-elevated border border-border-strong text-slate-300 font-medium py-3 rounded-xl transition-colors"
               >
                 Close
