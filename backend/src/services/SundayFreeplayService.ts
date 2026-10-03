@@ -4,7 +4,8 @@ import { logger } from '../utils/logger';
 import { BonusLedgerService } from './BonusLedgerService';
 
 const FREEPLAY_AMOUNT = 3;
-const MIN_LIFETIME_DEPOSITS = 5;
+const MIN_WEEKLY_DEPOSITS = 5;
+const QUALIFYING_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
 /**
  * Standard ISO-8601 week-year key (e.g. "2026-W40"), computed in UTC. This IS the weekly idempotency
@@ -22,21 +23,24 @@ export function getUTCISOWeekKey(date: Date): string {
 
 export class SundayFreeplayService {
   /**
-   * Grants the $3 weekly Freeplay bonus to every active, non-banned user with >= $5 lifetime APPROVED
-   * deposits who hasn't already claimed it for the current UTC ISO week. Server-side eligibility only —
-   * never trusts a client-supplied flag.
+   * Grants the $3 weekly Freeplay bonus to every active, non-banned user with >= $5 in APPROVED deposits in
+   * the 7 days immediately before the grant runs (a rolling window, not a lifetime total — a user who
+   * deposited $5 months ago but nothing recently does not qualify) who hasn't already claimed it for the
+   * current UTC ISO week. Server-side eligibility only — never trusts a client-supplied flag.
    */
   static async runWeeklyGrant(): Promise<void> {
-    const weekKey = getUTCISOWeekKey(new Date());
+    const now = new Date();
+    const weekKey = getUTCISOWeekKey(now);
+    const windowStart = new Date(now.getTime() - QUALIFYING_WINDOW_MS);
 
-    // Narrow to users who have ever had an approved deposit and have no claim yet this week; the exact
-    // lifetime-total >= $5 check runs per-candidate below since Prisma can't express a HAVING-sum filter
+    // Narrow to users with an approved deposit inside the window and no claim yet this week; the exact
+    // windowed-total >= $5 check runs per-candidate below since Prisma can't express a HAVING-sum filter
     // directly. Runs once a week via cron, so a straightforward per-candidate loop is fine at current scale.
     const candidates = await prisma.user.findMany({
       where: {
         isActive: true,
         isBanned: false,
-        deposits: { some: { status: 'approved' } },
+        deposits: { some: { status: 'approved', createdAt: { gte: windowStart } } },
         sundayFreeplayClaims: { none: { weekKey } },
       },
       select: { id: true },
@@ -47,11 +51,11 @@ export class SundayFreeplayService {
     for (const { id: userId } of candidates) {
       try {
         const depositSum = await prisma.deposit.aggregate({
-          where: { userId, status: 'approved' },
+          where: { userId, status: 'approved', createdAt: { gte: windowStart } },
           _sum: { amount: true },
         });
-        const lifetimeDeposits = depositSum._sum.amount || 0;
-        if (lifetimeDeposits < MIN_LIFETIME_DEPOSITS) continue;
+        const windowedDeposits = depositSum._sum.amount || 0;
+        if (windowedDeposits < MIN_WEEKLY_DEPOSITS) continue;
 
         await prisma.$transaction(async (tx) => {
           const claim = await tx.sundayFreeplayClaim.create({

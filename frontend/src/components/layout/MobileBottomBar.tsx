@@ -94,13 +94,13 @@ export default function MobileBottomBar({ menuOpen, onToggleMenu }: { menuOpen: 
       <button
         onClick={onToggleMenu}
         aria-label={menuOpen ? "Close menu" : "Open menu"}
-        className="w-11 h-11 rounded-full bg-[#7C3AED] hover:bg-[#6D28D9] flex items-center justify-center text-white shadow-lg pointer-events-auto active:scale-95"
+        className="w-[52px] h-[52px] rounded-full bg-[#7C3AED] hover:bg-[#6D28D9] flex items-center justify-center text-white shadow-lg pointer-events-auto active:scale-95"
         style={{ transition: 'background-color 0.2s ease, transform 0.1s ease' }}
       >
         <AnimatePresence mode="wait" initial={false}>
           {menuOpen
-            ? <motion.span key="x" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }} transition={{ duration: 0.15 }}><X className="w-[18px] h-[18px]" /></motion.span>
-            : <motion.span key="m" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }} transition={{ duration: 0.15 }}><Menu className="w-[18px] h-[18px]" /></motion.span>
+            ? <motion.span key="x" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }} transition={{ duration: 0.15 }}><X className="w-[21px] h-[21px]" /></motion.span>
+            : <motion.span key="m" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }} transition={{ duration: 0.15 }}><Menu className="w-[21px] h-[21px]" /></motion.span>
           }
         </AnimatePresence>
       </button>
