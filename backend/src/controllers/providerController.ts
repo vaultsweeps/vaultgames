@@ -366,7 +366,13 @@ export const transferFunds = asyncHandler(async (req: AuthRequest, res: Response
       : Promise.resolve(0),
   ]);
 
-  const providerUser = await prisma.providerUser.findFirst({ where: { userId, providerId: providerId ?? '' } });
+  if (!providerId) {
+    // Either the game has no provider assigned, or its provider is currently disabled in Admin — a clearer
+    // message than "create an account first", which is misleading when the real cause is maintenance.
+    throw new AppError('This game is temporarily unavailable. Please contact support or try again later.', 503);
+  }
+
+  const providerUser = await prisma.providerUser.findFirst({ where: { userId, providerId } });
 
   if (!providerUser) {
     throw new AppError('No game account found. Please create an account first.', 404);
