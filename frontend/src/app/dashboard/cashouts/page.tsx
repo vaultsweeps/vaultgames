@@ -331,7 +331,7 @@ export default function CashoutsPage() {
         <IconTile icon={Info} tone="cyan" size="md" />
         <div className="min-w-0 pt-0.5">
           <p className="text-primary text-[15px] font-semibold">Cashout Processing</p>
-          <p className="text-secondary text-[14px] leading-relaxed mt-0.5">Withdrawals are reviewed within 1–24 hours. Ensure your payment info is correct before submitting.</p>
+          <p className="text-secondary text-[14px] leading-relaxed mt-0.5">Withdrawals are reviewed in under 10 minutes. Ensure your payment info is correct before submitting.</p>
         </div>
       </Card>
 
