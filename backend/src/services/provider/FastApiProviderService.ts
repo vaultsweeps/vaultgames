@@ -354,11 +354,15 @@ export class FastApiProviderService implements ProviderAdapter {
   private getProviderAccount(userId: string): string {
     // Remove any character that is not a letter or digit
     let clean = userId.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-    // Pad to minimum 3 chars
-    if (clean.length < 3) {
-      clean = clean.padEnd(3, 'x');
+    // The live servers (Ultrapanda, VBlink) reject accounts under 7 chars ("Account length only allows 7-20
+    // characters"), stricter than the docs' 3–16. Short names are padded with digits derived from the
+    // username itself rather than a fixed letter, so e.g. "admin" can't land on the same provider account
+    // as a real user literally named "adminxx". Names already >= 7 chars come out exactly as before.
+    if (clean.length < 7) {
+      const digits = parseInt(crypto.createHash('md5').update(userId).digest('hex').slice(0, 12), 16).toString().padStart(7, '0');
+      clean = (clean + digits).substring(0, 7);
     }
-    // Truncate to 16 chars max
+    // Truncate to 16 chars max (inside both the docs' 3–16 and the servers' 7–20)
     return clean.substring(0, 16);
   }
 
