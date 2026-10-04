@@ -426,6 +426,21 @@ export class FastApiProviderService implements ProviderAdapter {
   }
 
   async getAgentBalance(): Promise<number> {
+    if (this.isStaticConfig) {
+      // The agent balance is only exposed by /fast/agent/login, which isn't used (and isn't accepted) in the
+      // static appid/appsecret mode. Verify the credentials instead with a harmless balance lookup for an
+      // account that can't exist: "User Does Not Exist" (code 2) proves the signature was accepted, so the
+      // admin "Test connection" reports honestly instead of always failing or silently returning 0.
+      const endpoint = this.getEndpoint('playerBalance', '/fast/user/balance');
+      try {
+        const data = await this.makeRequest(endpoint, { account: 'zzconncheck0' });
+        return parseFloat(data?.balance) || 0;
+      } catch (e: any) {
+        if (e?.message?.includes('Code: 2,')) return 0;
+        throw e;
+      }
+    }
+
     const endpoint = this.getEndpoint('agentBalance', '/fast/agent/login');
     try {
       const data = await this.makeRequest(endpoint, {
