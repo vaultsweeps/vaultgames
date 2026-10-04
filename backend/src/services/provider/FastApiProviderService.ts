@@ -102,8 +102,14 @@ export class FastApiProviderService implements ProviderAdapter {
       const endpoint = this.getEndpoint('agentLogin', '/fast/agent/login');
       const url = this.buildUrl(endpoint);
 
+      // Per the official FastAPI docs' own Agent Login body table (page 4): requestid, timestamp, account,
+      // passwd, sign — appid is deliberately NOT part of this one endpoint's request (every OTHER endpoint
+      // requires it). It was previously included here anyway; now that a stale static appid/appsecret
+      // override has been found and cleared for Ultrapanda (it was masking whether this ever mattered), a
+      // genuine login attempt is still failing with "Invalid Signature" — this is the most likely remaining
+      // cause, since an extra field changes the signed string and the provider's own reference signature
+      // would never include a field it doesn't expect.
       const requestData: Record<string, any> = {
-        appid: this.appid,
         requestid: crypto.randomBytes(16).toString('hex'),
         timestamp: Date.now().toString(),
         account: this.provider.agentId,
