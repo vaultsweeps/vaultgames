@@ -22,8 +22,12 @@ router.post('/',
   limit({ name: 'deposit-create', windowMs: 10 * 60_000, max: 20, scope: 'user' }),
   idempotency('deposit'),
   [
-    body('amount').isFloat({ min: 1, max: 100000 }).withMessage('Amount must be between $1 and $100,000'),
-    body('paymentMethodId').notEmpty().withMessage('Payment method is required'),
+    body('amount').isFloat({ min: 1, max: 100000 }).withMessage('Amount must be between $1 and $100,000').toFloat(),
+    body('paymentMethodId').isString().withMessage('Payment method is required').bail().trim().notEmpty().withMessage('Payment method is required').isLength({ max: 64 }),
+    // The sender name goes into the plain-text Telegram deposit alert — one line, no control characters
+    body('accountName').optional({ values: 'falsy' }).isString().bail().trim().isLength({ max: 100 }).withMessage('Name is too long')
+      // eslint-disable-next-line no-control-regex
+      .custom(v => !/[\u0000-\u001F\u007F]/.test(v)).withMessage('Name contains invalid characters'),
   ],
   validateRequest,
   createDeposit

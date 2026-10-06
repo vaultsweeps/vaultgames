@@ -87,7 +87,8 @@ export default function ChimePayPalDepositModal({ isOpen, onClose, method }: Chi
     setStatus('verifying')
     setStep(3)
     try {
-      const pm = methods.find(m => m.code === method) || methods.find(m => m.name.toLowerCase().includes(method!))
+      // Exact code only — a loose name match could file the deposit under a different account
+      const pm = methods.find(m => String(m.code).toLowerCase() === String(method).toLowerCase())
       const paymentMethodId = pm ? pm.id : `temp-${method}-id`
       
       const res = await depositApi.create({ 
@@ -241,7 +242,7 @@ export default function ChimePayPalDepositModal({ isOpen, onClose, method }: Chi
                   </a>
                   <button 
                     onClick={() => {
-                      if (currentConfig.linkUrl) {
+                      if (/^https:\/\//i.test(currentConfig.linkUrl || '')) {
                         window.open(currentConfig.linkUrl, '_blank', 'noopener,noreferrer');
                       } else {
                         // No pay link set for this account — give them the tag to paste into their app instead

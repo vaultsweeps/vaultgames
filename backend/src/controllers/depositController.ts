@@ -249,7 +249,12 @@ export const getPaymentMethods = asyncHandler(async (req: AuthRequest, res: Resp
     select: { id: true, name: true, code: true, type: true, minAmount: true, maxAmount: true, feePercent: true, iconUrl: true, instructions: true, fields: true, isActive: true, cashoutEnabled: true, depositEnabled: true, brand: true, tag: true, displayName: true, linkUrl: true, qrUrl: true, sortOrder: true },
     orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }]
   })
-  res.json({ success: true, data: methods })
+  // A tag / pay link is only handed out while the method is live for deposits — a replaced or switched-off
+  // account must not stay readable through this endpoint
+  const data = methods.map(m => (m.isActive && m.depositEnabled !== false)
+    ? m
+    : { ...m, tag: null, linkUrl: null, qrUrl: null, displayName: null })
+  res.json({ success: true, data })
 })
 
 // GET /api/deposits/:id
