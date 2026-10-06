@@ -14,6 +14,7 @@ import { WalletService } from '../services/WalletService'
 import { BonusService } from '../services/BonusService'
 import { revokeTokensIssuedBefore, markEmailVerifyTokenIssued, isEmailVerifyTokenValid, clearEmailVerifyToken, createTelegramLinkToken } from '../lib/redis'
 import { auth } from '../lib/firebaseAdmin'
+import { isDuplicateAccountError } from '../utils/providerErrors'
 import { createNotification } from '../services/notificationService'
 
 
@@ -148,7 +149,7 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
           try {
             newProviderData = await providerService.createPlayer(currentUsername, password);
           } catch (err: any) {
-            if (err?.message?.includes('Username Already Exists') || err?.message?.includes('Username already exists')) {
+            if (isDuplicateAccountError(err)) {
               // Generate new username
               const suffix = Math.floor(Math.random() * 9000) + 1000;
               currentUsername = `${username.substring(0, 10)}_${suffix}`;
