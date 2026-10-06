@@ -15,6 +15,7 @@ import { BonusService, invalidateBonusCache } from '../services/BonusService'
 import { BonusLedgerService, BonusDebitBreakdownEntry } from '../services/BonusLedgerService'
 import { BonusCashoutRuleService } from '../services/BonusCashoutRuleService'
 import { recordWalletTransaction } from '../services/WalletTransactionService'
+import { isDuplicateAccountError } from '../utils/providerErrors'
 
 // POST /api/provider/create-account?gameId=xxx
 export const createProviderAccount = asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -62,7 +63,7 @@ export const createProviderAccount = asyncHandler(async (req: AuthRequest, res: 
     res.json({ success: true, message: 'Game account created successfully!', data: { accountName: providerData.accountName } })
     logger.info(`[createAccount] Total Request Time: ${performance.now() - startTotal}ms`);
   } catch (err: any) {
-    if (err?.message?.includes('Username Already Exists') || err?.message?.includes('Username already exists')) {
+    if (isDuplicateAccountError(err)) {
       let newProviderData = null;
       let attempts = 0;
       let currentUsername = user.username;
@@ -76,7 +77,7 @@ export const createProviderAccount = asyncHandler(async (req: AuthRequest, res: 
         try {
           newProviderData = await providerService.createPlayer(currentUsername);
         } catch (retryErr: any) {
-          if (!retryErr?.message?.includes('Username Already Exists') && !retryErr?.message?.includes('Username already exists')) {
+          if (!isDuplicateAccountError(retryErr)) {
             throw retryErr; 
           }
         }
