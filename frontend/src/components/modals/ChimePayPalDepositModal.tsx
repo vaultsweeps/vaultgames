@@ -8,6 +8,7 @@ import { X, CheckCircle, ArrowRight, Copy, MessageSquareText, Loader2 } from 'lu
 import toast from 'react-hot-toast'
 import { depositApi, publicApi } from '@/lib/api'
 import { buildManualAccounts } from '@/lib/manualDepositAccounts'
+import { fetchPaymentMethods, getCachedPaymentMethods, paymentMethodsAge } from '@/lib/paymentMethodsCache'
 
 interface ChimePayPalDepositModalProps {
   isOpen: boolean
@@ -29,11 +30,13 @@ export default function ChimePayPalDepositModal({ isOpen, onClose, method }: Chi
 
   // Always fetch fresh details on open — the tag shown must be the one currently saved in the admin panel
   const loadMethods = () => {
-    setMethodsLoaded(false)
+    // A copy fetched in the last minute is shown at once; a fresh one always replaces it as soon as it arrives
+    const recent = paymentMethodsAge() < 60_000 ? getCachedPaymentMethods() : null
+    if (recent) { setMethods(recent); setMethodsLoaded(true) } else setMethodsLoaded(false)
     setLoadFailed(false)
-    depositApi.getPaymentMethods()
-      .then(res => { setMethods(res.data.data || []); setMethodsLoaded(true) })
-      .catch(() => setLoadFailed(true))
+    fetchPaymentMethods()
+      .then(data => { setMethods(data); setMethodsLoaded(true) })
+      .catch(() => { if (!recent) setLoadFailed(true) })
   }
 
   useEffect(() => {
