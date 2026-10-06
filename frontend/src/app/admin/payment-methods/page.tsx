@@ -6,7 +6,7 @@ import { Plus, Pencil, Trash2, Save, CreditCard, ArrowDownCircle, ArrowUpCircle,
 import { PageHeader, Button, Badge, EmptyState, Field } from '@/components/dashboard/ui'
 import { INPUT, NUM, TH, TD, IconBtn, Switch, SwitchRow, AdminModal, TableCard, SkeletonRows, Callout } from '../_kit'
 import ManualAccountTile from '@/components/wallet/ManualAccountTile'
-import { BRANDS, BRAND_OPTIONS, LEGACY_ACCOUNTS, firstNameFromTag, type ManualBrand } from '@/lib/manualDepositAccounts'
+import { BRANDS, BRAND_OPTIONS, LEGACY_ACCOUNTS, MANUAL_MIN_DEPOSIT_USD, firstNameFromTag, type ManualBrand } from '@/lib/manualDepositAccounts'
 
 const TYPES = ['wallet', 'bank', 'card', 'crypto']
 type Purpose = 'deposit' | 'cashout'
@@ -243,7 +243,7 @@ export default function PaymentMethodsAdminPage() {
             <td className={`${TD} text-[14px] tabular-nums`}>{m.feePercent}%</td>
           </>
         )}
-        <td className={`${TD} text-[14px] tabular-nums`}>${m.minAmount} – ${m.maxAmount.toLocaleString()}</td>
+        <td className={`${TD} text-[14px] tabular-nums`}>${tab === 'deposit' && app ? MANUAL_MIN_DEPOSIT_USD : m.minAmount} – ${m.maxAmount.toLocaleString()}</td>
         <td className={TD}>
           <div className="flex items-center gap-1">
             <Switch on={isLive} onToggle={() => handleSwitch(m)} label={isLive ? `Hide from ${tab}s` : `Show for ${tab}s`} />
@@ -365,8 +365,12 @@ export default function PaymentMethodsAdminPage() {
               </>
             )}
 
-            <Field label="Min deposit ($)">
-              <input type="number" className={INPUT} value={df.minAmount} onChange={e => setDepositForm(f => f && ({ ...f, minAmount: +e.target.value }))} />
+            <Field label="Min deposit ($)" hint={df.brand ? 'Fixed for all manual (send-to-tag) methods.' : undefined}>
+              {df.brand ? (
+                <input className={INPUT} value={`$${MANUAL_MIN_DEPOSIT_USD}`} disabled readOnly />
+              ) : (
+                <input type="number" className={INPUT} value={df.minAmount} onChange={e => setDepositForm(f => f && ({ ...f, minAmount: +e.target.value }))} />
+              )}
             </Field>
             <Field label="Max deposit ($)">
               <input type="number" className={INPUT} value={df.maxAmount} onChange={e => setDepositForm(f => f && ({ ...f, maxAmount: +e.target.value }))} />

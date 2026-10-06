@@ -15,6 +15,7 @@ import { ImapZappayService } from '../services/payment/ImapZappayService'
 import { ImapChimePayPalService } from '../services/payment/ImapChimePayPalService'
 import { GgusOnePayService } from '../services/payment/GgusOnePayService'
 import { invalidateWalletCache } from '../services/WalletService'
+import { isManualDepositMethod, MANUAL_MIN_DEPOSIT_USD } from '../utils/manualDeposit'
 
 
 // GET /api/deposits - User's deposits
@@ -56,6 +57,9 @@ export const createDeposit = asyncHandler(async (req: AuthRequest, res: Response
   // Allow $9.99 minimum for GgusOnePay specifically regardless of DB config
   if (paymentMethod.code.toLowerCase() === 'ggusonepay') {
     if (amount < 9.99) throw new AppError(`Minimum deposit for this method is $9.99`, 400)
+  } else if (isManualDepositMethod(paymentMethod)) {
+    // Chime / CashApp / PayPal / Venmo (and admin-added tag methods) share one minimum
+    if (amount < MANUAL_MIN_DEPOSIT_USD) throw new AppError(`Minimum deposit for this method is $${MANUAL_MIN_DEPOSIT_USD}`, 400)
   } else if (amount < paymentMethod.minAmount) {
     throw new AppError(`Minimum deposit for this method is $${paymentMethod.minAmount}`, 400)
   }
@@ -251,9 +255,10 @@ export const getPaymentMethods = asyncHandler(async (req: AuthRequest, res: Resp
   })
   // A tag / pay link is only handed out while the method is live for deposits — a replaced or switched-off
   // account must not stay readable through this endpoint
-  const data = methods.map(m => (m.isActive && m.depositEnabled !== false)
-    ? m
-    : { ...m, tag: null, linkUrl: null, qrUrl: null, displayName: null })
+  const data = methods.map(m => {
+    const base = isManualDepositMethod(m) ? { ...m, minAmount: MANUAL_MIN_DEPOSIT_USD } : m
+    return (m.isActive && m.depositEnabled !== false) ? base : { ...base, tag: null, linkUrl: null, qrUrl: null, displayName: null }
+  })
   res.json({ success: true, data })
 })
 

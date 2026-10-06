@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { X, CheckCircle, ArrowRight, Copy, MessageSquareText, Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { depositApi, publicApi } from '@/lib/api'
-import { buildManualAccounts } from '@/lib/manualDepositAccounts'
+import { buildManualAccounts, MANUAL_MIN_DEPOSIT_USD } from '@/lib/manualDepositAccounts'
 import { fetchPaymentMethods, getCachedPaymentMethods, paymentMethodsAge } from '@/lib/paymentMethodsCache'
 
 interface ChimePayPalDepositModalProps {
@@ -85,6 +85,7 @@ export default function ChimePayPalDepositModal({ isOpen, onClose, method }: Chi
   const handleISent = async () => {
     const numAmount = parseFloat(amount)
     if (!numAmount || numAmount <= 0) return toast.error('Please enter a valid amount')
+    if (numAmount < MANUAL_MIN_DEPOSIT_USD) return toast.error(`Minimum deposit is $${MANUAL_MIN_DEPOSIT_USD}`)
     if (!profileName.trim()) return toast.error(`Please enter your ${method === 'chime' || method === 'chime2' ? 'Chime' : method === 'cashapp' || method === 'cashapp2' ? 'CashApp' : method === 'venmo' ? 'Venmo' : 'PayPal'} name`)
 
     setStatus('verifying')
@@ -229,6 +230,7 @@ export default function ChimePayPalDepositModal({ isOpen, onClose, method }: Chi
                   <p className="text-xs text-amber-400 mt-2">
                     Make sure to complete the transfer on your {currentConfig.name} app before continuing.
                   </p>
+                  <p className="text-xs font-semibold text-emerald-400">Minimum deposit: ${MANUAL_MIN_DEPOSIT_USD}</p>
                   {currentConfig.instructions && (
                     <p className="text-xs text-secondary whitespace-pre-line text-left">{currentConfig.instructions}</p>
                   )}
@@ -272,6 +274,7 @@ export default function ChimePayPalDepositModal({ isOpen, onClose, method }: Chi
               <div className="space-y-6">
                 <div className="space-y-4">
                   <p className="text-secondary text-sm text-center">Enter the amount you sent</p>
+                  <p className="text-xs text-center text-emerald-400 -mt-2">Minimum deposit: ${MANUAL_MIN_DEPOSIT_USD}</p>
                   
                   <div className="bg-surface rounded-2xl p-4 flex items-center justify-between border border-border-subtle relative">
                     <div className="flex items-center w-full">

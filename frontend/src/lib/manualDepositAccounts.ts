@@ -4,6 +4,9 @@
 // ONLY for a method whose tag has never been set in the admin panel. Once an admin saves a tag, every detail
 // comes from the database — an old tag, link or QR can never show again (not even while the list is loading).
 
+// Must match MANUAL_MIN_DEPOSIT_USD in backend/src/utils/manualDeposit.ts (the server enforces it)
+export const MANUAL_MIN_DEPOSIT_USD = 5
+
 export type ManualBrand = 'chime' | 'cashapp' | 'paypal' | 'venmo' | 'zelle' | 'other'
 
 export type ManualDepositAccount = {
