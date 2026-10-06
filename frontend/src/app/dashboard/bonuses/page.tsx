@@ -6,6 +6,7 @@ import toast from 'react-hot-toast'
 import { bonusesApi, bonusApi } from '@/lib/api'
 import { Card, PageHeader, Button, Badge, IconTile, EmptyState, Skeleton, GiftIcon, TONES, type Tone } from '@/components/dashboard/ui'
 import BonusCashoutRulesModal from '@/components/modals/BonusCashoutRulesModal'
+import SundayFreeplayCard from '@/components/bonuses/SundayFreeplayCard'
 
 const SOURCE_TYPE_LABEL: Record<string, string> = {
   CRYPTO_BONUS: 'Crypto Bonus',
@@ -319,6 +320,8 @@ export default function BonusesPage() {
       />
 
       <BonusBalanceSummary />
+
+      <SundayFreeplayCard className="mb-6" />
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5" aria-busy="true">

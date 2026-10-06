@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { publicApi } from '@/lib/api'
 import Footer from '@/components/layout/Footer'
 import { useAuthStore } from '@/store/authStore'
+import SundayFreeplayCard from '@/components/bonuses/SundayFreeplayCard'
 
 // Types that should NEVER be shown on the public Bonuses page
 const HIDDEN_TYPES = ['wheel', 'freeplay']
@@ -113,6 +114,9 @@ export default function BonusesPage() {
               Maximize your gaming with our incredible bonus offers. New promotions added regularly.
             </p>
           </motion.div>
+
+          {/* ── Sunday $3 Freeplay (claimed via Signal) ── */}
+          <SundayFreeplayCard className="mb-14" />
 
           {/* ── Bonus Grid ── */}
           {loading ? (

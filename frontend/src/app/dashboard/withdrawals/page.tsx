@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useForm } from 'react-hook-form'
 import toast from 'react-hot-toast'
+import { MIN_WITHDRAWAL_USD, MIN_WITHDRAWAL_MESSAGE } from '@/lib/withdrawal'
 import { DollarSign, Clock, CheckCircle2, ChevronLeft, ChevronRight, Plus, X, AlertCircle, Info } from 'lucide-react'
 import { enhancedWithdrawalApi } from '@/lib/api'
 import { supabase } from '@/lib/supabase'
@@ -281,7 +282,7 @@ export default function WithdrawalsPage() {
                       className="ds-input !text-base !pl-8"
                       {...register('amount', {
                         required: 'Amount is required',
-                        min: { value: 1, message: 'Minimum withdrawal is $1' },
+                        min: { value: MIN_WITHDRAWAL_USD, message: MIN_WITHDRAWAL_MESSAGE },
                         max: { value: 100000, message: 'Maximum withdrawal is $100,000' }
                       })}
                     />

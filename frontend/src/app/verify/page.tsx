@@ -20,6 +20,12 @@ export default function VerifyPage() {
   const [otpCode, setOtpCode] = useState('')
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null)
 
+  // Pre-fill with the number given at sign-up so they don't retype it (still editable)
+  const signupPhone: string | undefined = (user as any)?.profile?.signupPhone
+  useEffect(() => {
+    if (signupPhone) setPhone(prev => prev || signupPhone)
+  }, [signupPhone])
+
   // Redirect if not logged in
   useEffect(() => {
     if (user === null) {

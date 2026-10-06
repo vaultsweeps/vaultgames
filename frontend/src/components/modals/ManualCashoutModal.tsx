@@ -6,6 +6,7 @@ import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Paperclip, CheckCircle, Clock, Shield, Zap } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { MIN_WITHDRAWAL_USD, MIN_WITHDRAWAL_MESSAGE } from '@/lib/withdrawal'
 import { withdrawalApi, publicApi, authApi } from '@/lib/api'
 
 const TIMER_SECONDS = 10 * 60 // 10 minutes
@@ -256,7 +257,7 @@ function WithdrawalCountdown({ amount, title, settings, onClose, withdrawalId }:
 interface ManualCashoutModalProps {
   isOpen: boolean
   onClose: () => void
-  method: 'cashapp' | 'chime' | 'venmo' | 'crypto_ltc' | 'crypto_trx'
+  method: 'cashapp' | 'chime' | 'venmo' | 'paypal' | 'crypto_btc' | 'crypto_ltc' | 'crypto_trx'
 }
 
 export default function ManualCashoutModal({ isOpen, onClose, method }: ManualCashoutModalProps) {
@@ -297,10 +298,12 @@ export default function ManualCashoutModal({ isOpen, onClose, method }: ManualCa
   const isVenmo = method === 'venmo'
   const isLtc = method === 'crypto_ltc'
   const isTrx = method === 'crypto_trx'
+  const isPayPal = method === 'paypal'
+  const isBtc = method === 'crypto_btc'
 
-  const title = isLtc ? 'Litecoin (LTC)' : isTrx ? 'TRON (TRC-20)' : isChime ? 'Chime' : isVenmo ? 'Venmo' : 'CashApp'
-  const tagPlaceholder = isLtc ? 'LTC Address...' : isTrx ? 'TRX Address...' : isChime ? '$chime-tag' : isVenmo ? '@venmo-username' : '$cashtag'
-  const tagLabel = isLtc ? 'Your Litecoin Address' : isTrx ? 'Your TRX Address (TRC-20)' : isChime ? 'Your chime $tag' : isVenmo ? 'Your Venmo @username' : 'Your cashapp $tag'
+  const title = isBtc ? 'Bitcoin (BTC)' : isPayPal ? 'PayPal' : isLtc ? 'Litecoin (LTC)' : isTrx ? 'TRON (TRC-20)' : isChime ? 'Chime' : isVenmo ? 'Venmo' : 'CashApp'
+  const tagPlaceholder = isBtc ? 'BTC Address...' : isPayPal ? 'PayPal email or @username' : isLtc ? 'LTC Address...' : isTrx ? 'TRX Address...' : isChime ? '$chime-tag' : isVenmo ? '@venmo-username' : '$cashtag'
+  const tagLabel = isBtc ? 'Your Bitcoin Address' : isPayPal ? 'Your PayPal email or @username' : isLtc ? 'Your Litecoin Address' : isTrx ? 'Your TRX Address (TRC-20)' : isChime ? 'Your chime $tag' : isVenmo ? 'Your Venmo @username' : 'Your cashapp $tag'
 
   const handlePercentage = (percent: number) => {
     setAmount(((withdrawable * percent) / 100).toFixed(2))
@@ -315,6 +318,7 @@ export default function ManualCashoutModal({ isOpen, onClose, method }: ManualCa
   const handleSubmit = async () => {
     const numAmount = parseFloat(amount)
     if (!numAmount || numAmount <= 0) return toast.error('Please enter a valid amount')
+    if (numAmount < MIN_WITHDRAWAL_USD) return toast.error(MIN_WITHDRAWAL_MESSAGE)
     if (numAmount > withdrawable) return toast.error('Insufficient withdrawable balance')
     if (!tag.trim()) return toast.error(`Please enter your ${title} tag`)
 
@@ -421,6 +425,11 @@ export default function ManualCashoutModal({ isOpen, onClose, method }: ManualCa
                     <span className="text-secondary text-sm">Available balance</span>
                     <span className="text-white font-bold text-sm">${withdrawable.toFixed(2)}</span>
                   </div>
+                  <p className={`text-xs pt-2 ${withdrawable < MIN_WITHDRAWAL_USD ? 'text-amber-400' : 'text-muted'}`}>
+                    {withdrawable < MIN_WITHDRAWAL_USD
+                      ? `You need at least $${MIN_WITHDRAWAL_USD} in your wallet to cash out.`
+                      : `Minimum cashout: $${MIN_WITHDRAWAL_USD}`}
+                  </p>
                 </div>
 
                 {/* Tag Input */}

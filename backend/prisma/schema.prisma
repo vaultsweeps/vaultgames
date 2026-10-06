@@ -117,6 +117,7 @@ model UserProfile {
   telegramUsername String?
   telegramId       String?
   telegramPhone    String?
+  signupPhone      String? // self-reported at sign-up, NOT verified — the verified number is `phone` (set only by OTP)
   user             User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 

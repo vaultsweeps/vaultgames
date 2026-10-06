@@ -66,7 +66,7 @@ export default function Footer() {
               </div>
               <div>
                 <h3 className="font-display font-bold text-2xl sm:text-3xl text-white mb-2 tracking-tight">Claim 100% Signup Bonus</h3>
-                <p className="text-slate-300 text-sm sm:text-base">Make a deposit now and take a bonus of up to 1 000 USD to your deposit</p>
+                <p className="text-slate-300 text-sm sm:text-base">Make a deposit now and take a bonus of up to 1,000 USD to your deposit</p>
               </div>
             </div>
             <div className="z-10 w-full md:w-auto flex-shrink-0">

@@ -1,36 +1,36 @@
 /**
- * Returns the correct Signal contact info based on the current local time:
- *  - 04:00 – 16:00  →  Vaulter.39   (day shift)
- *  - 16:01 – 03:59  →  vaultsweeps.70  (night shift)
- *
- * NOTE: Signal deep links require the full shareable link from the Signal app
- * (Settings → Profile → QR Code / Share Link). Until those are provided,
- * clicking will copy the username to clipboard.
- *
- * To get the real link: Open Signal → Settings → Profile → Share → Copy link
- * Replace the placeholder URLs below with the actual signal.me links.
+ * Signal contact for the current staff shift, decided by New York time (not the customer's own clock, so
+ * every customer is routed to whoever is actually on shift):
+ *  - 04:00 – 15:59 New York time → day shift
+ *  - 16:00 – 03:59 New York time → night shift
  */
 
 export interface SignalContact {
   url: string        // The full signal.me deep link from the app
   username: string   // Username to display / copy as fallback
+  shift: 'day' | 'night'
 }
 
 const DAY_CONTACT: SignalContact = {
-  url: 'https://signal.me/#eu/SwIeIDifkOIWnBifem2b2MGct4TbojFKQkY1BOesAvZaKX2qaxdM3IohLtupoSmK',
-  username: 'Vaulter.39',
+  url: 'https://signal.me/#eu/h6jF1V-z5XHmi-mxBJJD0kPXM00MG0flLMaLaf6bwP2TflRKflpPlYf1WdGT1ksM',
+  username: 'vaultsweeps.70',
+  shift: 'day',
 }
 
 const NIGHT_CONTACT: SignalContact = {
-  url: 'https://signal.me/#eu/h6jF1V-z5XHmi-mxBJJD0kPXM00MG0flLMaLaf6bwP2TflRKflpPlYf1WdGT1ksM',
-  username: 'vaultsweeps.70',
+  url: 'https://signal.me/#eu/SwIeIDifkOIWnBifem2b2MGct4TbojFKQkY1BOesAvZaKX2qaxdM3IohLtupoSmK',
+  username: 'Vaulter.39',
+  shift: 'night',
 }
 
-export function getSignalContact(): SignalContact {
-  const h = new Date().getHours()
-  const m = new Date().getMinutes()
-  const isDayShift = (h > 4 || (h === 4 && m >= 0)) && (h < 16 || (h === 16 && m === 0))
-  return isDayShift ? DAY_CONTACT : NIGHT_CONTACT
+function newYorkHour(now: Date): number {
+  const hour = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: 'numeric', hourCycle: 'h23' }).format(now)
+  return Number(hour)
+}
+
+export function getSignalContact(now: Date = new Date()): SignalContact {
+  const h = newYorkHour(now)
+  return h >= 4 && h < 16 ? DAY_CONTACT : NIGHT_CONTACT
 }
 
 /** Legacy: returns just the URL string */

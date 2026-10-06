@@ -25,11 +25,40 @@ export default function UserDetailsPage() {
   const [addReason, setAddReason] = useState('')
   const [adding, setAdding] = useState(false)
 
+  // Sunday Freeplay (customer requests it on Signal; staff grant it here)
+  const [freeplay, setFreeplay] = useState<any>(null)
+  const [grantingFreeplay, setGrantingFreeplay] = useState(false)
+
   useEffect(() => {
     if (id) {
       fetchDetails()
+      fetchFreeplay()
     }
   }, [id])
+
+  const fetchFreeplay = async () => {
+    try {
+      const res = await adminApi.getUserSundayFreeplay(id as string)
+      setFreeplay(res.data.data)
+    } catch {
+      setFreeplay(null)
+    }
+  }
+
+  const handleGrantFreeplay = async () => {
+    if (!confirm(`Grant $${freeplay?.amount ?? 3} Sunday Freeplay to ${data?.user?.username}?`)) return
+    setGrantingFreeplay(true)
+    try {
+      const res = await adminApi.grantUserSundayFreeplay(id as string)
+      toast.success(res.data.message || 'Sunday Freeplay granted')
+      fetchFreeplay()
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to grant Freeplay')
+      fetchFreeplay()
+    } finally {
+      setGrantingFreeplay(false)
+    }
+  }
 
   const fetchDetails = async () => {
     try {
@@ -173,6 +202,35 @@ export default function UserDetailsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Left Column */}
         <div className="lg:col-span-1 space-y-4 sm:space-y-6 min-w-0">
+          {/* Sunday Freeplay */}
+          <Card className="!p-4 sm:!p-6">
+            <SectionHeading title={<span className="flex items-center gap-2"><Gift size={18} className="text-muted" /> Sunday Freeplay</span>} />
+            {freeplay ? (
+              <>
+                <ul className="space-y-2 text-[14px]">
+                  {[
+                    ['Account active', freeplay.checks.accountActive],
+                    [`$${freeplay.minDeposit}+ deposited in last 7 days ($${freeplay.recentDeposits.toFixed(2)})`, freeplay.checks.depositRequirementMet],
+                    ['Not yet claimed this week', freeplay.checks.notClaimedThisWeek],
+                  ].map(([label, ok]) => (
+                    <li key={label as string} className="flex items-start justify-between gap-3">
+                      <span className="text-secondary">{label}</span>
+                      {ok ? <Badge tone="green" dot>Yes</Badge> : <Badge tone="red" dot>No</Badge>}
+                    </li>
+                  ))}
+                </ul>
+                <Button variant="success" size="sm" className="w-full mt-4" onClick={handleGrantFreeplay}
+                  disabled={!freeplay.eligible || grantingFreeplay}>
+                  <Gift className="w-4 h-4" />
+                  {grantingFreeplay ? 'Granting...' : freeplay.eligible ? `Grant $${freeplay.amount} Freeplay` : 'Not eligible this week'}
+                </Button>
+                <p className="text-xs text-muted mt-2">Added to their Bonus Balance. One per user per week (Sun–Sat, New York time).</p>
+              </>
+            ) : (
+              <p className="text-muted text-[14px] italic">Freeplay status unavailable.</p>
+            )}
+          </Card>
+
           {/* Contact Info */}
           <Card className="!p-4 sm:!p-6">
             <SectionHeading title="Contact information" />
@@ -189,6 +247,13 @@ export default function UserDetailsPage() {
                 <div className="min-w-0">
                   <p className="text-xs text-muted mb-0.5">Phone number</p>
                   <p className="text-primary text-[14px] break-words">{user.profile?.phone || <span className="text-muted italic">Not provided</span>}</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 py-3">
+                <Phone className="w-4 h-4 text-muted mt-1 flex-shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-xs text-muted mb-0.5">Sign-up mobile (unverified)</p>
+                  <p className="text-primary text-[14px] break-words">{user.profile?.signupPhone || <span className="text-muted italic">Not provided</span>}</p>
                 </div>
               </div>
               <div className="flex items-start gap-3 py-3 last:pb-0">

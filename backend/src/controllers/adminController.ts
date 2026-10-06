@@ -14,6 +14,7 @@ import { ReferralService } from '../services/ReferralService'
 import { grantDepositBonus, reverseDepositBonus } from '../services/DepositBonusService'
 import { redis, getCached } from '../lib/redis'
 import { ProviderFactory } from '../services/provider/ProviderFactory'
+import { SundayFreeplayService } from '../services/SundayFreeplayService'
 import * as XLSX from 'xlsx'
 
 // GET /api/admin/stats
@@ -1380,4 +1381,30 @@ export const getAdminWalletTransactions = asyncHandler(async (req: AuthRequest, 
     prisma.walletTransaction.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: limit, include: { user: { select: { username: true, email: true } } } }),
   ])
   res.json({ success: true, data: items, pagination: { page, limit, total, pages: Math.ceil(total / limit) } })
+})
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SUNDAY FREEPLAY (Admin) — customers request it on Signal; staff grant it here
+// ═══════════════════════════════════════════════════════════════════════════
+
+// GET /api/admin/users/:id/sunday-freeplay — eligibility, so staff can see why before clicking grant
+export const getUserSundayFreeplayStatus = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const status = await SundayFreeplayService.getStatus(req.params.id as string)
+  if (!status) throw new AppError('User not found', 404)
+  res.json({ success: true, data: status })
+})
+
+// POST /api/admin/users/:id/sunday-freeplay — grant this week's $3 Freeplay (eligibility re-checked server-side)
+export const grantUserSundayFreeplay = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const id = req.params.id as string
+  const result = await SundayFreeplayService.grantForUser(id, req.user!.id)
+  if ('reason' in result) throw new AppError(`Not granted: ${result.reason}`, 400)
+  securityLog('admin_action', req, { action: 'sunday_freeplay_grant', targetUserId: id, amount: result.amount, weekKey: result.weekKey })
+  createNotification(id, {
+    title: '🎁 Sunday Freeplay added!',
+    message: `$${result.amount.toFixed(2)} Freeplay has been added to your Bonus Balance.`,
+    type: 'success',
+    link: '/dashboard/bonuses',
+  }).catch(e => logger.error('Failed to send freeplay notification: ' + e.message))
+  res.json({ success: true, message: `$${result.amount.toFixed(2)} Sunday Freeplay granted`, data: result })
 })

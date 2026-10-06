@@ -5,6 +5,7 @@ import { getSmsUrl } from '@/lib/sms'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
+import { MIN_WITHDRAWAL_USD, MIN_WITHDRAWAL_MESSAGE } from '@/lib/withdrawal'
 import {
   ArrowUpCircle, X, CheckCircle, Clock, Shield, Zap, History, Plus, ChevronRight, Info,
   UploadCloud, Wallet, Landmark, Bitcoin, DollarSign, CircleDollarSign, Send, Headphones,
@@ -257,6 +258,7 @@ export default function CashoutsPage() {
   const handleSubmit = async () => {
     const numAmount = parseFloat(amount)
     if (!numAmount || numAmount <= 0) return toast.error('Please enter a valid amount')
+    if (numAmount < MIN_WITHDRAWAL_USD) return toast.error(MIN_WITHDRAWAL_MESSAGE)
     if (numAmount > withdrawable) return toast.error('Insufficient withdrawable balance')
 
     const fields = getFields(selectedMethod)
@@ -389,7 +391,7 @@ export default function CashoutsPage() {
                           <div className="min-w-0 w-full">
                             <p className="text-primary font-bold text-[15px] sm:text-[16px] leading-snug break-words">{m.name}</p>
                             <p className="text-[11.5px] sm:text-[12.5px] text-muted mt-1 leading-snug tabular-nums">
-                              {!isSoon ? `Min: $${m.minAmount} · Max: $${m.maxAmount?.toLocaleString()}` : 'Currently unavailable'}
+                              {!isSoon ? `Min: $${Math.max(MIN_WITHDRAWAL_USD, m.minAmount || 0)} · Max: $${m.maxAmount?.toLocaleString()}` : 'Currently unavailable'}
                             </p>
                           </div>
                         </button>
@@ -491,6 +493,9 @@ export default function CashoutsPage() {
                       </div>
                       <span className="text-primary font-bold text-[24px] sm:text-[26px] tabular-nums leading-none">${withdrawable.toFixed(2)}</span>
                     </div>
+                    {withdrawable < MIN_WITHDRAWAL_USD && (
+                      <p className="text-[13px] text-amber-400 -mt-2">You need at least ${MIN_WITHDRAWAL_USD} in your wallet to cash out.</p>
+                    )}
 
                     {/* Amount */}
                     <div>
@@ -518,7 +523,7 @@ export default function CashoutsPage() {
                         ))}
                       </div>
                       {!!(selectedMethod.minAmount || selectedMethod.maxAmount) && (
-                        <p className="text-[12px] text-muted mt-2.5">Min: ${selectedMethod.minAmount} · Max: ${selectedMethod.maxAmount?.toLocaleString()}</p>
+                        <p className="text-[12px] text-muted mt-2.5">Min: ${Math.max(MIN_WITHDRAWAL_USD, selectedMethod.minAmount || 0)} · Max: ${selectedMethod.maxAmount?.toLocaleString()}</p>
                       )}
                     </div>
 

@@ -1,12 +1,14 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
+import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Eye, EyeOff, Loader2 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
-import { useForm } from 'react-hook-form'
+import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import toast from 'react-hot-toast'
+import PhoneNumberInput, { isValidPhoneNumber } from '@/components/ui/PhoneNumberInput'
 
 interface AuthModalProps {
   isOpen: boolean
@@ -20,6 +22,7 @@ const loginSchema = z.object({
 })
 
 const registerSchema = z.object({
+  phone: z.string().min(1, 'Mobile number is required').refine(v => isValidPhoneNumber(v), 'Enter a valid mobile number'),
   email: z.string().email('Invalid email address'),
   username: z.string().min(3, 'Username must be at least 3 characters').max(20, 'Username too long').regex(/^[a-zA-Z0-9_]+$/, 'Only letters, numbers, underscores'),
   telegramUsername: z.string().optional(),
@@ -36,7 +39,7 @@ export default function AuthModal({ isOpen, onClose, initialView = 'login' }: Au
 
   // Declare forms FIRST, before any useEffect that calls them
   const { register: registerLogin, handleSubmit: handleLoginSubmit, formState: { errors: loginErrors }, reset: resetLogin } = useForm({ resolver: zodResolver(loginSchema) })
-  const { register: registerReg, handleSubmit: handleRegSubmit, formState: { errors: regErrors }, reset: resetReg } = useForm({ resolver: zodResolver(registerSchema) })
+  const { register: registerReg, handleSubmit: handleRegSubmit, control: regControl, formState: { errors: regErrors }, reset: resetReg } = useForm<z.infer<typeof registerSchema>>({ resolver: zodResolver(registerSchema), defaultValues: { phone: '' } })
 
   // Sync view with initialView prop whenever modal opens
   // This MUST come after form declarations so reset functions are available
@@ -62,6 +65,7 @@ export default function AuthModal({ isOpen, onClose, initialView = 'login' }: Au
   const onRegister = async (data: any) => {
     try {
       await registerUser({
+        phone: data.phone,
         email: data.email,
         username: data.username,
         password: data.password,
@@ -151,7 +155,7 @@ export default function AuthModal({ isOpen, onClose, initialView = 'login' }: Au
                     </div>
 
                     <div className="flex justify-end">
-                      <a href="#" className="text-xs text-neon-blue hover:underline">Forgot password?</a>
+                      <Link href="/forgot-password" onClick={onClose} className="text-xs text-neon-blue hover:underline">Forgot password?</Link>
                     </div>
 
                     <button type="submit" disabled={isLoading} className="w-full bg-[#4CA3FF] hover:bg-[#3B8BE6] text-white font-bold py-3.5 rounded-xl transition-colors mt-2 flex items-center justify-center gap-2">
@@ -168,6 +172,15 @@ export default function AuthModal({ isOpen, onClose, initialView = 'login' }: Au
                     onSubmit={handleRegSubmit(onRegister)}
                     className="space-y-4"
                   >
+                    <div>
+                      <Controller
+                        name="phone"
+                        control={regControl}
+                        render={({ field }) => <PhoneNumberInput value={field.value} onChange={field.onChange} onBlur={field.onBlur} />}
+                      />
+                      {regErrors.phone && <p className="text-red-400 text-xs mt-1 px-1">{regErrors.phone.message as string}</p>}
+                    </div>
+
                     <div>
                       <input {...registerReg('email')} type="email" placeholder="Email" className="w-full bg-[#13131A] border border-transparent focus:border-neon-blue/50 rounded-xl px-4 py-3.5 text-sm text-white placeholder-muted focus:outline-none transition-all" />
                       {regErrors.email && <p className="text-red-400 text-xs mt-1 px-1">{regErrors.email.message as string}</p>}
@@ -206,7 +219,7 @@ export default function AuthModal({ isOpen, onClose, initialView = 'login' }: Au
                         </svg>
                       </div>
                       <span className="text-xs text-secondary leading-snug">
-                        I confirm that I have read and fully agree with <a href="#" className="text-[#00D4FF] hover:underline">Conditions of the Vault Sweeps website User Agreement</a>
+                        I confirm that I have read and fully agree with <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-[#00D4FF] hover:underline">Conditions of the Vault Sweeps website User Agreement</a>
                       </span>
                     </label>
                     {regErrors.terms && <p className="text-red-400 text-xs -mt-2 px-1 mb-2">{regErrors.terms.message as string}</p>}
