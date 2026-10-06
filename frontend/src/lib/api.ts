@@ -276,6 +276,8 @@ export const adminApi = {
   createPaymentMethod: (data: object) => apiClient.post('/admin/payment-methods', data),
   updatePaymentMethod: (id: string, data: object) => apiClient.put(`/admin/payment-methods/${id}`, data),
   togglePaymentMethod: (id: string) => apiClient.patch(`/admin/payment-methods/${id}/toggle`),
+  setPaymentMethodAvailability: (id: string, purpose: 'deposit' | 'cashout', enabled: boolean) =>
+    apiClient.patch(`/admin/payment-methods/${id}/availability`, { purpose, enabled }),
   deletePaymentMethod: (id: string) => apiClient.delete(`/admin/payment-methods/${id}`),
 
   // Settings & CMS

@@ -4,14 +4,16 @@ import { getTelegramUrl } from '@/lib/telegram'
 import { getSmsUrl } from '@/lib/sms'
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, CheckCircle, ArrowRight, Copy, MessageSquareText } from 'lucide-react'
+import { X, CheckCircle, ArrowRight, Copy, MessageSquareText, Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { depositApi, publicApi } from '@/lib/api'
+import { buildManualAccounts } from '@/lib/manualDepositAccounts'
 
 interface ChimePayPalDepositModalProps {
   isOpen: boolean
   onClose: () => void
-  method: 'chime' | 'chime2' | 'paypal' | 'cashapp' | 'cashapp2' | 'venmo' | null
+  /** PaymentMethod code of a manual send-to-tag method (chime, chime2, paypal, … or any admin-added one) */
+  method: string | null
 }
 
 export default function ChimePayPalDepositModal({ isOpen, onClose, method }: ChimePayPalDepositModalProps) {
@@ -20,12 +22,23 @@ export default function ChimePayPalDepositModal({ isOpen, onClose, method }: Chi
   const [amount, setAmount] = useState<string>('0.00')
   const [profileName, setProfileName] = useState('')
   const [methods, setMethods] = useState<any[]>([])
+  const [methodsLoaded, setMethodsLoaded] = useState(false)
+  const [loadFailed, setLoadFailed] = useState(false)
   const [settings, setSettings] = useState<any>({})
   const [smsUrl, setsmsUrl] = useState('')
 
+  // Always fetch fresh details on open — the tag shown must be the one currently saved in the admin panel
+  const loadMethods = () => {
+    setMethodsLoaded(false)
+    setLoadFailed(false)
+    depositApi.getPaymentMethods()
+      .then(res => { setMethods(res.data.data || []); setMethodsLoaded(true) })
+      .catch(() => setLoadFailed(true))
+  }
+
   useEffect(() => {
     if (isOpen && method) {
-      depositApi.getPaymentMethods().then(res => setMethods(res.data.data)).catch(() => {})
+      loadMethods()
       publicApi.getSettings().then(res => setSettings(res.data.data || {})).catch(() => {})
       setsmsUrl(getSmsUrl())
       setStep(1)
@@ -118,58 +131,36 @@ export default function ChimePayPalDepositModal({ isOpen, onClose, method }: Chi
 
   if (!method) return null;
 
-  const config: Record<string, any> = {
-    chime: {
-        name: 'Chime 1',
-        color: 'bg-emerald-500',
-        text: 'text-emerald-500',
-        recipient: '$Luis-Feliciano-9012',
-        linkUrl: 'https://www.chime.com/r/Luis-Feliciano-9012/?c=q',
-        qrUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0b/Chime_company_logo.svg/1200px-Chime_company_logo.svg.png'
-    },
-    chime2: {
-        name: 'Chime 2',
-        color: 'bg-teal-500',
-        text: 'text-teal-500',
-        recipient: '$Brenda-Taylor-245',
-        linkUrl: 'https://www.chime.com/r/Brenda-Taylor-245/?c=q',
-        qrUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0b/Chime_company_logo.svg/1200px-Chime_company_logo.svg.png'
-    },
-    paypal: {
-        name: 'PayPal',
-        color: 'bg-blue-500',
-        text: 'text-blue-500',
-        recipient: '@Luis9542',
-        linkUrl: 'https://www.paypal.com/paypalme/Luis9542',
-        qrUrl: 'https://upload.wikimedia.org/wikipedia/commons/b/b5/PayPal.svg'
-    },
-    cashapp: {
-        name: 'CashApp 1',
-        color: 'bg-green-500',
-        text: 'text-green-500',
-        recipient: '$JacobJonesAaron',
-        linkUrl: 'https://cash.app/$JacobJonesAaron?qr=1',
-        qrUrl: ''
-    },
-    cashapp2: {
-        name: 'CashApp 2',
-        color: 'bg-lime-500',
-        text: 'text-lime-500',
-        recipient: '$VictoriaSantielFaith',
-        linkUrl: 'https://cash.app/$VictoriaSantielFaith?qr=1',
-        qrUrl: ''
-    },
-    venmo: {
-        name: 'Venmo',
-        color: 'bg-sky-500',
-        text: 'text-sky-500',
-        recipient: '@ktrimm24',
-        linkUrl: 'https://venmo.com/u/ktrimm24',
-        qrUrl: ''
-    }
-  }
+  // Admin-managed details (tag, link) when loaded; the built-in account otherwise, so the original methods never wait
+  const currentConfig: any = methodsLoaded ? buildManualAccounts(methods).find(a => a.id === method) : undefined
 
-  const currentConfig = config[method];
+  // Loading / unavailable: never fall back to built-in tags, which may be out of date
+  if (!currentConfig) {
+    if (!isOpen) return null
+    return (
+      <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
+        <div className="bg-background w-full max-w-md rounded-3xl shadow-2xl border border-border-subtle p-8 flex flex-col items-center text-center gap-4">
+          {!methodsLoaded && !loadFailed ? (
+            <>
+              <Loader2 className="w-8 h-8 animate-spin text-[#2AC3FF]" />
+              <p className="text-secondary text-sm">Loading payment details…</p>
+            </>
+          ) : (
+            <>
+              <p className="text-white font-bold text-lg">{loadFailed ? "Couldn't load payment details" : 'This method is not available right now'}</p>
+              <p className="text-secondary text-sm">{loadFailed ? 'Please check your connection and try again.' : 'Please choose another deposit method.'}</p>
+              <div className="flex gap-3 w-full">
+                {loadFailed && (
+                  <button onClick={loadMethods} className="flex-1 bg-[#2AC3FF] hover:bg-[#1CA0D9] text-white font-bold py-3 rounded-2xl transition-all">Try again</button>
+                )}
+                <button onClick={onClose} className="flex-1 bg-surface hover:bg-white/5 text-white font-bold py-3 rounded-2xl border border-border-subtle transition-all">Close</button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <AnimatePresence mode="wait">
@@ -234,6 +225,9 @@ export default function ChimePayPalDepositModal({ isOpen, onClose, method }: Chi
                   <p className="text-xs text-amber-400 mt-2">
                     Make sure to complete the transfer on your {currentConfig.name} app before continuing.
                   </p>
+                  {currentConfig.instructions && (
+                    <p className="text-xs text-secondary whitespace-pre-line text-left">{currentConfig.instructions}</p>
+                  )}
                 </div>
 
                 <div className="flex gap-3 pt-2">
@@ -247,7 +241,13 @@ export default function ChimePayPalDepositModal({ isOpen, onClose, method }: Chi
                   </a>
                   <button 
                     onClick={() => {
-                      window.open(currentConfig.linkUrl, '_blank');
+                      if (currentConfig.linkUrl) {
+                        window.open(currentConfig.linkUrl, '_blank', 'noopener,noreferrer');
+                      } else {
+                        // No pay link set for this account — give them the tag to paste into their app instead
+                        navigator.clipboard.writeText(currentConfig.recipient);
+                        toast.success(`Tag copied — open your ${currentConfig.name} app and send to ${currentConfig.recipient}`);
+                      }
                     }}
                     className={`flex-[2] ${currentConfig.color} hover:opacity-90 text-white font-bold py-4 rounded-2xl transition-all text-center flex items-center justify-center`}
                   >

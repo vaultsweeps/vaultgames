@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { Plus, History, Loader2, ChevronRight, ArrowLeft, CheckCircle2, CreditCard } from 'lucide-react'
 import { depositApi, publicApi } from '@/lib/api'
+import { buildManualAccounts } from '@/lib/manualDepositAccounts'
 import dynamic from 'next/dynamic'
 import { useSearchParams } from 'next/navigation'
 import {
@@ -17,8 +18,9 @@ const GgusOnePayModal = dynamic(() => import('@/components/modals/GgusOnePayModa
 // Method icon/color map
 const METHOD_META: Record<string, { icon: string; color: string; desc: string; logoUrl?: string }> = {
   cashapp:    { icon: '💸', color: '#00D632', desc: 'Send via Cash App — fast & easy' },
-  chime:      { icon: '🏦', color: '#00CFAA', desc: 'Deposit via Chime 1 ($Luis-Feliciano-9012)' },
-  chime2:     { icon: '🏦', color: '#0EA5E9', desc: 'Deposit via Chime 2 ($Brenda-Taylor-245)' },
+  // Chime descriptions are built from the tag saved in the admin panel (see renderMethod), never hard-coded
+  chime:      { icon: '🏦', color: '#00CFAA', desc: 'Send via Chime — fast & easy' },
+  chime2:     { icon: '🏦', color: '#0EA5E9', desc: 'Send via Chime — fast & easy' },
   crypto:     { icon: '₿',  color: '#F7931A', desc: 'USDT, BTC, ETH & 100+ cryptocurrencies' },
   bitcoin:    { icon: '₿',  color: '#F7931A', desc: 'Bitcoin payments' },
   usdt:       { icon: '₮',  color: '#26A17B', desc: 'Tether stablecoin (TRC20)' },
@@ -109,7 +111,7 @@ function DepositsContent() {
   const [depositHistory, setDepositHistory] = useState<any[]>([])
   const [historyLoading, setHistoryLoading] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [chimePayPalMethod, setChimePayPalMethod] = useState<'chime'|'chime2'|'paypal'|'cashapp'|'cashapp2'|'venmo'|null>(null)
+  const [chimePayPalMethod, setChimePayPalMethod] = useState<string | null>(null)
   const [subGroup, setSubGroup] = useState<'chime' | 'cashapp' | null>(null)
   const [cryptoModalOpen, setCryptoModalOpen] = useState(false)
   const [ggusOnePayModalOpen, setGgusOnePayModalOpen] = useState(false)
@@ -234,21 +236,27 @@ function DepositsContent() {
                 (() => {
                   const workingCodes = ['chime', 'chime2', 'paypal', 'venmo', 'cashapp', 'cashapp2', 'crypto', 'ggusonepay', 'applepay', 'googlepay', 'card', 'apple', 'debitcard']
                   const codeOf = (m: any) => String(m.code || '').toLowerCase()
-                  const list = methods.filter(m => m.code !== 'zappay' && !m.name?.toLowerCase().includes('zappay'))
-                  const chimeGroup = list.filter(m => ['chime', 'chime2'].includes(codeOf(m)))
-                  const cashappGroup = list.filter(m => ['cashapp', 'cashapp2'].includes(codeOf(m)))
+                  // depositEnabled === false = switched off in Admin → Deposit methods (cashout-only methods)
+                  const list = methods.filter(m => m.code !== 'zappay' && !m.name?.toLowerCase().includes('zappay') && m.depositEnabled !== false)
+                  // Manual send-to-tag methods (built-in six + any added in the admin panel), keyed by code → app
+                  const manualAccountsByCode = new Map(buildManualAccounts(list).map(a => [a.id, a]))
+                  const manualBrand = new Map(Array.from(manualAccountsByCode.values()).map(a => [a.id, a.brand]))
+                  const brandOf = (m: any) => manualBrand.get(codeOf(m))
+                  const chimeGroup = list.filter(m => brandOf(m) === 'chime')
+                  const cashappGroup = list.filter(m => brandOf(m) === 'cashapp')
                   const cryptoMethods = list.filter(m => codeOf(m) === 'crypto')
-                  const paypalMethods = list.filter(m => codeOf(m) === 'paypal')
-                  const venmoMethods = list.filter(m => codeOf(m) === 'venmo')
+                  const paypalMethods = list.filter(m => brandOf(m) === 'paypal')
+                  const venmoMethods = list.filter(m => brandOf(m) === 'venmo')
+                  const otherManualMethods = list.filter(m => brandOf(m) === 'zelle' || brandOf(m) === 'other')
                   const ggusMethod = list.find(m => codeOf(m) === 'ggusonepay')
                   const CORE = ['chime', 'chime2', 'cashapp', 'cashapp2', 'crypto', 'paypal', 'venmo', 'ggusonepay']
                   const others = list
-                    .filter(m => !CORE.includes(codeOf(m)))
+                    .filter(m => !CORE.includes(codeOf(m)) && !brandOf(m))
                     .sort((x, y) => Number(!workingCodes.includes(codeOf(x))) - Number(!workingCodes.includes(codeOf(y))))
 
                   const openDirect = (m: any) => {
-                    if (['chime', 'chime2', 'paypal', 'cashapp', 'cashapp2', 'venmo'].includes(codeOf(m))) {
-                      setChimePayPalMethod(codeOf(m) as 'chime' | 'chime2' | 'paypal' | 'cashapp' | 'cashapp2' | 'venmo')
+                    if (brandOf(m)) {
+                      setChimePayPalMethod(codeOf(m))
                     } else {
                       // dollarpay and crypto go through the amount step
                       setSelectedMethod(m)
@@ -258,7 +266,7 @@ function DepositsContent() {
 
                   const renderMethod = (m: any) => {
                     const meta = getMeta(m.code)
-                    const isSoon = !workingCodes.includes(codeOf(m))
+                    const isSoon = !workingCodes.includes(codeOf(m)) && !brandOf(m)
                     return (
                       <MethodCard key={m.id}
                         soon={isSoon}
@@ -269,12 +277,12 @@ function DepositsContent() {
                           }
                           openDirect(m)
                         }}
-                        tile={<BrandIcon kind={m.code || m.name} className="!w-10 !h-10 sm:!w-12 sm:!h-12" />}
-                        badge={!isSoon && ['chime', 'chime2', 'paypal', 'cashapp', 'cashapp2', 'venmo'].includes(codeOf(m)) ? (
+                        tile={<BrandIcon kind={m.brand || m.code || m.name} className="!w-10 !h-10 sm:!w-12 sm:!h-12" />}
+                        badge={!isSoon && brandOf(m) ? (
                           <Badge tone="green" className="!text-[11px] !px-1.5 sm:!px-2 !py-1">No fee</Badge>
                         ) : undefined}
                         title={m.name}
-                        desc={meta.desc}
+                        desc={manualAccountsByCode.get(codeOf(m)) ? `Deposit via ${m.name} (${manualAccountsByCode.get(codeOf(m))!.recipient})` : meta.desc}
                         meta={!isSoon ? <>Min: ${m.minAmount} · Max: ${m.maxAmount.toLocaleString()}</> : undefined}
                       />
                     )
@@ -338,6 +346,7 @@ function DepositsContent() {
                       {cashappGroup.length > 0 && renderGroup('cashapp', cashappGroup, 'CashApp Pay', 'Send via Cash App — fast & easy')}
                       {paypalMethods.map(renderMethod)}
                       {venmoMethods.map(renderMethod)}
+                      {otherManualMethods.map(renderMethod)}
 
                       {ggusMethod && (
                         <Fragment>

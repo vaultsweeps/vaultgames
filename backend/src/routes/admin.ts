@@ -18,6 +18,7 @@ import {
   getAdminUserBonuses, getAdminBonusTransactions, getAdminBonusConversions, getAdminSundayFreeplayClaims, getAdminWalletTransactions,
   getUserSundayFreeplayStatus, grantUserSundayFreeplay
 } from '../controllers/adminController'
+import { listPaymentMethods, createPaymentMethod, updatePaymentMethod, togglePaymentMethod, setPaymentMethodAvailability, deletePaymentMethod } from '../controllers/paymentMethodAdminController'
 import {
   getProviders, createProvider, updateProvider, deleteProvider,
   testConnection, getProviderLogs, getProviderTransactions, assignGamesToProvider,
@@ -133,66 +134,11 @@ router.get('/sunday-freeplay-claims', getAdminSundayFreeplayClaims)
 router.get('/wallet-transactions', getAdminWalletTransactions)
 
 // Payment Methods
-router.get('/payment-methods', async (req, res) => {
-  try {
-    const prisma = (await import('../lib/prisma')).default
-    const methods = await prisma.paymentMethod.findMany({ orderBy: { createdAt: 'asc' } })
-    res.json({ success: true, data: methods })
-  } catch (e: any) {
-    res.status(500).json({ success: false, message: e.message })
-  }
-})
-router.post('/payment-methods', async (req, res) => {
-  try {
-    const prisma = (await import('../lib/prisma')).default
-    const { name, code, type, minAmount, maxAmount, feePercent, instructions, isActive, cashoutEnabled } = req.body
-    if (!name || !code || !type) {
-      res.status(400).json({ success: false, message: 'name, code, type required' })
-      return
-    }
-    const method = await prisma.paymentMethod.create({
-      data: { name, code: code.toLowerCase(), type, minAmount: minAmount ?? 10, maxAmount: maxAmount ?? 10000, feePercent: feePercent ?? 0, instructions: instructions || '', isActive: isActive ?? true, cashoutEnabled: cashoutEnabled ?? false }
-    })
-    res.json({ success: true, data: method })
-  } catch (e: any) {
-    res.status(400).json({ success: false, message: e.message })
-  }
-})
-router.put('/payment-methods/:id', async (req, res) => {
-  try {
-    const prisma = (await import('../lib/prisma')).default
-    const { name, minAmount, maxAmount, feePercent, instructions, isActive, cashoutEnabled } = req.body
-    const method = await prisma.paymentMethod.update({
-      where: { id: req.params.id },
-      data: { name, minAmount, maxAmount, feePercent, instructions, isActive, cashoutEnabled }
-    })
-    res.json({ success: true, data: method })
-  } catch (e: any) {
-    res.status(400).json({ success: false, message: e.message })
-  }
-})
-router.patch('/payment-methods/:id/toggle', async (req, res) => {
-  try {
-    const prisma = (await import('../lib/prisma')).default
-    const existing = await prisma.paymentMethod.findUnique({ where: { id: req.params.id } })
-    if (!existing) {
-      res.status(404).json({ success: false, message: 'Not found' })
-      return
-    }
-    const method = await prisma.paymentMethod.update({ where: { id: req.params.id }, data: { isActive: !existing.isActive } })
-    res.json({ success: true, data: method })
-  } catch (e: any) {
-    res.status(400).json({ success: false, message: e.message })
-  }
-})
-router.delete('/payment-methods/:id', async (req, res) => {
-  try {
-    const prisma = (await import('../lib/prisma')).default
-    await prisma.paymentMethod.delete({ where: { id: req.params.id } })
-    res.json({ success: true })
-  } catch (e: any) {
-    res.status(400).json({ success: false, message: e.message })
-  }
-})
+router.get('/payment-methods', listPaymentMethods)
+router.post('/payment-methods', createPaymentMethod)
+router.put('/payment-methods/:id', updatePaymentMethod)
+router.patch('/payment-methods/:id/toggle', togglePaymentMethod)
+router.patch('/payment-methods/:id/availability', setPaymentMethodAvailability)
+router.delete('/payment-methods/:id', deletePaymentMethod)
 
 export default router

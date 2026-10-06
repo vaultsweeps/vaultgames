@@ -51,6 +51,7 @@ export const createDeposit = asyncHandler(async (req: AuthRequest, res: Response
     where: { id: paymentMethodId, isActive: true }
   })
   if (!paymentMethod) throw new AppError('Invalid payment method', 400)
+  if (paymentMethod.depositEnabled === false) throw new AppError('This payment method is not available for deposits', 400)
   
   // Allow $9.99 minimum for GgusOnePay specifically regardless of DB config
   if (paymentMethod.code.toLowerCase() === 'ggusonepay') {
@@ -245,7 +246,8 @@ export const createDeposit = asyncHandler(async (req: AuthRequest, res: Response
 // GET /api/deposits/payment-methods
 export const getPaymentMethods = asyncHandler(async (req: AuthRequest, res: Response) => {
   const methods = await prisma.paymentMethod.findMany({
-    select: { id: true, name: true, code: true, type: true, minAmount: true, maxAmount: true, feePercent: true, iconUrl: true, instructions: true, fields: true, isActive: true, cashoutEnabled: true }
+    select: { id: true, name: true, code: true, type: true, minAmount: true, maxAmount: true, feePercent: true, iconUrl: true, instructions: true, fields: true, isActive: true, cashoutEnabled: true, depositEnabled: true, brand: true, tag: true, displayName: true, linkUrl: true, qrUrl: true, sortOrder: true },
+    orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }]
   })
   res.json({ success: true, data: methods })
 })

@@ -217,6 +217,14 @@ model PaymentMethod {
   fields         Json              @default("[]")
   apiConfig      Json?
   cashoutEnabled Boolean           @default(true)
+  // Deposit side, managed from the admin "Deposit methods" tab — independent of cashoutEnabled
+  depositEnabled Boolean           @default(true)
+  brand          String?           // manual send-to-tag app: chime | cashapp | paypal | venmo | zelle | other (null = not a tag method)
+  tag            String?           // the tag/handle players send money to, e.g. "$Luis-Feliciano-9012"
+  displayName    String?           // name on the deposit tile; defaults to the first name in the tag
+  linkUrl        String?           // optional pay link (https only)
+  qrUrl          String?           // optional QR image (https only)
+  sortOrder      Int               @default(0)
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
   deposits       Deposit[]

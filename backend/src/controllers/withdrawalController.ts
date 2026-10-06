@@ -66,6 +66,7 @@ export const createWithdrawal = asyncHandler(async (req: AuthRequest, res: Respo
 
   const paymentMethod = await prisma.paymentMethod.findUnique({ where: { id: paymentMethodId, isActive: true } })
   if (!paymentMethod) throw new AppError('Invalid payment method', 400)
+  if (paymentMethod.cashoutEnabled === false) throw new AppError('This payment method is not available for cashouts', 400)
   if (amount < paymentMethod.minAmount) throw new AppError(`Minimum withdrawal for this method is $${paymentMethod.minAmount}`, 400)
   if (amount > paymentMethod.maxAmount) throw new AppError(`Maximum withdrawal is $${paymentMethod.maxAmount}`, 400)
 
@@ -145,6 +146,7 @@ export const createManualWithdrawal = asyncHandler(async (req: AuthRequest, res:
   let methodName = paymentMethodId
   if (paymentMethodId && paymentMethodId.length > 10) {
     const pm = await prisma.paymentMethod.findUnique({ where: { id: paymentMethodId } })
+    if (pm && pm.cashoutEnabled === false) throw new AppError('This payment method is not available for cashouts', 400)
     if (pm) methodName = pm.name
   } else {
     methodName = paymentMethodId === 'chime' ? 'Chime' : paymentMethodId === 'cashapp' ? 'CashApp' : paymentMethodId === 'venmo' ? 'Venmo' : paymentMethodId === 'paypal' ? 'PayPal' : paymentMethodId === 'crypto_btc' ? 'Bitcoin (BTC)' : paymentMethodId
