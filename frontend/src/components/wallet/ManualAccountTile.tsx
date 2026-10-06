@@ -22,18 +22,18 @@ export default function ManualAccountTile({ brand, title, subtitle, logo, onClic
     <button
       type="button"
       onClick={onClick}
-      className="group relative w-full h-[110px] text-left rounded-[20px] px-2 sm:px-4 flex items-center gap-1.5 sm:gap-3 overflow-hidden border border-[#3B5BDB]/30 bg-gradient-to-br from-[#16213F] to-[#0E1630] shadow-[0_4px_20px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.06)] transition-all hover:border-[#4C7DFF]/60 hover:shadow-[0_0_24px_rgba(76,125,255,0.25)] hover:-translate-y-0.5"
+      className="group relative w-full h-[110px] text-left rounded-[20px] px-2.5 sm:px-4 flex items-center gap-2 sm:gap-3 overflow-hidden border border-[#3B5BDB]/30 bg-gradient-to-br from-[#16213F] to-[#0E1630] shadow-[0_4px_20px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.06)] transition-all hover:border-[#4C7DFF]/60 hover:shadow-[0_0_24px_rgba(76,125,255,0.25)] hover:-translate-y-0.5"
     >
       <div
-        className="shrink-0 w-8 h-8 sm:w-14 sm:h-14 rounded-full flex items-center justify-center text-white font-bold leading-none"
+        className="shrink-0 w-[clamp(32px,9.5vw,56px)] h-[clamp(32px,9.5vw,56px)] rounded-full flex items-center justify-center text-white font-bold leading-none"
         style={{ background: b.bg, boxShadow: `0 0 16px ${b.glow}` }}
       >
-        <span className={wordmark ? 'text-[8px] sm:text-[13px] tracking-tighter' : 'text-[17px] sm:text-[26px]'}>{logoText}</span>
+        <span className={wordmark ? 'text-[clamp(8px,2.4vw,13px)] tracking-tighter' : 'text-[clamp(17px,5.4vw,26px)]'}>{logoText}</span>
       </div>
 
       <div className="min-w-0 flex-1">
-        <p className="text-white font-bold text-[13px] sm:text-[18px] leading-tight tracking-tight sm:tracking-normal whitespace-nowrap">{title}</p>
-        {sub && <p className="text-slate-300/75 text-[11px] sm:text-[13px] leading-tight mt-0.5 whitespace-nowrap">{sub}</p>}
+        <p className="text-white font-bold text-[clamp(13px,4.6vw,18px)] leading-tight whitespace-nowrap">{title}</p>
+        {sub && <p className="text-slate-300/75 text-[clamp(11px,3.2vw,13px)] leading-tight mt-0.5 whitespace-nowrap">{sub}</p>}
       </div>
     </button>
   )
