@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Menu, X, Bell, ChevronDown, ChevronRight, User, LogOut, Settings, LayoutDashboard, Moon, Sun, SunMoon, Wallet, Home, Gift, Crown, Users, Gamepad2, Headset, FileText } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
+import { fetchPaymentMethods } from '@/lib/paymentMethodsCache'
 import { useTheme } from '@/components/ThemeProvider'
 import { useShallow } from 'zustand/react/shallow'
 import dynamic from 'next/dynamic'
@@ -65,6 +66,11 @@ export default function Navbar() {
     }, 30000)
     return () => clearInterval(balanceInterval)
   }, [isAuthenticated, walletOpen, fetchBalance]) // walletOpen allows immediate refresh after modal closes
+
+  // Warm the payment-method list so the Wallet's deposit tiles are ready the moment it opens
+  useEffect(() => {
+    if (isAuthenticated) fetchPaymentMethods().catch(() => {})
+  }, [isAuthenticated])
 
   // Poll notifications every 30s, throttled — don't re-fetch on every route change
   useEffect(() => {

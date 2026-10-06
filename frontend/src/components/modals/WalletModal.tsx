@@ -10,6 +10,7 @@ const ChimePayPalDepositModal = dynamic(() => import('./ChimePayPalDepositModal'
 const CryptoDepositModal = dynamic(() => import('./CryptoDepositModal'), { ssr: false })
 const GgusOnePayModal = dynamic(() => import('./GgusOnePayModal'), { ssr: false })
 import { depositApi, withdrawalApi } from '@/lib/api'
+import { fetchPaymentMethods, getCachedPaymentMethods } from '@/lib/paymentMethodsCache'
 import { getSmsUrl } from '@/lib/sms'
 import ManualAccountTile from '@/components/wallet/ManualAccountTile'
 import { BRANDS, buildManualAccounts, tileName, tileSubtitle, tileLogo, type ManualBrand, type ManualDepositAccount } from '@/lib/manualDepositAccounts'
@@ -140,7 +141,7 @@ export default function WalletModal({ isOpen, onClose, balance, bonusBalance = 0
   const [cashoutMethod, setCashoutMethod] = useState<'chime' | 'cashapp' | 'venmo' | 'paypal' | 'crypto_btc' | 'crypto_ltc' | 'crypto_trx' | null>(null)
   const [depositMethod, setDepositMethod] = useState<string | null>(null)
   // Public payment-method list (null until loaded / on error → built-in manual accounts are shown)
-  const [publicMethods, setPublicMethods] = useState<any[] | null>(null)
+  const [publicMethods, setPublicMethods] = useState<any[] | null>(() => getCachedPaymentMethods())
   const [methodsFailed, setMethodsFailed] = useState(false)
   const [methodsReload, setMethodsReload] = useState(0)
   const [subDepositGroup, setSubDepositGroup] = useState<ManualBrand | null>(null)
@@ -173,15 +174,19 @@ export default function WalletModal({ isOpen, onClose, balance, bonusBalance = 0
     if (!isOpen) return
     // Use known DB id immediately as fallback, then confirm from API
     setPaymentMethodId('cmsxko7jy0000134e9967nabt')
-    // Fresh list on every open so tags edited in the admin panel show immediately (no stale tiles in between)
-    setPublicMethods(null)
+    // Show the last fetched list instantly (if any) and always refresh in the background, so a tag edited in
+    // the admin panel replaces the tile as soon as the fresh copy arrives
+    const cached = getCachedPaymentMethods()
+    setPublicMethods(cached)
     setMethodsFailed(false)
-    depositApi.getPaymentMethods().then(res => {
-      const methods = res.data.data || []
+    let cancelled = false
+    fetchPaymentMethods().then(methods => {
+      if (cancelled) return
       setPublicMethods(methods)
       const ggus = methods.find((m: any) => m.code === 'ggusonepay')
       if (ggus) setPaymentMethodId(ggus.id)
-    }).catch(err => { console.error(err); setMethodsFailed(true) })
+    }).catch(err => { console.error(err); if (!cancelled && !cached) setMethodsFailed(true) })
+    return () => { cancelled = true }
   }, [isOpen, methodsReload])
 
   // Fetch history when History tab is opened
