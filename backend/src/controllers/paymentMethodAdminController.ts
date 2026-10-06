@@ -1,19 +1,30 @@
 import { Request, Response } from 'express'
 import prisma from '../lib/prisma'
 import { asyncHandler, AppError } from '../middleware/errorHandler'
+import { securityLog } from '../middleware/security'
 
 // Admin CRUD for PaymentMethod. Deposit and cashout availability are separate flags (depositEnabled /
 // cashoutEnabled) so the admin "Deposit methods" and "Cashout methods" tabs never switch each other's methods off.
 
 const BRANDS = ['chime', 'cashapp', 'paypal', 'venmo', 'zelle', 'other']
 const TYPES = ['wallet', 'bank', 'card', 'crypto']
+// Methods with their own built-in deposit flow — they can never be turned into a send-to-tag method
+const BUILT_IN_FLOW_CODES = ['crypto', 'ggusonepay', 'zappay']
+const MAX_AMOUNT = 1_000_000
 
-const str = (v: unknown, max: number, label: string): string | null | undefined => {
+// eslint-disable-next-line no-control-regex
+const CONTROL_CHARS = /[\u0000-\u001F\u007F]/
+// eslint-disable-next-line no-control-regex
+const CONTROL_EXCEPT_NEWLINE = /[\u0000-\u0009\u000B-\u001F\u007F]/
+
+// Single-line by default: tags/names end up in Telegram alerts, where a line break could forge extra lines
+const str = (v: unknown, max: number, label: string, multiline = false): string | null | undefined => {
   if (v === undefined) return undefined
   if (v === null || v === '') return null
   if (typeof v !== 'string') throw new AppError(`${label} must be text`, 400)
   const t = v.trim()
   if (t.length > max) throw new AppError(`${label} must be at most ${max} characters`, 400)
+  if ((multiline ? CONTROL_EXCEPT_NEWLINE : CONTROL_CHARS).test(t)) throw new AppError(`${label} contains invalid characters`, 400)
   return t || null
 }
 
@@ -27,10 +38,11 @@ const httpsUrl = (v: unknown, label: string): string | null | undefined => {
   return u.toString()
 }
 
-const num = (v: unknown, label: string): number | undefined => {
+const num = (v: unknown, label: string, max = MAX_AMOUNT): number | undefined => {
   if (v === undefined || v === null || v === '') return undefined
   const n = Number(v)
   if (!Number.isFinite(n) || n < 0) throw new AppError(`${label} must be a positive number`, 400)
+  if (n > max) throw new AppError(`${label} must be at most ${max.toLocaleString('en-US')}`, 400)
   return n
 }
 
@@ -46,8 +58,8 @@ function parseFields(body: any) {
     type: (type ?? undefined) as any,
     minAmount: num(body.minAmount, 'Min amount'),
     maxAmount: num(body.maxAmount, 'Max amount'),
-    feePercent: num(body.feePercent, 'Fee'),
-    instructions: str(body.instructions, 1000, 'Instructions'),
+    feePercent: num(body.feePercent, 'Fee', 100),
+    instructions: str(body.instructions, 1000, 'Instructions', true),
     isActive: bool(body.isActive),
     cashoutEnabled: bool(body.cashoutEnabled),
     depositEnabled: bool(body.depositEnabled),
@@ -56,7 +68,7 @@ function parseFields(body: any) {
     displayName: str(body.displayName, 40, 'Name on tile'),
     linkUrl: httpsUrl(body.linkUrl, 'Payment link'),
     qrUrl: httpsUrl(body.qrUrl, 'QR image URL'),
-    sortOrder: num(body.sortOrder, 'Sort order') !== undefined ? Math.round(num(body.sortOrder, 'Sort order')!) : undefined,
+    sortOrder: num(body.sortOrder, 'Sort order', 9999) !== undefined ? Math.round(num(body.sortOrder, 'Sort order', 9999)!) : undefined,
   }
   if (data.brand && body.tag !== undefined && !data.tag) {
     throw new AppError('Tag is required for this payment app', 400)
@@ -68,6 +80,19 @@ const checkRange = (min?: number, max?: number) => {
   if (min !== undefined && max !== undefined && min > max) throw new AppError('Min amount cannot be greater than max amount', 400)
 }
 
+// apiConfig can hold provider credentials — it never leaves the server, not even to the admin panel
+const publicView = <T extends Record<string, any>>(m: T) => { const { apiConfig, ...rest } = m; return rest }
+
+// Audit trail: changing a tag/link redirects where players send money, so every change is logged with old → new
+const AUDIT_FIELDS = ['name', 'brand', 'tag', 'displayName', 'linkUrl', 'qrUrl', 'minAmount', 'maxAmount', 'feePercent', 'isActive', 'depositEnabled', 'cashoutEnabled'] as const
+const auditDiff = (before: Record<string, any> | null, after: Record<string, any> | null) => {
+  const changes: Record<string, { from: unknown; to: unknown }> = {}
+  for (const k of AUDIT_FIELDS) if ((before?.[k] ?? null) !== (after?.[k] ?? null)) changes[k] = { from: before?.[k] ?? null, to: after?.[k] ?? null }
+  return changes
+}
+const audit = (req: Request, action: string, method: { id: string; code: string }, changes: Record<string, unknown>) =>
+  securityLog('admin_action', req, { action, paymentMethodId: method.id, code: method.code, adminId: (req as any).user?.id, changes })
+
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '').slice(0, 24) || 'method'
 
 async function uniqueCode(base: string) {
@@ -78,7 +103,7 @@ async function uniqueCode(base: string) {
 
 export const listPaymentMethods = asyncHandler(async (_req: Request, res: Response) => {
   const methods = await prisma.paymentMethod.findMany({ orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] })
-  res.json({ success: true, data: methods })
+  res.json({ success: true, data: methods.map(publicView) })
 })
 
 export const createPaymentMethod = asyncHandler(async (req: Request, res: Response) => {
@@ -97,6 +122,7 @@ export const createPaymentMethod = asyncHandler(async (req: Request, res: Respon
   } else {
     code = await uniqueCode(slug(d.brand && d.brand !== 'other' ? `${d.brand}${d.name}` : d.name))
   }
+  if (d.brand && BUILT_IN_FLOW_CODES.includes(code)) throw new AppError('That code is reserved for a built-in payment flow', 400)
 
   const method = await prisma.paymentMethod.create({
     data: {
@@ -113,8 +139,12 @@ export const createPaymentMethod = asyncHandler(async (req: Request, res: Respon
       cashoutEnabled: purpose === 'deposit' ? false : purpose === 'cashout' ? (d.cashoutEnabled ?? true) : (d.cashoutEnabled ?? false),
       depositEnabled: purpose === 'cashout' ? false : purpose === 'deposit' ? (d.depositEnabled ?? true) : (d.depositEnabled ?? true),
     } as any
+  }).catch((e: any) => {
+    if (e?.code === 'P2002') throw new AppError('That code is already used by another method', 400)
+    throw e
   })
-  res.json({ success: true, data: method })
+  audit(req, 'payment_method_create', method, auditDiff(null, method))
+  res.json({ success: true, data: publicView(method) })
 })
 
 export const updatePaymentMethod = asyncHandler(async (req: Request, res: Response) => {
@@ -122,9 +152,16 @@ export const updatePaymentMethod = asyncHandler(async (req: Request, res: Respon
   if (!existing) throw new AppError('Payment method not found', 404)
   const d = parseFields(req.body)
   delete (d as any).type // type/code are fixed after creation (code is how existing deposits and flows find the method)
+  if (d.brand && BUILT_IN_FLOW_CODES.includes(existing.code.toLowerCase())) {
+    throw new AppError(`"${existing.name}" uses its own built-in flow and can't be turned into a tag method`, 400)
+  }
+  const nextBrand = d.brand !== undefined ? d.brand : existing.brand
+  const nextTag = d.tag !== undefined ? d.tag : existing.tag
+  if (nextBrand && !nextTag) throw new AppError('Tag is required for this payment app', 400)
   checkRange(d.minAmount ?? existing.minAmount, d.maxAmount ?? existing.maxAmount)
   const method = await prisma.paymentMethod.update({ where: { id: existing.id }, data: d as any })
-  res.json({ success: true, data: method })
+  audit(req, 'payment_method_update', method, auditDiff(existing, method))
+  res.json({ success: true, data: publicView(method) })
 })
 
 // Legacy master on/off (kept for compatibility)
@@ -132,7 +169,8 @@ export const togglePaymentMethod = asyncHandler(async (req: Request, res: Respon
   const existing = await prisma.paymentMethod.findUnique({ where: { id: String(req.params.id) } })
   if (!existing) throw new AppError('Not found', 404)
   const method = await prisma.paymentMethod.update({ where: { id: existing.id }, data: { isActive: !existing.isActive } })
-  res.json({ success: true, data: method })
+  audit(req, 'payment_method_toggle', method, auditDiff(existing, method))
+  res.json({ success: true, data: publicView(method) })
 })
 
 // Turns a method on/off for ONE side only. "Live" on a side = isActive && <side>Enabled.
@@ -152,7 +190,8 @@ export const setPaymentMethodAvailability = asyncHandler(async (req: Request, re
     data[other] = false
   }
   const method = await prisma.paymentMethod.update({ where: { id: existing.id }, data })
-  res.json({ success: true, data: method })
+  audit(req, 'payment_method_availability', method, auditDiff(existing, method))
+  res.json({ success: true, data: publicView(method) })
 })
 
 export const deletePaymentMethod = asyncHandler(async (req: Request, res: Response) => {
@@ -167,5 +206,6 @@ export const deletePaymentMethod = asyncHandler(async (req: Request, res: Respon
     throw new AppError(`Can't delete "${existing.name}" — ${parts} in history use it. Switch it off instead; history stays intact.`, 400)
   }
   await prisma.paymentMethod.delete({ where: { id: existing.id } })
+  audit(req, 'payment_method_delete', existing, auditDiff(existing, null))
   res.json({ success: true })
 })

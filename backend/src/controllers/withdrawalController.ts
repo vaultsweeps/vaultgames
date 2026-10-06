@@ -23,6 +23,11 @@ const ALLOWED_PAYMENT_METHODS = ['Cash App', 'Venmo', 'Crypto', 'Bank Transfer',
 // Smallest wallet withdrawal on every route. Each route also rejects amounts above the cashable balance,
 // so a request is only possible once the wallet holds at least this much.
 export const MIN_WITHDRAWAL_USD = 50
+// Cashout keys sent by the Wallet modal's manual cashout tiles → display name. Anything else must be a real PaymentMethod id.
+const MANUAL_CASHOUT_METHODS: Record<string, string> = {
+  chime: 'Chime', cashapp: 'CashApp', venmo: 'Venmo', paypal: 'PayPal',
+  crypto_btc: 'Bitcoin (BTC)', crypto_ltc: 'Litecoin (LTC)', crypto_trx: 'USDT (TRC-20)',
+}
 const MIN_WITHDRAWAL_MESSAGE = `Minimum withdrawal is $${MIN_WITHDRAWAL_USD}. You need at least $${MIN_WITHDRAWAL_USD} in your wallet to cash out.`
 
 // ─── Request ID generator (collision-safe, no DB sequence required) ────────
@@ -143,13 +148,21 @@ export const createManualWithdrawal = asyncHandler(async (req: AuthRequest, res:
   if (isNaN(numAmount) || numAmount <= 0) throw new AppError('Invalid amount', 400)
   if (numAmount < MIN_WITHDRAWAL_USD) throw new AppError(MIN_WITHDRAWAL_MESSAGE, 400)
 
-  let methodName = paymentMethodId
-  if (paymentMethodId && paymentMethodId.length > 10) {
-    const pm = await prisma.paymentMethod.findUnique({ where: { id: paymentMethodId } })
-    if (pm && pm.cashoutEnabled === false) throw new AppError('This payment method is not available for cashouts', 400)
-    if (pm) methodName = pm.name
+  // The method is client-supplied (multipart form): it must be one of the Wallet-modal keys below or a real,
+  // live, cashout-enabled PaymentMethod id — never a free-text string that is stored and forwarded to Telegram as-is
+  if (typeof paymentMethodId !== 'string' || !paymentMethodId.trim()) throw new AppError('Payment method is required', 400)
+  if (typeof accountInfo !== 'string' || !accountInfo.trim()) throw new AppError('Account details are required', 400)
+  const account = accountInfo.trim()
+  // eslint-disable-next-line no-control-regex
+  if (account.length > 500 || /[\u0000-\u001F\u007F]/.test(account)) throw new AppError('Account details must be a single line of at most 500 characters', 400)
+
+  let methodName: string
+  if (MANUAL_CASHOUT_METHODS[paymentMethodId]) {
+    methodName = MANUAL_CASHOUT_METHODS[paymentMethodId]
   } else {
-    methodName = paymentMethodId === 'chime' ? 'Chime' : paymentMethodId === 'cashapp' ? 'CashApp' : paymentMethodId === 'venmo' ? 'Venmo' : paymentMethodId === 'paypal' ? 'PayPal' : paymentMethodId === 'crypto_btc' ? 'Bitcoin (BTC)' : paymentMethodId
+    const pm = await prisma.paymentMethod.findUnique({ where: { id: paymentMethodId } })
+    if (!pm || !pm.isActive || !pm.cashoutEnabled) throw new AppError('This payment method is not available for cashouts', 400)
+    methodName = pm.name
   }
 
   const requestId = generateRequestId()
@@ -165,8 +178,8 @@ export const createManualWithdrawal = asyncHandler(async (req: AuthRequest, res:
           userId: req.user!.id,
           amount: numAmount,
           currency: 'USD',
-          paymentMethodId: paymentMethodId && paymentMethodId.length > 10 ? paymentMethodId : null,
-          accountInfo: accountInfo || 'Manual request',
+          paymentMethodId: MANUAL_CASHOUT_METHODS[paymentMethodId] ? null : paymentMethodId,
+          accountInfo: account,
           status: 'pending',
           adminNotes: methodName,
           requestId,
@@ -188,7 +201,7 @@ export const createManualWithdrawal = asyncHandler(async (req: AuthRequest, res:
   await TelegramService.sendManualCashoutRequest({
     amount: numAmount,
     method: methodName,
-    accountInfo: accountInfo || 'Not provided',
+    accountInfo: account,
     username: user?.username || 'Unknown',
     email: user?.email || 'Unknown',
     qrCodePath: req.file?.path,
