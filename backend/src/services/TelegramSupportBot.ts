@@ -421,7 +421,11 @@ export class TelegramSupportBot {
 
     // Show which Chime account tag to look for when receiving payment
     let chimeTagLine = ''
-    if (methodCode === 'chime') {
+    // A tag set in the admin panel wins over the built-in defaults below
+    const adminTag = (deposit.paymentMethod as any)?.tag
+    if (adminTag) {
+      chimeTagLine = `\n📲 ${methodName} Tag: ${adminTag}`
+    } else if (methodCode === 'chime') {
       chimeTagLine = `\n📲 Chime Tag: $Luis-Feliciano-9012 (luisfeliciano7812@gmail.com)`
     } else if (methodCode === 'chime2') {
       chimeTagLine = `\n📲 Chime Tag: $Brenda-Taylor-245 (brendataylor7189@gmail.com)`
@@ -488,7 +492,11 @@ export class TelegramSupportBot {
 
     // Show which Chime account tag received the payment
     let chimeTagLine = ''
-    if (methodCode === 'chime') {
+    // A tag set in the admin panel wins over the built-in defaults below
+    const adminTag = (deposit.paymentMethod as any)?.tag
+    if (adminTag) {
+      chimeTagLine = `\n📲 ${methodName} Tag: ${adminTag}`
+    } else if (methodCode === 'chime') {
       chimeTagLine = `\n📲 Received on: $Luis-Feliciano-9012 (luisfeliciano7812@gmail.com)`
     } else if (methodCode === 'chime2') {
       chimeTagLine = `\n📲 Received on: $Brenda-Taylor-245 (brendataylor7189@gmail.com)`

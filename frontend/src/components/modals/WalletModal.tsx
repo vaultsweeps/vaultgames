@@ -11,6 +11,23 @@ const CryptoDepositModal = dynamic(() => import('./CryptoDepositModal'), { ssr: 
 const GgusOnePayModal = dynamic(() => import('./GgusOnePayModal'), { ssr: false })
 import { depositApi, withdrawalApi } from '@/lib/api'
 import { getSmsUrl } from '@/lib/sms'
+import ManualAccountTile from '@/components/wallet/ManualAccountTile'
+import { BRANDS, buildManualAccounts, tileName, tileSubtitle, tileLogo, type ManualBrand, type ManualDepositAccount } from '@/lib/manualDepositAccounts'
+
+// Static grid entries that are replaced by the admin-managed manual (send-to-tag) tiles; they render where 'chime-group' sits
+const MANUAL_PLACEHOLDER_IDS = ['chime-group', 'cashapp-group', 'paypal', 'venmo']
+
+type ManualGroup = { key: string; brand: ManualBrand; accounts: ManualDepositAccount[] }
+// One tile per app (several accounts → account picker); every "Other" method gets its own tile
+function groupManualAccounts(accounts: ManualDepositAccount[]): ManualGroup[] {
+  const groups: ManualGroup[] = []
+  for (const a of accounts) {
+    const existing = a.brand !== 'other' && groups.find(g => g.brand === a.brand)
+    if (existing) existing.accounts.push(a)
+    else groups.push({ key: a.brand === 'other' ? `other-${a.id}` : a.brand, brand: a.brand, accounts: [a] })
+  }
+  return groups
+}
 
 interface WalletModalProps {
   isOpen: boolean
@@ -121,8 +138,15 @@ function TxRow({ tx }: { tx: TxItem }) {
 export default function WalletModal({ isOpen, onClose, balance, bonusBalance = 0 }: WalletModalProps) {
   const [activeTab, setActiveTab] = useState<'deposit' | 'cashout' | 'history'>('deposit')
   const [cashoutMethod, setCashoutMethod] = useState<'chime' | 'cashapp' | 'venmo' | 'paypal' | 'crypto_btc' | 'crypto_ltc' | 'crypto_trx' | null>(null)
-  const [depositMethod, setDepositMethod] = useState<'chime' | 'chime2' | 'paypal' | 'cashapp' | 'cashapp2' | 'venmo' | 'crypto' | 'ggusonepay' | null>(null)
-  const [subDepositGroup, setSubDepositGroup] = useState<'chime' | 'cashapp' | null>(null)
+  const [depositMethod, setDepositMethod] = useState<string | null>(null)
+  // Public payment-method list (null until loaded / on error → built-in manual accounts are shown)
+  const [publicMethods, setPublicMethods] = useState<any[] | null>(null)
+  const [methodsFailed, setMethodsFailed] = useState(false)
+  const [methodsReload, setMethodsReload] = useState(0)
+  const [subDepositGroup, setSubDepositGroup] = useState<ManualBrand | null>(null)
+  const manualAccounts = buildManualAccounts(publicMethods)
+  const manualGroups = groupManualAccounts(manualAccounts)
+  const isManualDeposit = !!depositMethod && manualAccounts.some(a => a.id === depositMethod)
   const [ggusPreset, setGgusPreset] = useState<string | undefined>(undefined)
   const [paymentMethodId, setPaymentMethodId] = useState<string>('')
   const [history, setHistory] = useState<TxItem[]>([])
@@ -149,12 +173,16 @@ export default function WalletModal({ isOpen, onClose, balance, bonusBalance = 0
     if (!isOpen) return
     // Use known DB id immediately as fallback, then confirm from API
     setPaymentMethodId('cmsxko7jy0000134e9967nabt')
+    // Fresh list on every open so tags edited in the admin panel show immediately (no stale tiles in between)
+    setPublicMethods(null)
+    setMethodsFailed(false)
     depositApi.getPaymentMethods().then(res => {
       const methods = res.data.data || []
+      setPublicMethods(methods)
       const ggus = methods.find((m: any) => m.code === 'ggusonepay')
       if (ggus) setPaymentMethodId(ggus.id)
-    }).catch(console.error)
-  }, [isOpen])
+    }).catch(err => { console.error(err); setMethodsFailed(true) })
+  }, [isOpen, methodsReload])
 
   // Fetch history when History tab is opened
   useEffect(() => {
@@ -261,7 +289,12 @@ export default function WalletModal({ isOpen, onClose, balance, bonusBalance = 0
                       {/* Main Methods Grid */}
                       {!subDepositGroup && (
                       <div className="grid grid-cols-2 gap-4">
-                        {paymentMethods.map((method) => {
+                        {paymentMethods.flatMap((m): any[] => m.id === 'chime-group'
+                          ? (publicMethods === null
+                              ? [{ ...m, id: 'manual-pending-1', manualPending: true }, { ...m, id: 'manual-pending-2', manualPending: true }]
+                              : manualGroups.map(g => ({ ...m, id: `manual-${g.key}`, manualGroup: g })))
+                          : MANUAL_PLACEHOLDER_IDS.includes(m.id) ? [] : [m]
+                        ).map((method: any) => {
                           // Special card for Payment Apps with overlapping icons
                           if (method.id === 'ggusonepay') {
                             return (
@@ -312,6 +345,45 @@ export default function WalletModal({ isOpen, onClose, balance, bonusBalance = 0
                                   <span className="text-white font-bold text-[13px] sm:text-[15px] tracking-wide truncate">{method.name}</span>
                                 </div>
                               </button>
+                            )
+                          }
+                          // Manual send-to-tag methods share one tile design (brand logo, first name from the tag)
+                          // Tag methods still loading (or failed): placeholder tiles, never the built-in/old tags
+                          if (method.manualPending) {
+                            if (methodsFailed && method.id === 'manual-pending-1') {
+                              return (
+                                <button key={method.id} type="button" onClick={() => setMethodsReload(n => n + 1)}
+                                  className="h-[110px] rounded-[20px] border border-white/10 bg-[#1C1F2E] text-white/70 hover:text-white text-[13px] font-semibold px-3 transition-colors">
+                                  Couldn&apos;t load Chime / CashApp / PayPal / Venmo — tap to retry
+                                </button>
+                              )
+                            }
+                            if (methodsFailed) return null
+                            return <div key={method.id} className="h-[110px] rounded-[20px] bg-[#1C1F2E] border border-white/5 animate-pulse" />
+                          }
+                          const group: ManualGroup | undefined = method.manualGroup
+                          if (group) {
+                            if (group.accounts.length === 1) {
+                              const account = group.accounts[0]
+                              return (
+                                <ManualAccountTile
+                                  key={method.id}
+                                  brand={account.brand}
+                                  title={tileName(account)}
+                                  subtitle={tileSubtitle(account)}
+                                  logo={tileLogo(account)}
+                                  onClick={() => { setGgusPreset(undefined); setDepositMethod(account.id) }}
+                                />
+                              )
+                            }
+                            return (
+                              <ManualAccountTile
+                                key={method.id}
+                                brand={group.brand}
+                                title={BRANDS[group.brand].label}
+                                subtitle={`${group.accounts.length} accounts`}
+                                onClick={() => setSubDepositGroup(group.brand)}
+                              />
                             )
                           }
                           return (
@@ -375,81 +447,29 @@ export default function WalletModal({ isOpen, onClose, balance, bonusBalance = 0
                       </div>
                       )}
                       
-                      {/* Sub-menu for Chime Group */}
-                      {subDepositGroup === 'chime' && (
-                        <motion.div 
+                      {/* Account picker for a manual brand with several accounts (Chime 1/2, CashApp 1/2, …) */}
+                      {subDepositGroup && (
+                        <motion.div
                           initial={{ opacity: 0, x: 20 }}
                           animate={{ opacity: 1, x: 0 }}
                           className="space-y-4"
                         >
-                          <button 
+                          <button
                             onClick={() => setSubDepositGroup(null)}
                             className="flex items-center gap-2 text-white/50 hover:text-white transition-colors mb-2 text-sm font-medium"
                           >
                             <ArrowDownLeft className="w-4 h-4 rotate-45" /> Back to methods
                           </button>
                           <div className="grid grid-cols-2 gap-4">
-                            {[
-                              { id: 'chime', name: 'Chime 1', color: 'bg-emerald-500', icon: 'C' },
-                              { id: 'chime2', name: 'Chime 2', color: 'bg-teal-500', icon: 'C' }
-                            ].map(method => (
-                              <button
-                                key={method.id}
-                                onClick={() => setDepositMethod(method.id as any)}
-                                className="p-4 rounded-[20px] flex flex-col relative transition-all text-left w-full h-[110px] border bg-[#1C1F2E] border-white/5 shadow-[0_4px_20px_rgba(0,0,0,0.2)] hover:bg-[#23273A] hover:border-white/10 hover:-translate-y-0.5"
-                              >
-                                <div className="flex justify-between items-start mb-auto w-full relative z-10">
-                                  <div className={`w-10 h-10 rounded-full ${method.color} flex items-center justify-center font-bold text-white text-lg shadow-lg`}>
-                                    {method.icon}
-                                  </div>
-                                  <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                                    No fee
-                                  </span>
-                                </div>
-                                <div className="flex items-baseline gap-1.5 relative z-10 mt-3">
-                                  <span className="text-white font-bold text-[15px] tracking-wide">{method.name}</span>
-                                </div>
-                              </button>
-                            ))}
-                          </div>
-                        </motion.div>
-                      )}
-                      
-                      {/* Sub-menu for CashApp Group */}
-                      {subDepositGroup === 'cashapp' && (
-                        <motion.div 
-                          initial={{ opacity: 0, x: 20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          className="space-y-4"
-                        >
-                          <button 
-                            onClick={() => setSubDepositGroup(null)}
-                            className="flex items-center gap-2 text-white/50 hover:text-white transition-colors mb-2 text-sm font-medium"
-                          >
-                            <ArrowDownLeft className="w-4 h-4 rotate-45" /> Back to methods
-                          </button>
-                          <div className="grid grid-cols-2 gap-4">
-                            {[
-                              { id: 'cashapp', name: 'CashApp 1', color: 'bg-green-500', icon: '$' },
-                              { id: 'cashapp2', name: 'CashApp 2', color: 'bg-lime-500', icon: '$' }
-                            ].map(method => (
-                              <button
-                                key={method.id}
-                                onClick={() => setDepositMethod(method.id as any)}
-                                className="p-4 rounded-[20px] flex flex-col relative transition-all text-left w-full h-[110px] border bg-[#1C1F2E] border-white/5 shadow-[0_4px_20px_rgba(0,0,0,0.2)] hover:bg-[#23273A] hover:border-white/10 hover:-translate-y-0.5"
-                              >
-                                <div className="flex justify-between items-start mb-auto w-full relative z-10">
-                                  <div className={`w-10 h-10 rounded-full ${method.color} flex items-center justify-center font-bold text-white text-lg shadow-lg`}>
-                                    {method.icon}
-                                  </div>
-                                  <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                                    No fee
-                                  </span>
-                                </div>
-                                <div className="flex items-baseline gap-1.5 relative z-10 mt-3">
-                                  <span className="text-white font-bold text-[15px] tracking-wide">{method.name}</span>
-                                </div>
-                              </button>
+                            {manualAccounts.filter(a => a.brand === subDepositGroup).map(account => (
+                              <ManualAccountTile
+                                key={account.id}
+                                brand={account.brand}
+                                title={tileName(account)}
+                                subtitle={tileSubtitle(account)}
+                                logo={tileLogo(account)}
+                                onClick={() => setDepositMethod(account.id)}
+                              />
                             ))}
                           </div>
                         </motion.div>
@@ -575,9 +595,9 @@ export default function WalletModal({ isOpen, onClose, balance, bonusBalance = 0
       />
 
       <ChimePayPalDepositModal
-        isOpen={depositMethod === 'chime' || depositMethod === 'chime2' || depositMethod === 'paypal' || depositMethod === 'cashapp' || depositMethod === 'cashapp2' || depositMethod === 'venmo'}
+        isOpen={isManualDeposit}
         onClose={() => setDepositMethod(null)}
-        method={depositMethod === 'chime' ? 'chime' : depositMethod === 'chime2' ? 'chime2' : depositMethod === 'paypal' ? 'paypal' : depositMethod === 'cashapp' ? 'cashapp' : depositMethod === 'cashapp2' ? 'cashapp2' : depositMethod === 'venmo' ? 'venmo' : null}
+        method={isManualDeposit ? depositMethod : null}
       />
       <CryptoDepositModal
         isOpen={depositMethod === 'crypto'}

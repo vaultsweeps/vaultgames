@@ -372,6 +372,8 @@ export default function CashoutsPage() {
                   (() => {
                     const list = [...methods]
                       .filter(m => m.code !== 'zappay' && !m.name?.toLowerCase().includes('zappay'))
+                      // Deposit-only methods added in Admin → Deposit methods never appear on the cashout side
+                      .filter(m => !(m.brand && !m.cashoutEnabled))
                       .sort((a, b) => {
                         if (a.cashoutEnabled === b.cashoutEnabled) return 0
                         return a.cashoutEnabled ? -1 : 1
