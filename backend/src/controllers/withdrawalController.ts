@@ -20,6 +20,11 @@ function isSerializationFailure(err: any): boolean {
 // NOTE: 'Zelle' is temporarily unavailable — the GgusOnePay Zelle channel is not supported at this time.
 const ALLOWED_PAYMENT_METHODS = ['Cash App', 'Venmo', 'Crypto', 'Bank Transfer', 'Chime', 'PayPal']
 
+// Smallest wallet withdrawal on every route. Each route also rejects amounts above the cashable balance,
+// so a request is only possible once the wallet holds at least this much.
+export const MIN_WITHDRAWAL_USD = 50
+const MIN_WITHDRAWAL_MESSAGE = `Minimum withdrawal is $${MIN_WITHDRAWAL_USD}. You need at least $${MIN_WITHDRAWAL_USD} in your wallet to cash out.`
+
 // ─── Request ID generator (collision-safe, no DB sequence required) ────────
 function generateRequestId(): string {
   const date = new Date()
@@ -57,7 +62,7 @@ export const getWithdrawals = asyncHandler(async (req: AuthRequest, res: Respons
 export const createWithdrawal = asyncHandler(async (req: AuthRequest, res: Response) => {
   const { amount, paymentMethodId, accountInfo, currency = 'USD' } = req.body
 
-  if (amount < 1) throw new AppError('Minimum withdrawal is $1', 400)
+  if (!(Number(amount) >= MIN_WITHDRAWAL_USD)) throw new AppError(MIN_WITHDRAWAL_MESSAGE, 400)
 
   const paymentMethod = await prisma.paymentMethod.findUnique({ where: { id: paymentMethodId, isActive: true } })
   if (!paymentMethod) throw new AppError('Invalid payment method', 400)
@@ -135,13 +140,14 @@ export const createManualWithdrawal = asyncHandler(async (req: AuthRequest, res:
   const numAmount = parseFloat(amount)
 
   if (isNaN(numAmount) || numAmount <= 0) throw new AppError('Invalid amount', 400)
+  if (numAmount < MIN_WITHDRAWAL_USD) throw new AppError(MIN_WITHDRAWAL_MESSAGE, 400)
 
   let methodName = paymentMethodId
   if (paymentMethodId && paymentMethodId.length > 10) {
     const pm = await prisma.paymentMethod.findUnique({ where: { id: paymentMethodId } })
     if (pm) methodName = pm.name
   } else {
-    methodName = paymentMethodId === 'chime' ? 'Chime' : paymentMethodId === 'cashapp' ? 'CashApp' : paymentMethodId === 'venmo' ? 'Venmo' : paymentMethodId
+    methodName = paymentMethodId === 'chime' ? 'Chime' : paymentMethodId === 'cashapp' ? 'CashApp' : paymentMethodId === 'venmo' ? 'Venmo' : paymentMethodId === 'paypal' ? 'PayPal' : paymentMethodId === 'crypto_btc' ? 'Bitcoin (BTC)' : paymentMethodId
   }
 
   const requestId = generateRequestId()
@@ -249,8 +255,8 @@ export const createEnhancedWithdrawal = asyncHandler(async (req: AuthRequest, re
   const numAmount = parseFloat(String(amount))
 
   // ── Validation ──────────────────────────────────────────────
-  if (isNaN(numAmount) || numAmount < 1) {
-    throw new AppError('Minimum withdrawal amount is $1', 400)
+  if (isNaN(numAmount) || numAmount < MIN_WITHDRAWAL_USD) {
+    throw new AppError(MIN_WITHDRAWAL_MESSAGE, 400)
   }
   if (numAmount > 100000) {
     throw new AppError('Maximum withdrawal amount is $100,000', 400)

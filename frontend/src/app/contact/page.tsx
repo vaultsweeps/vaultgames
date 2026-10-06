@@ -104,7 +104,7 @@ export default function ContactPage() {
                 <div className="space-y-4">
                   {[
                     { q: 'How quickly are deposits processed?', a: 'Crypto deposits are processed automatically via webhook within minutes. Manual methods may take up to 24 hours.' },
-                    { q: 'What is the minimum withdrawal?', a: 'The minimum withdrawal is $20 USD regardless of payment method. See our Cashout Rules page for full details.' },
+                    { q: 'What is the minimum withdrawal?', a: 'The minimum withdrawal is $50 USD regardless of payment method — you need at least $50 in your wallet to request a cashout. See our Cashout Rules page for full details.' },
                     { q: 'My deposit is stuck as pending', a: 'Contact us via Telegram immediately with your transaction hash/reference number for fastest resolution.' },
                     { q: 'How do I verify my account?', a: 'For withdrawals over $500, you may be asked to submit ID verification. Submit via your profile settings.' },
                   ].map((item, i) => (

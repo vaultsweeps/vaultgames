@@ -120,7 +120,7 @@ function TxRow({ tx }: { tx: TxItem }) {
 
 export default function WalletModal({ isOpen, onClose, balance, bonusBalance = 0 }: WalletModalProps) {
   const [activeTab, setActiveTab] = useState<'deposit' | 'cashout' | 'history'>('deposit')
-  const [cashoutMethod, setCashoutMethod] = useState<'chime' | 'cashapp' | 'venmo' | null>(null)
+  const [cashoutMethod, setCashoutMethod] = useState<'chime' | 'cashapp' | 'venmo' | 'paypal' | 'crypto_btc' | 'crypto_ltc' | 'crypto_trx' | null>(null)
   const [depositMethod, setDepositMethod] = useState<'chime' | 'chime2' | 'paypal' | 'cashapp' | 'cashapp2' | 'venmo' | 'crypto' | 'ggusonepay' | null>(null)
   const [subDepositGroup, setSubDepositGroup] = useState<'chime' | 'cashapp' | null>(null)
   const [ggusPreset, setGgusPreset] = useState<string | undefined>(undefined)
@@ -479,11 +479,24 @@ export default function WalletModal({ isOpen, onClose, balance, bonusBalance = 0
                             <div className="w-12 h-12 rounded-full bg-sky-500 flex items-center justify-center font-bold text-white text-[22px] shadow-[0_0_15px_rgba(14,165,233,0.4)]">V</div>
                             <span className="text-white font-bold text-[15px] tracking-wide">Venmo</span>
                           </button>
+                          <button onClick={() => setCashoutMethod('paypal')} className="p-5 rounded-[20px] flex flex-col items-center justify-center gap-3 transition-all border bg-[#1C1F2E] border-white/5 shadow-[0_4px_20px_rgba(0,0,0,0.2)] hover:bg-[#23273A] hover:border-white/10 hover:-translate-y-0.5">
+                            <div className="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center font-bold text-white text-[22px] shadow-[0_0_15px_rgba(59,130,246,0.4)]">P</div>
+                            <span className="text-white font-bold text-[15px] tracking-wide">PayPal</span>
+                          </button>
                         </div>
                       </div>
                       <div>
                         <h3 className="text-white/50 text-[13px] font-bold mb-3 px-2 mt-2 uppercase tracking-wider">Cryptocurrency</h3>
                         <div className="grid grid-cols-2 gap-4 mb-4">
+                          <button onClick={() => setCashoutMethod('crypto_btc')} className="p-5 rounded-[20px] flex flex-col items-center justify-center gap-2 transition-all border bg-[#1C1F2E] border-white/5 shadow-[0_4px_20px_rgba(0,0,0,0.2)] hover:bg-[#23273A] hover:border-white/10 hover:-translate-y-0.5">
+                            <div className="w-12 h-12 rounded-full bg-[#F7931A] flex items-center justify-center font-bold text-white text-[22px] shadow-[0_0_15px_rgba(247,147,26,0.4)]">
+                              ₿
+                            </div>
+                            <div className="text-center mt-1">
+                              <span className="text-white font-bold text-[15px] tracking-wide block">Bitcoin</span>
+                              <span className="text-white/50 text-[11px] block mt-0.5">BTC</span>
+                            </div>
+                          </button>
                           <button onClick={() => setCashoutMethod('crypto_ltc' as any)} className="p-5 rounded-[20px] flex flex-col items-center justify-center gap-2 transition-all border bg-[#1C1F2E] border-white/5 shadow-[0_4px_20px_rgba(0,0,0,0.2)] hover:bg-[#23273A] hover:border-white/10 hover:-translate-y-0.5">
                             <div className="w-12 h-12 rounded-full bg-[#345D9D] flex items-center justify-center font-bold text-white text-[22px] italic shadow-[0_0_15px_rgba(52,93,157,0.5)]">
                               Ł

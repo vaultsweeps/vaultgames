@@ -578,15 +578,16 @@ export async function extraChecks(check: Check) {
 
   // ── Bonus Balance system — offline checks (pure functions, no DB) ───────────────────────────────────
   {
-    const { getUTCISOWeekKey } = await import('../src/services/SundayFreeplayService')
-    // 2026-01-01 is a Thursday, so ISO week 1 of 2026 contains it.
-    check('getUTCISOWeekKey: known Thursday maps to W01', getUTCISOWeekKey(new Date('2026-01-01T12:00:00.000Z')) === '2026-W01')
-    // A Sunday belongs to the ISO week that STARTED the preceding Monday (ISO weeks run Mon-Sun).
-    const monday = new Date('2026-03-02T00:05:00.000Z') // a Monday
-    const followingSunday = new Date('2026-03-08T00:05:00.000Z') // the Sunday ending that same ISO week
-    check('getUTCISOWeekKey: a Monday and the Sunday 6 days later fall in the SAME ISO week', getUTCISOWeekKey(monday) === getUTCISOWeekKey(followingSunday), `${getUTCISOWeekKey(monday)} vs ${getUTCISOWeekKey(followingSunday)}`)
-    const nextMonday = new Date('2026-03-09T00:05:00.000Z')
-    check('getUTCISOWeekKey: the following Monday is a DIFFERENT ISO week', getUTCISOWeekKey(nextMonday) !== getUTCISOWeekKey(followingSunday))
+    // Freeplay week = Sunday..Saturday, New York time (EDT = UTC-4 in October), keyed by that Sunday.
+    const { getFreeplayWeekKey } = await import('../src/services/SundayFreeplayService')
+    const wk = (iso: string) => getFreeplayWeekKey(new Date(iso))
+    check('getFreeplayWeekKey: Sunday 10am NY -> that Sunday', wk('2026-10-04T14:00:00Z') === 'SUN-2026-10-04', wk('2026-10-04T14:00:00Z'))
+    check('getFreeplayWeekKey: Sunday 9pm NY (already Monday in UTC) stays in that Sunday\'s week', wk('2026-10-05T01:00:00Z') === 'SUN-2026-10-04')
+    check('getFreeplayWeekKey: a Sunday request granted on Monday counts for the SAME week', wk('2026-10-05T14:00:00Z') === 'SUN-2026-10-04')
+    check('getFreeplayWeekKey: Saturday 11:30pm NY (Sunday in UTC) is still the same week', wk('2026-10-11T03:30:00Z') === 'SUN-2026-10-04')
+    check('getFreeplayWeekKey: just after midnight the next Sunday (NY) starts a new week', wk('2026-10-11T04:30:00Z') === 'SUN-2026-10-11')
+    const serverSrc = src('server.ts')
+    check('Sunday Freeplay is NOT auto-granted on a schedule (claimed via Signal, granted by staff)', !serverSrc.includes('SundayFreeplayService'))
 
     const { BonusCashoutRuleService } = await import('../src/services/BonusCashoutRuleService')
     const rule100 = { walletCreditAmount: 20 } as any

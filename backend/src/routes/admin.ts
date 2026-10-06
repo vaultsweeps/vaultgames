@@ -15,7 +15,8 @@ import {
   getUserDetails, voidUserBalance, addUserBalance, exportUsersXLS,
   getCoupons, createCoupon, updateCoupon, deleteCoupon,
   getAdminBonusCashoutRules, createBonusCashoutRule, updateBonusCashoutRule, deleteBonusCashoutRule,
-  getAdminUserBonuses, getAdminBonusTransactions, getAdminBonusConversions, getAdminSundayFreeplayClaims, getAdminWalletTransactions
+  getAdminUserBonuses, getAdminBonusTransactions, getAdminBonusConversions, getAdminSundayFreeplayClaims, getAdminWalletTransactions,
+  getUserSundayFreeplayStatus, grantUserSundayFreeplay
 } from '../controllers/adminController'
 import {
   getProviders, createProvider, updateProvider, deleteProvider,
@@ -42,6 +43,8 @@ router.patch('/users/:id/suspend', suspendUser)
 router.patch('/users/:id/verify', verifyUser)
 router.post('/users/:id/void-balance', voidUserBalance)
 router.post('/users/:id/add-balance', addUserBalance)
+router.get('/users/:id/sunday-freeplay', getUserSundayFreeplayStatus)
+router.post('/users/:id/sunday-freeplay', grantUserSundayFreeplay)
 
 // Deposits
 router.get('/deposits', getAdminDeposits)

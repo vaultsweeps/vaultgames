@@ -21,6 +21,7 @@ const router = Router()
 
 router.post('/register',
   [
+    body('phone').isString().trim().matches(/^\+[1-9]\d{6,14}$/).withMessage('Enter a valid mobile number with country code'),
     body('username').isString().trim().isLength({ min: 3, max: 20 }).matches(/^[a-zA-Z0-9_]+$/).withMessage('Username must be 3-20 chars (letters, numbers, underscores)'),
     body('email').isEmail().normalizeEmail(),
     body('password').isString().isLength({ min: 8, max: 72 }).withMessage('Password must be 8-72 characters'),

@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import Footer from '@/components/layout/Footer'
 import { Shield, AlertCircle, Gift, Ticket, Users, Coins, Sparkles, Wallet } from 'lucide-react'
 import { publicApi } from '@/lib/api'
+import SundayFreeplayCard from '@/components/bonuses/SundayFreeplayCard'
 
 interface BonusCashoutRule {
   id: string
@@ -79,31 +80,8 @@ export default function BonusCashoutRulesPage() {
             </p>
           </div>
 
-          {/* Sunday $3 Freeplay promo — highlighted to double as a reason to invite friends */}
-          <section className="relative overflow-hidden rounded-3xl p-5 sm:p-8 mb-8 sm:mb-10 text-center"
-            style={{
-              background: 'linear-gradient(135deg, rgba(0,212,255,0.16), rgba(123,47,255,0.16))',
-              boxShadow: 'inset 0 0 0 1.5px rgba(0,212,255,0.4), 0 18px 50px -24px rgba(0,180,255,0.35)',
-            }}>
-            <div aria-hidden className="pointer-events-none absolute -top-16 -right-16 w-56 h-56 rounded-full opacity-50"
-              style={{ background: 'radial-gradient(closest-side, rgba(0,212,255,0.35), transparent)' }} />
-            <p className="relative inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-[12px] font-bold tracking-[0.2em] uppercase text-amber-300 mb-3"
-              style={{ background: 'rgba(251,191,36,0.12)', boxShadow: 'inset 0 0 0 1px rgba(251,191,36,0.35)' }}>
-              <Gift className="w-3.5 h-3.5" /> Every Sunday
-            </p>
-            <h2 className="relative font-display font-bold text-[26px] sm:text-[34px] leading-tight text-primary mb-2">
-              Get <span className="gradient-text">$3 Free</span> — Automatically, Every Week
-            </h2>
-            <p className="relative text-secondary text-[14px] sm:text-base leading-relaxed max-w-lg mx-auto mb-5">
-              Any active player with at least $5 in deposits in the last 7 days gets $3 Freeplay added to their
-              Bonus Balance every Sunday — no claim needed, it just shows up. Invite your friends so they don&apos;t miss it!
-            </p>
-            <a href="/dashboard/invite"
-              className="relative inline-flex items-center gap-2 rounded-full px-6 py-3 text-[14px] font-bold text-white transition-transform hover:scale-105 active:scale-95"
-              style={{ background: 'linear-gradient(135deg, #00D4FF, #7B2FFF)', boxShadow: '0 10px 28px -10px rgba(0,180,255,0.6)' }}>
-              <Users className="w-4 h-4" /> Invite Friends &amp; Earn
-            </a>
-          </section>
+          {/* Sunday $3 Freeplay — claimed by texting staff on Signal */}
+          <SundayFreeplayCard className="mb-8 sm:mb-10" />
 
           {/* Applies to all bonus types */}
           <section className={`${card} p-5 sm:p-8 mb-8 sm:mb-10`} style={cardShadow}>

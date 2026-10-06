@@ -177,6 +177,7 @@ export const providerApi = {
 export const bonusApi = {
   getBalance: () => apiClient.get('/bonuses/balance'),
   getHistory: (limit?: number) => apiClient.get('/bonuses/history', { params: limit ? { limit } : {} }),
+  getSundayFreeplayStatus: () => apiClient.get('/bonuses/sunday-freeplay'),
 }
 
 // Public APIs (no auth required)
@@ -209,6 +210,8 @@ export const adminApi = {
   deleteUser: (id: string) => apiClient.delete(`/admin/users/${id}`),
   voidUserBalance: (id: string, data: { amount: number, reason?: string }) => apiClient.post(`/admin/users/${id}/void-balance`, data),
   addUserBalance: (id: string, data: { amount: number, reason?: string }) => apiClient.post(`/admin/users/${id}/add-balance`, data),
+  getUserSundayFreeplay: (id: string) => apiClient.get(`/admin/users/${id}/sunday-freeplay`),
+  grantUserSundayFreeplay: (id: string) => apiClient.post(`/admin/users/${id}/sunday-freeplay`),
   exportUsersXLS: () => apiClient.get('/admin/users/export', { responseType: 'blob' }),
 
   // Deposits

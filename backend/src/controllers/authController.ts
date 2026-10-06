@@ -86,8 +86,11 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
         create: {
           telegramUsername: typeof req.body.telegramUsername === 'string' && /^@?[A-Za-z0-9_]{3,32}$/.test(req.body.telegramUsername.trim())
             ? `@${req.body.telegramUsername.trim().replace(/^@/, '')}`
-            : null
-        } 
+            : null,
+          // Unverified contact number (format checked by the route validator); never written to `phone`,
+          // which stays reserved for the OTP-verified number used by the welcome-bonus and referral checks
+          signupPhone: String(req.body.phone).trim()
+        }
       }
     },
     select: { id: true, username: true, email: true, role: true, isVerified: true, createdAt: true }

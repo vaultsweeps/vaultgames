@@ -32,7 +32,7 @@ router.get('/enhanced',
 router.post('/enhanced',
   withdrawLimiter, idempotency('withdraw'), serializePerUser('wallet'),
   [
-    body('amount').isFloat({ min: 1, max: 100000 }).withMessage('Amount must be at least $1'),
+    body('amount').isFloat({ min: 50, max: 100000 }).withMessage('Minimum withdrawal is $50'),
     body('paymentMethod').notEmpty().withMessage('Payment method is required'),
     body('accountDetails').notEmpty().trim().isLength({ min: 3 }).withMessage('Account details are required (min 3 characters)'),
   ],
@@ -46,7 +46,7 @@ router.get('/:id', getWithdrawal)
 router.post('/',
   withdrawLimiter, idempotency('withdraw'), serializePerUser('wallet'),
   [
-    body('amount').isFloat({ min: 1, max: 100000 }),
+    body('amount').isFloat({ min: 50, max: 100000 }).withMessage('Minimum withdrawal is $50'),
     body('paymentMethodId').notEmpty(),
     body('accountInfo').notEmpty().withMessage('Account info is required'),
   ],

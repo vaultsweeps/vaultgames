@@ -3,7 +3,7 @@ import { useState, useEffect, useRef, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useForm } from 'react-hook-form'
+import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import toast from 'react-hot-toast'
@@ -16,8 +16,10 @@ import { AuthBackground } from '@/components/auth/AuthBackground'
 import { AuthCard } from '@/components/auth/AuthCard'
 import { AuthInput } from '@/components/auth/AuthInput'
 import { AuthButton } from '@/components/auth/AuthButton'
+import PhoneNumberInput, { isValidPhoneNumber } from '@/components/ui/PhoneNumberInput'
 
 const schema = z.object({
+  phone: z.string().min(1, 'Mobile number is required').refine(v => isValidPhoneNumber(v), 'Enter a valid mobile number'),
   username: z.string().min(3, 'Username must be at least 3 characters').max(20, 'Username too long').regex(/^[a-zA-Z0-9_]+$/, 'Only letters, numbers, underscores'),
   email: z.string().email('Invalid email address'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
@@ -60,7 +62,7 @@ function RegisterForm() {
   const referralCode = searchParams.get('ref') || undefined
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const { register, handleSubmit, watch, formState: { errors } } = useForm<RegisterForm>({ resolver: zodResolver(schema) })
+  const { register, handleSubmit, watch, control, formState: { errors } } = useForm<RegisterForm>({ resolver: zodResolver(schema), defaultValues: { phone: '' } })
   const watchedUsername = watch('username', '')
 
   // Debounced availability check
@@ -100,7 +102,7 @@ function RegisterForm() {
       return
     }
     try {
-      await registerUser({ username: data.username, email: data.email, password: data.password, referralCode, couponCode: data.couponCode })
+      await registerUser({ phone: data.phone, username: data.username, email: data.email, password: data.password, referralCode, couponCode: data.couponCode })
       setRegistered(true)
       toast.success('Account created! Please verify your email.')
     } catch (err: any) {
@@ -185,6 +187,29 @@ function RegisterForm() {
             <h2 className="font-display font-bold text-2xl text-white mb-8 tracking-wide drop-shadow-md">CREATE ACCOUNT</h2>
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-2 relative z-10">
+              {/* Mobile number — first question */}
+              <div className="mb-5">
+                <label className="block text-[11px] font-mono tracking-widest text-slate-400 uppercase mb-2 ml-1">Mobile Number</label>
+                <Controller
+                  name="phone"
+                  control={control}
+                  render={({ field }) => (
+                    <PhoneNumberInput
+                      value={field.value}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                      className={`h-[52px] bg-[#0a0e17] rounded-xl border focus-within:border-cyan-500/50 ${errors.phone ? 'border-red-500/50' : 'border-slate-700/50'}`}
+                    />
+                  )}
+                />
+                {errors.phone && (
+                  <p className="text-red-400 text-[11px] mt-1.5 ml-1 flex items-center gap-1.5 font-medium">
+                    <span className="w-1 h-1 rounded-full bg-red-400" />
+                    {errors.phone.message}
+                  </p>
+                )}
+              </div>
+
               {/* Username field */}
               <div className="relative">
                 <AuthInput
@@ -291,8 +316,8 @@ function RegisterForm() {
               <div className="pt-3 pb-7">
                 <p className="text-[11px] text-slate-500 leading-relaxed font-medium">
                   By creating an account, you agree to our{' '}
-                  <Link href="#" className="text-cyan-400 hover:text-cyan-300 hover:drop-shadow-[0_0_8px_rgba(34,211,238,0.5)] transition-all">Terms of Service</Link> and{' '}
-                  <Link href="#" className="text-cyan-400 hover:text-cyan-300 hover:drop-shadow-[0_0_8px_rgba(34,211,238,0.5)] transition-all">Privacy Policy</Link>.
+                  <Link href="/terms" target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:text-cyan-300 hover:drop-shadow-[0_0_8px_rgba(34,211,238,0.5)] transition-all">Terms of Service</Link> and{' '}
+                  <Link href="/privacy" target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:text-cyan-300 hover:drop-shadow-[0_0_8px_rgba(34,211,238,0.5)] transition-all">Privacy Policy</Link>.
                 </p>
               </div>
 

@@ -3,6 +3,7 @@ import prisma from '../lib/prisma'
 import { asyncHandler } from '../middleware/errorHandler'
 import { AuthRequest } from '../middleware/auth'
 import { BonusService } from '../services/BonusService'
+import { SundayFreeplayService } from '../services/SundayFreeplayService'
 
 // GET /api/bonuses/balance — authenticated
 export const getBonusBalance = asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -57,4 +58,11 @@ export const getPublicBonusCashoutRules = asyncHandler(async (_req: AuthRequest,
     select: { id: true, sourceTypes: true, minAmount: true, maxAmount: true, walletCreditAmount: true, priority: true },
   })
   res.json({ success: true, data: rules })
+})
+
+// GET /api/bonuses/sunday-freeplay — authenticated. The customer's own eligibility for this week's Freeplay,
+// shown next to the "Text us on Signal" button. Granting happens only via staff (admin endpoint).
+export const getSundayFreeplayStatus = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const status = await SundayFreeplayService.getStatus(req.user!.id)
+  res.json({ success: true, data: status })
 })
