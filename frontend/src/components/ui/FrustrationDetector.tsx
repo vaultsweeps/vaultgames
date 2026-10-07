@@ -5,14 +5,23 @@ import { HelpCircle } from 'lucide-react'
 import { getTelegramUrl } from '@/lib/telegram'
 import { getSmsUrl } from '@/lib/sms'
 import { useAuthStore } from '@/store/authStore'
+import { publicApi } from '@/lib/api'
 
 export default function FrustrationDetector() {
   const clickTimes = useRef<number[]>([])
   const { user } = useAuthStore()
   const [smsUrl, setSmsUrl] = useState('')
+  // Telegram link from Admin → Settings (falls back to the env/default until it loads)
+  const telegramBase = useRef(process.env.NEXT_PUBLIC_TELEGRAM_URL || 'https://t.me/vaultsweeps')
 
   useEffect(() => {
     setSmsUrl(getSmsUrl())
+    publicApi.getSettings()
+      .then(res => {
+        const v = res.data?.data?.telegram_url
+        if (typeof v === 'string' && /^https?:\/\//i.test(v.trim())) telegramBase.current = v.trim()
+      })
+      .catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -77,7 +86,7 @@ export default function FrustrationDetector() {
               <button
                 onClick={() => {
                   toast.dismiss(t.id)
-                  window.open(getTelegramUrl(process.env.NEXT_PUBLIC_TELEGRAM_URL || 'https://t.me/vaultsweeps', user), '_blank')
+                  window.open(getTelegramUrl(telegramBase.current, user), '_blank')
                 }}
                 className="w-full flex-1 flex flex-row sm:flex-col items-center justify-center gap-1.5 sm:gap-1 text-xs font-bold text-[#00D4FF] hover:text-white hover:bg-[#00D4FF]/10 transition-colors border-r sm:border-r-0 sm:border-b border-border-strong py-4 sm:py-0"
               >
