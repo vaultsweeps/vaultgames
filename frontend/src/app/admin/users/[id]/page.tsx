@@ -4,7 +4,8 @@ import { motion } from 'framer-motion'
 import { adminApi } from '@/lib/api'
 import { useParams, useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
-import { ArrowLeft, Wallet, TrendingUp, TrendingDown, Gift, AlertCircle, Gamepad2, Ticket, PlusCircle, Phone, Send, User, UserX } from 'lucide-react'
+import { ArrowLeft, Wallet, TrendingUp, TrendingDown, Gift, AlertCircle, Gamepad2, Ticket, PlusCircle, Phone, Send, User, UserX, Users } from 'lucide-react'
+import Link from 'next/link'
 import { Badge, Button, Card, EmptyState, IconTile, PageHeader, SectionHeading, StatusBadge, cn, type Tone } from '@/components/dashboard/ui'
 
 export default function UserDetailsPage() {
@@ -134,7 +135,7 @@ export default function UserDetailsPage() {
     )
   }
 
-  const { user, walletBalance, stats } = data
+  const { user, walletBalance, stats, referrals } = data
 
   const ticketTone = (status: string): Tone =>
     status === 'open' ? 'gold' : status === 'closed' || status === 'resolved' ? 'green' : 'blue'
@@ -383,6 +384,69 @@ export default function UserDetailsPage() {
                 </tbody>
               </table>
             </div>
+          </Card>
+
+          {/* Referrals: who referred this user, who they referred, and what each paid */}
+          <Card className="!p-4 sm:!p-6">
+            <SectionHeading title={<span className="flex items-center gap-2"><Users size={18} className="text-muted" /> Referrals</span>} />
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+              <div className="p-3.5 bg-surface-elevated rounded-2xl border border-border-subtle">
+                <p className="text-xs text-muted mb-1">Referred by</p>
+                {referrals?.referredBy ? (
+                  <>
+                    <Link href={`/admin/users/${referrals.referredBy.id}`} className="text-primary font-semibold hover:underline break-all">{referrals.referredBy.username}</Link>
+                    <p className="text-xs text-secondary mt-0.5">
+                      {referrals.referredBy.reward
+                        ? `Earned them $${Number(referrals.referredBy.reward.amount).toFixed(2)} (${referrals.referredBy.reward.status})`
+                        : 'No reward paid yet'}
+                    </p>
+                  </>
+                ) : <p className="text-secondary">Nobody</p>}
+              </div>
+              <div className="p-3.5 bg-surface-elevated rounded-2xl border border-border-subtle">
+                <p className="text-xs text-muted mb-1">People referred</p>
+                <p className="text-primary font-bold text-lg tabular-nums">{referrals?.referred?.length ?? 0}</p>
+              </div>
+              <div className="p-3.5 bg-surface-elevated rounded-2xl border border-border-subtle">
+                <p className="text-xs text-muted mb-1">Total referral earnings</p>
+                <p className="text-emerald-400 font-bold text-lg tabular-nums">${Number(referrals?.totalEarned || 0).toFixed(2)}</p>
+              </div>
+            </div>
+
+            {referrals?.referred && referrals.referred.length > 0 ? (
+              <div className="overflow-x-auto -mx-1">
+                <table className="w-full text-[14px] min-w-[520px]">
+                  <thead>
+                    <tr className="text-left text-xs text-muted">
+                      <th className="px-1 py-2 font-medium">Referred user</th>
+                      <th className="px-1 py-2 font-medium">Joined</th>
+                      <th className="px-1 py-2 font-medium">Deposited</th>
+                      <th className="px-1 py-2 font-medium">Reward</th>
+                      <th className="px-1 py-2 font-medium">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {referrals.referred.map((r: any) => (
+                      <tr key={r.id} className="border-t border-border-subtle">
+                        <td className="px-1 py-2.5"><Link href={`/admin/users/${r.id}`} className="text-primary font-semibold hover:underline break-all">{r.username}</Link></td>
+                        <td className="px-1 py-2.5 text-secondary whitespace-nowrap">{new Date(r.joinedAt).toLocaleDateString()}</td>
+                        <td className="px-1 py-2.5 tabular-nums">${Number(r.totalDeposited).toFixed(2)}</td>
+                        <td className="px-1 py-2.5 tabular-nums font-semibold">{r.reward ? `$${Number(r.reward.amount).toFixed(2)}` : '—'}</td>
+                        <td className="px-1 py-2.5">
+                          {r.reward
+                            ? <StatusBadge status={r.reward.status} />
+                            : <span className="text-muted text-xs">{r.totalDeposited > 0 ? 'Not paid' : 'Awaiting first deposit'}</span>}
+                          {r.reward?.flagReason && <p className="text-[11px] text-amber-400 mt-0.5">{String(r.reward.flagReason).replace(/_/g, ' ')}</p>}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="text-secondary text-sm italic">This user hasn&apos;t referred anyone.</p>
+            )}
           </Card>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
