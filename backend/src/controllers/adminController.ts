@@ -261,11 +261,38 @@ export const getUserDetails = asyncHandler(async (req: AuthRequest, res: Respons
 
   const walletBalance = await WalletService.getWalletBalance(id);
 
+  // Referrals: who referred this user (and what that earned them), who this user referred, and what each paid
+  const [referrer, ownReward, referredUsers, rewardsGiven, totalEarned] = await Promise.all([
+    user.referredById ? prisma.user.findUnique({ where: { id: user.referredById }, select: { id: true, username: true } }) : Promise.resolve(null),
+    prisma.referralReward.findUnique({ where: { refereeId: id }, select: { amount: true, status: true, flagReason: true, triggerSource: true, createdAt: true } }),
+    prisma.user.findMany({ where: { referredById: id }, select: { id: true, username: true, createdAt: true }, orderBy: { createdAt: 'desc' }, take: 100 }),
+    prisma.referralReward.findMany({ where: { referrerId: id }, select: { refereeId: true, amount: true, status: true, flagReason: true, triggerSource: true, createdAt: true } }),
+    ReferralService.getTotalEarnings(id),
+  ])
+  const referredIds = referredUsers.map(u => u.id)
+  const referredDeposits = referredIds.length
+    ? await prisma.deposit.groupBy({ by: ['userId'], where: { userId: { in: referredIds }, status: 'approved' }, _sum: { amount: true } })
+    : []
+  const rewardByReferee = new Map(rewardsGiven.map(r => [r.refereeId, r]))
+  const depositedByUser = new Map(referredDeposits.map(d => [d.userId, d._sum.amount || 0]))
+  const referrals = {
+    referredBy: referrer ? { ...referrer, reward: ownReward } : null,
+    totalEarned,
+    referred: referredUsers.map(u => ({
+      id: u.id,
+      username: u.username,
+      joinedAt: u.createdAt,
+      totalDeposited: depositedByUser.get(u.id) || 0,
+      reward: rewardByReferee.get(u.id) || null,
+    })),
+  };
+
   res.json({
     success: true,
     data: {
       user: userWithBalances,
       walletBalance,
+      referrals,
       stats: {
         totalDeposited: totalDepositsData._sum.amount || 0,
         totalDepositsCount: totalDepositsData._count,
