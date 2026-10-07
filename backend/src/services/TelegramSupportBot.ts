@@ -6,6 +6,7 @@ import { supabase } from '../utils/supabase';
 import { logger } from '../utils/logger';
 import { createNotification } from './notificationService';
 import { invalidateWalletCache } from './WalletService';
+import { ReferralService } from './ReferralService';
 import { resolveTelegramLinkToken, isViewingChat } from '../lib/redis';
 
 const prisma = new PrismaClient();
@@ -583,6 +584,13 @@ export class TelegramSupportBot {
 
       // Fire cache invalidation immediately (non-blocking) — user sees balance update ASAP
       invalidateWalletCache(deposit.userId);
+
+      // A referred player's first approved deposit pays their referrer. Same idempotent gate every other approval
+      // path uses (admin panel, email auto-approval) — it was missing here, so these deposits never rewarded anyone.
+      if (action === 'approve') {
+        ReferralService.processFirstDepositBonus(deposit.userId, Number(deposit.amount), deposit.id)
+          .catch((e: any) => logger.warn('Referral reward error: ' + e?.message));
+      }
 
       // Run notification + Telegram message edit concurrently for fastest response
       const notificationPromise = createNotification(deposit.userId, {
