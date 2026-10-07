@@ -1,15 +1,34 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Footer from '@/components/layout/Footer'
 import { motion } from 'framer-motion'
 import { useForm } from 'react-hook-form'
 import toast from 'react-hot-toast'
 import { Send, MessageCircle, Mail, Clock, CheckCircle } from 'lucide-react'
+import { publicApi } from '@/lib/api'
+import { useAuthStore } from '@/store/authStore'
+import { getTelegramUrl } from '@/lib/telegram'
+
+// Links come from Admin → Settings → Social links. Only plain web links are used; anything else falls back.
+const safeUrl = (v: unknown, fallback: string) => (typeof v === 'string' && /^https?:\/\//i.test(v.trim()) ? v.trim() : fallback)
+
+/** Last path segment of a link, e.g. https://t.me/vaultsweeps → vaultsweeps (empty if there isn't a readable one) */
+const lastSegment = (url: string) => {
+  try { return decodeURIComponent(new URL(url).pathname.split('/').filter(Boolean).pop() || '') } catch { return '' }
+}
 
 export default function ContactPage() {
   const [sent, setSent] = useState(false)
   const [sending, setSending] = useState(false)
   const { register, handleSubmit, formState: { errors } } = useForm()
+  const [settings, setSettings] = useState<any>({})
+  const [mounted, setMounted] = useState(false)
+  const user = useAuthStore(state => state.user)
+
+  useEffect(() => {
+    setMounted(true)
+    publicApi.getSettings().then(res => setSettings(res.data.data || {})).catch(() => {})
+  }, [])
 
   const onSubmit = async (data: any) => {
     setSending(true)
@@ -19,9 +38,15 @@ export default function ContactPage() {
     toast.success("Message sent! We'll reply within 24 hours.")
   }
 
+  const telegramBase = safeUrl(settings.telegram_url || process.env.NEXT_PUBLIC_TELEGRAM_URL, 'https://t.me/vaultsweeps')
+  const facebookUrl = safeUrl(settings.facebook_url || process.env.NEXT_PUBLIC_FACEBOOK_URL, 'https://m.me/vaultsweeps')
+  const telegramName = lastSegment(telegramBase)
+  const facebookName = lastSegment(facebookUrl)
+
   const CHANNELS = [
-    { icon: Send, label: 'Telegram', handle: '@Vault Sweeps', href: 'https://t.me/vaultsweeps', color: '#229ED9', response: '< 5 min', desc: 'Fastest support channel' },
-    { icon: MessageCircle, label: 'Facebook Messenger', handle: 'Vault Sweeps', href: 'https://m.me/vaultsweeps', color: '#1877F2', response: '< 15 min', desc: 'Chat on Messenger' },
+    // The user-specific link token is added only after mount so the server and browser render the same HTML
+    { icon: Send, label: 'Telegram', handle: telegramName ? `@${telegramName}` : 'Telegram', href: mounted ? getTelegramUrl(telegramBase, user) : telegramBase, color: '#229ED9', response: '< 5 min', desc: 'Fastest support channel' },
+    { icon: MessageCircle, label: 'Facebook Messenger', handle: facebookName && !/^\d+$/.test(facebookName) ? facebookName : 'Vault Sweeps', href: facebookUrl, color: '#1877F2', response: '< 15 min', desc: 'Chat on Messenger' },
     { icon: Mail, label: 'Email', handle: 'supportvaultsweeps@gmail.com', href: 'mailto:supportvaultsweeps@gmail.com', color: '#7B2FFF', response: '< 24 hr', desc: 'For detailed inquiries' },
   ]
 
