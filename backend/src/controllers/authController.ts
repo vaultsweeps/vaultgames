@@ -500,7 +500,10 @@ export const checkUsername = asyncHandler(async (req: Request, res: Response) =>
   // Check game provider (async — best effort; if it fails we still allow registration)
   try {
     const providerService = await ProviderFactory.getActiveProvider()
-    if (providerService) {
+    // Only providers with a real lookup can say whether a name is taken. The others (FireKirin, Fast API, …) just echo
+    // the name back, which used to make EVERY username look "already registered in the game". For them a duplicate is
+    // caught at account creation instead, where the site retries with a suffixed name.
+    if (providerService?.supportsUsernameLookup) {
       await providerService.getPlayerIdByUsername(username)
       // If no error was thrown, the username exists in the game
       return res.json({ available: false, reason: 'Username already registered in the game. Please choose another.' })

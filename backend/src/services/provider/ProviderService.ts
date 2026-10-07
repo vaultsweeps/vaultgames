@@ -8,6 +8,7 @@ import { Provider } from '@prisma/client';
 type TimestampFormat = 'ms' | 's';
 
 export class ProviderService implements ProviderAdapter {
+  readonly supportsUsernameLookup = true;
   private provider: Provider;
 
   // Remembers which timestamp format (ms vs seconds) actually worked for a
