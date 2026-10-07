@@ -26,6 +26,7 @@ import { Provider } from '@prisma/client';
  * The numeric player ID returned by the provider is stored as userId in ProviderUser.
  */
 export class CashMachineProviderService implements ProviderAdapter {
+  readonly supportsUsernameLookup = true;
   protected provider: Provider;
 
   /** Cached JWT Bearer token */
