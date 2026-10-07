@@ -4,6 +4,7 @@ import prisma from '../lib/prisma'
 import { createNotification } from '../services/notificationService'
 import { WalletService, invalidateWalletCache } from '../services/WalletService'
 import { grantDepositBonus } from '../services/DepositBonusService'
+import { ReferralService } from '../services/ReferralService'
 import { ProviderFactory } from '../services/provider/ProviderFactory'
 import { ZappayService } from '../services/payment/ZappayService'
 import { GgusOnePayService } from '../services/payment/GgusOnePayService'
@@ -58,6 +59,8 @@ router.post('/payment', async (req: Request, res: Response) => {
           data: { status: 'approved', transactionId, approvedAt: new Date(), webhookData: data }
         })
         if (claim.count !== 1) break
+
+        ReferralService.processFirstDepositBonus(deposit.userId, Number(deposit.amount), deposit.id).catch(() => {})
 
         await createNotification(deposit.userId, {
           title: '✅ Deposit Confirmed!',
@@ -208,6 +211,8 @@ router.post('/crypto', async (req: Request, res: Response) => {
         return res.json({ success: true, message: 'Already processed' })
       }
       invalidateWalletCache(deposit.userId)
+
+      ReferralService.processFirstDepositBonus(deposit.userId, realAmount, deposit.id).catch(() => {})
 
       const bonusGranted = await grantDepositBonus({ depositId: deposit.id, userId: deposit.userId, amount: realAmount * 0.2, type: 'CRYPTO_DEPOSIT_BONUS' })
       const bonusAmount = bonusGranted ? Math.round(realAmount * 0.2 * 100) / 100 : 0
@@ -382,6 +387,8 @@ router.post('/zappay', async (req: Request, res: Response) => {
 
     await prisma.paymentWebhook.update({ where: { id: webhookLog.id }, data: { status: 'processed' } });
 
+    ReferralService.processFirstDepositBonus(deposit.userId, Number(deposit.amount), deposit.id).catch(() => {});
+
     await createNotification(deposit.userId, {
       title: '✅ Deposit Confirmed!',
       message: `Your deposit of $${deposit.amount} has been successfully credited to your game account.`,
@@ -473,6 +480,8 @@ router.post('/ggusonepay', async (req: Request, res: Response) => {
         }
 
         invalidateWalletCache(deposit.userId);
+
+        ReferralService.processFirstDepositBonus(deposit.userId, roundedAmount, deposit.id).catch(() => {});
 
         await createNotification(deposit.userId, {
           title: '✅ Deposit Confirmed!',
