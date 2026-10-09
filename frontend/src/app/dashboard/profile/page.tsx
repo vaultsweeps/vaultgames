@@ -117,7 +117,12 @@ export default function ProfilePage() {
             <p className="text-[19px] sm:text-xl font-bold text-primary leading-tight truncate">{user?.username}</p>
             <p className="text-[14px] text-secondary mt-0.5 truncate">{user?.email}</p>
             <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
-              <Badge tone={user?.isVerified ? 'green' : 'orange'} dot>{user?.isVerified ? 'Verified' : 'Not verified'}</Badge>
+              {/* Account-level status: both email and phone = Verified; only one = Partially verified; neither = Not verified */}
+              {fullyVerified
+                ? <Badge tone="green" dot>Verified</Badge>
+                : (emailVerified || phoneVerified)
+                  ? <Badge tone="orange" dot>Partially verified</Badge>
+                  : <Badge tone="red" dot>Not verified</Badge>}
               <Badge tone={user?.isActive ? 'cyan' : 'red'} dot>{user?.isActive ? 'Active' : 'Suspended'}</Badge>
               {isAdmin && <Badge tone="purple">Admin</Badge>}
             </div>
