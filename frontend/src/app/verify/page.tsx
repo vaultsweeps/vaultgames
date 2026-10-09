@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Phone, Mail, ArrowLeft } from 'lucide-react'
+import { X, Phone, Mail, ArrowLeft, ArrowRight, Check, Clock, ShieldCheck, AlertCircle, type LucideIcon } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { authApi } from '@/lib/api'
 import { useAuthStore } from '@/store/authStore'
@@ -11,6 +11,48 @@ import { auth } from '@/lib/firebase'
 
 type Step = 'select' | 'phone_input' | 'otp_input'
 
+/** One verification card: what it is, whether it's done, and (if not) the button to do it. */
+function StatusCard({ icon: Icon, verified, doneLabel, todoLabel, buttonLabel, onVerify, loading }: {
+  icon: LucideIcon; verified: boolean; doneLabel: string; todoLabel: string; buttonLabel: string; onVerify: () => void; loading?: boolean
+}) {
+  return (
+    <div
+      className={`flex flex-col items-center text-center gap-3 p-4 sm:p-6 rounded-[20px] border transition-colors ${
+        verified ? 'border-emerald-500/30 bg-emerald-500/[0.04]' : 'border-white/[0.08] bg-white/[0.02]'
+      }`}
+    >
+      <div className={`w-14 h-14 sm:w-16 sm:h-16 rounded-full border bg-black/40 flex items-center justify-center ${verified ? 'border-emerald-500/40' : 'border-white/[0.1]'}`}>
+        <Icon className="w-6 h-6 sm:w-7 sm:h-7 text-white/90" />
+      </div>
+
+      {verified ? (
+        <span className="w-7 h-7 rounded-full bg-emerald-500 flex items-center justify-center shadow-[0_0_14px_rgba(16,185,129,0.5)]" aria-hidden>
+          <Check className="w-4 h-4 text-white" strokeWidth={3} />
+        </span>
+      ) : (
+        <span className="w-7 h-7 rounded-full border-2 border-amber-400 flex items-center justify-center" aria-hidden>
+          <Clock className="w-4 h-4 text-amber-400" />
+        </span>
+      )}
+
+      <p className={`font-bold leading-snug text-[15px] sm:text-[17px] ${verified ? 'text-emerald-400' : 'text-amber-400'}`}>
+        {verified ? doneLabel : todoLabel}
+      </p>
+
+      {!verified && (
+        <button
+          type="button"
+          onClick={onVerify}
+          disabled={loading}
+          className="mt-auto w-full inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-400 hover:to-indigo-400 text-white font-bold text-sm sm:text-[15px] py-2.5 shadow-[0_0_18px_rgba(79,70,229,0.35)] transition-all disabled:opacity-60 disabled:pointer-events-none"
+        >
+          {loading ? <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <>{buttonLabel} <ArrowRight className="w-4 h-4" /></>}
+        </button>
+      )}
+    </div>
+  )
+}
+
 export default function VerifyPage() {
   const router = useRouter()
   const { user } = useAuthStore()
@@ -18,6 +60,7 @@ export default function VerifyPage() {
   const [step, setStep] = useState<Step>('select')
   const [phone, setPhone] = useState('')
   const [otpCode, setOtpCode] = useState('')
+  const [emailSent, setEmailSent] = useState(false)
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null)
 
   // Pre-fill with the number given at sign-up so they don't retype it (still editable)
@@ -25,6 +68,18 @@ export default function VerifyPage() {
   useEffect(() => {
     if (signupPhone) setPhone(prev => prev || signupPhone)
   }, [signupPhone])
+
+  // Keep the verified / not-verified status current: on open, and whenever the user comes back to this tab (e.g. after
+  // clicking the link in their email). A failed refresh is ignored — it must never sign anyone out.
+  const refreshStatus = () =>
+    authApi.getMe().then(res => { if (res.data?.data) useAuthStore.getState().setUser(res.data.data) }).catch(() => {})
+  useEffect(() => {
+    refreshStatus()
+    const onFocus = () => { if (document.visibilityState === 'visible') refreshStatus() }
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onFocus)
+    return () => { window.removeEventListener('focus', onFocus); document.removeEventListener('visibilitychange', onFocus) }
+  }, [])
 
   // Redirect if not logged in
   useEffect(() => {
@@ -53,6 +108,7 @@ export default function VerifyPage() {
     setIsSending(true)
     try {
       await authApi.resendVerification()
+      setEmailSent(true)
       toast.success('Verification email sent! Please check your inbox and Spam folder.')
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Failed to send verification email.')
@@ -114,6 +170,7 @@ export default function VerifyPage() {
       
       await authApi.verifyPhoneOTP(idToken)
       toast.success('Phone verified successfully!')
+      await refreshStatus()
       
       // Update local user state if needed, or redirect
       if (user?.isVerified) {
@@ -130,6 +187,11 @@ export default function VerifyPage() {
   }
 
   if (!user) return null
+
+  const emailVerified = !!user.isVerified
+  // isPhoneVerified comes from the server; a saved verified phone number is the fallback for older cached data
+  const phoneVerified = !!((user as any).isPhoneVerified ?? (user as any).profile?.phone)
+  const allVerified = emailVerified && phoneVerified
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/95 backdrop-blur-sm p-4">
@@ -183,40 +245,53 @@ export default function VerifyPage() {
                 exit={{ opacity: 0, x: 20 }}
                 className="space-y-6 h-full flex flex-col justify-center"
               >
-                <div className="grid grid-cols-2 gap-4 sm:gap-6">
-                  {/* Phone Card */}
-                  <button 
-                    onClick={() => setStep('phone_input')}
-                    className="group flex flex-col items-center justify-center gap-4 p-6 sm:p-8 rounded-[20px] border border-white/[0.05] bg-white/[0.02] hover:bg-white/[0.04] hover:border-purple-500/30 hover:shadow-[0_8px_30px_rgba(123,47,255,0.1)] transition-all duration-300 relative overflow-hidden"
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-b from-purple-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-                    <div className="w-14 h-14 rounded-full border border-white/[0.08] bg-black/40 flex items-center justify-center group-hover:scale-110 group-hover:border-purple-500/50 group-hover:shadow-[0_0_20px_rgba(123,47,255,0.3)] transition-all duration-300 relative z-10">
-                      <Phone className="w-6 h-6 text-purple-400" />
-                    </div>
-                    <span className="text-white/70 font-semibold group-hover:text-white transition-colors relative z-10">Confirm phone<br/>number</span>
-                  </button>
-
-                  {/* Email Card */}
-                  <button 
-                    onClick={handleVerifyEmail}
-                    disabled={isSending}
-                    className="group flex flex-col items-center justify-center gap-4 p-6 sm:p-8 rounded-[20px] border border-white/[0.05] bg-white/[0.02] hover:bg-white/[0.04] hover:border-blue-500/30 hover:shadow-[0_8px_30px_rgba(59,130,246,0.1)] transition-all duration-300 relative overflow-hidden disabled:opacity-50 disabled:pointer-events-none"
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-b from-blue-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-                    <div className="w-14 h-14 rounded-full border border-white/[0.08] bg-black/40 flex items-center justify-center group-hover:scale-110 group-hover:border-blue-500/50 group-hover:shadow-[0_0_20px_rgba(59,130,246,0.3)] transition-all duration-300 relative z-10">
-                      {isSending ? (
-                        <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      ) : (
-                        <Mail className="w-6 h-6 text-blue-400" />
-                      )}
-                    </div>
-                    <span className="text-white/70 font-semibold group-hover:text-white transition-colors relative z-10">Confirm email<br/>address</span>
-                  </button>
+                <div className="grid grid-cols-2 gap-3 sm:gap-5 items-stretch">
+                  <StatusCard
+                    icon={Phone}
+                    verified={phoneVerified}
+                    doneLabel="Phone number verified"
+                    todoLabel="Confirm phone number"
+                    buttonLabel="Verify now"
+                    onVerify={() => setStep('phone_input')}
+                  />
+                  <StatusCard
+                    icon={Mail}
+                    verified={emailVerified}
+                    doneLabel="Email address verified"
+                    todoLabel="Confirm email address"
+                    buttonLabel={emailSent ? 'Resend email' : 'Verify now'}
+                    onVerify={handleVerifyEmail}
+                    loading={isSending}
+                  />
                 </div>
 
-                <div className="text-sm font-medium text-amber-500/90 text-center bg-amber-500/10 py-3 px-4 rounded-xl border border-amber-500/20 shadow-inner">
-                  Note: Please check your Spam or Junk folder if you do not see the email.
-                </div>
+                {!emailVerified && (
+                  <div className="flex items-start gap-3 text-sm font-medium text-amber-300/95 bg-amber-500/10 py-3 px-4 rounded-xl border border-amber-500/25">
+                    <AlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-amber-400" />
+                    <span><b className="text-amber-200">Note:</b> Please check your Spam or Junk folder if you do not see the email.</span>
+                  </div>
+                )}
+
+                {allVerified ? (
+                  <div className="space-y-3 pt-1">
+                    <div className="flex items-center gap-3 text-sm text-emerald-300">
+                      <ShieldCheck className="w-6 h-6 shrink-0 text-emerald-400" />
+                      <span>You&apos;re all set — both are verified, so you&apos;re eligible for your 100% signup bonus.</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => router.push('/games')}
+                      className="w-full btn-primary py-3.5 text-base rounded-[16px] shadow-[0_0_20px_rgba(0,212,255,0.3)]"
+                    >
+                      Continue to games
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3 pt-3 border-t border-white/[0.06] text-sm text-secondary">
+                    <ShieldCheck className="w-6 h-6 shrink-0 text-blue-400" />
+                    <span>Verify both your phone number and email address to claim your 100% signup bonus.</span>
+                  </div>
+                )}
               </motion.div>
             )}
 

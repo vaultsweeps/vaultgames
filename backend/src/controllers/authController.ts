@@ -280,7 +280,7 @@ export const getMe = asyncHandler(async (req: AuthRequest, res: Response) => {
     where: { id: req.user!.id },
     select: {
       id: true, username: true, email: true, role: true,
-      isVerified: true, isActive: true, isBanned: true,
+      isVerified: true, isPhoneVerified: true, isActive: true, isBanned: true,
       lastLogin: true, createdAt: true, profile: true
     }
   })
@@ -450,7 +450,7 @@ export const dashboardInit = asyncHandler(async (req: AuthRequest, res: Response
   const [userRes, balanceRes, bonusBalanceRes, providerUserRes] = await Promise.allSettled([
     prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, username: true, email: true, role: true, isVerified: true, isActive: true, isBanned: true, lastLogin: true, createdAt: true, profile: true }
+      select: { id: true, username: true, email: true, role: true, isVerified: true, isPhoneVerified: true, isActive: true, isBanned: true, lastLogin: true, createdAt: true, profile: true }
     }),
     WalletService.getWalletBalance(userId),
     BonusService.getBonusBalance(userId),

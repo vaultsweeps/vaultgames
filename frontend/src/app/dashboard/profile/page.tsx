@@ -1,10 +1,12 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { useForm } from 'react-hook-form'
 import toast from 'react-hot-toast'
-import { User, Lock, Shield, Camera, Save, MailCheck, ShieldCheck, Bell, UserCheck } from 'lucide-react'
+import { User, Lock, Shield, Camera, Save, MailCheck, ShieldCheck, Bell, UserCheck, Mail, Phone, Check, AlertTriangle, ChevronRight } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
+import { authApi } from '@/lib/api'
 import { Card, PageHeader, SectionHeading, Button, Badge, TabBar, IconTile, Field } from '@/components/dashboard/ui'
 
 const ACCENT_GRADIENT = 'linear-gradient(135deg, #22D3EE 0%, #3B82F6 50%, #8B5CF6 100%)'
@@ -23,10 +25,41 @@ function InfoRow({ label, children }: { label: string; children: React.ReactNode
   )
 }
 
+// One row of the Account Verification card. A not-yet-verified row links to /verify so it can be completed.
+function VerifyRow({ icon: Icon, label, verified }: { icon: React.ComponentType<{ className?: string }>; label: string; verified: boolean }) {
+  const inner = (
+    <>
+      <div className="flex items-center gap-3 min-w-0">
+        <span className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${verified ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
+          <Icon className="w-5 h-5" />
+        </span>
+        <div className="min-w-0">
+          <p className="text-[15px] font-semibold text-primary leading-tight">{label}</p>
+          <p className={`text-[13px] font-medium mt-0.5 ${verified ? 'text-emerald-400' : 'text-red-400'}`}>{verified ? 'Verified' : 'Not verified'}</p>
+        </div>
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
+        <span className={`w-7 h-7 rounded-full flex items-center justify-center ${verified ? 'bg-emerald-500' : 'bg-red-500'}`} aria-hidden>
+          {verified ? <Check className="w-4 h-4 text-white" strokeWidth={3} /> : <span className="text-white text-[15px] font-black leading-none">!</span>}
+        </span>
+        {!verified && <ChevronRight className="w-4 h-4 text-muted" />}
+      </div>
+    </>
+  )
+  const cls = 'flex items-center justify-between gap-3 rounded-2xl bg-surface-elevated border border-border-subtle px-3.5 py-3'
+  return verified
+    ? <div className={cls}>{inner}</div>
+    : <Link href="/verify" className={`${cls} hover:border-border-strong transition-colors`}>{inner}</Link>
+}
+
 export default function ProfilePage() {
   const { user } = useAuthStore()
   const [tab, setTab] = useState<'profile' | 'password' | 'security'>('profile')
   const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    authApi.getMe().then(res => { if (res.data?.data) useAuthStore.getState().setUser(res.data.data) }).catch(() => {})
+  }, [])
 
   const profileForm = useForm({ defaultValues: { fullName: '', phone: '', country: '', telegramUsername: '' } })
   const passwordForm = useForm()
@@ -52,6 +85,12 @@ export default function ProfilePage() {
     e?.type === 'minLength' ? 'Must be at least 8 characters' : e ? 'This field is required' : undefined
 
   const isAdmin = (user as any)?.role === 'admin'
+
+  const emailVerified = !!user?.isVerified
+  // isPhoneVerified comes from the server; a saved verified phone number is the fallback for older cached data
+  const phoneVerified = !!((user as any)?.isPhoneVerified ?? (user as any)?.profile?.phone)
+  const fullyVerified = emailVerified && phoneVerified
+  const missing = [!emailVerified && 'email address', !phoneVerified && 'phone number'].filter(Boolean).join(' and ')
 
   return (
     <div className="max-w-3xl pb-10">
@@ -101,6 +140,40 @@ export default function ProfilePage() {
 
       {tab === 'profile' && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-5">
+          <Card>
+            <SectionHeading title="Account verification" />
+            <div className="space-y-2.5">
+              <VerifyRow icon={Mail} label="Email" verified={emailVerified} />
+              <VerifyRow icon={Phone} label="Phone number" verified={phoneVerified} />
+            </div>
+
+            {fullyVerified ? (
+              <div className="mt-4 flex items-start gap-3 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3.5">
+                <ShieldCheck className="w-6 h-6 shrink-0 text-emerald-400 mt-0.5" />
+                <div>
+                  <p className="text-[15px] font-bold text-emerald-300">Your account is fully verified!</p>
+                  <p className="text-[13px] text-secondary mt-0.5">You can now enjoy all features and withdraw your winnings.</p>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-4 flex flex-col sm:flex-row sm:items-center gap-3 rounded-2xl border border-amber-500/40 bg-amber-500/10 px-4 py-3.5">
+                <div className="flex items-start gap-3 flex-1 min-w-0">
+                  <AlertTriangle className="w-6 h-6 shrink-0 text-amber-400 mt-0.5" />
+                  <div>
+                    <p className="text-[15px] font-bold text-amber-300">Complete your verification</p>
+                    <p className="text-[13px] text-secondary mt-0.5">Please verify your {missing} to unlock all features and keep your account secure.</p>
+                  </div>
+                </div>
+                <Link
+                  href="/verify"
+                  className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-400 hover:to-indigo-400 text-white font-bold text-sm px-4 py-2.5 transition-all shrink-0"
+                >
+                  Verify now
+                </Link>
+              </div>
+            )}
+          </Card>
+
           <Card>
             <SectionHeading title="Personal information" />
             <form onSubmit={profileForm.handleSubmit(onSaveProfile)} className="space-y-4">
