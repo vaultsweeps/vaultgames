@@ -12,8 +12,9 @@ import { setSessionCookies, clearSessionCookies } from '../utils/authCookies'
 import { ProviderFactory } from '../services/provider/ProviderFactory'
 import { WalletService } from '../services/WalletService'
 import { BonusService } from '../services/BonusService'
-import { revokeTokensIssuedBefore, markEmailVerifyTokenIssued, isEmailVerifyTokenValid, clearEmailVerifyToken, createTelegramLinkToken } from '../lib/redis'
+import { revokeTokensIssuedBefore, markEmailVerifyTokenIssued, isEmailVerifyTokenValid, clearEmailVerifyToken, createTelegramLinkToken, setPendingCoupon } from '../lib/redis'
 import { auth } from '../lib/firebaseAdmin'
+import { redeemPendingCoupon } from '../services/CouponService'
 import { isDuplicateAccountError } from '../utils/providerErrors'
 import { createNotification } from '../services/notificationService'
 
@@ -46,16 +47,6 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
     if (!coupon.isActive) throw new AppError('Coupon code is inactive', 400)
     if (coupon.expiresAt && coupon.expiresAt < new Date()) throw new AppError('Coupon code has expired', 400)
     if (coupon.usageLimit !== null && coupon.usedCount >= coupon.usageLimit) throw new AppError('Coupon code usage limit reached', 400)
-  }
-  const claimCoupon = async (c: NonNullable<typeof coupon>, userId: string) => {
-    // The check above is only a fast path: the counter itself is claimed atomically so concurrent sign-ups cannot exceed the limit
-    const claimed = await prisma.coupon.updateMany({
-      where: c.usageLimit !== null ? { id: c.id, usedCount: { lt: c.usageLimit } } : { id: c.id },
-      data: { usedCount: { increment: 1 } }
-    })
-    if (claimed.count !== 1) return false
-    await prisma.couponUsage.create({ data: { couponId: c.id, userId } })
-    return true
   }
 
   const hashedPassword = await bcrypt.hash(password, 10)
@@ -97,31 +88,11 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
     select: { id: true, username: true, email: true, role: true, isVerified: true, createdAt: true }
   })
 
-  // Process coupon if present
-  if (coupon && (await claimCoupon(coupon, user.id))) {
-
-    // Find or create freeplay bonus definition
-    let freeplayBonus = await prisma.bonus.findFirst({ where: { type: 'freeplay' } })
-    if (!freeplayBonus) {
-      freeplayBonus = await prisma.bonus.create({
-        data: {
-          title: 'Freeplay Coupon Bonus',
-          description: 'Bonus granted from freeplay coupon',
-          type: 'freeplay',
-          requirements: 'None',
-          terms: 'Cannot be cashed out directly.'
-        }
-      })
-    }
-
-    await prisma.bonusClaim.create({
-      data: {
-        userId: user.id,
-        bonusId: freeplayBonus.id,
-        amount: coupon.amount
-      }
-    })
-  }
+  // A coupon needs a fully verified account (email + phone), which a brand-new account never is. So the code is only
+  // checked above and remembered here; it is redeemed automatically the moment email and phone are both verified
+  // (CouponService.redeemPendingCoupon). If it cannot be remembered the player simply redeems it by hand afterwards.
+  let couponPending = false
+  if (coupon) couponPending = await setPendingCoupon(user.id, coupon.code)
 
   // Records the signup IP so a later referral reward can compare it against the referrer's — see
   // ReferralService.assessAbuseSignals. TRUST_PROXY-aware via req.ip, same as every other IP-based check.
@@ -311,6 +282,7 @@ export const verifyEmail = asyncHandler(async (req: Request, res: Response) => {
 
   // If both email and phone are now verified, notify the user they unlocked the 100% welcome bonus
   if (updatedUser.isPhoneVerified) {
+    redeemPendingCoupon(user.id).catch(() => {})
     createNotification(user.id, {
       title: '🎁 Welcome Bonus Unlocked!',
       message: 'You have verified both your email and phone number! Make your first deposit to automatically receive a 100% welcome bonus on your game balance.',
@@ -606,6 +578,7 @@ export const verifyPhoneOTP = asyncHandler(async (req: AuthRequest, res: Respons
 
     // If both email and phone are now verified, notify the user they unlocked the 100% welcome bonus
     if (updatedUser.isVerified) {
+      redeemPendingCoupon(userId).catch(() => {})
       await createNotification(userId, {
         title: '🎁 Welcome Bonus Unlocked!',
         message: 'You have verified both your email and phone number! Make your first deposit to automatically receive a 100% welcome bonus on your game balance.',

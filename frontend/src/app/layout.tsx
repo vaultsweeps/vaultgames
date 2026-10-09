@@ -6,6 +6,7 @@ import '@/styles/globals.css'
 import { ThemeProvider } from '@/components/ThemeProvider'
 import NavigationLoader from '@/components/ui/NavigationLoader'
 import FrustrationDetector from '@/components/ui/FrustrationDetector'
+import VerifyCouponPopup from '@/components/modals/VerifyCouponPopup'
 import { Orbitron, Inter, JetBrains_Mono } from 'next/font/google'
 import VaultIntro from '@/components/ui/VaultIntro'
 import NoPinchZoom from '@/components/ui/NoPinchZoom'
@@ -75,6 +76,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <NavigationLoader />
           </Suspense>
           <FrustrationDetector />
+          <VerifyCouponPopup />
           <NoPinchZoom />
           <div className="scan-line" />
           <SiteNavbar />

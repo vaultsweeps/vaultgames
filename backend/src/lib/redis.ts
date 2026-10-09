@@ -218,6 +218,35 @@ export async function resolveTelegramLinkToken(token: string, telegramId?: strin
   }
 }
 
+// ─── Coupon entered at sign-up, waiting for the account to be verified ─────────────────────────────────────────
+// A coupon can only be redeemed by a fully verified account, so a code typed on the sign-up form is remembered here and
+// redeemed automatically (services/CouponService.redeemPendingCoupon) once email and phone are both verified.
+const PENDING_COUPON_TTL_SECONDS = 30 * 24 * 60 * 60
+
+export async function setPendingCoupon(userId: string, code: string): Promise<boolean> {
+  if (!redis) return false
+  try {
+    await redis.setex(`pending_coupon:${userId}`, PENDING_COUPON_TTL_SECONDS, code)
+    return true
+  } catch (error) {
+    logger.error('Redis Set Error for pending coupon:', error)
+    return false
+  }
+}
+
+/** Returns the remembered code and forgets it (read once) */
+export async function takePendingCoupon(userId: string): Promise<string | null> {
+  if (!redis) return null
+  try {
+    const code = (await redis.get(`pending_coupon:${userId}`)) as string | null
+    if (code) await redis.del(`pending_coupon:${userId}`)
+    return code || null
+  } catch (error) {
+    logger.error('Redis Get Error for pending coupon:', error)
+    return null
+  }
+}
+
 // ─── Live-chat "currently viewing" presence ────────────────────────────────
 // Backs the rule that an in-app notification for a staff reply should only fire when the user is NOT
 // actively looking at the chat right now (they'll see the reply appear live via polling either way — a

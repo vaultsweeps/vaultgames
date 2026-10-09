@@ -9,6 +9,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import toast from 'react-hot-toast'
 import PhoneNumberInput, { isValidPhoneNumber } from '@/components/ui/PhoneNumberInput'
+import { requestVerifyPrompt } from '@/lib/verifyPrompt'
 
 interface AuthModalProps {
   isOpen: boolean
@@ -74,13 +75,17 @@ export default function AuthModal({ isOpen, onClose, initialView = 'login' }: Au
       
       // Trigger the welcome bonus popup to show on the homepage
       // Must be set BEFORE login so the homepage useEffect sees it when auth state changes
-      if (typeof window !== 'undefined') {
+      // (A sign-up with a coupon gets the "verify your account" popup below instead — two popups would overlap.)
+      const hasCoupon = !!data.couponCode?.trim()
+      if (typeof window !== 'undefined' && !hasCoupon) {
         localStorage.setItem('vs_welcome_popup', '1')
       }
       
       await login(data.email, data.password)
       
       toast.success('Registration successful! Welcome to Vault Sweeps!')
+      // The coupon is only added once email AND phone are verified — the popup explains it and offers to verify now
+      if (hasCoupon) requestVerifyPrompt()
       onClose()
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Registration failed. Please try again.')
