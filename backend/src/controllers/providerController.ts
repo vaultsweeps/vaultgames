@@ -47,15 +47,20 @@ export const createProviderAccount = asyncHandler(async (req: AuthRequest, res: 
     return res.json({ success: true, message: 'Provider account already exists', data: { accountName: existing.accountName } })
   }
 
+  // Generate the initial password here so what we tell the provider matches what we store.
+  // Previously we passed no password, so the provider used its own default ('Test@123'),
+  // while our DB stored 'Default123!' — they never matched.
+  const initialPassword = 'Nx' + crypto.randomBytes(6).toString('hex') // e.g. "Nx1a2b3c4d5e6f"
+
   try {
     const t4 = performance.now();
-    const providerData = await providerService.createPlayer(user.username)
+    const providerData = await providerService.createPlayer(user.username, initialPassword)
     const t5 = performance.now();
     logger.info(`[createAccount] External Provider API creation took ${t5 - t4}ms`);
     
     const t6 = performance.now();
     await prisma.providerUser.create({
-      data: { userId, providerId, providerUserId: providerData.userId, accountName: providerData.accountName }
+      data: { userId, providerId, providerUserId: providerData.userId, accountName: providerData.accountName, password: initialPassword }
     })
     const t7 = performance.now();
     logger.info(`[createAccount] DB Insert took ${t7 - t6}ms`);
@@ -75,7 +80,7 @@ export const createProviderAccount = asyncHandler(async (req: AuthRequest, res: 
         currentUsername = `${user.username.substring(0, 10)}_${suffix}`; 
         
         try {
-          newProviderData = await providerService.createPlayer(currentUsername);
+          newProviderData = await providerService.createPlayer(currentUsername, initialPassword);
         } catch (retryErr: any) {
           if (!isDuplicateAccountError(retryErr)) {
             throw retryErr; 
@@ -85,7 +90,7 @@ export const createProviderAccount = asyncHandler(async (req: AuthRequest, res: 
       
       if (newProviderData) {
         await prisma.providerUser.create({
-          data: { userId, providerId, providerUserId: newProviderData.userId, accountName: newProviderData.accountName }
+          data: { userId, providerId, providerUserId: newProviderData.userId, accountName: newProviderData.accountName, password: initialPassword }
         });
         return res.json({ 
           success: true, 

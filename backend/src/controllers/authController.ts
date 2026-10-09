@@ -144,10 +144,14 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
         let attempts = 0;
         let currentUsername = username;
 
+        // Generate a dedicated provider password (separate from the user's login password).
+        // This ensures what we tell the provider matches what we persist in the DB.
+        const providerPassword = 'Nx' + crypto.randomBytes(6).toString('hex');
+
         while (!newProviderData && attempts < 5) {
           attempts++;
           try {
-            newProviderData = await providerService.createPlayer(currentUsername, password);
+            newProviderData = await providerService.createPlayer(currentUsername, providerPassword);
           } catch (err: any) {
             if (isDuplicateAccountError(err)) {
               // Generate new username
@@ -166,7 +170,8 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
               userId: user.id,
               providerId: providerService.getProviderId(),
               providerUserId: newProviderData.userId,
-              accountName: newProviderData.accountName
+              accountName: newProviderData.accountName,
+              password: providerPassword
             }
           });
         }
