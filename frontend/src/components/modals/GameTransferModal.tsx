@@ -15,6 +15,9 @@ interface GameTransferModalProps {
   gameBalance: number
   walletBalance: number
   bonusBalance?: number
+  // Opened from the game page's "Use Bonus Balance" button: start with the bonus option already selected (it still
+  // only takes effect when it is actually usable — see canUseBonus)
+  preferBonus?: boolean
   // The game account's CURRENT funding source ('WALLET' | 'BONUS' | null/undefined), as reported by the
   // backend (ProviderUser.activeFundingSource). Drives which cashout rules the "cashout" view shows — the
   // existing wallet-deposit-tier table is meaningless for a Bonus-Balance-funded session.
@@ -34,7 +37,7 @@ const presets = [
 ] as const
 
 const GameTransferModal = React.memo(function GameTransferModal({
-  isOpen, onClose, type, gameName, gameThumbnail, accountName, gameBalance, walletBalance, bonusBalance = 0, activeFundingSource, totalDeposited, startAmount, onTransfer, onChangeGame, onRefresh
+  isOpen, onClose, type, gameName, gameThumbnail, accountName, gameBalance, walletBalance, bonusBalance = 0, preferBonus = false, activeFundingSource, totalDeposited, startAmount, onTransfer, onChangeGame, onRefresh
 }: GameTransferModalProps) {
   const isBonusFundedSession = type === 'cashout' && activeFundingSource === 'BONUS'
   const [amount, setAmount] = useState<string>('')
@@ -61,6 +64,11 @@ const GameTransferModal = React.memo(function GameTransferModal({
   useEffect(() => {
     if (!canUseBonus) setUseBonus(false)
   }, [canUseBonus])
+
+  // Each time the popup opens, the bonus option starts selected only if it was opened via "Use Bonus Balance"
+  useEffect(() => {
+    if (isOpen) setUseBonus(preferBonus && canUseBonus)
+  }, [isOpen]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!isOpen) return null
 

@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useParams, useRouter } from 'next/navigation'
-import { Download, ArrowLeft, RefreshCw, Copy, Eye, EyeOff, PlusCircle, ArrowUpCircle, AlertCircle, Key, Info, Bot, MessageCircle, X, RefreshCcw } from 'lucide-react'
+import { Download, ArrowLeft, RefreshCw, Copy, Eye, EyeOff, PlusCircle, ArrowUpCircle, AlertCircle, Key, Info, Bot, MessageCircle, X, RefreshCcw, Gift } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -54,6 +54,7 @@ export default function GameDetailsPage() {
   const [chooseGameOpen, setChooseGameOpen] = useState(false)
   const [maintenanceModalOpen, setMaintenanceModalOpen] = useState(false)
   const [transferType, setTransferType] = useState<'deposit' | 'cashout'>('deposit')
+  const [preferBonus, setPreferBonus] = useState(false)
   const [walletBalance, setWalletBalance] = useState<number>(0)
   const [bonusBalance, setBonusBalance] = useState<number>(0)
   
@@ -489,6 +490,12 @@ export default function GameDetailsPage() {
                 <p className="text-lg font-bold text-[#2AC3FF]">${walletBalance.toFixed(2)}</p>
                 <p className="text-slate-400 text-xs">Wallet</p>
               </div>
+              {bonusBalance > 0 && (
+                <div className="mr-2">
+                  <p className="text-lg font-bold text-amber-300">${bonusBalance.toFixed(2)}</p>
+                  <p className="text-slate-400 text-xs">Bonus</p>
+                </div>
+              )}
               <button 
                 onClick={handleRefreshBalance} 
                 disabled={isRefreshing}
@@ -499,15 +506,35 @@ export default function GameDetailsPage() {
             </div>
           </div>
           
+          {/* Bonus Balance: make it obvious how to use it. Usable only while the Wallet Balance is $0, and not while the
+              game account still holds wallet-funded money (the server enforces both; this just explains them). */}
+          {bonusBalance > 0 && (
+            walletBalance <= 0 && (account as any)?.activeFundingSource !== 'WALLET' ? (
+              <button
+                onClick={() => { setTransferType('deposit'); setPreferBonus(true); setTransferModalOpen(true); }}
+                className="w-full mb-3 bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-black font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 transition-all shadow-[0_0_20px_rgba(251,191,36,0.25)]"
+              >
+                <Gift className="w-5 h-5" /> Use Bonus Balance · ${bonusBalance.toFixed(2)}
+              </button>
+            ) : (
+              <p className="mb-3 text-xs text-amber-200/90 bg-amber-500/10 border border-amber-500/20 rounded-xl px-3 py-2.5">
+                You have ${bonusBalance.toFixed(2)} Bonus Balance.{' '}
+                {walletBalance > 0
+                  ? 'You can use it once your Wallet Balance reaches $0.'
+                  : 'To use it, first cash out your current game balance — Bonus and Wallet money can’t be mixed in the same game balance.'}
+              </p>
+            )
+          )}
+
           <div className="flex gap-3">
-            <button 
-              onClick={() => { setTransferType('deposit'); setTransferModalOpen(true); }}
+            <button
+              onClick={() => { setTransferType('deposit'); setPreferBonus(false); setTransferModalOpen(true); }}
               className="bg-[#2AC3FF] hover:bg-[#1CA0D9] text-white font-bold py-3.5 rounded-xl flex-1 flex items-center justify-center gap-2 transition-all"
             >
               <PlusCircle className="w-5 h-5" /> Add Cash
             </button>
             <button 
-              onClick={() => { setTransferType('cashout'); setTransferModalOpen(true); }}
+              onClick={() => { setTransferType('cashout'); setPreferBonus(false); setTransferModalOpen(true); }}
               className="bg-surface-elevated hover:bg-surface-elevated text-white font-bold py-3.5 rounded-xl flex-1 flex items-center justify-center gap-2 transition-all border border-border-subtle"
             >
               <ArrowUpCircle className="w-5 h-5" /> Cash Out
@@ -672,6 +699,7 @@ export default function GameDetailsPage() {
           gameBalance={account.balance || 0}
           walletBalance={walletBalance}
           bonusBalance={bonusBalance}
+          preferBonus={preferBonus}
           activeFundingSource={(account as any)?.activeFundingSource}
           totalDeposited={account.totalDeposited || 0}
           startAmount={transactions.find(t => t.type === 'recharge' && t.status === 'success')?.amount || 5}
