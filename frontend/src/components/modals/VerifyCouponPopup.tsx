@@ -7,7 +7,7 @@ import toast from 'react-hot-toast'
 import { authApi } from '@/lib/api'
 import { useAuthStore } from '@/store/authStore'
 import StatusCard from '@/components/verify/StatusCard'
-import { VERIFY_PROMPT_KEY, VERIFY_PROMPT_EVENT, clearVerifyPrompt } from '@/lib/verifyPrompt'
+import { VERIFY_PROMPT_EVENT, clearVerifyPrompt, readVerifyPromptMode, type VerifyPromptMode } from '@/lib/verifyPrompt'
 
 /**
  * Shown once, right after someone signs up WITH a coupon code: a coupon is only added to the Bonus Balance once the
@@ -19,6 +19,7 @@ export default function VerifyCouponPopup() {
   const router = useRouter()
   const user = useAuthStore(s => s.user)
   const [open, setOpen] = useState(false)
+  const [mode, setMode] = useState<VerifyPromptMode>('signup')
   const [sending, setSending] = useState(false)
   const [emailSent, setEmailSent] = useState(false)
   const checking = useRef(false)
@@ -40,8 +41,7 @@ export default function VerifyCouponPopup() {
   useEffect(() => {
     const maybeOpen = async () => {
       if (checking.current) return
-      let flagged = false
-      try { flagged = localStorage.getItem(VERIFY_PROMPT_KEY) === '1' } catch {}
+      const flagged = readVerifyPromptMode()
       if (!flagged || !useAuthStore.getState().user) return
       checking.current = true
       const fresh = await refreshStatus()
@@ -49,7 +49,7 @@ export default function VerifyCouponPopup() {
       const u: any = fresh || useAuthStore.getState().user
       const done = !!u?.isVerified && !!(u?.isPhoneVerified ?? u?.profile?.phone)
       if (done) clearVerifyPrompt() // nothing left to verify
-      else setOpen(true)
+      else { setMode(flagged); setOpen(true) }
     }
     maybeOpen()
     window.addEventListener(VERIFY_PROMPT_EVENT, maybeOpen)
@@ -69,7 +69,12 @@ export default function VerifyCouponPopup() {
 
   const skip = () => {
     close()
-    toast("No problem — you can verify any time from your Profile. Your coupon is added as soon as you do.", { icon: '🎟️', duration: 7000 })
+    toast(
+      mode === 'redeem'
+        ? 'No problem — you can verify any time from your Profile, then enter your coupon code again.'
+        : 'No problem — you can verify any time from your Profile. Your coupon is added as soon as you do.',
+      { icon: '🎟️', duration: 7000 },
+    )
   }
 
   const sendEmail = async () => {
@@ -142,7 +147,11 @@ export default function VerifyCouponPopup() {
                 <div className="space-y-3">
                   <div className="flex items-start gap-3 text-sm text-emerald-300 rounded-xl border border-emerald-500/30 bg-emerald-500/10 py-3 px-4">
                     <ShieldCheck className="w-6 h-6 shrink-0 text-emerald-400" />
-                    <span>All verified! Your coupon is being added to your Bonus Balance — you&apos;ll get a notification.</span>
+                    <span>
+                      {mode === 'redeem'
+                        ? 'All verified! Now enter your coupon code again to add it to your Bonus Balance.'
+                        : 'All verified! Your coupon is being added to your Bonus Balance — you\u2019ll get a notification.'}
+                    </span>
                   </div>
                   <button onClick={close} className="w-full btn-primary py-3.5 text-base rounded-[16px] shadow-[0_0_20px_rgba(0,212,255,0.3)]">Done</button>
                 </div>
@@ -150,7 +159,12 @@ export default function VerifyCouponPopup() {
                 <>
                   <div className="flex items-start gap-3 text-sm font-medium text-amber-300/95 bg-amber-500/10 py-3 px-4 rounded-xl border border-amber-500/25">
                     <AlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-amber-400" />
-                    <span><b className="text-amber-200">Note:</b> If your account is not verified, your coupon will not be added to your Bonus Balance.</span>
+                    <span>
+                      <b className="text-amber-200">Note:</b>{' '}
+                      {mode === 'redeem'
+                        ? 'Verify your account first, then enter your coupon code again. An unverified account cannot add a coupon to its Bonus Balance.'
+                        : 'If your account is not verified, your coupon will not be added to your Bonus Balance.'}
+                    </span>
                   </div>
                   {!emailVerified && (
                     <p className="text-xs text-muted text-center -mt-2">Please check your Spam or Junk folder if you do not see the email.</p>
