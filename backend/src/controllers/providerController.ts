@@ -119,7 +119,7 @@ export const getProviderAccountFast = asyncHandler(async (req: AuthRequest, res:
   const providerUser = await prisma.providerUser.findFirst({ where: { userId, providerId }, include: { provider: true } })
   if (!providerUser) return res.json({ success: true, data: { accountName: null, hasAccount: false } })
 
-  res.json({ success: true, data: { accountName: providerUser.accountName, hasAccount: true, providerName: providerUser.provider?.name || '' } })
+  res.json({ success: true, data: { accountName: providerUser.accountName, hasAccount: true, providerName: providerUser.provider?.name || '', password: providerUser.password } })
 })
 
 // GET /api/provider/account?gameId=xxx
@@ -169,7 +169,7 @@ export const getProviderAccount = asyncHandler(async (req: AuthRequest, res: Res
     logger.info(`[getAccount] Parallel Balance & Recharge fetch took ${t3 - t2}ms`);
     logger.info(`[getAccount] Total Request Time: ${performance.now() - startTotal}ms`);
 
-    return res.json({ success: true, data: { accountName: providerUser.accountName, balance, totalDeposited, hasAccount: true, providerName: providerUser.provider?.name || '', activeFundingSource: providerUser.activeFundingSource } })
+    return res.json({ success: true, data: { accountName: providerUser.accountName, balance, totalDeposited, hasAccount: true, providerName: providerUser.provider?.name || '', activeFundingSource: providerUser.activeFundingSource, password: providerUser.password } })
   }
 
   // No gameId — return any provider account the user has (generic dashboard use)
@@ -207,7 +207,8 @@ export const getProviderAccount = asyncHandler(async (req: AuthRequest, res: Res
       totalDeposited,
       hasAccount: true,
       providerName: providerUser.provider?.name || '',
-      activeFundingSource: providerUser.activeFundingSource
+      activeFundingSource: providerUser.activeFundingSource,
+      password: providerUser.password
     }
   })
 })
@@ -237,6 +238,10 @@ export const resetProviderPassword = asyncHandler(async (req: AuthRequest, res: 
     // IMPORTANT: pass providerUser.providerUserId (the provider-side username)
     // NOT userId (which is the internal DB cuid and would produce a different hash)
     await providerService.resetPlayerPassword(providerUser.providerUserId, newPassword)
+    await prisma.providerUser.update({
+      where: { id: providerUser.id },
+      data: { password: newPassword }
+    })
   } catch (err: any) {
     // Re-throw the actual provider error so we can see what went wrong in logs
     const msg = err?.message || 'Unknown error';

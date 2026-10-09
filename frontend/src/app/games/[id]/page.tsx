@@ -56,7 +56,7 @@ export default function GameDetailsPage() {
   const [walletBalance, setWalletBalance] = useState<number>(0)
   const [bonusBalance, setBonusBalance] = useState<number>(0)
   
-  const [password, setPassword] = useState('Default123!')
+  const [password, setPassword] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState(false)
   
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date())
@@ -76,12 +76,12 @@ export default function GameDetailsPage() {
     return isAuthenticated
   })
 
+  // Sync password from account data (comes from DB via API — always authoritative)
   useEffect(() => {
-    if (account?.accountName && id) {
-      const savedPwd = localStorage.getItem(`game_pwd_${id}_${account.accountName}`)
-      if (savedPwd) setPassword(savedPwd)
+    if ((account as any)?.password) {
+      setPassword((account as any).password)
     }
-  }, [account?.accountName, id])
+  }, [(account as any)?.password])
 
   useEffect(() => {
     const fetchData = async () => {
@@ -293,9 +293,8 @@ export default function GameDetailsPage() {
       const res = await providerApi.resetPassword(id as string)
       const newPwd = res.data.data.newPassword
       setPassword(newPwd)
-      if (account?.accountName) {
-        localStorage.setItem(`game_pwd_${id}_${account.accountName}`, newPwd)
-      }
+      // Also update the account state so the password effect stays in sync
+      setAccount((prev: any) => prev ? { ...prev, password: newPwd } : prev)
       setShowPassword(true)
       toast.success('Password reset successfully!')
     } catch (err: any) {
@@ -522,12 +521,12 @@ export default function GameDetailsPage() {
 
             {/* Password */}
             <div className="bg-surface-elevated rounded-xl p-4 flex justify-between items-center border border-border-subtle">
-              <span className="text-slate-300 font-mono text-sm">{showPassword ? password : '••••••••'}</span>
+              <span className="text-slate-300 font-mono text-sm">{showPassword ? (password ?? '••••••••') : '••••••••'}</span>
               <div className="flex items-center gap-3">
                 <button onClick={() => setShowPassword(!showPassword)} className="transition-colors text-slate-500 hover:text-white">
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
-                <button onClick={() => copyToClipboard(password)} className="transition-colors text-slate-500 hover:text-white">
+                <button onClick={() => copyToClipboard(password ?? '')} className="transition-colors text-slate-500 hover:text-white">
                   <Copy className="w-4 h-4" />
                 </button>
               </div>
