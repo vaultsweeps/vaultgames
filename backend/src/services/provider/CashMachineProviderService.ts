@@ -17,7 +17,7 @@ import { Provider } from '@prisma/client';
  *   - GET  /api/player/getScore?id=...
  *   - POST /api/player/playerRecharge
  *   - POST /api/player/playerWithdraw
- *   - POST /api/player/resetPassword   → resets a player's password (id + password fields)
+ *   - POST /api/player/reset_password  → resets a player's password (id + password fields)
  *
  * Provider DB config:
  *   agentId    → agent username  (stored in DB, set via seed or admin)
@@ -635,7 +635,7 @@ export class CashMachineProviderService implements ProviderAdapter {
    */
   async resetPlayerPassword(userId: string, newPassword?: string): Promise<boolean> {
     const safePassword = newPassword || ('Nx' + Math.random().toString(36).slice(2, 10));
-    await this.postRequest('/api/player/resetPassword', {
+    await this.postRequest('/api/player/reset_password', {
       id: userId,
       password: safePassword,
     }, userId);
