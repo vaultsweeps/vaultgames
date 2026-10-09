@@ -28,6 +28,7 @@ interface Game {
 
 interface ProviderAccount {
   accountName: string | null
+  password?: string | null
   balance: number
   hasAccount: boolean
   totalDeposited?: number
@@ -319,15 +320,30 @@ export default function GameDetailsPage() {
         }
       }
       
+      const createdPassword = res.data?.data?.password
+      if (createdPassword) {
+        setPassword(createdPassword)
+      }
+      
       // Optimistic UI Update: Skip the slow getAccount API call
       // A brand new account will always have $0.00 balance and 0 totalDeposited.
       setAccount({
         accountName: res.data.data.accountName,
+        password: createdPassword,
         balance: 0,
         hasAccount: true,
         totalDeposited: 0
       })
       setLastUpdate(new Date())
+
+      if (!createdPassword) {
+        providerApi.getAccountFast(id as string).then(fastRes => {
+          if (fastRes.data?.data?.password) {
+            setPassword(fastRes.data.data.password)
+            setAccount((prev: any) => prev ? { ...prev, password: fastRes.data.data.password } : prev)
+          }
+        }).catch(() => {})
+      }
     } catch (err: any) {
       if (err?.response?.status === 503 || err?.response?.data?.message?.includes('No active game provider')) {
         setMaintenanceModalOpen(true)
@@ -340,6 +356,10 @@ export default function GameDetailsPage() {
   }
 
   const copyToClipboard = (text: string) => {
+    if (!text) {
+      toast.error('No text to copy')
+      return
+    }
     try {
       navigator.clipboard.writeText(text)
       toast.success('Copied to clipboard!')
@@ -521,12 +541,12 @@ export default function GameDetailsPage() {
 
             {/* Password */}
             <div className="bg-surface-elevated rounded-xl p-4 flex justify-between items-center border border-border-subtle">
-              <span className="text-slate-300 font-mono text-sm">{showPassword ? (password ?? '••••••••') : '••••••••'}</span>
+              <span className="text-slate-300 font-mono text-sm">{showPassword ? ((password || (account as any)?.password) ?? '••••••••') : '••••••••'}</span>
               <div className="flex items-center gap-3">
                 <button onClick={() => setShowPassword(!showPassword)} className="transition-colors text-slate-500 hover:text-white">
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
-                <button onClick={() => copyToClipboard(password ?? '')} className="transition-colors text-slate-500 hover:text-white">
+                <button onClick={() => copyToClipboard((password || (account as any)?.password) ?? '')} className="transition-colors text-slate-500 hover:text-white">
                   <Copy className="w-4 h-4" />
                 </button>
               </div>
