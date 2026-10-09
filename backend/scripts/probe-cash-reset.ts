@@ -18,7 +18,7 @@ import { ProviderFactory } from '../src/services/provider/ProviderFactory'
     if (!p) { console.log(`${name}: provider not found`); continue }
     try {
       const svc: any = await ProviderFactory.getProviderById(p.id)
-      const r = await svc.resetPlayerPassword('0', 'NxProbe1234abc', { interactive: true })
+      const r = await svc.resetPlayerPassword('0', svc.generateResetPassword?.() ?? 'NxProbe1234abc', { interactive: true })
       console.log(`${name}: returned ${r}`)
     } catch (e: any) {
       console.log(`${name}: threw -> ${String(e.message).slice(0, 220)} (status ${e.statusCode ?? '-'})`)

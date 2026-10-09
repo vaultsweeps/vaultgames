@@ -1,5 +1,6 @@
 import axios from 'axios';
 import https from 'https';
+import { randomInt } from 'crypto';
 import FormData from 'form-data';
 import { ProviderAdapter } from './ProviderAdapter';
 import { ProviderLogService, redactForLog } from './ProviderLogService';
@@ -632,20 +633,49 @@ export class CashMachineProviderService implements ProviderAdapter {
    * Returns false to signal to the caller that the DB password should be preserved
    * (not replaced with a new one the provider doesn't know about).
    */
+  /** Subclasses that share this API but must not get the real reset set this to false */
+  protected readonly supportsPlayerReset: boolean = true;
+
+  /**
+   * Cash Machine's own rule (its API answers: "must contain uppercase and lowercase letters and special symbols, and
+   * must be between 6 and 12 characters long"). Subclasses with a different rule override these two.
+   */
+  protected readonly passwordRule: RegExp = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[^A-Za-z0-9\s])\S{6,12}$/;
+  protected readonly passwordRuleHint: string = '6 to 12 characters with upper and lower case letters and a special symbol';
+
+  /**
+   * A random password that meets passwordRule: 10 characters — 3 upper-case, 4 lower-case, 2 digits and the special
+   * symbol "@" — shuffled. Look-alike characters (I/l/1/O/0) are left out so it is easy to read out.
+   */
+  generateResetPassword(): string {
+    const pick = (chars: string, n: number) => Array.from({ length: n }, () => chars[randomInt(chars.length)]);
+    const chars = [
+      ...pick('ABCDEFGHJKLMNPQRSTUVWXYZ', 3),
+      ...pick('abcdefghijkmnpqrstuvwxyz', 4),
+      ...pick('23456789', 2),
+      '@',
+    ];
+    for (let i = chars.length - 1; i > 0; i--) {
+      const j = randomInt(i + 1);
+      [chars[i], chars[j]] = [chars[j], chars[i]];
+    }
+    return chars.join('');
+  }
+
   async resetPlayerPassword(userId: string, newPassword?: string, opts?: { interactive?: boolean }): Promise<boolean> {
     const logPrefix = `[CashMachineProvider:${this.provider.name}]`;
 
     // Only the player pressing "Reset password" resets the game password. The background sync that runs after a
     // site password change has never touched these providers' game passwords, and still doesn't — it would change
     // the game login without updating the password stored for the credentials card.
-    if (!opts?.interactive || !newPassword) {
-      console.info(`${logPrefix} resetPlayerPassword skipped (not an interactive reset) — keeping existing game password`);
+    if (!this.supportsPlayerReset || !opts?.interactive || !newPassword) {
+      console.info(`${logPrefix} resetPlayerPassword skipped (not an interactive reset, or not enabled for this provider) — keeping existing game password`);
       return false;
     }
 
-    // The provider's own rule (same check its agent panel enforces): 6–16 characters, no spaces
-    if (!/^\S{6,16}$/.test(newPassword)) {
-      throw new AppError('Provider Error: the new password must be 6 to 16 characters with no spaces', 400);
+    // The provider's own password rule, checked here so a bad password never reaches the provider
+    if (!this.passwordRule.test(newPassword)) {
+      throw new AppError(`Provider Error: the new password must be ${this.passwordRuleHint}`, 400);
     }
 
     // providerUserId is the provider's numeric player id (stored at creation). Older rows may hold the account

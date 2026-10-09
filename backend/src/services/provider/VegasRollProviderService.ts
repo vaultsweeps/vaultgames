@@ -14,5 +14,8 @@ import { CashMachineProviderService } from './CashMachineProviderService';
  * All logic is inherited from CashMachineProviderService — no override needed.
  */
 export class VegasRollProviderService extends CashMachineProviderService {
+  // Real "Reset password" is enabled for Cash Machine and Cash Frenzy only — this provider keeps returning the existing password
+  protected readonly supportsPlayerReset: boolean = false;
+
   // Inherits all properties and methods from CashMachineProviderService
 }

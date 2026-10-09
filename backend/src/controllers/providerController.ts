@@ -237,7 +237,8 @@ export const resetProviderPassword = asyncHandler(async (req: AuthRequest, res: 
   if (!providerService) throw new AppError('Provider service unavailable', 503)
 
   // Generate a safe alphanumeric password (no underscores or special chars UltraPanda rejects)
-  const newPassword = 'Nx' + crypto.randomBytes(6).toString('hex') // e.g. "Nx1a2b3c4d5e6f"
+  // A provider with its own password rules (Cash Machine) supplies a compliant one instead.
+  const newPassword = providerService.generateResetPassword?.() ?? ('Nx' + crypto.randomBytes(6).toString('hex')) // e.g. "Nx1a2b3c4d5e6f"
 
   try {
     // IMPORTANT: pass providerUser.providerUserId (the provider-side username)
