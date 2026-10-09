@@ -242,7 +242,7 @@ export const resetProviderPassword = asyncHandler(async (req: AuthRequest, res: 
   try {
     // IMPORTANT: pass providerUser.providerUserId (the provider-side username)
     // NOT userId (which is the internal DB cuid and would produce a different hash)
-    const resetSupported = await providerService.resetPlayerPassword(providerUser.providerUserId, newPassword)
+    const resetSupported = await providerService.resetPlayerPassword(providerUser.providerUserId, newPassword, { interactive: true })
 
     if (!resetSupported) {
       // This provider has no reset-password API (e.g. CashMachine, CashFrenzy).

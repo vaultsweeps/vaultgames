@@ -632,11 +632,87 @@ export class CashMachineProviderService implements ProviderAdapter {
    * Returns false to signal to the caller that the DB password should be preserved
    * (not replaced with a new one the provider doesn't know about).
    */
-  async resetPlayerPassword(_userId: string, _newPassword?: string): Promise<boolean> {
-    console.info(
-      `[CashMachineProvider:${this.provider.name}] resetPlayerPassword not supported by this provider — returning existing password`,
-    );
-    return false; // false = provider does not support reset; caller must keep existing DB password
+  async resetPlayerPassword(userId: string, newPassword?: string, opts?: { interactive?: boolean }): Promise<boolean> {
+    const logPrefix = `[CashMachineProvider:${this.provider.name}]`;
+
+    // Only the player pressing "Reset password" resets the game password. The background sync that runs after a
+    // site password change has never touched these providers' game passwords, and still doesn't — it would change
+    // the game login without updating the password stored for the credentials card.
+    if (!opts?.interactive || !newPassword) {
+      console.info(`${logPrefix} resetPlayerPassword skipped (not an interactive reset) — keeping existing game password`);
+      return false;
+    }
+
+    // providerUserId is the provider's numeric player id (stored at creation). Older rows may hold the account
+    // name instead, so look the id up when it isn't numeric.
+    let playerId = String(userId ?? '').trim();
+    if (!/^\d+$/.test(playerId)) playerId = await this.getPlayerIdByUsername(playerId);
+
+    // Provider endpoint (same one the Cash Machine / Cash Frenzy agent panel uses): POST /admin/player/resetpw
+    const path = '/admin/player/resetpw';
+    const url = this.buildUrl(path);
+    const payload = { id: Number(playerId), password: newPassword, password_confirmation: newPassword };
+
+    for (let attempt = 0; attempt < 2; attempt++) {
+      await this.authenticate();
+      let res;
+      try {
+        res = await axios.post(url, payload, {
+          headers: {
+            Authorization: `Bearer ${this.token}`,
+            Accept: 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+          timeout: this.provider.requestTimeout || 20000,
+          httpsAgent: this.httpsAgent,
+          validateStatus: () => true, // judge the response ourselves — a 404/401 here is information, not a crash
+        });
+      } catch (e: any) {
+        const code: string = e.code || '';
+        const hint =
+          code === 'ECONNRESET' || e.message?.includes('socket hang up') ? `${this.provider.name} server reset the connection — your server IP may not be whitelisted`
+          : code === 'ETIMEDOUT' || code === 'ECONNABORTED' ? `Request to ${this.provider.name} timed out — provider server unreachable`
+          : code === 'ECONNREFUSED' ? `${this.provider.name} server refused the connection`
+          : e.message || 'Unknown network error';
+        throw new AppError(`Provider connection failed: ${hint}`, 502);
+      }
+
+      const body = res.data;
+      const message: string = typeof body === 'object' && body !== null ? String(body.message ?? '') : '';
+      // Never log the new password — only the target id
+      const logPayload = { id: payload.id };
+
+      // Token expired / session not accepted: log in again and retry once
+      if ((res.status === 401 || res.status === 419 || /login again|token|unauthori[sz]ed|unauthenticated/i.test(message)) && attempt === 0) {
+        console.warn(`${logPrefix} Reset password: session rejected (HTTP ${res.status}) — re-authenticating and retrying once`);
+        this.token = null;
+        this.tokenExpiresAt = 0;
+        continue;
+      }
+
+      // The provider doesn't offer this endpoint (or answered with a web page instead of JSON): keep the old
+      // behaviour — the existing game password stays valid — rather than failing the player's request.
+      if (res.status === 404 || res.status === 405 || typeof body === 'string') {
+        console.warn(`${logPrefix} Reset password endpoint unavailable (HTTP ${res.status}) — keeping existing game password`);
+        await ProviderLogService.logRequest(this.provider.id, userId, path, logPayload, typeof body === 'string' ? body.slice(0, 300) : body, res.status, 'reset endpoint unavailable');
+        return false;
+      }
+
+      const statusCode = typeof body?.status_code === 'number' ? body.status_code : res.status;
+      const ok = res.status >= 200 && res.status < 300 && statusCode === 200 && !/fail|error|invalid|not found|incorrect/i.test(message);
+      await ProviderLogService.logRequest(this.provider.id, userId, path, logPayload, body, ok ? 200 : statusCode, ok ? null : message || `HTTP ${res.status}`);
+
+      if (ok) {
+        console.info(`${logPrefix} Game password reset for player ${payload.id}`);
+        return true; // caller stores the new password
+      }
+      if (/in the game|lobby/i.test(message)) {
+        throw new AppError('Player is currently in a game. Please return to the lobby first.', 400);
+      }
+      throw new AppError(`Provider Error: ${message || 'Password reset was not accepted'}`, 400);
+    }
+
+    throw new AppError('Provider Error: could not authenticate to reset the password', 502);
   }
 
   /**

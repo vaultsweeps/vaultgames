@@ -10,7 +10,12 @@ export interface ProviderAdapter {
    * echo the name back, so "no error" proves nothing there — sign-up must not read that as "already taken".
    */
   readonly supportsUsernameLookup?: boolean;
-  resetPlayerPassword(userId: string, newPassword?: string): Promise<boolean>;
+  /**
+   * `interactive: true` means the player pressed "Reset password" and the new password is shown to them. Adapters that can
+   * only reset in that case (CashMachine / CashFrenzy) ignore calls without it, e.g. the background sync after a site
+   * password change, so those flows behave exactly as before.
+   */
+  resetPlayerPassword(userId: string, newPassword?: string, opts?: { interactive?: boolean }): Promise<boolean>;
   forcePlayerOffline(userId: string): Promise<boolean>;
   getProviderId(): string;
 }
