@@ -105,6 +105,7 @@ function RegisterForm() {
       await registerUser({ phone: data.phone, username: data.username, email: data.email, password: data.password, referralCode, couponCode: data.couponCode })
       setRegistered(true)
       toast.success('Account created! Please verify your email.')
+      if (data.couponCode?.trim()) toast('Your coupon will be applied automatically once your email and phone number are verified.', { icon: '🎟️', duration: 8000 })
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Registration failed. Please try again.')
     }

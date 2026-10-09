@@ -520,6 +520,19 @@ export async function extraChecks(check: Check) {
     check('FIN-7: the pending ProviderTransaction row is created BEFORE the provider is called (durable intent)', providerCtlSrc.indexOf("status: 'pending', balanceBefore") < providerCtlSrc.indexOf('4. Call the provider EXACTLY ONCE'))
   }
 
+  // ── Coupons need a fully verified account (email AND phone) so people cannot keep creating accounts to reuse a code.
+  // Phone verification is unique per person, which is what makes this effective. A code typed at sign-up is remembered
+  // and redeemed automatically once both are verified. ──
+  {
+    const couponSvc = src('services/CouponService.ts')
+    const authSrc = src('controllers/authController.ts')
+    const couponCtl = src('controllers/couponController.ts')
+    check('Coupons: redemption is refused unless BOTH email and phone are verified', couponSvc.includes('!account.isVerified || !account.isPhoneVerified') && couponSvc.indexOf('!account.isVerified || !account.isPhoneVerified') < couponSvc.indexOf('prisma.coupon.findUnique'))
+    check('Coupons: the redeem endpoint goes through the shared service (one set of rules)', couponCtl.includes('redeemCoupon(') && !couponCtl.includes('prisma.'))
+    check('Coupons: sign-up no longer redeems a coupon immediately (it is remembered until the account is verified)', !authSrc.includes('claimCoupon(') && !authSrc.includes('couponUsage.create') && authSrc.includes('setPendingCoupon('))
+    check('Coupons: the remembered code is redeemed when email verification AND phone verification complete', (authSrc.match(/redeemPendingCoupon\(/g) || []).length === 2)
+  }
+
   // ── Coupon claim race (found live in production 2026-09-28, "2/1" used on a usageLimit:1 coupon):
   // usedCount vs usageLimit was read, then separately re-read inside a $transaction, then written — Prisma's
   // default (Read Committed) isolation does not lock a row on a plain read inside a transaction, so two
@@ -531,8 +544,8 @@ export async function extraChecks(check: Check) {
     const { claimCoupon } = await import('../src/controllers/couponController')
     const code = `QARACE${Date.now()}`.slice(0, 20)
     const coupon = await prisma.coupon.create({ data: { code, amount: 1, usageLimit: 1, isActive: true } })
-    const u1 = await prisma.user.create({ data: { username: `qa_cp1_${Date.now()}`, email: `qa-cp1-${Date.now()}@example.invalid`, password: 'x', isVerified: true, isActive: true } })
-    const u2 = await prisma.user.create({ data: { username: `qa_cp2_${Date.now()}`, email: `qa-cp2-${Date.now()}@example.invalid`, password: 'x', isVerified: true, isActive: true } })
+    const u1 = await prisma.user.create({ data: { username: `qa_cp1_${Date.now()}`, email: `qa-cp1-${Date.now()}@example.invalid`, password: 'x', isVerified: true, isPhoneVerified: true, isActive: true } })
+    const u2 = await prisma.user.create({ data: { username: `qa_cp2_${Date.now()}`, email: `qa-cp2-${Date.now()}@example.invalid`, password: 'x', isVerified: true, isPhoneVerified: true, isActive: true } })
     try {
       const call = (userId: string) => new Promise<{ status: number; body: any }>(resolve => {
         const req: any = { body: { code }, user: { id: userId } }
@@ -605,7 +618,7 @@ export async function extraChecks(check: Check) {
     const { claimCoupon } = await import('../src/controllers/couponController')
     const code = `QABONUS${Date.now()}`.slice(0, 20)
     const coupon = await prisma.coupon.create({ data: { code, amount: 5, usageLimit: 1, isActive: true } })
-    const u = await prisma.user.create({ data: { username: `qa_cpb_${Date.now()}`, email: `qa-cpb-${Date.now()}@example.invalid`, password: 'x', isVerified: true, isActive: true } })
+    const u = await prisma.user.create({ data: { username: `qa_cpb_${Date.now()}`, email: `qa-cpb-${Date.now()}@example.invalid`, password: 'x', isVerified: true, isPhoneVerified: true, isActive: true } })
     try {
       const call = () => new Promise<{ status: number; body: any }>(resolve => {
         const req: any = { body: { code }, user: { id: u.id } }
