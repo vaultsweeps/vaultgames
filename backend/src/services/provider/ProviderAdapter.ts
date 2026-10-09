@@ -16,6 +16,8 @@ export interface ProviderAdapter {
    * password change, so those flows behave exactly as before.
    */
   resetPlayerPassword(userId: string, newPassword?: string, opts?: { interactive?: boolean }): Promise<boolean>;
+  /** A new password that satisfies this provider's own password rules, for the Reset password button (optional) */
+  generateResetPassword?(): string;
   forcePlayerOffline(userId: string): Promise<boolean>;
   getProviderId(): string;
 }
