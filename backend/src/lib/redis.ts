@@ -174,7 +174,9 @@ export async function clearEmailVerifyToken(token: string): Promise<void> {
 // closes that off without needing a schema change.
 import crypto from 'crypto'
 
-const TELEGRAM_LINK_TTL_SECONDS = 30 * 60
+// 24 hours: the code is created when the player's page loads and kept in their browser, so a short lifetime meant that
+// tapping the Telegram button a little later (a tab left open, a returning visit) failed with "Invalid link code".
+const TELEGRAM_LINK_TTL_SECONDS = 24 * 60 * 60
 
 export async function createTelegramLinkToken(userId: string): Promise<string | null> {
   if (!redis) return null
@@ -188,12 +190,28 @@ export async function createTelegramLinkToken(userId: string): Promise<string | 
   }
 }
 
-export async function resolveTelegramLinkToken(token: string): Promise<string | null> {
+/**
+ * Resolves a link code to its user. The code is still single-use in the sense that matters for security — once used it
+ * only ever works for the Telegram account that used it first — but that same account may press START again with the
+ * same link (Telegram lets people re-send it) and gets the same answer instead of a confusing "invalid code".
+ */
+export async function resolveTelegramLinkToken(token: string, telegramId?: string): Promise<string | null> {
   if (!redis) return null
   try {
-    const userId = await redis.get(`telegram_link:${token}`)
-    if (userId) await redis.del(`telegram_link:${token}`) // single-use
-    return (userId as string) || null
+    const usedKey = `telegram_link_used:${token}`
+    const used = (await redis.get(usedKey)) as string | null
+    if (used) {
+      // Already used: only the Telegram account that used it can repeat it
+      const sep = used.lastIndexOf(':')
+      const usedBy = sep >= 0 ? used.slice(sep + 1) : ''
+      return telegramId && usedBy === telegramId ? used.slice(0, sep) : null
+    }
+
+    const userId = (await redis.get(`telegram_link:${token}`)) as string | null
+    if (!userId) return null
+    await redis.del(`telegram_link:${token}`) // consumed
+    if (telegramId) await redis.setex(usedKey, TELEGRAM_LINK_TTL_SECONDS, `${userId}:${telegramId}`)
+    return userId
   } catch (error) {
     logger.error('Redis Get Error for telegram link token:', error)
     return null

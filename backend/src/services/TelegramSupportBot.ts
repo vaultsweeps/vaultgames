@@ -145,7 +145,7 @@ export class TelegramSupportBot {
           // user ID) — see lib/redis.ts createTelegramLinkToken/resolveTelegramLinkToken.
           // This prevents anyone who merely learns a victim's user ID from
           // DMing the bot and hijacking their Telegram account link.
-          const userId = await resolveTelegramLinkToken(payload);
+          const userId = await resolveTelegramLinkToken(payload, ctx.from.id.toString());
           const user = userId ? await prisma.user.findUnique({ where: { id: userId } }) : null;
           if (user) {
             const telegramUsername = ctx.from.username ? `@${ctx.from.username}` : null;
@@ -167,7 +167,9 @@ export class TelegramSupportBot {
             logger.info(`[TelegramBot] Linked Telegram ${telegramId}${telegramUsername ? ` (${telegramUsername})` : ''} to user ${user.id}`);
             await ctx.reply('✅ Your Telegram account has been successfully linked to your website profile! How can we help you today?');
           } else {
-            await ctx.reply('❌ Invalid link code. Please contact support for assistance.');
+            // Not an error from the player's point of view — their messages still reach support. Say so plainly instead of
+            // showing a red cross.
+            await ctx.reply('👋 Welcome to Vault Sweeps support! We couldn\'t connect this chat to your account automatically (the link has expired). No problem — just send us your message and your username, and our team will take care of you.');
           }
         } catch (err) {
           logger.error('Error linking telegram account', err);
