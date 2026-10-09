@@ -13,7 +13,7 @@ import prisma from '../src/lib/prisma'
 import { ProviderFactory } from '../src/services/provider/ProviderFactory'
 
 ;(async () => {
-  for (const name of ['Cash Frenzy', 'Cashmachine']) {
+  for (const name of ['Cash Frenzy', 'Cashmachine', 'GameRoom']) {
     const p = await prisma.provider.findFirst({ where: { name }, select: { id: true } })
     if (!p) { console.log(`${name}: provider not found`); continue }
     try {

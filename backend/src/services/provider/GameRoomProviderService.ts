@@ -13,12 +13,10 @@ import { Provider } from '@prisma/client';
  *   secretKey  → stored in Provider.secretKey (DB)
  *   apiBaseUrl → "https://agentserver1.gameroom777.com"
  *
- * All logic is inherited from CashMachineProviderService — no override needed.
+ * All logic is inherited from CashMachineProviderService — no override needed. That includes the real
+ * "Reset password" (POST /api/player/reset) and Cash Machine's password rule, which GameRoom shares.
  */
 export class GameRoomProviderService extends CashMachineProviderService {
-  // Real "Reset password" is enabled for Cash Machine and Cash Frenzy only — this provider keeps returning the existing password
-  protected readonly supportsPlayerReset: boolean = false;
-
   constructor(provider: Provider) {
     super(provider);
   }
