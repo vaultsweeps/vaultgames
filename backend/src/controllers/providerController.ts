@@ -246,10 +246,11 @@ export const resetProviderPassword = asyncHandler(async (req: AuthRequest, res: 
     const resetSupported = await providerService.resetPlayerPassword(providerUser.providerUserId, newPassword, { interactive: true })
 
     if (!resetSupported) {
-      // This provider has no reset-password API (e.g. CashMachine, CashFrenzy).
-      // The DB password is the correct one set at account creation — just return it.
+      // This provider has no reset-password API we can use.
+      // The DB password is the correct one set at account creation — just return it, and say it wasn't reset so the
+      // page doesn't claim a reset happened.
       logger.info(`[reset-password] Provider does not support reset for user=${userId} game=${gameId}. Returning existing DB password.`);
-      return res.json({ success: true, data: { newPassword: providerUser.password } })
+      return res.json({ success: true, data: { newPassword: providerUser.password, reset: false } })
     }
 
     // Provider confirmed the reset — persist the new password
