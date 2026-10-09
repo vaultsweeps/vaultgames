@@ -44,7 +44,7 @@ export const createProviderAccount = asyncHandler(async (req: AuthRequest, res: 
   logger.info(`[createAccount] Existing account lookup took ${t3 - t2}ms`);
   
   if (existing) {
-    return res.json({ success: true, message: 'Provider account already exists', data: { accountName: existing.accountName } })
+    return res.json({ success: true, message: 'Provider account already exists', data: { accountName: existing.accountName, password: existing.password } })
   }
 
   // Generate the initial password here so what we tell the provider matches what we store.
@@ -65,7 +65,7 @@ export const createProviderAccount = asyncHandler(async (req: AuthRequest, res: 
     const t7 = performance.now();
     logger.info(`[createAccount] DB Insert took ${t7 - t6}ms`);
     
-    res.json({ success: true, message: 'Game account created successfully!', data: { accountName: providerData.accountName } })
+    res.json({ success: true, message: 'Game account created successfully!', data: { accountName: providerData.accountName, password: initialPassword } })
     logger.info(`[createAccount] Total Request Time: ${performance.now() - startTotal}ms`);
   } catch (err: any) {
     if (isDuplicateAccountError(err)) {
@@ -95,7 +95,7 @@ export const createProviderAccount = asyncHandler(async (req: AuthRequest, res: 
         return res.json({ 
           success: true, 
           message: `Game account created with username: ${newProviderData.accountName} (your original username was taken in the game)`, 
-          data: { accountName: newProviderData.accountName } 
+          data: { accountName: newProviderData.accountName, password: initialPassword } 
         });
       } else {
         throw new AppError('Could not generate a unique game username. Please contact support.', 500);
