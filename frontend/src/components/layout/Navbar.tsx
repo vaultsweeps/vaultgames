@@ -431,6 +431,7 @@ export default function Navbar() {
                   { href: '/dashboard/invite', label: 'Invite', icon: Users },
                   { href: '/games', label: 'Games', icon: Gamepad2 },
                   { href: '/bonuses', label: 'Bonuses', icon: Gift },
+                  { href: '/cashout-rules', label: 'Cashout Rules', icon: FileText },
                   { href: '/bonus-cashout-rules', label: 'Bonus Cashout Rules', icon: Wallet },
                 ].map((link, i) => (
                   <Link
