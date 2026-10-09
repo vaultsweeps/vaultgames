@@ -242,7 +242,16 @@ export const resetProviderPassword = asyncHandler(async (req: AuthRequest, res: 
   try {
     // IMPORTANT: pass providerUser.providerUserId (the provider-side username)
     // NOT userId (which is the internal DB cuid and would produce a different hash)
-    await providerService.resetPlayerPassword(providerUser.providerUserId, newPassword)
+    const resetSupported = await providerService.resetPlayerPassword(providerUser.providerUserId, newPassword)
+
+    if (!resetSupported) {
+      // This provider has no reset-password API (e.g. CashMachine, CashFrenzy).
+      // The DB password is the correct one set at account creation — just return it.
+      logger.info(`[reset-password] Provider does not support reset for user=${userId} game=${gameId}. Returning existing DB password.`);
+      return res.json({ success: true, data: { newPassword: providerUser.password } })
+    }
+
+    // Provider confirmed the reset — persist the new password
     await prisma.providerUser.update({
       where: { id: providerUser.id },
       data: { password: newPassword }
