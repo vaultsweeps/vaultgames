@@ -8,6 +8,7 @@ import toast from 'react-hot-toast'
 import { useAuthStore } from '@/store/authStore'
 import { getTelegramUrl } from '@/lib/telegram'
 import { getSmsUrl } from '@/lib/sms'
+import { requestVerifyPrompt } from '@/lib/verifyPrompt'
 
 export default function Footer() {
   const [year, setYear] = useState<number | null>(null)
@@ -34,7 +35,10 @@ export default function Footer() {
       // Update balance globally if possible, or force reload
       useAuthStore.getState().fetchMe()
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to claim coupon')
+      const message: string = err.response?.data?.message || 'Failed to claim coupon'
+      // An account that isn't fully verified can't use a coupon: show the verify popup (email + phone) instead of a red message
+      if (err.response?.status === 403 && /verify/i.test(message)) requestVerifyPrompt('redeem')
+      else toast.error(message)
     } finally {
       setClaiming(false)
     }
