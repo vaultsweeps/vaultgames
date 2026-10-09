@@ -628,14 +628,15 @@ export class CashMachineProviderService implements ProviderAdapter {
   }
 
   /**
-   * Password reset is not supported by the CashMachine/GameRoom API.
-   * Return true silently so the rest of the flow continues.
+   * Password reset is NOT supported by the CashMachine/GameRoom/CashFrenzy API.
+   * Returns false to signal to the caller that the DB password should be preserved
+   * (not replaced with a new one the provider doesn't know about).
    */
   async resetPlayerPassword(_userId: string, _newPassword?: string): Promise<boolean> {
     console.info(
-      `[CashMachineProvider:${this.provider.name}] resetPlayerPassword not supported — skipping`,
+      `[CashMachineProvider:${this.provider.name}] resetPlayerPassword not supported by this provider — returning existing password`,
     );
-    return true;
+    return false; // false = provider does not support reset; caller must keep existing DB password
   }
 
   /**
