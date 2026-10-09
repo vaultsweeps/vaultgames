@@ -17,7 +17,6 @@ import { Provider } from '@prisma/client';
  *   - GET  /api/player/getScore?id=...
  *   - POST /api/player/playerRecharge
  *   - POST /api/player/playerWithdraw
- *   - POST /api/player/reset_password  → resets a player's password (id + password fields)
  *
  * Provider DB config:
  *   agentId    → agent username  (stored in DB, set via seed or admin)
@@ -629,17 +628,15 @@ export class CashMachineProviderService implements ProviderAdapter {
   }
 
   /**
-   * Reset a player's password via the provider's /api/player/resetPassword endpoint.
-   * userId here is the provider's numeric player ID (stored in ProviderUser.providerUserId).
-   * Returns true on success so the controller persists the new password in the DB.
+   * Password reset is NOT supported by the CashMachine/GameRoom/CashFrenzy API.
+   * Returns false to signal to the caller that the DB password should be preserved
+   * (not replaced with a new one the provider doesn't know about).
    */
-  async resetPlayerPassword(userId: string, newPassword?: string): Promise<boolean> {
-    const safePassword = newPassword || ('Nx' + Math.random().toString(36).slice(2, 10));
-    await this.postRequest('/api/player/reset_password', {
-      id: userId,
-      password: safePassword,
-    }, userId);
-    return true;
+  async resetPlayerPassword(_userId: string, _newPassword?: string): Promise<boolean> {
+    console.info(
+      `[CashMachineProvider:${this.provider.name}] resetPlayerPassword not supported by this provider — returning existing password`,
+    );
+    return false; // false = provider does not support reset; caller must keep existing DB password
   }
 
   /**
