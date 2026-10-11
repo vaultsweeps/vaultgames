@@ -50,6 +50,7 @@ export const createProvider = asyncHandler(async (req: Request, res: Response) =
   const provider = await prisma.provider.create({
     data: { name, apiBaseUrl, agentId, secretKey, logo, requestTimeout: Number(requestTimeout), retryCount: Number(retryCount), endpoints: endpoints || {} }
   })
+  ProviderFactory.invalidateCache()
   res.status(201).json({ success: true, data: maskProvider(provider) })
 })
 
@@ -81,6 +82,7 @@ export const updateProvider = asyncHandler(async (req: Request, res: Response) =
   })
   // Saving a provider is also "try again now": drop any login pause for its (possibly new) agent login
   CashMachineProviderService.clearLoginBlock(provider as any).catch(() => {})
+  ProviderFactory.invalidateCache()
   res.json({ success: true, data: maskProvider(provider) })
 })
 
@@ -107,6 +109,7 @@ export const deleteProvider = asyncHandler(async (req: Request, res: Response) =
   }
 
   await prisma.provider.delete({ where: { id } })
+  ProviderFactory.invalidateCache()
   res.json({ success: true, message: 'Provider deleted' })
 })
 

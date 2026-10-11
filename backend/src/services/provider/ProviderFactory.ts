@@ -81,6 +81,17 @@ export class ProviderFactory {
   private static gameProviderCache = new BoundedCache<ProviderAdapter | null>(GAME_CACHE_MAX_SIZE, CACHE_TTL, GAME_CACHE_MISS_TTL);
   private static gameProviderIdCache = new BoundedCache<string | null>(GAME_CACHE_MAX_SIZE, CACHE_TTL, GAME_CACHE_MISS_TTL);
 
+  /**
+   * Forget every cached provider connection. Called when an admin saves / adds / removes a provider, so a changed login,
+   * address or status applies on the very next request instead of up to 5 minutes later.
+   */
+  static invalidateCache(): void {
+    this.providerCache.clear();
+    this.activeProviderCache = null;
+    this.gameProviderCache.clear();
+    this.gameProviderIdCache.clear();
+  }
+
   static async getActiveProvider(): Promise<ProviderAdapter | null> {
     if (this.activeProviderCache && Date.now() - this.activeProviderCache.timestamp < CACHE_TTL) {
       return this.activeProviderCache.data;

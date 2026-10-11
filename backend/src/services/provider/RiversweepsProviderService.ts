@@ -88,9 +88,16 @@ export class RiversweepsProviderService implements ProviderAdapter {
       if (err instanceof AppError) throw err;
       const httpStatus = err?.response?.status;
       if (httpStatus === 401 || httpStatus === 403) {
-        const msg = `Access denied by River-Pay (HTTP ${httpStatus}). This server's IPv4 address is most likely not on River-Pay's allowed-IP list — ask River-Pay to whitelist it.`;
+        // Record what the refusal really looks like, so "IP not whitelisted" can be told apart from a firewall / wrong login /
+        // blocked client. The request URL (which carries the login) is never logged, and the body snippet is scrubbed.
+        const h: Record<string, any> = err?.response?.headers || {};
+        const raw = typeof err?.response?.data === 'string' ? err.response.data : JSON.stringify(err?.response?.data ?? '');
+        const snippet = String(raw).replace(/\s+/g, ' ').replace(/(login|password)=[^&"'\s<]*/gi, '$1=[hidden]').slice(0, 200);
+        console.error(`[Riversweeps] HTTP ${httpStatus} on ${action}: server="${h['server'] || ''}" via="${h['via'] || ''}" cloudflare=${h['cf-ray'] ? 'yes' : 'no'} content-type="${h['content-type'] || ''}" body="${snippet}"`);
+        const msg = `Access denied by River-Pay (HTTP ${httpStatus}). Their server refused the request — usually this server's IPv4 address is not on River-Pay's allowed-IP list (or a firewall in front of them blocks it).`;
         await ProviderLogService.logRequest(this.provider.id, userId, logEndpoint, params, null, httpStatus, msg).catch(() => {});
-        throw new AppError(`Riversweeps connection failed: ${msg}`, 502);
+        // Players get a plain message; the detail above is for the server log and the admin provider log
+        throw new AppError('This game is temporarily unavailable. Please try again in a little while.', 502);
       }
       throw new AppError(`Riversweeps connection failed: ${err.message}`, 502);
     }

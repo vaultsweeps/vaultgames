@@ -31,6 +31,11 @@ export class BoundedCache<V> {
     private maxKeyLength: number = 128
   ) {}
 
+  /** Forget everything (cached values and lookups in flight's cached results) */
+  clear(): void {
+    this.map.clear()
+  }
+
   private normalizeKey(key: string): string {
     return key.length > this.maxKeyLength ? key.slice(0, this.maxKeyLength) : key
   }
