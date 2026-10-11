@@ -218,6 +218,33 @@ export async function resolveTelegramLinkToken(token: string, telegramId?: strin
   }
 }
 
+// ─── Game-provider login pause ─────────────────────────────────────────────────────────────────────────────────
+// When a game provider locks or rejects the site's agent login, the site stops trying for a while. Kept here (not only in
+// memory) so a server restart / deploy does not forget it and immediately log in again — which would count as another
+// failed login and can extend the provider's own lock.
+export async function setProviderLoginBlock(providerId: string, untilMs: number): Promise<void> {
+  if (!redis) return
+  try {
+    const seconds = Math.max(1, Math.ceil((untilMs - Date.now()) / 1000))
+    await redis.setex(`provider_login_block:${providerId}`, seconds, String(untilMs))
+  } catch (error) {
+    logger.error('Redis Set Error for provider login block:', error)
+  }
+}
+
+/** Epoch ms until which logins to this provider are paused, or null when there is no pause */
+export async function getProviderLoginBlock(providerId: string): Promise<number | null> {
+  if (!redis) return null
+  try {
+    const v = await redis.get(`provider_login_block:${providerId}`)
+    const until = Number(v)
+    return Number.isFinite(until) && until > Date.now() ? until : null
+  } catch (error) {
+    logger.error('Redis Get Error for provider login block:', error)
+    return null
+  }
+}
+
 // ─── Coupon entered at sign-up, waiting for the account to be verified ─────────────────────────────────────────
 // A coupon can only be redeemed by a fully verified account, so a code typed on the sign-up form is remembered here and
 // redeemed automatically (services/CouponService.redeemPendingCoupon) once email and phone are both verified.

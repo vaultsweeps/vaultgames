@@ -1,6 +1,7 @@
 import axios from 'axios';
 import https from 'https';
 import { generateShortPassword, generateShortPasswordWithSymbol } from '../../utils/password';
+import { getProviderLoginBlock, setProviderLoginBlock } from '../../lib/redis';
 import FormData from 'form-data';
 import { ProviderAdapter } from './ProviderAdapter';
 import { ProviderLogService, redactForLog } from './ProviderLogService';
@@ -96,6 +97,11 @@ export class CashMachineProviderService implements ProviderAdapter {
     if (this.isTokenValid()) return;
 
     const st = this.authState;
+    // After a restart the in-memory pause is gone: pick it up again from Redis before logging in
+    if (Date.now() >= st.blockedUntil) {
+      const stored = await getProviderLoginBlock(this.provider.id);
+      if (stored) st.blockedUntil = stored;
+    }
     // The provider told us to stay away (too many failed logins): don't touch its login again until the cooldown ends —
     // every extra attempt only prolongs the lock.
     if (Date.now() < st.blockedUntil) {
@@ -113,6 +119,7 @@ export class CashMachineProviderService implements ProviderAdapter {
   /** Stop logging in for a while, so a locked / rejected agent account is not hammered further */
   private blockLogin(minutes: number, why: string) {
     this.authState.blockedUntil = Date.now() + minutes * 60_000;
+    setProviderLoginBlock(this.provider.id, this.authState.blockedUntil).catch(() => {});
     console.error(`[CashMachineProvider:${this.provider.name}] Login paused for ${minutes} min — ${why}`);
   }
 
