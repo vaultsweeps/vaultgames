@@ -147,8 +147,13 @@ export const spinWheel = asyncHandler(async (req: AuthRequest, res: Response) =>
           if (spinsAfterInitial % 6 === 0) isWin = true
         }
 
+        // A user's very first spin always wins the $2 prize (welcome win). Every later spin follows the pattern above.
+        const firstSpinPrize = totalSpins === 0 ? prizes.find(p => p.amount === 2) : undefined
+
         let wonPrize
-        if (isWin) {
+        if (firstSpinPrize) {
+          wonPrize = firstSpinPrize
+        } else if (isWin) {
           const winPrizes = prizes.filter(p => p.amount === 1 || p.amount === 1.5)
           if (winPrizes.length > 0) {
             const crypto = require('crypto')

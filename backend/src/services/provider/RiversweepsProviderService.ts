@@ -70,7 +70,8 @@ export class RiversweepsProviderService implements ProviderAdapter {
       // STATUS: 0 = success, 1 = error. Handle both string and numeric.
       const status = Number(data?.STATUS);
       if (data !== undefined && status !== 0) {
-        const errMsg = data.data?.message || data.message || data.MSG || 'Unknown provider error';
+        // River-Pay's messages can carry HTML tags (e.g. "<b>00-00…</b>"): show plain text
+        const errMsg = String(data.data?.message || data.message || data.MSG || 'Unknown provider error').replace(/<[^>]*>/g, '');
         await ProviderLogService.logRequest(
           this.provider.id, userId, logEndpoint, params, data, 400, errMsg
         );
