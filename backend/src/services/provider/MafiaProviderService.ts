@@ -22,8 +22,9 @@ import { Provider } from '@prisma/client';
  * All logic is inherited from CashMachineProviderService — no override needed.
  */
 export class MafiaProviderService extends CashMachineProviderService {
-  // Real "Reset password" is enabled for Cash Machine and Cash Frenzy only — this provider keeps returning the existing password
-  protected readonly supportsPlayerReset: boolean = false;
+  // Same game software as Cash Machine, so it gets the real "Reset password" too. Its own server has not been confirmed to
+  // offer the call, so if it turns out not to, the player is told the game doesn't support resets instead of seeing an error.
+  protected readonly resetMayBeMissing: boolean = true;
 
   constructor(provider: Provider) {
     super(provider);

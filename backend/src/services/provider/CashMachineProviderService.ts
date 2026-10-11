@@ -678,6 +678,8 @@ export class CashMachineProviderService implements ProviderAdapter {
    */
   /** Subclasses that share this API but must not get the real reset set this to false */
   protected readonly supportsPlayerReset: boolean = true;
+  /** true: if the provider's server turns out not to have the reset call at all, answer "not supported" instead of failing */
+  protected readonly resetMayBeMissing: boolean = false;
 
   /**
    * Cash Machine's own rule (its API answers: "must contain uppercase and lowercase letters and special symbols, and
@@ -718,11 +720,20 @@ export class CashMachineProviderService implements ProviderAdapter {
     // Same call the provider's agent panel makes for "reset player password": POST /api/player/reset
     // (fields: id, password, password_confirmation). Uses the shared request helper, so it gets the same login,
     // token-refresh retry, "player is in a game" message and error handling as every other call here.
-    await this.postRequest(
-      '/api/player/reset',
-      { id: playerId, password: newPassword, password_confirmation: newPassword },
-      playerId,
-    );
+    try {
+      await this.postRequest(
+        '/api/player/reset',
+        { id: playerId, password: newPassword, password_confirmation: newPassword },
+        playerId,
+      );
+    } catch (err: any) {
+      // The server has no such address (HTTP 404/405, or a web page instead of JSON): this provider can't reset from here
+      if (this.resetMayBeMissing && /status code (404|405)|non-JSON response/i.test(String(err?.message))) {
+        console.warn(`${logPrefix} Reset password is not available on this provider's server — keeping the existing game password`);
+        return false;
+      }
+      throw err;
+    }
     console.info(`${logPrefix} Game password reset for player ${playerId}`);
     return true; // caller stores the new password
   }
