@@ -84,6 +84,7 @@ export const authApi = {
   forgotPassword: (email: string) => apiClient.post('/auth/forgot-password', { email }),
   resetPassword: (token: string, password: string) => apiClient.post(`/auth/reset-password/${token}`, { password }),
   getMe: () => apiClient.get('/auth/me'),
+  getSignupBonusStatus: () => apiClient.get('/auth/signup-bonus'),
   refreshToken: () => apiClient.post('/auth/refresh'),
   getBalance: () => apiClient.get('/auth/balance'),
   /** Single bundled request: returns user + wallet balance + provider account */

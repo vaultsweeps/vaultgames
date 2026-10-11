@@ -1,6 +1,6 @@
 import axios from 'axios';
 import https from 'https';
-import { randomInt } from 'crypto';
+import { generateShortPasswordWithSymbol } from '../../utils/password';
 import FormData from 'form-data';
 import { ProviderAdapter } from './ProviderAdapter';
 import { ProviderLogService, redactForLog } from './ProviderLogService';
@@ -644,22 +644,11 @@ export class CashMachineProviderService implements ProviderAdapter {
   protected readonly passwordRuleHint: string = '6 to 12 characters with upper and lower case letters and a special symbol';
 
   /**
-   * A random password that meets passwordRule: 10 characters — 3 upper-case, 4 lower-case, 2 digits and the special
-   * symbol "@" — shuffled. Look-alike characters (I/l/1/O/0) are left out so it is easy to read out.
+   * A short random password that meets passwordRule: 7 characters — 2 upper-case, 1 digit, 3 lower-case and the
+   * special symbol "@" — shuffled (look-alike characters are left out so it is easy to read out), e.g. "kA@m7Xe".
    */
   generateResetPassword(): string {
-    const pick = (chars: string, n: number) => Array.from({ length: n }, () => chars[randomInt(chars.length)]);
-    const chars = [
-      ...pick('ABCDEFGHJKLMNPQRSTUVWXYZ', 3),
-      ...pick('abcdefghijkmnpqrstuvwxyz', 4),
-      ...pick('23456789', 2),
-      '@',
-    ];
-    for (let i = chars.length - 1; i > 0; i--) {
-      const j = randomInt(i + 1);
-      [chars[i], chars[j]] = [chars[j], chars[i]];
-    }
-    return chars.join('');
+    return generateShortPasswordWithSymbol(7);
   }
 
   async resetPlayerPassword(userId: string, newPassword?: string, opts?: { interactive?: boolean }): Promise<boolean> {

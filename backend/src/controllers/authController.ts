@@ -261,6 +261,18 @@ export const getMe = asyncHandler(async (req: AuthRequest, res: Response) => {
   res.json({ success: true, data: { ...user, telegramLinkToken } })
 })
 
+// GET /api/auth/signup-bonus
+// Lets the Verify page tell a player who is eligible for the 100% signup bonus from one who has already used it (it is a
+// one-time bonus on the very first recharge, recorded as a "welcome" BonusClaim), so it can say so instead of "you're eligible".
+export const getSignupBonusStatus = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const userId = req.user!.id
+  const [claim, recharge] = await Promise.all([
+    prisma.bonusClaim.findFirst({ where: { userId, bonus: { type: 'welcome' } }, select: { id: true } }),
+    prisma.providerTransaction.findFirst({ where: { userId, type: 'recharge', status: 'success' }, select: { id: true } }),
+  ])
+  res.json({ success: true, data: { claimed: !!claim, hasRecharged: !!recharge } })
+})
+
 // POST /api/auth/verify-email/:token
 export const verifyEmail = asyncHandler(async (req: Request, res: Response) => {
   const { token } = req.params

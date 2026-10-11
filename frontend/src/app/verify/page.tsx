@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Phone, Mail, ArrowLeft, ShieldCheck, AlertCircle } from 'lucide-react'
 import StatusCard from '@/components/verify/StatusCard'
+import SignupBonusClaimedView from '@/components/verify/SignupBonusClaimedView'
 import toast from 'react-hot-toast'
 import { authApi } from '@/lib/api'
 import { useAuthStore } from '@/store/authStore'
@@ -39,6 +40,19 @@ export default function VerifyPage() {
     document.addEventListener('visibilitychange', onFocus)
     return () => { window.removeEventListener('focus', onFocus); document.removeEventListener('visibilitychange', onFocus) }
   }, [])
+
+  // Once both are verified: is the one-time 100% signup bonus already used? undefined = not asked yet, null = couldn't tell
+  // (then the normal "you're eligible" screen is shown, as before)
+  const [bonusInfo, setBonusInfo] = useState<{ claimed: boolean; hasRecharged: boolean } | null | undefined>(undefined)
+  const fullyVerified = !!user?.isVerified && !!((user as any)?.isPhoneVerified ?? (user as any)?.profile?.phone)
+  useEffect(() => {
+    if (!fullyVerified) return
+    let cancelled = false
+    authApi.getSignupBonusStatus()
+      .then(res => { if (!cancelled) setBonusInfo(res.data?.data ?? null) })
+      .catch(() => { if (!cancelled) setBonusInfo(null) })
+    return () => { cancelled = true }
+  }, [fullyVerified])
 
   // Redirect if not logged in
   useEffect(() => {
@@ -151,6 +165,8 @@ export default function VerifyPage() {
   // isPhoneVerified comes from the server; a saved verified phone number is the fallback for older cached data
   const phoneVerified = !!((user as any).isPhoneVerified ?? (user as any).profile?.phone)
   const allVerified = emailVerified && phoneVerified
+  const bonusUsed = allVerified && !!bonusInfo && (bonusInfo.claimed || bonusInfo.hasRecharged)
+  const checkingBonus = allVerified && bonusInfo === undefined
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/95 backdrop-blur-sm p-4">
@@ -178,7 +194,7 @@ export default function VerifyPage() {
               <h1 className="text-2xl sm:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 mb-1 tracking-tight">Welcome Bonus</h1>
               <p className="text-secondary text-sm font-medium">
                 {step === 'select' 
-                  ? 'Confirm your details to receive your bonus!' 
+                  ? (bonusUsed ? "You're all set — here's what's next" : 'Confirm your details to receive your bonus!')
                   : step === 'phone_input'
                   ? 'Enter your phone number'
                   : 'Enter verification code'}
@@ -196,7 +212,19 @@ export default function VerifyPage() {
         {/* Content */}
         <div className="p-6 sm:p-8 relative min-h-[280px]">
           <AnimatePresence mode="wait">
-            {step === 'select' && (
+            {step === 'select' && checkingBonus && (
+              <motion.div key="checking" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center justify-center min-h-[220px]">
+                <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+              </motion.div>
+            )}
+
+            {step === 'select' && bonusUsed && (
+              <motion.div key="claimed" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+                <SignupBonusClaimedView claimed={!!bonusInfo?.claimed} />
+              </motion.div>
+            )}
+
+            {step === 'select' && !checkingBonus && !bonusUsed && (
               <motion.div
                 key="select"
                 initial={{ opacity: 0, x: -20 }}

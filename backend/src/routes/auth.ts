@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { body } from 'express-validator'
-import { register, login, getMe, verifyEmail, forgotPassword, resetPassword, logout, getBalance, checkUsername, dashboardInit, verifyPhoneOTP, checkPhone } from '../controllers/authController'
+import { register, login, getMe, verifyEmail, forgotPassword, resetPassword, logout, getBalance, checkUsername, dashboardInit, verifyPhoneOTP, checkPhone, getSignupBonusStatus } from '../controllers/authController'
 import { authenticate } from '../middleware/auth'
 import { validateRequest } from '../middleware/validate'
 import { limit } from '../middleware/security'
@@ -43,6 +43,7 @@ router.post('/login',
 )
 
 router.get('/me', authenticate, getMe)
+router.get('/signup-bonus', authenticate, getSignupBonusStatus)
 router.get('/balance', authenticate, getBalance)
 router.get('/dashboard-init', authenticate, dashboardInit)
 router.get('/check-username', limit({ name: 'check-username', windowMs: 60_000, max: 30, scope: 'ip' }), checkUsername) // also calls the game provider

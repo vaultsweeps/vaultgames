@@ -16,6 +16,7 @@ import { BonusLedgerService, BonusDebitBreakdownEntry } from '../services/BonusL
 import { BonusCashoutRuleService } from '../services/BonusCashoutRuleService'
 import { recordWalletTransaction } from '../services/WalletTransactionService'
 import { isDuplicateAccountError } from '../utils/providerErrors'
+import { generateShortPassword } from '../utils/password'
 
 // POST /api/provider/create-account?gameId=xxx
 export const createProviderAccount = asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -238,7 +239,7 @@ export const resetProviderPassword = asyncHandler(async (req: AuthRequest, res: 
 
   // Generate a safe alphanumeric password (no underscores or special chars UltraPanda rejects)
   // A provider with its own password rules (Cash Machine) supplies a compliant one instead.
-  const newPassword = providerService.generateResetPassword?.() ?? ('Nx' + crypto.randomBytes(6).toString('hex')) // e.g. "Nx1a2b3c4d5e6f"
+  const newPassword = providerService.generateResetPassword?.() ?? generateShortPassword() // short and easy to read, e.g. "kA7mX3e"
 
   try {
     // IMPORTANT: pass providerUser.providerUserId (the provider-side username)
