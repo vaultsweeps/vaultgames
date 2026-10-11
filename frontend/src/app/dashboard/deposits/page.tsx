@@ -147,7 +147,13 @@ function DepositsContent() {
       depositApi.getPaymentMethods()
     ]).then(([histRes, methRes]) => {
       setDepositHistory(histRes.data.data)
-      setMethods(methRes.data.data || [])
+      const loaded = methRes.data.data || []
+      setMethods(loaded)
+      // Link from the homepage "20% crypto bonus" banner: open the crypto deposit directly (only if it is switched on)
+      if (searchParams.get('method') === 'crypto') {
+        const crypto = loaded.find((m: any) => String(m.code).toLowerCase() === 'crypto' && m.isActive !== false && m.depositEnabled !== false)
+        if (crypto) { setSelectedMethod(crypto); setCryptoModalOpen(true) }
+      }
     }).catch(() => {
       setMethods([])
     }).finally(() => {

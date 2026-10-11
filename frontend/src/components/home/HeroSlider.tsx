@@ -11,9 +11,14 @@ import { getSignalUrl } from '@/lib/signal'
 const DEFAULT_BANNERS = [
   {
     id: '1',
-    title: 'Welcome to Vault Sweeps',
-    subtitle: 'Get +100% up to 1 000 USD',
-    description: 'Collect your first deposit bonus right now',
+    title: 'WELCOME TO VAULTSWEEPS',
+    subtitle: 'YOUR FIRST DEPOSIT, DOUBLED!',
+    highlight: 'ENJOY A 100% FIRST DEPOSIT BONUS',
+    description: 'Deposit into your wallet, then get your bonus when you add funds to a game!',
+    titleClass: 'text-[21px] sm:text-[32px] lg:text-5xl',
+    subSize: 'text-[13px] sm:text-lg',
+    highlightSize: 'text-xs sm:text-base',
+    descSize: 'text-[11px] sm:text-[13px]',
     ctaText: 'Claim now',
     ctaLink: '/verify',
     gradient: 'from-blue-900 via-indigo-800 to-[#2c162b]',
@@ -23,21 +28,29 @@ const DEFAULT_BANNERS = [
   },
   {
     id: '2',
-    title: 'CASH METHODS',
-    subtitle: 'Make deposits your way',
-    description: 'Make deposits through any cash deposit method that is convenient for you!',
+    title: 'PAY YOUR WAY',
+    subtitle: '',
+    description: 'Cash App, Chime, PayPal, Apple Pay, Card, or Venmo — choose your preferred payment method and deposit with ease.',
     ctaText: 'Make Deposit',
     ctaLink: '/dashboard/deposits',
-    gradient: 'from-[#16a34a] via-[#22c55e] to-[#4ade80]',
+    // deep emerald so the photo's dark background melts into the banner
+    gradient: 'from-[#052e1a] via-[#0a3f27] to-[#06150f]',
     accent: '#00FFC8',
-    imageUrl: '/images/promo-girl.png?v=3',
-    isTransparent: true
+    imageUrl: '/images/promogirl2.png',
+    isTransparent: false,
+    // a full photo (not a cut-out): crop to her face and the floating payment icons
+    imagePos: 'object-[82%_16%]'
   },
   {
     id: '3',
-    title: 'BONUS ZONE',
-    subtitle: 'Earn Diamonds, play games!',
-    description: 'Unlock real cash rewards instantly with our premium bonus system.',
+    title: 'UNLOCK YOUR BONUS REWARDS',
+    subtitle: 'More Ways to Earn Bonus Balance',
+    description: 'Enjoy free rewards through Freeplay, Daily Spins, Referrals, Coupons, and Crypto Bonuses.',
+    note: 'Bonus Balance is not regular wallet funds; special cashout conversion rules apply. See T&Cs for details.',
+    titleClass: 'text-[18px] sm:text-[32px] lg:text-5xl',
+    subSize: 'text-xs sm:text-lg',
+    descSize: 'text-[10px] sm:text-[13px]',
+    tall: true,
     ctaText: 'View more',
     ctaLink: '/bonuses',
     gradient: 'from-pink-700 via-rose-500 to-[#f78201]',
@@ -93,9 +106,40 @@ const DEFAULT_BANNERS = [
     badgeClass: 'text-sky-200 bg-sky-400/15 border-sky-300/30',
     subClass: 'text-sky-200',
     imageBox: 'top-auto h-[280px] sm:top-0 sm:h-auto aspect-[407/613] right-2 sm:right-8 lg:right-16',
+    // the picture has ~2% empty space under her heels (11 of 613 rows): sink it so she stands on the card's bottom edge
+    groundShift: 'translate-y-[1.8%]',
     bigText: '30%',
     bigTextClass: 'text-[200px] right-[25%]',
     bigTextFill: 'linear-gradient(180deg, rgba(125,211,252,0.40), rgba(59,130,246,0.04))',
+    edgeFade: false
+  },
+  {
+    id: '6',
+    badge: 'CRYPTO',
+    title: '20% EXTRA BONUS',
+    subtitle: '',
+    description: 'Deposit with BTC, USDT or LTC and get 20% extra.',
+    ctaText: 'Deposit Crypto',
+    ctaLink: '/dashboard/deposits?method=crypto',
+    authView: 'register',
+    gradient: 'from-[#0b0802] via-[#241a05] to-[#0a1f12]',
+    accent: '#FBBF24',
+    imageUrl: '/images/crypto-bonus-20-cut.webp',
+    isTransparent: true,
+    premium: true,
+    // look: warm gold light, hairline gold frame, a big faint "20%" behind her on wide screens
+    glow: 'radial-gradient(60% 90% at 78% 55%, rgba(250,204,21,0.26), transparent 70%), radial-gradient(40% 60% at 6% 0%, rgba(16,185,129,0.20), transparent 70%)',
+    frame: 'border-amber-300/25',
+    badgeClass: 'text-amber-200 bg-amber-400/15 border-amber-300/30',
+    subClass: 'text-amber-200',
+    // flush with the card's right edge (the picture's own edge is the card edge); smaller on phones so the text stays clear
+    imageBox: 'top-auto h-[clamp(172px,58vw,212px)] sm:top-0 sm:h-auto aspect-[900/1080] right-0',
+    titleClass: 'text-[21px] sm:text-5xl lg:text-6xl',
+    descClass: 'max-w-[132px]',
+    descSize: 'text-[11px] sm:text-sm',
+    bigText: '20%',
+    bigTextClass: 'text-[210px] right-[27%]',
+    bigTextFill: 'linear-gradient(180deg, rgba(253,224,71,0.34), rgba(245,158,11,0.04))',
     edgeFade: false
   }
 ]
@@ -162,7 +206,7 @@ export default function HeroSlider() {
 
   return (
     <section className="pt-6 pb-4 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-      <div className="relative w-full h-[300px] sm:h-[320px] lg:h-[380px] rounded-[2rem] overflow-hidden shadow-[0_0_40px_rgba(123,47,255,0.15)] group bg-surface">
+      <div className={`relative w-full ${slide.tall ? 'h-[348px]' : 'h-[300px]'} sm:h-[320px] lg:h-[380px] rounded-[2rem] overflow-hidden shadow-[0_0_40px_rgba(123,47,255,0.15)] group bg-surface`}>
         <motion.div
           key={slide.id}
           drag="x"
@@ -210,7 +254,7 @@ export default function HeroSlider() {
                 initial={{ y: 10, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.03, duration: 0.25 }}
-                className={`${slide.premium ? 'text-[28px]' : 'text-3xl'} sm:text-5xl lg:text-6xl font-black text-white leading-tight mb-2 tracking-tight drop-shadow-md`}
+                className={`${slide.titleClass || `${slide.premium ? 'text-[28px]' : 'text-3xl'} sm:text-5xl lg:text-6xl`} font-black text-white leading-tight mb-2 tracking-tight drop-shadow-md`}
               >
                 {slide.title}
               </motion.h1>
@@ -219,19 +263,41 @@ export default function HeroSlider() {
                 initial={{ y: 10, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.06, duration: 0.25 }}
-                className={`text-base sm:text-xl font-bold mb-2 drop-shadow-md ${slide.premium ? slide.subClass : 'text-white'}`}
+                className={`${slide.subSize || 'text-base sm:text-xl'} font-bold mb-2 drop-shadow-md ${slide.premium ? slide.subClass : 'text-white'} ${slide.subtitle ? '' : 'hidden'}`}
               >
                 {slide.subtitle}
               </motion.p>
+              {slide.highlight && (
+                <motion.p
+                  key={`highlight-${slide.id}`}
+                  initial={{ y: 10, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.08, duration: 0.25 }}
+                  className={`${slide.highlightSize || 'text-xs sm:text-base'} font-extrabold tracking-wide text-yellow-300 mb-2 drop-shadow-md`}
+                >
+                  {slide.highlight}
+                </motion.p>
+              )}
               <motion.p 
                 key={`desc-${slide.id}`}
                 initial={{ y: 10, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.09, duration: 0.25 }}
-                className={`text-xs sm:text-sm text-white/90 ${slide.premium ? 'mb-4' : 'mb-6'} sm:mb-6 ${slide.descClass || 'max-w-xs'} sm:max-w-sm drop-shadow-md`}
+                className={`${slide.descSize || 'text-xs sm:text-sm'} text-white/90 ${slide.premium ? 'mb-4' : 'mb-6'} sm:mb-6 ${slide.descClass || 'max-w-xs'} sm:max-w-sm drop-shadow-md`}
               >
                 {slide.description}
               </motion.p>
+              {slide.note && (
+                <motion.p
+                  key={`note-${slide.id}`}
+                  initial={{ y: 10, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.1, duration: 0.25 }}
+                  className="text-[9px] sm:text-[11px] leading-snug text-white/70 -mt-3 sm:-mt-4 mb-4 sm:mb-5 max-w-[185px] sm:max-w-sm drop-shadow-md"
+                >
+                  {slide.note}
+                </motion.p>
+              )}
               
               <motion.div
                 key={`cta-${slide.id}`}
@@ -245,12 +311,12 @@ export default function HeroSlider() {
                     target={isAuthenticated && signalUrl ? '_blank' : undefined}
                     rel="noopener noreferrer"
                     onClick={(e) => handleCtaClick(e, slide.authView)}
-                    className="btn-liquid btn-signup-beam inline-block text-white font-bold py-2.5 px-6 sm:py-3 sm:px-8 rounded-xl sm:rounded-2xl text-sm sm:text-base"
+                    className="btn-liquid btn-signup-beam inline-block whitespace-nowrap text-white font-bold py-2.5 px-6 sm:py-3 sm:px-8 rounded-xl sm:rounded-2xl text-sm sm:text-base"
                   >
                     <span className="btn-liquid-content">{slide.ctaText}</span>
                   </a>
                 ) : (
-                  <Link href={slide.ctaLink} onClick={(e) => handleCtaClick(e, slide.authView)} className={`btn-liquid btn-signup-beam ${slide.mobileCta ? 'hidden sm:inline-block' : 'inline-block'} text-white font-bold py-2.5 px-6 sm:py-3 sm:px-8 rounded-xl sm:rounded-2xl text-sm sm:text-base`}>
+                  <Link href={slide.ctaLink} onClick={(e) => handleCtaClick(e, slide.authView)} className={`btn-liquid btn-signup-beam whitespace-nowrap ${slide.mobileCta ? 'hidden sm:inline-block' : 'inline-block'} text-white font-bold py-2.5 px-6 sm:py-3 sm:px-8 rounded-xl sm:rounded-2xl text-sm sm:text-base`}>
                     <span className="btn-liquid-content">{slide.ctaText}</span>
                   </Link>
                 )}
@@ -284,37 +350,18 @@ export default function HeroSlider() {
               style={{ willChange: 'transform, opacity' }}
               className={`absolute bottom-0 ${slide.premium ? slide.imageBox : 'top-0 right-0 w-[45%] sm:w-[48%] lg:w-[50%]'} z-10 flex items-end justify-end pointer-events-none`}
             >
-              <style jsx>{`
-                @keyframes eyeBlink {
-                  0%, 90%, 100% { filter: brightness(1); transform: scaleY(1); }
-                  95% { filter: brightness(0.95); transform: scaleY(0.98); }
-                }
-                .animate-character {
-                  animation: eyeBlink 5s infinite ease-in-out;
-                }
-              `}</style>
-              {/* Simulated realistic subtle floating animation for the character */}
-              <motion.div
-                animate={{ 
-                  y: [0, -5, 0],
-                }}
-                transition={{ 
-                  duration: 6, 
-                  repeat: Infinity, 
-                  ease: "easeInOut" 
-                }}
-                className={`relative h-full w-full animate-character`}
+              {/* The picture stays still (no floating / blinking animation) */}
+              <div
+                className={`relative h-full w-full ${slide.groundShift || ''}`}
                 style={slide.premium ? (slide.edgeFade ? {
-                  willChange: 'transform',
                   WebkitMaskImage: PREMIUM_MASK,
                   maskImage: PREMIUM_MASK,
                   WebkitMaskComposite: 'source-in, source-in',
                   maskComposite: 'intersect, intersect'
-                } : { willChange: 'transform' }) : !slide.isTransparent ? {
-                  willChange: 'transform',
+                } : undefined) : !slide.isTransparent ? {
                   WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 18%)',
                   maskImage: 'linear-gradient(to right, transparent 0%, black 18%)'
-                } : { willChange: 'transform' }}
+                } : undefined}
               >
                 <Image
                   src={slide.imageUrl} 
@@ -322,9 +369,10 @@ export default function HeroSlider() {
                   fill
                   sizes="(max-width: 640px) 46vw, (max-width: 1024px) 48vw, 640px"
                   priority={current === 0}
-                  className={`${slide.isTransparent ? 'object-contain object-bottom' : 'object-cover object-top'} ${slide.premium ? 'drop-shadow-[0_12px_32px_rgba(0,0,0,0.65)]' : ''}`}
+                  loading={current === 0 ? undefined : 'eager'} // a slide's picture is on screen as soon as it mounts, so lazy loading only delays it
+                  className={`${slide.isTransparent ? 'object-contain object-bottom' : ('object-cover ' + (slide.imagePos || 'object-top'))} ${slide.premium ? 'drop-shadow-[0_12px_32px_rgba(0,0,0,0.65)]' : ''}`}
                 />
-              </motion.div>
+              </div>
             </motion.div>
           </div>
         </motion.div>
@@ -337,7 +385,7 @@ export default function HeroSlider() {
 
         {/* Slide indicators — on phones they sit centred along the bottom edge (below the CTA button); from sm up they
             stay at the bottom-left as before. Each button has extra padding so it is easy to tap. */}
-        <div className="flex absolute bottom-0.5 left-5 sm:bottom-4 sm:left-10 lg:left-12 z-30 items-center gap-1">
+        <div className="flex absolute bottom-0.5 left-5 sm:-bottom-1 md:bottom-2 lg:bottom-4 sm:left-10 lg:left-12 z-30 items-center gap-1">
           {slides.map((_, i) => (
             <button
               key={i}
