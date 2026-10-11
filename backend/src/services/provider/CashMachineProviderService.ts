@@ -1,6 +1,6 @@
 import axios from 'axios';
 import https from 'https';
-import { generateShortPasswordWithSymbol } from '../../utils/password';
+import { generateShortPassword, generateShortPasswordWithSymbol } from '../../utils/password';
 import FormData from 'form-data';
 import { ProviderAdapter } from './ProviderAdapter';
 import { ProviderLogService, redactForLog } from './ProviderLogService';
@@ -694,6 +694,17 @@ export class CashMachineProviderService implements ProviderAdapter {
    */
   generateResetPassword(): string {
     return generateShortPasswordWithSymbol(7);
+  }
+
+  /**
+   * If the provider refused a generated password because of ITS rule ("letters and numbers only" / "needs a special
+   * symbol"), returns a new password in the style it asks for; null when the message isn't about the password's style.
+   */
+  generateAlternateResetPassword(providerMessage: string): string | null {
+    const m = String(providerMessage || '');
+    if (/special|symbol|upper ?case/i.test(m)) return generateShortPasswordWithSymbol(7);
+    if (/letters and numbers|letters or numbers|alphanumeric|only.*(letters|numbers)/i.test(m)) return generateShortPassword(7);
+    return null;
   }
 
   async resetPlayerPassword(userId: string, newPassword?: string, opts?: { interactive?: boolean }): Promise<boolean> {

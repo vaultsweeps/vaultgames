@@ -18,6 +18,8 @@ export interface ProviderAdapter {
   resetPlayerPassword(userId: string, newPassword?: string, opts?: { interactive?: boolean }): Promise<boolean>;
   /** A new password that satisfies this provider's own password rules, for the Reset password button (optional) */
   generateResetPassword?(): string;
+  /** A different style of password when the provider refused ours because of its own rule (null = not a style problem) */
+  generateAlternateResetPassword?(providerMessage: string): string | null;
   forcePlayerOffline(userId: string): Promise<boolean>;
   getProviderId(): string;
 }

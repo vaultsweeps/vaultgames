@@ -239,12 +239,22 @@ export const resetProviderPassword = asyncHandler(async (req: AuthRequest, res: 
 
   // Generate a safe alphanumeric password (no underscores or special chars UltraPanda rejects)
   // A provider with its own password rules (Cash Machine) supplies a compliant one instead.
-  const newPassword = providerService.generateResetPassword?.() ?? generateShortPassword() // short and easy to read, e.g. "kA7mX3e"
+  let newPassword = providerService.generateResetPassword?.() ?? generateShortPassword() // short and easy to read, e.g. "kA7mX3e"
 
   try {
     // IMPORTANT: pass providerUser.providerUserId (the provider-side username)
     // NOT userId (which is the internal DB cuid and would produce a different hash)
-    const resetSupported = await providerService.resetPlayerPassword(providerUser.providerUserId, newPassword, { interactive: true })
+    let resetSupported: boolean
+    try {
+      resetSupported = await providerService.resetPlayerPassword(providerUser.providerUserId, newPassword, { interactive: true })
+    } catch (firstErr: any) {
+      // The provider refused the password because of its own rule (e.g. "letters and numbers only"): try once more in the
+      // style it asked for. Anything else is a real error and is shown as before.
+      const alternate = providerService.generateAlternateResetPassword?.(firstErr?.message)
+      if (!alternate) throw firstErr
+      newPassword = alternate
+      resetSupported = await providerService.resetPlayerPassword(providerUser.providerUserId, newPassword, { interactive: true })
+    }
 
     if (!resetSupported) {
       // This provider has no reset-password API we can use.

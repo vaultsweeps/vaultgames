@@ -25,6 +25,9 @@ export class MafiaProviderService extends CashMachineProviderService {
   // Same game software as Cash Machine, so it gets the real "Reset password" too. Its own server has not been confirmed to
   // offer the call, so if it turns out not to, the player is told the game doesn't support resets instead of seeing an error.
   protected readonly resetMayBeMissing: boolean = true;
+  // Mafia's password rule is not documented: only check length here, the provider's own answer decides the rest
+  protected readonly passwordRule: RegExp = /^\S{6,16}$/;
+  protected readonly passwordRuleHint: string = '6 to 16 characters with no spaces';
 
   constructor(provider: Provider) {
     super(provider);
