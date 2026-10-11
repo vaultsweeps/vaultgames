@@ -31,9 +31,22 @@ export class CashMachineProviderService implements ProviderAdapter {
   protected provider: Provider;
 
   /** Cached JWT Bearer token */
-  private token: string | null = null;
+  /**
+   * Login state is shared by every instance of the same provider account (the factory keeps more than one cached copy
+   * per provider, and each used to log in separately), so there is one token, one login at a time, and one cooldown.
+   */
+  private static readonly authStates = new Map<string, { token: string | null; expiresAt: number; inflight: Promise<void> | null; blockedUntil: number }>();
+  private get authState() {
+    const key = `${this.provider.id}:${this.provider.agentId}`;
+    let st = CashMachineProviderService.authStates.get(key);
+    if (!st) { st = { token: null, expiresAt: 0, inflight: null, blockedUntil: 0 }; CashMachineProviderService.authStates.set(key, st); }
+    return st;
+  }
+  private get token(): string | null { return this.authState.token; }
+  private set token(v: string | null) { this.authState.token = v; }
   /** Unix seconds — when this token expires (from provider) */
-  private tokenExpiresAt: number = 0;
+  private get tokenExpiresAt(): number { return this.authState.expiresAt; }
+  private set tokenExpiresAt(v: number) { this.authState.expiresAt = v; }
   /** 5-minute buffer before declared expiry, to avoid edge-case 401s */
   private static readonly TOKEN_BUFFER_SECS = 300;
 
@@ -82,6 +95,29 @@ export class CashMachineProviderService implements ProviderAdapter {
   private async authenticate(): Promise<void> {
     if (this.isTokenValid()) return;
 
+    const st = this.authState;
+    // The provider told us to stay away (too many failed logins): don't touch its login again until the cooldown ends —
+    // every extra attempt only prolongs the lock.
+    if (Date.now() < st.blockedUntil) {
+      throw new AppError(CashMachineProviderService.UNAVAILABLE_MESSAGE, 503);
+    }
+    // Simultaneous requests share one login instead of each logging in
+    if (st.inflight) return st.inflight;
+    st.inflight = this.login().finally(() => { st.inflight = null; });
+    return st.inflight;
+  }
+
+  /** What players are told while the provider's login is unavailable. The real reason goes to the server log. */
+  private static readonly UNAVAILABLE_MESSAGE = 'This game is temporarily unavailable. Please try again in a little while.';
+
+  /** Stop logging in for a while, so a locked / rejected agent account is not hammered further */
+  private blockLogin(minutes: number, why: string) {
+    this.authState.blockedUntil = Date.now() + minutes * 60_000;
+    console.error(`[CashMachineProvider:${this.provider.name}] Login paused for ${minutes} min — ${why}`);
+  }
+
+  private async login(): Promise<void> {
+
     const url = this.buildUrl('/api/agent/login');
     const form = new FormData();
     form.append('username', this.provider.agentId);
@@ -114,12 +150,19 @@ export class CashMachineProviderService implements ProviderAdapter {
           (message || '').toLowerCase().includes('invalid') ||
           (message || '').toLowerCase().includes('incorrect');
 
-        throw new AppError(
-          isCredentialError
-            ? `${logPrefix} Invalid agent credentials — check agentId/secretKey in provider config. (${message})`
-            : `${logPrefix} Agent login failed: ${message || 'Unknown error'} (status_code: ${status_code})`,
-          isCredentialError ? 401 : 400,
-        );
+        const detail = isCredentialError
+          ? `${logPrefix} Invalid agent credentials — check agentId/secretKey in provider config. (${message})`
+          : `${logPrefix} Agent login failed: ${message || 'Unknown error'} (status_code: ${status_code})`;
+
+        // The provider locks the agent account after repeated failed logins ("Too many login errors, please try again in an hour")
+        if (/too many|try again in|too frequent|locked|frozen/i.test(String(message))) {
+          this.blockLogin(60, detail);
+          throw new AppError(CashMachineProviderService.UNAVAILABLE_MESSAGE, 503);
+        }
+        // Wrong agent password etc.: retrying immediately would just count as more failed logins
+        this.blockLogin(5, detail);
+        // Never 401 here — that status means "your login expired" to the website and signs the player out
+        throw new AppError(isCredentialError ? `${logPrefix} Invalid agent credentials — check agentId/secretKey in provider config.` : CashMachineProviderService.UNAVAILABLE_MESSAGE, isCredentialError ? 502 : 503);
       }
 
       this.token = data.token;
