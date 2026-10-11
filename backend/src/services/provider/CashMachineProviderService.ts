@@ -1,7 +1,8 @@
 import axios from 'axios';
 import https from 'https';
 import { generateShortPassword, generateShortPasswordWithSymbol } from '../../utils/password';
-import { getProviderLoginBlock, setProviderLoginBlock } from '../../lib/redis';
+import { createHash } from 'crypto';
+import { getProviderLoginBlock, setProviderLoginBlock, clearProviderLoginBlockKey } from '../../lib/redis';
 import FormData from 'form-data';
 import { ProviderAdapter } from './ProviderAdapter';
 import { ProviderLogService, redactForLog } from './ProviderLogService';
@@ -37,8 +38,21 @@ export class CashMachineProviderService implements ProviderAdapter {
    * per provider, and each used to log in separately), so there is one token, one login at a time, and one cooldown.
    */
   private static readonly authStates = new Map<string, { token: string | null; expiresAt: number; inflight: Promise<void> | null; blockedUntil: number }>();
+  /** One key per provider AND saved agent login: changing the agent username/password in the admin panel starts clean */
+  private static stateKey(p: { id: string; agentId: string; secretKey: string }): string {
+    return `${p.id}:${createHash('sha256').update(`${String(p.agentId).trim()}\u0000${String(p.secretKey).trim()}`).digest('hex').slice(0, 12)}`;
+  }
+
+  /** Called when an admin saves the provider: forget any login pause so the next request tries again straight away */
+  static async clearLoginBlock(p: { id: string; agentId: string; secretKey: string }): Promise<void> {
+    const key = CashMachineProviderService.stateKey(p);
+    const st = CashMachineProviderService.authStates.get(key);
+    if (st) st.blockedUntil = 0;
+    await clearProviderLoginBlockKey(key);
+  }
+
   private get authState() {
-    const key = `${this.provider.id}:${this.provider.agentId}`;
+    const key = CashMachineProviderService.stateKey(this.provider);
     let st = CashMachineProviderService.authStates.get(key);
     if (!st) { st = { token: null, expiresAt: 0, inflight: null, blockedUntil: 0 }; CashMachineProviderService.authStates.set(key, st); }
     return st;
@@ -99,7 +113,7 @@ export class CashMachineProviderService implements ProviderAdapter {
     const st = this.authState;
     // After a restart the in-memory pause is gone: pick it up again from Redis before logging in
     if (Date.now() >= st.blockedUntil) {
-      const stored = await getProviderLoginBlock(this.provider.id);
+      const stored = await getProviderLoginBlock(CashMachineProviderService.stateKey(this.provider));
       if (stored) st.blockedUntil = stored;
     }
     // The provider told us to stay away (too many failed logins): don't touch its login again until the cooldown ends —
@@ -119,7 +133,7 @@ export class CashMachineProviderService implements ProviderAdapter {
   /** Stop logging in for a while, so a locked / rejected agent account is not hammered further */
   private blockLogin(minutes: number, why: string) {
     this.authState.blockedUntil = Date.now() + minutes * 60_000;
-    setProviderLoginBlock(this.provider.id, this.authState.blockedUntil).catch(() => {});
+    setProviderLoginBlock(CashMachineProviderService.stateKey(this.provider), this.authState.blockedUntil).catch(() => {});
     console.error(`[CashMachineProvider:${this.provider.name}] Login paused for ${minutes} min — ${why}`);
   }
 
@@ -166,8 +180,9 @@ export class CashMachineProviderService implements ProviderAdapter {
           this.blockLogin(60, detail);
           throw new AppError(CashMachineProviderService.UNAVAILABLE_MESSAGE, 503);
         }
-        // Wrong agent password etc.: retrying immediately would just count as more failed logins
-        this.blockLogin(5, detail);
+        // Wrong agent username/password: every retry counts as another failed login and can restart the provider's own lock,
+        // so wait a full hour (saving the provider again in the admin panel clears this pause at once). Other refusals: 5 min.
+        this.blockLogin(isCredentialError ? 60 : 5, detail);
         // Never 401 here — that status means "your login expired" to the website and signs the player out
         throw new AppError(isCredentialError ? `${logPrefix} Invalid agent credentials — check agentId/secretKey in provider config.` : CashMachineProviderService.UNAVAILABLE_MESSAGE, isCredentialError ? 502 : 503);
       }

@@ -15,6 +15,7 @@ import { BonusService } from '../services/BonusService'
 import { revokeTokensIssuedBefore, markEmailVerifyTokenIssued, isEmailVerifyTokenValid, clearEmailVerifyToken, createTelegramLinkToken, setPendingCoupon } from '../lib/redis'
 import { auth } from '../lib/firebaseAdmin'
 import { redeemPendingCoupon } from '../services/CouponService'
+import { createPlayerWithStartingPassword, STARTING_GAME_PASSWORD } from '../utils/startingPassword'
 import { isDuplicateAccountError } from '../utils/providerErrors'
 import { createNotification } from '../services/notificationService'
 
@@ -115,14 +116,16 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
         let attempts = 0;
         let currentUsername = username;
 
-        // Generate a dedicated provider password (separate from the user's login password).
-        // This ensures what we tell the provider matches what we persist in the DB.
-        const providerPassword = 'Nx' + crypto.randomBytes(6).toString('hex');
+        // Every new game account starts with the same password (Vault123!, or its letters-and-numbers version for games that
+        // refuse the symbol) — separate from the user's site password. The password really used is what gets stored.
+        let providerPassword: string = STARTING_GAME_PASSWORD;
 
         while (!newProviderData && attempts < 5) {
           attempts++;
           try {
-            newProviderData = await providerService.createPlayer(currentUsername, providerPassword);
+            const created = await createPlayerWithStartingPassword(providerService, currentUsername);
+            newProviderData = created.data;
+            providerPassword = created.password;
           } catch (err: any) {
             if (isDuplicateAccountError(err)) {
               // Generate new username

@@ -15,7 +15,7 @@ export interface ProviderAdapter {
    * only reset in that case (CashMachine / CashFrenzy) ignore calls without it, e.g. the background sync after a site
    * password change, so those flows behave exactly as before.
    */
-  resetPlayerPassword(userId: string, newPassword?: string, opts?: { interactive?: boolean }): Promise<boolean>;
+  resetPlayerPassword(userId: string, newPassword?: string, opts?: { interactive?: boolean; currentPassword?: string }): Promise<boolean>;
   /** A new password that satisfies this provider's own password rules, for the Reset password button (optional) */
   generateResetPassword?(): string;
   /** A different style of password when the provider refused ours because of its own rule (null = not a style problem) */

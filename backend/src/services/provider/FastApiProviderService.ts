@@ -383,9 +383,9 @@ export class FastApiProviderService implements ProviderAdapter {
   async createPlayer(username: string, password?: string): Promise<{ userId: string; accountName: string }> {
     const endpoint = this.getEndpoint('createPlayer', '/fast/user/create');
     const providerAccount = this.getProviderAccount(username);
-    // Always use a deterministic safe password — never the raw user password which may contain
-    // characters unsupported by UltraPanda (e.g. @, spaces, special symbols).
-    const providerPassword = this.getProviderPassword(username);
+    // Use the starting password when UltraPanda's rules allow it (6–16 letters/numbers, symbols !@#$()%^/., allowed);
+    // otherwise fall back to the deterministic safe password, as before. Never an arbitrary user-supplied string.
+    const providerPassword = password && /^[A-Za-z0-9!@#$()%^/.,]{6,16}$/.test(password) ? password : this.getProviderPassword(username);
     try {
       const data = await this.makeRequest(endpoint, {
         account: providerAccount,
@@ -462,7 +462,7 @@ export class FastApiProviderService implements ProviderAdapter {
     return username;
   }
 
-  async resetPlayerPassword(userId: string, newPassword?: string): Promise<boolean> {
+  async resetPlayerPassword(userId: string, newPassword?: string, opts?: { interactive?: boolean; currentPassword?: string }): Promise<boolean> {
     const endpoint = this.getEndpoint('resetPassword', '/fast/user/updatePasswd');
     const providerAccount = this.getProviderAccount(userId);
     // The safe new password — strip any special chars, ensure 7-16 length
@@ -474,10 +474,13 @@ export class FastApiProviderService implements ProviderAdapter {
     // 1. Deterministic hash (new accounts created after the fix)
     // 2. 'Test@123' (the original default used before the fix)
     // Code 20 = "Password error" (wrong old password), Code 9 = format error
-    const oldPasswordCandidates = [
-      this.getProviderPassword(userId), // deterministic hash for new accounts
+    const valid = /^[A-Za-z0-9!@#$()%^/.,]{6,16}$/;
+    const oldPasswordCandidates = [...new Set([
+      opts?.currentPassword,             // the password the site has stored for this account (most reliable)
+      this.getProviderPassword(userId), // deterministic hash for accounts created before the starting password
+      'Vault123!', 'Vault123',           // the starting password of new accounts
       'Test@123',                        // original default used for old accounts
-    ];
+    ].filter((p): p is string => !!p && valid.test(p)))];
 
     for (const oldPass of oldPasswordCandidates) {
       try {
@@ -491,7 +494,7 @@ export class FastApiProviderService implements ProviderAdapter {
         // Code 2 (User Does Not Exist) — our DB has this user, but the provider doesn't!
         // This happens if the provider wiped their DB or if a previous bug caused an out-of-sync state.
         // We must auto-heal by recreating the user on the provider right now.
-        if (e.message?.includes('Code: 2') || e.message?.includes('User Does Not Exist')) {
+        if (/Code:s*2(?!d)/.test(String(e.message)) || e.message?.includes('User Does Not Exist')) {
           console.warn(`[FastApiProviderService] Player "${providerAccount}" does not exist on provider! Auto-healing by recreating...`);
           await this.createPlayer(userId, safeNewPassword);
           return true;
@@ -512,10 +515,11 @@ export class FastApiProviderService implements ProviderAdapter {
       }
     }
 
-    // All old password candidates failed — the account exists but we cannot reset the password.
-    // This is non-fatal: the user can still play; just log and return true so the UI doesn't break.
-    console.warn(`[FastApiProviderService] Could not reset password for "${providerAccount}" — all old password attempts failed. User can still play.`);
-    return true;
+    // All old password candidates failed — the account exists but we cannot reset the password. Say so (false): returning
+    // true here made the site store and show a new password that the game never received, so the player could not log in
+    // with it. With false the player keeps the working password and is told it wasn't changed.
+    console.warn(`[FastApiProviderService] Could not reset password for "${providerAccount}" — all old password attempts failed. Existing password kept.`);
+    return false;
   }
 
   async forcePlayerOffline(userId: string): Promise<boolean> {

@@ -300,7 +300,7 @@ export default function GameDetailsPage() {
       setShowPassword(true)
       if (res.data.data.reset === false) {
         // This game can't reset passwords from our side — the existing one is shown, so don't claim a reset
-        toast("This game doesn't support password resets here. Your current password is shown.", { icon: 'ℹ️', duration: 6000 })
+        toast("This game's password can't be changed from here. Your current password is shown.", { icon: 'ℹ️', duration: 6000 })
       } else {
         toast.success('Password reset successfully!')
       }

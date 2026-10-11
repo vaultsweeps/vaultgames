@@ -3,6 +3,7 @@ import prisma from '../lib/prisma'
 import { asyncHandler, AppError } from '../middleware/errorHandler'
 import { ProviderService } from '../services/provider/ProviderService'
 import { createProviderService, ProviderFactory } from '../services/provider/ProviderFactory'
+import { CashMachineProviderService } from '../services/provider/CashMachineProviderService'
 import * as XLSX from 'xlsx'
 import { assertPublicHttpUrl } from '../utils/safe'
 import { securityLog } from '../middleware/security'
@@ -78,6 +79,8 @@ export const updateProvider = asyncHandler(async (req: Request, res: Response) =
     where: { id: id as string },
     data
   })
+  // Saving a provider is also "try again now": drop any login pause for its (possibly new) agent login
+  CashMachineProviderService.clearLoginBlock(provider as any).catch(() => {})
   res.json({ success: true, data: maskProvider(provider) })
 })
 

@@ -232,6 +232,11 @@ export async function setProviderLoginBlock(providerId: string, untilMs: number)
   }
 }
 
+export async function clearProviderLoginBlockKey(providerKey: string): Promise<void> {
+  if (!redis) return
+  try { await redis.del(`provider_login_block:${providerKey}`) } catch (error) { logger.error('Redis Delete Error for provider login block:', error) }
+}
+
 /** Epoch ms until which logins to this provider are paused, or null when there is no pause */
 export async function getProviderLoginBlock(providerId: string): Promise<number | null> {
   if (!redis) return null

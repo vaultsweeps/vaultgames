@@ -134,8 +134,9 @@ export class RiversweepsProviderService implements ProviderAdapter {
   }
 
   async resetPlayerPassword(userId: string, newPassword?: string): Promise<boolean> {
-    // Riversweeps uses the 'code' itself as the login for players, so there is no password to reset.
-    return true;
+    // Riversweeps uses the 'code' itself as the login for players, so there is no password to reset. Say so (false) rather
+    // than "success", otherwise the site would store and show a made-up password that does not exist in the game.
+    return false;
   }
 
   async forcePlayerOffline(userId: string): Promise<boolean> {

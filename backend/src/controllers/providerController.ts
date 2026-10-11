@@ -17,6 +17,7 @@ import { BonusCashoutRuleService } from '../services/BonusCashoutRuleService'
 import { recordWalletTransaction } from '../services/WalletTransactionService'
 import { isDuplicateAccountError } from '../utils/providerErrors'
 import { generateShortPassword } from '../utils/password'
+import { createPlayerWithStartingPassword, STARTING_GAME_PASSWORD } from '../utils/startingPassword'
 
 // POST /api/provider/create-account?gameId=xxx
 export const createProviderAccount = asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -48,14 +49,16 @@ export const createProviderAccount = asyncHandler(async (req: AuthRequest, res: 
     return res.json({ success: true, message: 'Provider account already exists', data: { accountName: existing.accountName, password: existing.password } })
   }
 
-  // Generate the initial password here so what we tell the provider matches what we store.
-  // Previously we passed no password, so the provider used its own default ('Test@123'),
-  // while our DB stored 'Default123!' — they never matched.
-  const initialPassword = 'Nx' + crypto.randomBytes(6).toString('hex') // e.g. "Nx1a2b3c4d5e6f"
+  // Every new game account starts with the same password (Vault123!) — or its letters-and-numbers version for games that
+  // refuse the symbol. createPlayerWithStartingPassword returns the password that was really used, so what we tell the
+  // provider always matches what we store and show.
+  let initialPassword: string = STARTING_GAME_PASSWORD
 
   try {
     const t4 = performance.now();
-    const providerData = await providerService.createPlayer(user.username, initialPassword)
+    const created = await createPlayerWithStartingPassword(providerService, user.username)
+    const providerData = created.data
+    initialPassword = created.password
     const t5 = performance.now();
     logger.info(`[createAccount] External Provider API creation took ${t5 - t4}ms`);
     
@@ -81,7 +84,9 @@ export const createProviderAccount = asyncHandler(async (req: AuthRequest, res: 
         currentUsername = `${user.username.substring(0, 10)}_${suffix}`; 
         
         try {
-          newProviderData = await providerService.createPlayer(currentUsername, initialPassword);
+          const retried = await createPlayerWithStartingPassword(providerService, currentUsername);
+          newProviderData = retried.data;
+          initialPassword = retried.password;
         } catch (retryErr: any) {
           if (!isDuplicateAccountError(retryErr)) {
             throw retryErr; 
@@ -246,14 +251,14 @@ export const resetProviderPassword = asyncHandler(async (req: AuthRequest, res: 
     // NOT userId (which is the internal DB cuid and would produce a different hash)
     let resetSupported: boolean
     try {
-      resetSupported = await providerService.resetPlayerPassword(providerUser.providerUserId, newPassword, { interactive: true })
+      resetSupported = await providerService.resetPlayerPassword(providerUser.providerUserId, newPassword, { interactive: true, currentPassword: providerUser.password || undefined })
     } catch (firstErr: any) {
       // The provider refused the password because of its own rule (e.g. "letters and numbers only"): try once more in the
       // style it asked for. Anything else is a real error and is shown as before.
       const alternate = providerService.generateAlternateResetPassword?.(firstErr?.message)
       if (!alternate) throw firstErr
       newPassword = alternate
-      resetSupported = await providerService.resetPlayerPassword(providerUser.providerUserId, newPassword, { interactive: true })
+      resetSupported = await providerService.resetPlayerPassword(providerUser.providerUserId, newPassword, { interactive: true, currentPassword: providerUser.password || undefined })
     }
 
     if (!resetSupported) {
