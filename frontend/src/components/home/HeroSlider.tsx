@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -177,8 +177,17 @@ export default function HeroSlider() {
 
   // Auto-play timer — re-arms on every `current` change (auto-advance, dot click, or a manual swipe
   // below), so a swipe never gets immediately undone by the timer firing a moment later.
+  // The slide never changes by itself while someone is reading it: touching / clicking the slider holds it for READ_PAUSE_MS,
+  // and it also holds while the mouse is over it. Dots and swipes still change slides whenever the person wants.
+  const READ_PAUSE_MS = 30_000
+  const pausedUntil = useRef(0)
+  const hovering = useRef(false)
+  const holdSlider = () => { pausedUntil.current = Date.now() + READ_PAUSE_MS }
   useEffect(() => {
-    const timer = setInterval(() => goTo(current + 1), 5000)
+    const timer = setInterval(() => {
+      if (hovering.current || Date.now() < pausedUntil.current) return
+      goTo(current + 1)
+    }, 5000)
     return () => clearInterval(timer)
   }, [current, slides.length])
 
@@ -206,7 +215,12 @@ export default function HeroSlider() {
 
   return (
     <section className="pt-6 pb-4 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-      <div className={`relative w-full ${slide.tall ? 'h-[348px]' : 'h-[300px]'} sm:h-[320px] lg:h-[380px] rounded-[2rem] overflow-hidden shadow-[0_0_40px_rgba(123,47,255,0.15)] group bg-surface`}>
+      <div className={`relative w-full ${slide.tall ? 'h-[348px]' : 'h-[300px]'} sm:h-[320px] lg:h-[380px] rounded-[2rem] overflow-hidden shadow-[0_0_40px_rgba(123,47,255,0.15)] group bg-surface`}
+        onPointerDown={holdSlider}
+        onFocusCapture={holdSlider}
+        onMouseEnter={() => { hovering.current = true }}
+        onMouseLeave={() => { hovering.current = false }}
+      >
         <motion.div
           key={slide.id}
           drag="x"
