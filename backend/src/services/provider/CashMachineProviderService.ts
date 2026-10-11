@@ -320,7 +320,8 @@ export class CashMachineProviderService implements ProviderAdapter {
     path: string,
     params: Record<string, string | number> = {},
     userId: string | null = null,
-    isRetry = false
+    isRetry = false,
+    raw = false, // true: return the provider's whole reply, not just its `data` (needed to see a list's total / page count)
   ): Promise<any> {
     await this.authenticate();
 
@@ -356,7 +357,7 @@ export class CashMachineProviderService implements ProviderAdapter {
           console.warn(`[CashMachineProvider:${this.provider.name}] Token invalid/expired ("${msg}"). Clearing token and retrying once...`);
           this.token = null;
           this.tokenExpiresAt = 0;
-          return this.getRequest(path, params, userId, true);
+          return this.getRequest(path, params, userId, true, raw);
         }
 
         console.error(JSON.stringify({ ...logData, status: body.status_code, response: body, duration }));
@@ -370,7 +371,7 @@ export class CashMachineProviderService implements ProviderAdapter {
       await ProviderLogService.logRequest(
         this.provider.id, userId, path, params as any, body, 200, null,
       );
-      return body.data ?? body;
+      return raw ? body : (body.data ?? body);
     } catch (e: any) {
       if (e instanceof AppError) throw e;
       const duration = Date.now() - startTime;
@@ -475,6 +476,7 @@ export class CashMachineProviderService implements ProviderAdapter {
 
     let insertError: any = null;
     let createdAccount: string | null = null;
+    let insertData: any = null;
 
     try {
       const data = await this.postRequest(endpoint, {
@@ -484,6 +486,7 @@ export class CashMachineProviderService implements ProviderAdapter {
         money: '0',
       });
 
+      insertData = data;
       createdAccount = data?.account || providerUsername;
     } catch (e: any) {
       // Only catch "already exists" errors from insertPlayer itself.
@@ -500,6 +503,7 @@ export class CashMachineProviderService implements ProviderAdapter {
 
     if (insertError) {
       // Player already exists on provider — look up their numeric ID
+      console.info(`[CashMachineProvider:${this.provider.name}] insertPlayer for "${providerUsername}" answered: ${String(insertError?.message).slice(0, 200)}`);
       console.info(
         `[CashMachineProvider:${this.provider.name}] Player "${providerUsername}" already exists — looking up numeric ID`,
       );
@@ -519,7 +523,7 @@ export class CashMachineProviderService implements ProviderAdapter {
     // Response: { account, password, balance, time }
     // The provider doesn't return the numeric ID from insertPlayer —
     // we must look it up via playerList right after creation.
-    const numericId = await this.getPlayerIdByUsername(createdAccount!);
+    const numericId = await this.resolveNewPlayerId(createdAccount!, insertData);
     console.info(
       `[CashMachineProvider:${this.provider.name}] Created player "${providerUsername}" → numericId: ${numericId}`,
     );
@@ -629,6 +633,36 @@ export class CashMachineProviderService implements ProviderAdapter {
   }
 
   /**
+   * The provider's numeric id for an account that was JUST created. Order of preference:
+   *  1. an id in the create response itself (no lookup needed);
+   *  2. the player list — retried a couple of times, because a brand-new player can take a moment to show up there;
+   *  3. otherwise ask the player to try again in a minute: the account exists, and the next attempt finds and links it
+   *     (no extra accounts are created under other usernames).
+   */
+  private async resolveNewPlayerId(account: string, insertData: any): Promise<string> {
+    const idFromInsert = [insertData?.id, insertData?.Id, insertData?.player_id, insertData?.playerId, insertData?.uid, insertData?.user_id]
+      .map(v => (v === undefined || v === null ? '' : String(v)))
+      .find(v => /^\d+$/.test(v));
+    if (idFromInsert) return idFromInsert;
+    // keys only (the response also echoes the password, which must never be logged)
+    console.info(`[CashMachineProvider:${this.provider.name}] create response has no player id (fields: ${insertData && typeof insertData === 'object' ? Object.keys(insertData).join(',') : typeof insertData}) — looking it up in the player list`);
+
+    const waits = [0, 900, 1800];
+    for (let i = 0; i < waits.length; i++) {
+      if (waits[i]) await new Promise(res => setTimeout(res, waits[i]));
+      try {
+        return await this.getPlayerIdByUsername(account);
+      } catch (e: any) {
+        if (e?.statusCode !== 404) throw e; // a real error (login, network…) is not a "can't find it" case
+      }
+    }
+    // The account WAS created (the provider accepted it) but its id can't be read yet. Don't create more accounts under other
+    // names — ask the player to try again: the retry finds this account in the list and links it.
+    console.error(`[CashMachineProvider:${this.provider.name}] "${account}" was created but is not visible in the player list yet`);
+    throw new AppError('Your game account was created but is not ready yet. Please try again in a minute.', 503);
+  }
+
+  /**
    * Find the provider's numeric player ID for a given username.
    * Searches player list page by page until the account is found.
    * Returns the numeric id as a string.
@@ -636,7 +670,10 @@ export class CashMachineProviderService implements ProviderAdapter {
   async getPlayerIdByUsername(username: string): Promise<string> {
     const limit = 100;
     const wanted = username.toLowerCase();
-    const rowsOf = (body: any): any[] => (Array.isArray(body) ? body : Array.isArray(body?.data) ? body.data : []);
+    // rows from either the whole reply ({status_code, data: [...]}) or a paginator-style one ({data: {data: [...], total}})
+    const rowsOf = (body: any): any[] =>
+      Array.isArray(body) ? body : Array.isArray(body?.data) ? body.data : Array.isArray(body?.data?.data) ? body.data.data : [];
+    const nameOf = (p: any) => String(p.Account ?? p.account ?? p.username ?? p.nickname ?? '');
     const find = (rows: any[]) =>
       rows.find((p: any) =>
         (p.Account || '').toLowerCase() === wanted ||
@@ -644,59 +681,78 @@ export class CashMachineProviderService implements ProviderAdapter {
         (p.nickname || '').toLowerCase() === wanted ||
         (p.username || '').toLowerCase() === wanted,
       );
+    const fetchRows = async (page: number): Promise<any[] | null> => {
+      try { return rowsOf(await this.getRequest('/api/player/playerList', { limit, page }, null, false, true)); } catch { return null; }
+    };
 
     // 0. Fast path: ask the server to filter by name. Servers that don't support the filter simply ignore it (and we fall
     //    through to the full search below), so this can only help.
     try {
-      const filtered = await this.getRequest('/api/player/playerList', { limit, page: 1, account: username, username });
+      const filtered = await this.getRequest('/api/player/playerList', { limit, page: 1, account: username, username }, null, false, true);
       const hit = find(rowsOf(filtered));
       if (hit) return String(hit.id);
     } catch { /* fall through to the full search */ }
 
     // 1. Page 1 of the full list
-    const body1 = await this.getRequest('/api/player/playerList', { limit, page: 1 });
+    const body1 = await this.getRequest('/api/player/playerList', { limit, page: 1 }, null, false, true);
     const rows1 = rowsOf(body1);
     const first = find(rows1);
     if (first) return String(first.id);
 
-    // 2. How many pages are there really? The server may return fewer rows per page than we asked for, so size the pages
-    //    from what it actually returned, and use its own page count when it reports one.
-    const meta: any = body1 && typeof body1 === 'object' && !Array.isArray(body1) ? body1 : {};
-    const count = Number(meta.count ?? meta.total ?? meta.total_count ?? 0) || 0;
-    const reportedPages = Number(meta.last_page ?? meta.lastPage ?? meta.pages ?? meta.total_pages ?? 0) || 0;
-    const pageSize = rows1.length > 0 ? Math.min(limit, rows1.length) : limit;
-    const fromCount = count > 0 ? Math.ceil(count / pageSize) : 0;
-    const totalPages = Math.max(reportedPages, fromCount) || 20;
-
-    const searchPage = async (page: number): Promise<string | null> => {
-      try {
-        const hit = find(rowsOf(await this.getRequest('/api/player/playerList', { limit, page })));
-        return hit ? String(hit.id) : null;
-      } catch {
-        return null;
-      }
-    };
-
+    const envelope: any = body1 && typeof body1 === 'object' && !Array.isArray(body1) ? body1 : {};
+    const inner: any = envelope.data && typeof envelope.data === 'object' && !Array.isArray(envelope.data) ? envelope.data : {};
+    const meta: any = { ...inner, ...envelope };
+    const count = Number(meta.count ?? meta.total ?? meta.total_count ?? meta.totalCount ?? 0) || 0;
+    const reportedPages = Number(meta.last_page ?? meta.lastPage ?? meta.pages ?? meta.total_pages ?? meta.totalPages ?? 0) || 0;
     let searched = 1;
-    if (totalPages > 1) {
-      // newest players are normally on the last page
-      const last = await searchPage(totalPages); searched++;
-      if (last) return last;
-      const pages: number[] = [];
-      for (let pg = totalPages - 1; pg >= 2; pg--) pages.push(pg);
-      for (let i = 0; i < pages.length; i += 5) {
-        const batch = pages.slice(i, i + 5);
-        const results = await Promise.all(batch.map(searchPage));
-        searched += batch.length;
-        const found = results.find(r => r !== null);
-        if (found) return found;
+    let page2Rows: number | null = null;
+    let note = '';
+
+    if (count > 0 || reportedPages > 0) {
+      // 2a. The server says how big the list is. It may return fewer rows per page than we asked for, so size the pages from
+      //     what it actually returned. Newest players are normally on the last page.
+      const pageSize = rows1.length > 0 ? Math.min(limit, rows1.length) : limit;
+      const totalPages = Math.max(reportedPages, count > 0 ? Math.ceil(count / pageSize) : 0);
+      if (totalPages > 1) {
+        const pages = [totalPages, ...Array.from({ length: Math.max(0, totalPages - 2) }, (_, i) => totalPages - 1 - i)];
+        for (let i = 0; i < pages.length; i += 5) {
+          const batch = pages.slice(i, i + 5);
+          const results = await Promise.all(batch.map(fetchRows));
+          searched += batch.length;
+          for (const rows of results) { const hit = rows && find(rows); if (hit) return String(hit.id); }
+        }
       }
+    } else {
+      // 2b. The server says nothing about the size of the list (this provider returns a bare list). Walk forward page by page
+      //     until a page comes back empty — not a fixed number of pages — so a short list is searched in one extra request and
+      //     a long one is still searched to its end (capped at 60 pages).
+      const seen = new Set(rows1.map((r: any) => String(r.id)));
+      for (let pg = 2; pg <= 60; pg += 5) {
+        const batch = [pg, pg + 1, pg + 2, pg + 3, pg + 4];
+        const results = await Promise.all(batch.map(fetchRows));
+        searched += batch.length;
+        let anyNew = false;
+        for (let k = 0; k < results.length; k++) {
+          const rows = results[k];
+          if (!rows || rows.length === 0) continue;
+          if (pg === 2 && k === 0) page2Rows = rows.length;
+          const fresh = rows.filter((r: any) => !seen.has(String(r.id)));
+          if (fresh.length === 0) { note = 'server ignores the page number'; continue; }
+          anyNew = true;
+          fresh.forEach((r: any) => seen.add(String(r.id)));
+          const hit = find(rows);
+          if (hit) return String(hit.id);
+        }
+        if (!anyNew) break; // the list has ended (or paging isn't supported): nothing more to look at
+      }
+      if (page2Rows === null) page2Rows = 0;
     }
 
     // Leave a trail in the server log of what the provider's list looked like, so a failure can be diagnosed without a probe
+    const sample = rows1.slice(0, 3).map(nameOf).join(',') + (rows1.length > 6 ? ' … ' : ',') + rows1.slice(-3).map(nameOf).join(',');
     console.error(`[CashMachineProvider:${this.provider.name}] Player list search failed for "${username}": rows on page 1 = ${rows1.length}, ` +
-      `reported count = ${count || 'none'}, reported pages = ${reportedPages || 'none'}, pages searched = ${searched}/${totalPages}, ` +
-      `response keys = [${Object.keys(meta).join(',')}]`);
+      `page 2 rows = ${page2Rows ?? 'n/a'}, reported count = ${count || 'none'}, reported pages = ${reportedPages || 'none'}, ` +
+      `pages searched = ${searched}, players seen = ${rows1.length}+, first/last names on page 1 = [${sample}]${note ? ', ' + note : ''}`);
     throw new AppError(`Player "${username}" not found in provider player list`, 404);
   }
 
