@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, AlertCircle } from 'lucide-react'
 import { publicApi } from '@/lib/api'
+import BonusConversionTable from '@/components/bonuses/BonusConversionTable'
 
 interface BonusCashoutRule {
   id: string
@@ -94,26 +95,7 @@ export default function BonusCashoutRulesModal({ isOpen, onClose }: BonusCashout
             ) : rules.length === 0 ? (
               <div className="text-center text-muted text-sm py-8">No active bonus cashout rules right now.</div>
             ) : (
-              <div className="rounded-2xl overflow-hidden border border-white/10">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-[#2AC3FF]/10">
-                      {['BONUS TYPE', 'WINNINGS RANGE', 'WALLET CREDIT'].map((h) => (
-                        <th key={h} className="text-left px-4 py-3 text-[#2AC3FF] font-mono text-xs tracking-widest font-bold">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5">
-                    {rules.map((rule, i) => (
-                      <tr key={rule.id} className={`${i % 2 === 0 ? 'bg-white/[0.02]' : 'bg-transparent'} hover:bg-[#2AC3FF]/5 transition-colors`}>
-                        <td className="px-4 py-3 text-white font-semibold">{describeSourceTypes(rule.sourceTypes)}</td>
-                        <td className="px-4 py-3 text-emerald-400 font-mono font-bold">${rule.minAmount.toFixed(2)} – ${rule.maxAmount.toFixed(2)}</td>
-                        <td className="px-4 py-3 text-[#2AC3FF] font-mono font-bold">${rule.walletCreditAmount.toFixed(2)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <BonusConversionTable rules={rules} />
             )}
 
             <div className="flex items-start gap-3 bg-amber-500/10 border border-amber-500/20 rounded-xl p-4">

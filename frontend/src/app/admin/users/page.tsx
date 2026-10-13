@@ -20,6 +20,7 @@ type User = {
   email: string
   role: string
   isVerified: boolean
+  isPhoneVerified?: boolean
   isActive: boolean
   isBanned: boolean
   createdAt: string
@@ -41,6 +42,35 @@ const Avatar = ({ name, size = 'md' }: { name: string; size?: 'md' | 'lg' }) => 
 )
 
 const PAGE_SIZE = 20
+
+// Email and phone must both be verified to count as fully verified; one of them is "partial".
+const verifyState = (u: User): 'verified' | 'partial' | 'none' => {
+  const email = !!u.isVerified
+  const phone = !!u.isPhoneVerified && !!u.profile?.phone
+  return email && phone ? 'verified' : email || phone ? 'partial' : 'none'
+}
+const VERIFY_LABEL = { verified: '✓ Verified', partial: '◐ Partial', none: '✗ No' } as const
+const VERIFY_CLASS = { verified: 'text-emerald-400', partial: 'text-amber-400', none: 'text-orange-400' } as const
+const verifyDetail = (u: User) => `Email: ${u.isVerified ? 'verified' : 'not verified'} · Phone: ${u.isPhoneVerified && u.profile?.phone ? 'verified' : u.profile?.phone ? 'not verified' : 'none'}`
+
+// Click-to-copy text (clipboard API with a textarea fallback for non-secure contexts).
+const copyText = async (text: string, label: string) => {
+  try {
+    if (navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(text)
+    else {
+      const ta = document.createElement('textarea')
+      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0'
+      document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove()
+    }
+    toast.success(`${label} copied`)
+  } catch { toast.error('Copy failed') }
+}
+const Copyable = ({ value, label, className, children }: { value: string; label: string; className?: string; children?: React.ReactNode }) => (
+  <button type="button" onClick={e => { e.stopPropagation(); copyText(value, label) }} title={`Click to copy ${label.toLowerCase()}`}
+    className={cn('text-left cursor-copy hover:text-sky-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/60 rounded', className)}>
+    {children ?? value}
+  </button>
+)
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>([])
@@ -221,13 +251,15 @@ export default function AdminUsersPage() {
       <div className="flex flex-col sm:flex-row gap-3 mb-4 sm:mb-5">
         <div className="relative flex-1 min-w-0">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
-          <input type="text" placeholder="Search by name, email, phone, telegram..." value={search} onChange={e => onSearchChange(e.target.value)} className="ds-input pl-11" aria-label="Search users" />
+          <input type="text" placeholder="Search by name, email, phone, telegram..." value={search} onChange={e => onSearchChange(e.target.value)} className="ds-input" style={{ paddingLeft: 44 }} aria-label="Search users" />
         </div>
         <select value={filter} onChange={e => onFilterChange(e.target.value)} className="ds-input w-full sm:w-44" aria-label="Filter users">
           <option value="all">All Users</option>
           <option value="active">Active</option>
           <option value="banned">Banned</option>
-          <option value="unverified">Unverified</option>
+          <option value="verified">Verified (email + phone)</option>
+          <option value="partial">Partially verified</option>
+          <option value="unverified">Not verified</option>
         </select>
       </div>
 
@@ -260,7 +292,7 @@ export default function AdminUsersPage() {
                       <Avatar name={user.username} />
                       <div className="min-w-0 max-w-[220px]">
                         <p className="text-primary text-[14px] font-semibold truncate">{user.username}</p>
-                        <p className="text-[13px] text-muted truncate">{user.email}</p>
+                        <Copyable value={user.email} label="Email" className="block max-w-full text-[13px] text-muted truncate">{user.email}</Copyable>
                         {user.profile?.fullName && (
                           <p className="text-[13px] text-secondary truncate">{user.profile.fullName}</p>
                         )}
@@ -271,7 +303,7 @@ export default function AdminUsersPage() {
                     {user.profile?.phone ? (
                       <div className="flex items-center gap-1.5 text-[13px] text-secondary whitespace-nowrap">
                         <Phone className="w-3.5 h-3.5 text-muted flex-shrink-0" />
-                        <span>{user.profile.phone}</span>
+                        <Copyable value={user.profile.phone} label="Phone" />
                       </div>
                     ) : (
                       <span className="text-[13px] text-muted italic">No phone</span>
@@ -282,8 +314,8 @@ export default function AdminUsersPage() {
                   </td>
                   <td><UserStatus user={user} /></td>
                   <td>
-                    <span className={cn('text-[13px] font-medium', user.isVerified ? 'text-emerald-400' : 'text-orange-400')}>
-                      {user.isVerified ? '✓ Yes' : '✗ No'}
+                    <span className={cn('text-[13px] font-medium', VERIFY_CLASS[verifyState(user)])} title={verifyDetail(user)}>
+                      {VERIFY_LABEL[verifyState(user)]}
                     </span>
                   </td>
                   <td className="text-secondary tabular-nums">{user._count?.deposits ?? 0}</td>
@@ -312,14 +344,14 @@ export default function AdminUsersPage() {
                   <p className="text-primary text-[15px] font-semibold truncate">{user.username}</p>
                   <UserStatus user={user} />
                 </div>
-                <p className="text-[13px] text-muted truncate">{user.email}</p>
+                <Copyable value={user.email} label="Email" className="block max-w-full text-[13px] text-muted truncate">{user.email}</Copyable>
                 {user.profile?.fullName && <p className="text-[13px] text-secondary truncate">{user.profile.fullName}</p>}
               </div>
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[13px] text-secondary">
-              {user.profile?.phone && <span className="inline-flex items-center gap-1.5"><Phone className="w-3.5 h-3.5 text-muted" />{user.profile.phone}</span>}
+              {user.profile?.phone && <span className="inline-flex items-center gap-1.5"><Phone className="w-3.5 h-3.5 text-muted" /><Copyable value={user.profile.phone} label="Phone" /></span>}
               {telegramLink(user)}
-              <span className={user.isVerified ? 'text-emerald-400' : 'text-orange-400'}>{user.isVerified ? '✓ Verified' : '✗ Unverified'}</span>
+              <span className={VERIFY_CLASS[verifyState(user)]}>{verifyState(user) === 'none' ? '✗ Unverified' : VERIFY_LABEL[verifyState(user)]}</span>
             </div>
             <div className="mt-3 pt-3 border-t border-border-subtle flex items-center justify-between gap-3">
               <div className="text-xs text-muted min-w-0">
@@ -372,7 +404,7 @@ export default function AdminUsersPage() {
               <Avatar name={selectedUser.username} size="lg" />
               <div className="min-w-0 flex-1">
                 <h3 className="font-bold text-xl text-primary truncate">{selectedUser.username}</h3>
-                <p className="text-secondary text-[14px] truncate">{selectedUser.email}</p>
+                <Copyable value={selectedUser.email} label="Email" className="block max-w-full text-secondary text-[14px] truncate">{selectedUser.email}</Copyable>
               </div>
               <button type="button" onClick={() => setSelectedUser(null)} aria-label="Close"
                 className="w-10 h-10 -mr-2 self-start rounded-xl flex items-center justify-center text-secondary hover:text-primary hover:bg-[var(--ds-hover)] transition">
@@ -391,7 +423,7 @@ export default function AdminUsersPage() {
               <div className="flex items-center gap-2 text-[14px]">
                 <Phone className="w-4 h-4 text-muted flex-shrink-0" />
                 <span className="text-secondary">Phone:</span>
-                <span className="text-primary min-w-0 break-words">{selectedUser.profile?.phone || <span className="text-muted italic">Not provided</span>}</span>
+                <span className="text-primary min-w-0 break-words">{selectedUser.profile?.phone ? <Copyable value={selectedUser.profile.phone} label="Phone" /> : <span className="text-muted italic">Not provided</span>}</span>
               </div>
               <div className="flex items-center gap-2 text-[14px]">
                 <Send className="w-4 h-4 text-muted flex-shrink-0" />
@@ -410,7 +442,8 @@ export default function AdminUsersPage() {
             <div className="grid grid-cols-2 gap-2.5 mb-5">
               {[
                 ['Status', selectedUser.isBanned ? 'Banned' : selectedUser.isActive ? 'Active' : 'Suspended'],
-                ['Verified', selectedUser.isVerified ? 'Yes' : 'No'],
+                ['Verified', verifyState(selectedUser) === 'verified' ? 'Yes' : verifyState(selectedUser) === 'partial' ? 'Partial' : 'No'],
+                ['Email / Phone', `${selectedUser.isVerified ? '✓' : '✗'} / ${selectedUser.isPhoneVerified && selectedUser.profile?.phone ? '✓' : '✗'}`],
                 ['Deposits', selectedUser._count?.deposits?.toString() ?? '0'],
                 ['Joined', new Date(selectedUser.createdAt).toLocaleDateString()],
                 ['Last Login', selectedUser.lastLogin ? new Date(selectedUser.lastLogin).toLocaleDateString() : 'Never'],

@@ -118,14 +118,20 @@ export const getUsers = asyncHandler(async (req: AuthRequest, res: Response) => 
   if (status === 'banned') where.isBanned = true
   if (status === 'active') where.isActive = true
   if (status === 'suspended') { where.isActive = false; where.isBanned = false }
-  if (status === 'unverified') where.isVerified = false
+  // A user counts as fully verified only when BOTH email and phone are verified (phone is set only by OTP).
+  if (status === 'unverified') { where.isVerified = false; where.isPhoneVerified = false }
+  if (status === 'verified') { where.isVerified = true; where.isPhoneVerified = true }
+  if (status === 'partial') {
+    const partial = [{ isVerified: true, isPhoneVerified: false }, { isVerified: false, isPhoneVerified: true }]
+    where.AND = [...(Array.isArray(where.AND) ? where.AND : []), { OR: partial }]
+  }
 
   const [users, total, bannedTotal] = await Promise.all([
     prisma.user.findMany({
       where, skip, take: Number(limit),
       orderBy: { createdAt: 'desc' },
       select: {
-        id: true, username: true, email: true, role: true, isVerified: true,
+        id: true, username: true, email: true, role: true, isVerified: true, isPhoneVerified: true,
         isActive: true, isBanned: true, lastLogin: true, createdAt: true,
         _count: { select: { deposits: true } },
         profile: { select: { fullName: true, phone: true, telegramUsername: true, telegramId: true, telegramPhone: true } }
@@ -342,6 +348,14 @@ export const voidUserBalance = asyncHandler(async (req: AuthRequest, res: Respon
   // Invalidate the cache to immediately reflect new balance
   invalidateWalletCache(user.id)
 
+  // Tell the user what was removed and why (best-effort: a notification failure must not undo the void)
+  const voidReasonText = typeof reason === 'string' ? reason.trim().slice(0, 300) : ''
+  await createNotification(user.id, {
+    title: 'Balance Removed',
+    message: `$${amount.toFixed(2)} has been removed from your wallet by admin.${voidReasonText ? ` Reason: ${voidReasonText}` : ''}`,
+    type: 'warning'
+  }).catch(() => {})
+
   res.json({ success: true, message: 'Balance voided successfully', data: withdrawal })
 })
 
@@ -391,7 +405,7 @@ export const addUserBalance = asyncHandler(async (req: AuthRequest, res: Respons
   // Notify user
   await createNotification(user.id, {
     title: 'Balance Added',
-    message: `$${amount.toFixed(2)} has been added to your wallet by admin.`,
+    message: `$${amount.toFixed(2)} has been added to your wallet by admin.${typeof reason === 'string' && reason.trim() ? ` Reason: ${reason.trim().slice(0, 300)}` : ''}`,
     type: 'success'
   })
 

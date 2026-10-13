@@ -4,6 +4,7 @@ import Footer from '@/components/layout/Footer'
 import { Shield, AlertCircle, Gift, Ticket, Users, Coins, Sparkles, Wallet } from 'lucide-react'
 import { publicApi } from '@/lib/api'
 import SundayFreeplayCard from '@/components/bonuses/SundayFreeplayCard'
+import BonusConversionTable from '@/components/bonuses/BonusConversionTable'
 
 interface BonusCashoutRule {
   id: string
@@ -118,30 +119,7 @@ export default function BonusCashoutRulesPage() {
             ) : rules.length === 0 ? (
               <div className="mt-8 text-center text-secondary text-[14px]">No active bonus cashout rules right now.</div>
             ) : (
-              <div role="table" aria-label="Bonus cashout conversion rules" className="mt-6 sm:mt-8 rounded-2xl overflow-hidden border border-border-subtle">
-                <div role="rowgroup">
-                  <div role="row" className="grid grid-cols-[1.4fr_1fr_1fr] gap-2 px-3.5 sm:px-6 py-3 text-[12px] sm:text-[13px] font-semibold uppercase tracking-wider"
-                    style={{ background: 'linear-gradient(90deg, rgba(34,211,238,0.14), rgba(139,92,246,0.14))' }}>
-                    <span role="columnheader" className="text-sky-400">Bonus Type</span>
-                    <span role="columnheader" className="text-sky-400">Winnings Range</span>
-                    <span role="columnheader" className="text-violet-400">Wallet Credit</span>
-                  </div>
-                </div>
-                <div role="rowgroup">
-                  {rules.map((r, i) => {
-                    const last = i === rules.length - 1
-                    return (
-                      <div key={r.id} role="row"
-                        className="grid grid-cols-[1.4fr_1fr_1fr] gap-2 items-center px-3.5 sm:px-6 py-3 sm:py-3.5 text-[13px] sm:text-[15px] tabular-nums border-t border-border-subtle first:border-t-0"
-                        style={last ? { background: 'linear-gradient(90deg, rgba(34,211,238,0.07), rgba(139,92,246,0.10))' } : i % 2 === 0 ? { background: 'color-mix(in srgb, var(--bg-surface-elevated) 55%, transparent)' } : undefined}>
-                        <span role="cell" className="font-bold text-primary">{describeSourceTypes(r.sourceTypes)}</span>
-                        <span role="cell" className="font-medium text-secondary">${r.minAmount.toFixed(2)} – ${r.maxAmount.toFixed(2)}</span>
-                        <span role="cell" className="font-semibold text-primary">${r.walletCreditAmount.toFixed(2)}</span>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
+              <div className="mt-6 sm:mt-8"><BonusConversionTable rules={rules} /></div>
             )}
 
             <div className="mt-5 flex items-start gap-3 rounded-2xl p-3.5 sm:p-4"

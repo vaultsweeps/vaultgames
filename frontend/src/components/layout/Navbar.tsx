@@ -50,7 +50,10 @@ export default function Navbar() {
   const [walletOpen, setWalletOpen] = useState(false)
   // Header shows wallet + bonus together so a player with only bonus money doesn't think they have nothing; the Wallet
   // popup (opened from the header) still shows the two separately
-  const totalBalance = Math.round(((balance || 0) + (bonusBalance || 0)) * 100) / 100
+  // Wallet and Bonus balances are never added together. The header shows the Wallet balance, and switches to
+  // the Bonus balance only when the wallet is under $1 and there is bonus to use.
+  const showingBonus = (balance || 0) < 1 && (bonusBalance || 0) > 0
+  const totalBalance = showingBonus ? (bonusBalance || 0) : (balance || 0)
   const [unreadCount, setUnreadCount] = useState(0)
 
   const lastNotifFetch = useRef(0)
@@ -174,6 +177,7 @@ export default function Navbar() {
                 >
                   <Wallet className="w-4 h-4" />
                     <span className="font-bold text-white text-[15px] sm:text-base">${totalBalance.toFixed(2)}</span>
+                    {showingBonus && <span className="text-[10px] font-bold uppercase tracking-wider text-[#2AC3FF]/80">Bonus</span>}
                 </button>
                 <Link href="/dashboard" className="btn-neon text-xs py-2 px-4 flex items-center gap-2">
                   <LayoutDashboard className="w-3.5 h-3.5" /> Dashboard
@@ -267,7 +271,7 @@ export default function Navbar() {
                   </div>
                   {/* Balance text */}
                   <div className="flex flex-col items-center px-3">
-                    <span className="text-[9px] font-bold tracking-[0.15em] text-white/40 uppercase">Balance</span>
+                    <span className="text-[9px] font-bold tracking-[0.15em] text-white/40 uppercase">{showingBonus ? 'Bonus Balance' : 'Balance'}</span>
                     <span className="text-white font-black text-base leading-tight" style={{ fontVariantNumeric: 'tabular-nums' }}>{totalBalance.toFixed(2)}</span>
                   </div>
                   {/* Divider */}
@@ -389,10 +393,10 @@ export default function Navbar() {
                         <span className="text-[#38bdf8] font-black text-sm">$</span>
                       </div>
                       <div>
-                        <p className="text-[10px] text-secondary uppercase font-bold tracking-wider">Balance</p>
+                        <p className="text-[10px] text-secondary uppercase font-bold tracking-wider">{showingBonus ? 'Bonus Balance' : 'Balance'}</p>
                         <p className="text-base font-black text-white">${totalBalance.toFixed(2)}</p>
-                        {bonusBalance > 0 && (
-                          <p className="text-[11px] font-bold text-[#2AC3FF]">incl. ${bonusBalance.toFixed(2)} bonus</p>
+                        {!showingBonus && bonusBalance > 0 && (
+                          <p className="text-[11px] font-bold text-[#2AC3FF]">+ ${bonusBalance.toFixed(2)} bonus</p>
                         )}
                       </div>
                     </div>
