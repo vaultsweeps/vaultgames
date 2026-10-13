@@ -44,14 +44,17 @@ const Avatar = ({ name, size = 'md' }: { name: string; size?: 'md' | 'lg' }) => 
 const PAGE_SIZE = 20
 
 // Email and phone must both be verified to count as fully verified; one of them is "partial".
+// If the API predates the isPhoneVerified field, a saved verified phone number (set only by OTP) counts as verified.
+// The server's isPhoneVerified flag is the source of truth (it is what the coupon / welcome-bonus rules check).
+const phoneOk = (u: User) => !!(u.isPhoneVerified ?? !!u.profile?.phone)
 const verifyState = (u: User): 'verified' | 'partial' | 'none' => {
   const email = !!u.isVerified
-  const phone = !!u.isPhoneVerified && !!u.profile?.phone
+  const phone = phoneOk(u)
   return email && phone ? 'verified' : email || phone ? 'partial' : 'none'
 }
 const VERIFY_LABEL = { verified: '✓ Verified', partial: '◐ Partial', none: '✗ No' } as const
 const VERIFY_CLASS = { verified: 'text-emerald-400', partial: 'text-amber-400', none: 'text-orange-400' } as const
-const verifyDetail = (u: User) => `Email: ${u.isVerified ? 'verified' : 'not verified'} · Phone: ${u.isPhoneVerified && u.profile?.phone ? 'verified' : u.profile?.phone ? 'not verified' : 'none'}`
+const verifyDetail = (u: User) => `Email: ${u.isVerified ? 'verified' : 'not verified'} · Phone: ${phoneOk(u) ? 'verified' : u.profile?.phone ? 'not verified' : 'none'}`
 
 // Click-to-copy text (clipboard API with a textarea fallback for non-secure contexts).
 const copyText = async (text: string, label: string) => {
@@ -443,7 +446,7 @@ export default function AdminUsersPage() {
               {[
                 ['Status', selectedUser.isBanned ? 'Banned' : selectedUser.isActive ? 'Active' : 'Suspended'],
                 ['Verified', verifyState(selectedUser) === 'verified' ? 'Yes' : verifyState(selectedUser) === 'partial' ? 'Partial' : 'No'],
-                ['Email / Phone', `${selectedUser.isVerified ? '✓' : '✗'} / ${selectedUser.isPhoneVerified && selectedUser.profile?.phone ? '✓' : '✗'}`],
+                ['Email / Phone', `${selectedUser.isVerified ? '✓' : '✗'} / ${phoneOk(selectedUser) ? '✓' : '✗'}`],
                 ['Deposits', selectedUser._count?.deposits?.toString() ?? '0'],
                 ['Joined', new Date(selectedUser.createdAt).toLocaleDateString()],
                 ['Last Login', selectedUser.lastLogin ? new Date(selectedUser.lastLogin).toLocaleDateString() : 'Never'],
