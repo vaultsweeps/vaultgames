@@ -48,6 +48,7 @@ export default function GameDetailsPage() {
   const [resetting, setResetting] = useState(false)
   const [removeLoginOpen, setRemoveLoginOpen] = useState(false)
   const [removingLogin, setRemovingLogin] = useState(false)
+  const [balanceUnreadable, setBalanceUnreadable] = useState(false)
   const [provisioning, setProvisioning] = useState(false)
   const [downloadModalOpen, setDownloadModalOpen] = useState(false)
   const [downloadCode, setDownloadCode] = useState<string | null>(null)
@@ -290,18 +291,24 @@ export default function GameDetailsPage() {
     }
   }
 
-  const handleRemoveLogin = async (confirmBurn: boolean) => {
+  const handleRemoveLogin = async (confirmBurn: boolean, confirmUnreadable = false) => {
     setRemovingLogin(true)
     try {
-      const res = await providerApi.deleteAccount(id as string, confirmBurn)
+      const res = await providerApi.deleteAccount(id as string, confirmBurn, confirmUnreadable)
       const burned = Number(res.data?.data?.burned || 0)
       toast.success(burned > 0 ? `Game login removed. $${burned.toFixed(2)} was burned.` : 'Game login removed. You can get a new one any time.')
       setRemoveLoginOpen(false)
+      setBalanceUnreadable(false)
       setAccount({ accountName: null, balance: 0, hasAccount: false })
       setPassword('')
       setShowPassword(false)
     } catch (err: any) {
       const data = err?.response?.data
+      if (data?.code === 'BALANCE_UNREADABLE') {
+        // The game's balance cannot be read: ask for an explicit confirmation in the popup before removing anyway
+        setBalanceUnreadable(true)
+        return
+      }
       if (data?.code === 'BALANCE_CONFIRM_REQUIRED') {
         // The game still holds money: show the real balance in the popup so it can be confirmed explicitly
         setAccount((prev: any) => prev ? { ...prev, balance: Number(data.balance) || 0 } : prev)
@@ -619,7 +626,7 @@ export default function GameDetailsPage() {
                 {resetting ? 'Resetting...' : 'Reset password'}
               </button>
               <button
-                onClick={() => setRemoveLoginOpen(true)}
+                onClick={() => { setBalanceUnreadable(false); setRemoveLoginOpen(true) }}
                 aria-label="Remove game login"
                 title="Remove this game login"
                 className="w-14 flex-shrink-0 rounded-xl flex items-center justify-center bg-red-500/10 hover:bg-red-500/20 border border-red-500/25 text-red-400 transition-all"
@@ -754,6 +761,7 @@ export default function GameDetailsPage() {
           onClose={() => setRemoveLoginOpen(false)}
           onConfirm={handleRemoveLogin}
           loading={removingLogin}
+          balanceUnreadable={balanceUnreadable}
           gameName={game.name}
           gameThumbnail={game.thumbnailUrl}
           accountName={account.accountName || ''}

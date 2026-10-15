@@ -162,7 +162,7 @@ export const providerApi = {
   getAccount: (gameId?: string) => apiClient.get('/provider/account', { params: gameId ? { gameId } : {} }),
   createAccount: (gameId?: string) => apiClient.post('/provider/create-account', {}, { params: gameId ? { gameId } : {} }),
   resetPassword: (gameId?: string) => apiClient.post('/provider/reset-password', {}, { params: gameId ? { gameId } : {} }),
-  deleteAccount: (gameId?: string, confirmBurn = false) => apiClient.post('/provider/delete-account', { confirmBurn }, { params: gameId ? { gameId } : {} }),
+  deleteAccount: (gameId?: string, confirmBurn = false, confirmUnreadable = false) => apiClient.post('/provider/delete-account', { confirmBurn, confirmUnreadable }, { params: gameId ? { gameId } : {} }),
   getTransactions: (gameId?: string) => apiClient.get('/provider/transactions', { params: gameId ? { gameId } : {} }),
   // idempotencyKey: pass the SAME value across automatic/manual retries of one logical transfer attempt
   // (FIN-7) — the backend resolves a repeated key to the original transfer's outcome instead of calling the

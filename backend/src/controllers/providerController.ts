@@ -322,22 +322,34 @@ export const deleteProviderAccount = asyncHandler(async (req: AuthRequest, res: 
     throw new AppError('A transfer for this game is still being processed. Please wait for it to finish, or contact support, before removing the login.', 409)
   }
 
-  // The login must be empty. If the balance cannot be read for certain, refuse rather than risk stranding money.
   const providerService = await ProviderFactory.getProviderById(providerId)
   if (!providerService) throw new AppError('This game is temporarily unavailable. Please try again in a little while.', 503)
-  let balance: number
+  let balance = 0
+  let balanceReadable = true
   try {
     balance = await providerService.getPlayerBalance(providerUser.providerUserId)
   } catch {
-    throw new AppError('We could not check your game balance right now. Please try again in a moment.', 503)
+    balanceReadable = false
   }
-  if (typeof balance !== 'number' || !Number.isFinite(balance)) {
-    throw new AppError('We could not check your game balance right now. Please try again in a moment.', 503)
+  if (balanceReadable && (typeof balance !== 'number' || !Number.isFinite(balance))) {
+    balanceReadable = false
+    balance = 0
   }
+
+  // If the balance cannot be read, there is no way to take any money out of the game first. The login can still be
+  // removed, but only after the player explicitly accepts that anything on it may be lost (confirmUnreadable: true).
+  if (!balanceReadable && req.body?.confirmUnreadable !== true) {
+    return res.status(409).json({
+      success: false,
+      code: 'BALANCE_UNREADABLE',
+      message: 'We could not read the balance of this game login right now. If you remove it and it still holds money, that money may be lost. Please confirm to continue.',
+    })
+  }
+
   // A login that still holds money can only be removed when the player has explicitly accepted that the whole
   // balance is burned (taken out of the game and not credited anywhere). The caller must send confirmBurn: true.
   let burned = 0
-  if (balance >= 0.01) {
+  if (balanceReadable && balance >= 0.01) {
     if (req.body?.confirmBurn !== true) {
       return res.status(409).json({
         success: false,
@@ -420,10 +432,10 @@ export const deleteProviderAccount = asyncHandler(async (req: AuthRequest, res: 
   if (lockedOut) await prisma.deletedProviderAccount.update({ where: { id: archived.id }, data: { lockedOut: true } }).catch(() => {})
 
   await prisma.activityLog.create({
-    data: { userId, action: 'GAME_LOGIN_REMOVED', entity: 'Provider', entityId: providerId, metadata: { accountName: providerUser.accountName, lockedOut, burned } },
+    data: { userId, action: 'GAME_LOGIN_REMOVED', entity: 'Provider', entityId: providerId, metadata: { accountName: providerUser.accountName, lockedOut, burned, balanceUnreadable: !balanceReadable } },
   }).catch(() => {})
 
-  res.json({ success: true, message: 'Game login removed', data: { lockedOut, burned } })
+  res.json({ success: true, message: 'Game login removed', data: { lockedOut, burned, balanceUnreadable: !balanceReadable } })
 })
 
 // GET /api/provider/transactions?gameId=xxx
