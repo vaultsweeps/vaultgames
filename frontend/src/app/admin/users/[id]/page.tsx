@@ -333,6 +333,44 @@ export default function UserDetailsPage() {
               </div>
             )}
           </Card>
+
+          {/* Coupons redeemed */}
+          <Card className="!p-4 sm:!p-6">
+            <SectionHeading title={<span className="flex items-center gap-2"><Gamepad2 size={18} className="text-muted" /> Coupons redeemed</span>} />
+            {data.couponRedemptions && data.couponRedemptions.length > 0 ? (
+              <div className="space-y-2.5">
+                {data.couponRedemptions.map((c: any) => {
+                  const statusLabel: Record<string, string> = { active: c.remaining !== null && c.remaining < c.amount ? 'Partly used' : 'Unused', depleted: 'Fully used', expired: 'Expired', reversed: 'Reversed', legacy: 'Added to wallet (older coupon)' }
+                  return (
+                    <div key={c.id} className="p-3.5 bg-surface-elevated rounded-2xl border border-border-subtle">
+                      <div className="flex justify-between items-center gap-2">
+                        <span className="font-mono font-semibold text-primary text-[14px] truncate">{c.code}</span>
+                        <span className="text-emerald-400 font-bold tabular-nums">${Number(c.amount).toFixed(2)}</span>
+                      </div>
+                      <div className="text-xs text-muted mt-0.5">
+                        Redeemed {new Date(c.redeemedAt).toLocaleDateString()} · {statusLabel[c.status] || c.status}
+                        {c.remaining !== null && c.status === 'active' ? ` · $${Number(c.remaining).toFixed(2)} left` : ''}
+                      </div>
+                      {c.games.length > 0 ? (
+                        <div className="mt-2 space-y-1">
+                          {c.games.map((g: any, i: number) => (
+                            <div key={i} className="text-[13px] text-secondary flex justify-between gap-2">
+                              <span className="truncate">Added to <span className="text-sky-400 font-medium">{g.providerName}</span></span>
+                              <span className="whitespace-nowrap tabular-nums">${Number(g.amount).toFixed(2)} · {new Date(g.at).toLocaleDateString()}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="mt-2 text-[13px] text-muted italic">{c.status === 'legacy' ? 'No per-game record for this coupon.' : 'Not added to any game yet.'}</div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="text-muted text-[14px] italic">No coupons redeemed.</div>
+            )}
+          </Card>
         </div>
 
         {/* Right Column */}

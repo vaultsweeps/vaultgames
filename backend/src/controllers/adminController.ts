@@ -302,9 +302,64 @@ export const getUserDetails = asyncHandler(async (req: AuthRequest, res: Respons
     deletedGameAccounts = rows.map(r => ({ id: r.id, providerName: providerNames.get(r.providerId) || 'Unknown game', accountName: r.accountName, lockedOut: r.lockedOut, burned: r.balanceAtDelete, deletedAt: r.deletedAt }))
   } catch { /* table not created yet */ }
 
+  // Coupons this player redeemed and which game(s) the coupon money was then added to. A coupon claim credits a
+  // UserBonus (referenceId = the CouponUsage id); a bonus-funded game recharge records which UserBonus rows it consumed
+  // in bonusSourceBreakdown, which is what ties a coupon to a game. Coupons claimed before the Bonus Balance system
+  // went live were added to the wallet instead and have no per-game trail.
+  let couponRedemptions: any[] = []
+  try {
+    const usages = await prisma.couponUsage.findMany({
+      where: { userId: id },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+      include: { coupon: { select: { code: true, amount: true } } },
+    })
+    if (usages.length > 0) {
+      const bonuses = await prisma.userBonus.findMany({
+        where: { userId: id, sourceType: 'COUPON', referenceId: { in: usages.map(u => u.id) } },
+        select: { id: true, referenceId: true, originalAmount: true, remainingAmount: true, status: true },
+      })
+      const bonusByUsage = new Map(bonuses.map(b => [b.referenceId, b]))
+      const usageByBonusId = new Map(bonuses.map(b => [b.id, b.referenceId as string]))
+      const gamesByUsage = new Map<string, { providerName: string; amount: number; at: Date }[]>()
+      if (bonuses.length > 0) {
+        const recharges = await prisma.providerTransaction.findMany({
+          where: { userId: id, type: 'recharge', status: 'success', fundingSource: 'BONUS' },
+          orderBy: { createdAt: 'desc' },
+          take: 500,
+          select: { createdAt: true, bonusSourceBreakdown: true, provider: { select: { name: true } } },
+        })
+        for (const tx of recharges) {
+          const entries = Array.isArray(tx.bonusSourceBreakdown) ? (tx.bonusSourceBreakdown as any[]) : []
+          for (const e of entries) {
+            const usageId = usageByBonusId.get(e?.userBonusId)
+            if (!usageId) continue
+            const list = gamesByUsage.get(usageId) || []
+            list.push({ providerName: tx.provider?.name || 'Unknown game', amount: Number(e.amountConsumed) || 0, at: tx.createdAt })
+            gamesByUsage.set(usageId, list)
+          }
+        }
+      }
+      couponRedemptions = usages.map(u => {
+        const b = bonusByUsage.get(u.id)
+        return {
+          id: u.id,
+          code: u.coupon.code,
+          amount: b ? b.originalAmount : u.coupon.amount,
+          redeemedAt: u.createdAt,
+          // 'legacy' = claimed before Bonus Balance existed (went to the wallet, no game trail)
+          status: b ? b.status : 'legacy',
+          remaining: b ? b.remainingAmount : null,
+          games: gamesByUsage.get(u.id) || [],
+        }
+      })
+    }
+  } catch { /* keep the page working if anything in this optional section fails */ }
+
   res.json({
     success: true,
     data: {
+      couponRedemptions,
       deletedGameAccounts,
       user: userWithBalances,
       walletBalance,
