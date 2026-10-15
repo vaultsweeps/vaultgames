@@ -69,8 +69,12 @@ export default function Footer() {
                 <Gift className="w-8 h-8 sm:w-10 sm:h-10 text-white relative z-10" />
               </div>
               <div>
-                <h3 className="font-display font-bold text-2xl sm:text-3xl text-white mb-2 tracking-tight">Claim 100% Signup Bonus</h3>
-                <p className="text-slate-300 text-sm sm:text-base">Make a deposit now and take a bonus of up to 1,000 USD to your deposit</p>
+                <p className="text-[11px] sm:text-xs font-bold uppercase tracking-[0.2em] text-sky-300 mb-1.5">Welcome to VaultSweeps</p>
+                <h3 className="font-display font-bold text-2xl sm:text-3xl text-white mb-2 tracking-tight uppercase">Your first deposit, doubled!</h3>
+                <p className="text-slate-300 text-sm sm:text-base">
+                  <span className="font-semibold text-white uppercase">Enjoy a 100% first deposit bonus.</span>{' '}
+                  Deposit into your wallet, then get your bonus when you add funds to a game!
+                </p>
               </div>
             </div>
             <div className="z-10 w-full md:w-auto flex-shrink-0">
