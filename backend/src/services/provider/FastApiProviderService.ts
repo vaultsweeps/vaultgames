@@ -398,6 +398,19 @@ export class FastApiProviderService implements ProviderAdapter {
     } catch (e: any) {
       // Code 12 = User Already Exists — treat as success, user is already on provider
       if (e.message?.includes('Code: 12') || e.message?.includes('User Already Exist')) {
+        // "Already exists" is only OK when it is OUR account (e.g. a retried create). If the name belongs to someone
+        // else, the password we are about to show would be wrong and could never be reset, so check the password the
+        // provider holds: only a definite "Password error" (code 20) means the name is taken by another account, and
+        // then the original "already exists" error is rethrown so the caller picks a different username.
+        try {
+          await this.makeRequest(this.getEndpoint('balanceWithPasswd', '/fast/user/balanceWithPasswd'), { account: providerAccount, passwd: providerPassword });
+        } catch (verifyErr: any) {
+          if (/Code:\s*20(?!\d)/.test(String(verifyErr?.message)) || /Password error/i.test(String(verifyErr?.message))) {
+            console.warn(`[FastApiProviderService] Player "${providerAccount}" already exists on provider with a different password — name is taken`);
+            throw e;
+          }
+          // Could not verify (other error) — keep the previous behaviour rather than block sign-up
+        }
         console.info(`[FastApiProviderService] Player "${providerAccount}" already exists on provider — treating as success`);
         return { userId: username, accountName: providerAccount };
       }
