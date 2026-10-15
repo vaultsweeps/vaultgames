@@ -293,9 +293,19 @@ export const getUserDetails = asyncHandler(async (req: AuthRequest, res: Respons
     })),
   };
 
+  // Game logins the player removed (archived, never erased). Tolerant of the table not existing yet so this page
+  // keeps working until the DeletedProviderAccount migration has been applied.
+  let deletedGameAccounts: any[] = []
+  try {
+    const rows = await prisma.deletedProviderAccount.findMany({ where: { userId: id }, orderBy: { deletedAt: 'desc' }, take: 20 })
+    const providerNames = new Map((await prisma.provider.findMany({ where: { id: { in: [...new Set(rows.map(r => r.providerId))] } }, select: { id: true, name: true } })).map(p => [p.id, p.name]))
+    deletedGameAccounts = rows.map(r => ({ id: r.id, providerName: providerNames.get(r.providerId) || 'Unknown game', accountName: r.accountName, lockedOut: r.lockedOut, burned: r.balanceAtDelete, deletedAt: r.deletedAt }))
+  } catch { /* table not created yet */ }
+
   res.json({
     success: true,
     data: {
+      deletedGameAccounts,
       user: userWithBalances,
       walletBalance,
       referrals,

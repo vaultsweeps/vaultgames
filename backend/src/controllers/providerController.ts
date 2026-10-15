@@ -284,6 +284,148 @@ export const resetProviderPassword = asyncHandler(async (req: AuthRequest, res: 
   res.json({ success: true, data: { newPassword } })
 })
 
+// A player may remove their login for a given game this many times in a rolling window
+const GAME_LOGIN_REMOVALS_PER_WINDOW = 2
+const GAME_LOGIN_REMOVAL_WINDOW_MS = 7 * 24 * 60 * 60 * 1000
+
+// POST /api/provider/delete-account?gameId=xxx
+// Unlinks the player's game login from their VaultSweeps account so they can get a fresh one (e.g. after the game's
+// provider changed). The provider-side account cannot be deleted through any provider API, so afterwards the old login's
+// password is changed (best effort) so it no longer works. The row is archived, never erased. A balance still on the
+// login is burned (withdrawn from the game, credited nowhere) only after the player explicitly confirms.
+export const deleteProviderAccount = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const userId = req.user!.id
+  const gameId = req.query.gameId as string | undefined
+  if (!gameId) throw new AppError('Game is required', 400)
+
+  const providerId = await ProviderFactory.getProviderIdForGame(gameId)
+  if (!providerId) throw new AppError('This game is not available right now', 404)
+
+  const providerUser = await prisma.providerUser.findFirst({ where: { userId, providerId } })
+  if (!providerUser) throw new AppError('No game login found to remove', 404)
+
+  // Removal limit: 2 per game per rolling 7 days
+  const since = new Date(Date.now() - GAME_LOGIN_REMOVAL_WINDOW_MS)
+  const recent = await prisma.deletedProviderAccount.findMany({
+    where: { userId, providerId, deletedAt: { gte: since } },
+    orderBy: { deletedAt: 'asc' },
+    select: { deletedAt: true },
+  })
+  if (recent.length >= GAME_LOGIN_REMOVALS_PER_WINDOW) {
+    const nextAt = new Date(recent[recent.length - GAME_LOGIN_REMOVALS_PER_WINDOW].deletedAt.getTime() + GAME_LOGIN_REMOVAL_WINDOW_MS)
+    throw new AppError(`You can remove a game login ${GAME_LOGIN_REMOVALS_PER_WINDOW} times every 7 days. Please try again after ${nextAt.toUTCString()}.`, 429)
+  }
+
+  // A transfer that is still being processed could move money in or out of this login
+  const unresolved = await prisma.providerTransaction.count({ where: { userId, providerId, status: { in: ['pending', 'unknown'] } } })
+  if (unresolved > 0) {
+    throw new AppError('A transfer for this game is still being processed. Please wait for it to finish, or contact support, before removing the login.', 409)
+  }
+
+  // The login must be empty. If the balance cannot be read for certain, refuse rather than risk stranding money.
+  const providerService = await ProviderFactory.getProviderById(providerId)
+  if (!providerService) throw new AppError('This game is temporarily unavailable. Please try again in a little while.', 503)
+  let balance: number
+  try {
+    balance = await providerService.getPlayerBalance(providerUser.providerUserId)
+  } catch {
+    throw new AppError('We could not check your game balance right now. Please try again in a moment.', 503)
+  }
+  if (typeof balance !== 'number' || !Number.isFinite(balance)) {
+    throw new AppError('We could not check your game balance right now. Please try again in a moment.', 503)
+  }
+  // A login that still holds money can only be removed when the player has explicitly accepted that the whole
+  // balance is burned (taken out of the game and not credited anywhere). The caller must send confirmBurn: true.
+  let burned = 0
+  if (balance >= 0.01) {
+    if (req.body?.confirmBurn !== true) {
+      return res.status(409).json({
+        success: false,
+        code: 'BALANCE_CONFIRM_REQUIRED',
+        balance,
+        message: `Your game balance is $${balance.toFixed(2)}. Removing the login permanently burns this balance. Please confirm to continue.`,
+      })
+    }
+
+    // Take the balance out of the game with the provider's own withdraw call, trying the exact amount (cents
+    // included) first and whole dollars if the provider rejects cents. It is NOT recorded as a cashout, so nothing
+    // is credited to the player's wallet. If the balance cannot be taken out for certain, the login is NOT removed.
+    const exactAmount = Math.round(balance * 100) / 100
+    const wholeAmount = Math.floor(balance)
+    const attempts = [...new Set([exactAmount, wholeAmount].filter(a => a >= 0.01))]
+    let withdrawn = false
+    let lastFailure: any = null
+    for (const amount of attempts) {
+      const orderId = `burn_${crypto.randomUUID().replace(/-/g, '').slice(0, 24)}`
+      try {
+        await providerService.withdrawPlayer(providerUser.providerUserId, amount, orderId)
+        withdrawn = true
+      } catch (err: any) {
+        lastFailure = err
+        // The call may still have gone through — the balance tells the truth
+        let after: number | null = null
+        try { after = await providerService.getPlayerBalance(providerUser.providerUserId) } catch { /* unknown */ }
+        if (after === null || !Number.isFinite(after)) {
+          logger.error(`[delete-account] burn could not be confirmed user=${userId} game=${gameId} order=${orderId}: ${String(err?.message || err).slice(0, 160)}`)
+          throw new AppError('Removing the balance could not be confirmed, so your login was NOT removed. Please try again in a few minutes.', 502)
+        }
+        if (after <= balance - 0.01) withdrawn = true // the balance did drop: the withdrawal was processed
+      }
+      if (withdrawn) {
+        logger.warn(`[delete-account] withdrew $${amount.toFixed(2)} user=${userId} game=${gameId} account=${providerUser.accountName} order=${orderId}`)
+        break
+      }
+    }
+    if (!withdrawn) {
+      // Under $1 the provider may not accept such a small amount at all; that dust is not worth blocking the removal
+      if (balance >= 1) {
+        throw new AppError('We could not take the balance out of the game right now, so your login was NOT removed. Please try again in a little while.', lastFailure instanceof AppError && lastFailure.statusCode === 400 ? 400 : 502)
+      }
+    } else {
+      let remaining: number | null = null
+      try { remaining = await providerService.getPlayerBalance(providerUser.providerUserId) } catch { /* verified below only if readable */ }
+      if (remaining !== null && Number.isFinite(remaining) && remaining >= 1) {
+        throw new AppError('The game balance could not be fully removed, so your login was NOT removed. Please try again.', 502)
+      }
+      burned = remaining !== null && Number.isFinite(remaining) ? Math.max(0, balance - remaining) : exactAmount
+    }
+  }
+
+  // Archive + unlink in one step; the guard makes a double click harmless
+  const archived = await prisma.$transaction(async (tx) => {
+    const removed = await tx.providerUser.deleteMany({ where: { id: providerUser.id } })
+    if (removed.count !== 1) return null
+    return tx.deletedProviderAccount.create({
+      data: {
+        userId,
+        providerId,
+        providerUserId: providerUser.providerUserId,
+        accountName: providerUser.accountName,
+        balanceAtDelete: burned,
+        accountCreatedAt: providerUser.createdAt,
+      },
+    })
+  })
+  if (!archived) throw new AppError('This game login was already removed.', 409)
+
+  // Best effort: change the old login's password to one nobody is told, so it can no longer be used in the game.
+  // Never fails the removal (many providers cannot change a password through their API).
+  let lockedOut = false
+  try {
+    const lockPassword = providerService.generateResetPassword?.() ?? generateShortPassword()
+    lockedOut = !!(await providerService.resetPlayerPassword(providerUser.providerUserId, lockPassword, { interactive: true, currentPassword: providerUser.password || undefined }))
+  } catch (e: any) {
+    logger.warn(`[delete-account] Could not lock out old login for user=${userId} game=${gameId}: ${String(e?.message || e).slice(0, 160)}`)
+  }
+  if (lockedOut) await prisma.deletedProviderAccount.update({ where: { id: archived.id }, data: { lockedOut: true } }).catch(() => {})
+
+  await prisma.activityLog.create({
+    data: { userId, action: 'GAME_LOGIN_REMOVED', entity: 'Provider', entityId: providerId, metadata: { accountName: providerUser.accountName, lockedOut, burned } },
+  }).catch(() => {})
+
+  res.json({ success: true, message: 'Game login removed', data: { lockedOut, burned } })
+})
+
 // GET /api/provider/transactions?gameId=xxx
 export const getProviderTransactions = asyncHandler(async (req: AuthRequest, res: Response) => {
   const userId = req.user!.id

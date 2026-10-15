@@ -780,3 +780,20 @@ enum NotificationType {
   warning
   error
 }
+
+// A game (provider) login a player removed from their VaultSweeps account. The live ProviderUser row is moved here
+// (never erased) so history, bonus eligibility checks and admin records stay intact, and the per-game removal limit
+// can be counted. The provider-side account itself still exists (no provider offers a delete call).
+model DeletedProviderAccount {
+  id               String   @id @default(cuid())
+  userId           String
+  providerId       String
+  providerUserId   String
+  accountName      String
+  lockedOut        Boolean  @default(false) // true when the old login's password was changed so it no longer works
+  balanceAtDelete  Float    @default(0)
+  accountCreatedAt DateTime
+  deletedAt        DateTime @default(now())
+
+  @@index([userId, providerId, deletedAt])
+}

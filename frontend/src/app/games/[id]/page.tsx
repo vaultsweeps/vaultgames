@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useParams, useRouter } from 'next/navigation'
-import { Download, ArrowLeft, RefreshCw, Copy, Eye, EyeOff, PlusCircle, ArrowUpCircle, AlertCircle, Key, Info, Bot, MessageCircle, X, RefreshCcw, Gift } from 'lucide-react'
+import { Download, ArrowLeft, RefreshCw, Copy, Eye, EyeOff, PlusCircle, ArrowUpCircle, AlertCircle, Key, Info, Bot, MessageCircle, X, RefreshCcw, Gift, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -10,6 +10,7 @@ import Image from 'next/image'
 import Footer from '@/components/layout/Footer'
 import GameTransferModal from '@/components/modals/GameTransferModal'
 import ChooseGameModal from '@/components/modals/ChooseGameModal'
+import RemoveGameLoginModal from '@/components/modals/RemoveGameLoginModal'
 import Loader from '@/components/ui/Loader'
 import { publicApi, gamesApi, providerApi, authApi } from '@/lib/api'
 import PlayWithAgentModal from '@/components/modals/PlayWithAgentModal'
@@ -45,6 +46,8 @@ export default function GameDetailsPage() {
   const [loading, setLoading] = useState(true)
   const [downloading, setDownloading] = useState(false)
   const [resetting, setResetting] = useState(false)
+  const [removeLoginOpen, setRemoveLoginOpen] = useState(false)
+  const [removingLogin, setRemovingLogin] = useState(false)
   const [provisioning, setProvisioning] = useState(false)
   const [downloadModalOpen, setDownloadModalOpen] = useState(false)
   const [downloadCode, setDownloadCode] = useState<string | null>(null)
@@ -284,6 +287,29 @@ export default function GameDetailsPage() {
       toast.error(err?.response?.data?.message || 'Failed to generate download code')
     } finally {
       setGeneratingCode(false)
+    }
+  }
+
+  const handleRemoveLogin = async (confirmBurn: boolean) => {
+    setRemovingLogin(true)
+    try {
+      const res = await providerApi.deleteAccount(id as string, confirmBurn)
+      const burned = Number(res.data?.data?.burned || 0)
+      toast.success(burned > 0 ? `Game login removed. $${burned.toFixed(2)} was burned.` : 'Game login removed. You can get a new one any time.')
+      setRemoveLoginOpen(false)
+      setAccount({ accountName: null, balance: 0, hasAccount: false })
+      setPassword('')
+      setShowPassword(false)
+    } catch (err: any) {
+      const data = err?.response?.data
+      if (data?.code === 'BALANCE_CONFIRM_REQUIRED') {
+        // The game still holds money: show the real balance in the popup so it can be confirmed explicitly
+        setAccount((prev: any) => prev ? { ...prev, balance: Number(data.balance) || 0 } : prev)
+        return
+      }
+      toast.error(data?.message || 'Failed to remove the game login')
+    } finally {
+      setRemovingLogin(false)
     }
   }
 
@@ -584,13 +610,23 @@ export default function GameDetailsPage() {
               </div>
             </div>
 
-            <button 
-              onClick={handleResetPassword} 
-              disabled={resetting}
-              className="w-full bg-surface hover:bg-surface-elevated border border-border-strong text-white py-3.5 rounded-xl mt-2 transition-all font-medium disabled:opacity-50"
-            >
-              {resetting ? 'Resetting...' : 'Reset password'}
-            </button>
+            <div className="flex gap-3 mt-2">
+              <button
+                onClick={handleResetPassword}
+                disabled={resetting}
+                className="flex-1 bg-surface hover:bg-surface-elevated border border-border-strong text-white py-3.5 rounded-xl transition-all font-medium disabled:opacity-50"
+              >
+                {resetting ? 'Resetting...' : 'Reset password'}
+              </button>
+              <button
+                onClick={() => setRemoveLoginOpen(true)}
+                aria-label="Remove game login"
+                title="Remove this game login"
+                className="w-14 flex-shrink-0 rounded-xl flex items-center justify-center bg-red-500/10 hover:bg-red-500/20 border border-red-500/25 text-red-400 transition-all"
+              >
+                <Trash2 className="w-5 h-5" />
+              </button>
+            </div>
           </motion.div>
         ) : (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-surface rounded-2xl p-6 shadow-lg border border-border-subtle">
@@ -712,8 +748,21 @@ export default function GameDetailsPage() {
         />
       )}
 
-      <ChooseGameModal 
-        isOpen={chooseGameOpen} 
+      {account?.hasAccount && (
+        <RemoveGameLoginModal
+          isOpen={removeLoginOpen}
+          onClose={() => setRemoveLoginOpen(false)}
+          onConfirm={handleRemoveLogin}
+          loading={removingLogin}
+          gameName={game.name}
+          gameThumbnail={game.thumbnailUrl}
+          accountName={account.accountName || ''}
+          balance={account.balance || 0}
+        />
+      )}
+
+      <ChooseGameModal
+        isOpen={chooseGameOpen}
         onClose={() => setChooseGameOpen(false)} 
       />
 

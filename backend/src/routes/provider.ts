@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { authenticate } from '../middleware/auth'
 import { limit, idempotency, serializePerUser, parseMoney } from '../middleware/security'
 import { Request, Response, NextFunction } from 'express'
-import { createProviderAccount, getProviderAccount, getProviderAccountFast, resetProviderPassword, getProviderTransactions, transferFunds, getAllProviderAccounts } from '../controllers/providerController'
+import { createProviderAccount, getProviderAccount, getProviderAccountFast, resetProviderPassword, deleteProviderAccount, getProviderTransactions, transferFunds, getAllProviderAccounts } from '../controllers/providerController'
 
 const router = Router()
 
@@ -28,6 +28,8 @@ router.post('/create-account', accountLimiter, createProviderAccount)
 router.get('/account-fast', getProviderAccountFast)
 router.get('/account', getProviderAccount)
 router.post('/reset-password', accountLimiter, resetProviderPassword)
+// 'wallet' too: no recharge/cashout may run while a login that may still hold money is being emptied and removed
+router.post('/delete-account', accountLimiter, serializePerUser('wallet'), serializePerUser('game-account'), deleteProviderAccount)
 router.get('/transactions', getProviderTransactions)
 // Order matters: limit -> validate -> replay guard -> one wallet operation per user at a time
 router.post('/transfer', transferLimiter, validateTransfer, idempotency('transfer'), serializePerUser('wallet'), transferFunds)

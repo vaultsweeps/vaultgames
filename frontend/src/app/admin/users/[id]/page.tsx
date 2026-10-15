@@ -316,6 +316,22 @@ export default function UserDetailsPage() {
             ) : (
               <div className="text-muted text-[14px] italic">No game accounts connected yet.</div>
             )}
+            {data.deletedGameAccounts && data.deletedGameAccounts.length > 0 && (
+              <div className="mt-4 pt-4 border-t border-border-subtle">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted mb-2">Removed by player</p>
+                <div className="space-y-2">
+                  {data.deletedGameAccounts.map((d: any) => (
+                    <div key={d.id} className="px-3.5 py-2.5 bg-surface-elevated rounded-xl border border-border-subtle text-[13px]">
+                      <div className="flex justify-between gap-2">
+                        <span className="font-semibold text-primary truncate">{d.providerName}</span>
+                        <span className="text-muted whitespace-nowrap">{new Date(d.deletedAt).toLocaleDateString()}</span>
+                      </div>
+                      <div className="text-secondary break-words">Username: <span className="text-sky-400">{d.accountName}</span> · {d.lockedOut ? 'old login locked' : 'old login not locked'}{d.burned > 0 ? <span className="text-red-400"> · ${Number(d.burned).toFixed(2)} burned</span> : null}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </Card>
         </div>
 
