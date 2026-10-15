@@ -2,7 +2,7 @@ import { Request, Response } from 'express'
 import prisma from '../lib/prisma'
 import { asyncHandler, AppError } from '../middleware/errorHandler'
 import { ProviderService } from '../services/provider/ProviderService'
-import { createProviderService, ProviderFactory } from '../services/provider/ProviderFactory'
+import { createProviderService, ProviderFactory, isFastApiFamilyName } from '../services/provider/ProviderFactory'
 import { CashMachineProviderService } from '../services/provider/CashMachineProviderService'
 import * as XLSX from 'xlsx'
 import { assertPublicHttpUrl } from '../utils/safe'
@@ -257,7 +257,7 @@ async function buildGameBalanceReport(providerId: string | undefined, search: st
   const providerNameById = new Map(providerUsers.map(pu => [pu.providerId, pu.provider.name]))
   function providerFloorsAmounts(providerId: string): boolean {
     const name = (providerNameById.get(providerId) || '').toLowerCase()
-    const isFastApiFamily = name.includes('vblink') || name.includes('ultrapanda')
+    const isFastApiFamily = isFastApiFamilyName(name)
     return !isFastApiFamily
   }
 

@@ -17,9 +17,15 @@ import { Provider } from '@prisma/client';
 import { resolveGameId } from '../../utils/gameResolver';
 import { BoundedCache } from '../../utils/boundedCache';
 
+// The FastApi family: Vblink / Ultrapanda and their upgraded versions Dragon Fury / Ultra Thunder (same API).
+export function isFastApiFamilyName(rawName: string | null | undefined): boolean {
+  const name = (rawName || '').toLowerCase().replace(/[\s_-]+/g, '');
+  return name.includes('vblink') || name.includes('ultrapanda') || name.includes('dragonfury') || name.includes('ultrathunder');
+}
+
 export function createProviderService(provider: Provider): ProviderAdapter {
   const name = provider.name?.toLowerCase() || '';
-  if (name.includes('vblink') || name.includes('ultrapanda')) {
+  if (isFastApiFamilyName(name)) {
     return new FastApiProviderService(provider);
   }
   if (name.includes('orionstar') || name.includes('orion star')) {
