@@ -482,7 +482,7 @@ export const exportGameBalanceReport = asyncHandler(async (req: Request, res: Re
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function fetchProviderAgentBalances() {
-  const providers = await prisma.provider.findMany({ where: { status: true }, select: { id: true, name: true } })
+  const providers = await prisma.provider.findMany({ where: { status: true }, select: { id: true, name: true, endpoints: true } })
   const PER_PROVIDER_TIMEOUT_MS = 8000
 
   // "Today" = since midnight UTC (server time), not a rolling 24h window —
@@ -503,6 +503,12 @@ async function fetchProviderAgentBalances() {
       _sum: { amount: true },
     }),
     Promise.all(providers.map(async p => {
+      // FastApi-family providers on a fixed appid/appsecret cannot report their agent balance at all (it is only
+      // returned by the agent login they don't use), so say so instead of showing a misleading $0.00.
+      const ep = (p.endpoints as Record<string, any> | null) || {}
+      if (isFastApiFamilyName(p.name) && ep.appid && ep.appsecret) {
+        return { providerId: p.id, providerName: p.name, balance: null, error: null as string | null, balanceUnavailable: true }
+      }
       try {
         const service = await ProviderFactory.getProviderById(p.id)
         if (!service) return { providerId: p.id, providerName: p.name, balance: null, error: 'Provider not configured' }

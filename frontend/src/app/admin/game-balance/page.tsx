@@ -20,7 +20,7 @@ type ReportRow = {
 }
 
 type Provider = { id: string; name: string }
-type ProviderBalance = { providerId: string; providerName: string; balance: number | null; usedToday: number; error: string | null }
+type ProviderBalance = { providerId: string; providerName: string; balance: number | null; usedToday: number; error: string | null; balanceUnavailable?: boolean }
 type RangeKey = '8h' | '24h' | 'all'
 
 const RANGES: { key: RangeKey; label: string; short: string }[] = [
@@ -181,6 +181,8 @@ export default function AdminGameBalancePage() {
                 <p className="text-[13px] text-secondary mb-1.5 truncate">{p.providerName}</p>
                 {p.balance !== null ? (
                   <p className={`text-[22px] font-bold leading-none tabular-nums truncate ${NUM.green}`}>{money(p.balance)}</p>
+                ) : p.balanceUnavailable ? (
+                  <p className="text-[15px] font-semibold leading-none text-secondary" title="This provider does not report its agent balance to API partners. Check it in the provider's own panel.">Not available</p>
                 ) : (
                   <p className={`text-[15px] font-semibold leading-none ${NUM.red}`} title={p.error || undefined}>Unreachable</p>
                 )}
