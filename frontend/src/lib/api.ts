@@ -291,6 +291,7 @@ export const adminApi = {
   deleteFAQ: (id: string) => apiClient.delete(`/admin/faqs/${id}`),
 
   // Reports
+  getReportsSummary: (period: string) => apiClient.get('/admin/reports/summary', { params: { period } }),
   exportReport: (type: string, params?: object) => apiClient.get(`/admin/reports/${type}`, { params, responseType: 'blob' }),
 
   // Providers

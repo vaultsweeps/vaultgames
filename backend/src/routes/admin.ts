@@ -18,6 +18,7 @@ import {
   getAdminUserBonuses, getAdminBonusTransactions, getAdminBonusConversions, getAdminSundayFreeplayClaims, getAdminWalletTransactions,
   getUserSundayFreeplayStatus, grantUserSundayFreeplay
 } from '../controllers/adminController'
+import { getReportsSummary } from '../controllers/reportsController'
 import { listPaymentMethods, createPaymentMethod, updatePaymentMethod, togglePaymentMethod, setPaymentMethodAvailability, deletePaymentMethod } from '../controllers/paymentMethodAdminController'
 import {
   getProviders, createProvider, updateProvider, deleteProvider,
@@ -33,6 +34,9 @@ router.use(limit({ name: 'admin', windowMs: 15 * 60_000, max: 3000, scope: 'user
 
 // Dashboard
 router.get('/stats', getDashboardStats)
+
+// Reports & analytics (read-only)
+router.get('/reports/summary', limit({ name: 'admin-reports', windowMs: 60000, max: 30, scope: 'user' }), getReportsSummary)
 
 // Users
 // Heavy admin operations (full-table exports, live provider API fan-out) get their own per-admin ceiling
