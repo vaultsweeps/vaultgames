@@ -482,7 +482,8 @@ export class FastApiProviderService implements ProviderAdapter {
       'Test@123',                        // original default used for old accounts
     ].filter((p): p is string => !!p && valid.test(p)))];
 
-    for (const oldPass of oldPasswordCandidates) {
+    let lastRejection = '';
+    for (const [attempt, oldPass] of oldPasswordCandidates.entries()) {
       try {
         await this.makeRequest(endpoint, {
           account: providerAccount,
@@ -494,7 +495,7 @@ export class FastApiProviderService implements ProviderAdapter {
         // Code 2 (User Does Not Exist) — our DB has this user, but the provider doesn't!
         // This happens if the provider wiped their DB or if a previous bug caused an out-of-sync state.
         // We must auto-heal by recreating the user on the provider right now.
-        if (/Code:s*2(?!d)/.test(String(e.message)) || e.message?.includes('User Does Not Exist')) {
+        if (/Code:\s*2(?!\d)/.test(String(e.message)) || e.message?.includes('User Does Not Exist')) {
           console.warn(`[FastApiProviderService] Player "${providerAccount}" does not exist on provider! Auto-healing by recreating...`);
           await this.createPlayer(userId, safeNewPassword);
           return true;
@@ -507,7 +508,9 @@ export class FastApiProviderService implements ProviderAdapter {
           e.message?.includes('Code: 3') || e.message?.includes('Parameter Error') ||
           e.message?.includes('Code: 9') || e.message?.includes('Code: 8')
         ) {
-          console.warn(`[FastApiProviderService] Old password "${oldPass}" rejected for "${providerAccount}", trying next...`);
+          // The password itself is deliberately not logged
+          lastRejection = String(e.message).slice(0, 160);
+          console.warn(`[FastApiProviderService] Old password candidate ${attempt + 1}/${oldPasswordCandidates.length} rejected for "${providerAccount}": ${lastRejection}`);
           continue;
         }
         // Any other error (Code 9 format, network etc.) — rethrow
@@ -518,7 +521,7 @@ export class FastApiProviderService implements ProviderAdapter {
     // All old password candidates failed — the account exists but we cannot reset the password. Say so (false): returning
     // true here made the site store and show a new password that the game never received, so the player could not log in
     // with it. With false the player keeps the working password and is told it wasn't changed.
-    console.warn(`[FastApiProviderService] Could not reset password for "${providerAccount}" — all old password attempts failed. Existing password kept.`);
+    console.warn(`[FastApiProviderService] Could not reset password for "${providerAccount}" — all ${oldPasswordCandidates.length} old password attempts failed (last: ${lastRejection}). Existing password kept.`);
     return false;
   }
 
